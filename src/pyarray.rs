@@ -1,18 +1,13 @@
-use crate::datatype::{Number, TsFunc, TsFunc2, ArrayFunc};
+use crate::datatype::{ArrayFunc, Number, TsFunc, TsFunc2};
 use numpy::ndarray::{
-    ArrayView1, ArrayViewMut1,
-    ArrayView2, ArrayViewMut2,
-    ArrayViewD, ArrayViewMutD,
-    Ix1, Ix2, IxDyn,
-    Zip, Axis,
+    ArrayView1, ArrayView2, ArrayViewD, ArrayViewMut1, ArrayViewMut2, ArrayViewMutD, Axis, Ix1,
+    Ix2, IxDyn, Zip,
 };
-use numpy::{
-    PyArray1, PyArrayDyn, PyReadonlyArrayDyn, PyReadwriteArrayDyn
-};
+use numpy::{PyArray1, PyArrayDyn, PyReadonlyArrayDyn, PyReadwriteArrayDyn};
 use pyo3::FromPyObject;
 
-use crate::window_func::*;
 use crate::array::*;
+use crate::window_func::*;
 
 // 只读和读写的动态python array转换为确定维度的ArrayView或可变ArrayView
 pub trait DynToArrayRead {
@@ -74,30 +69,33 @@ impl_dyn_to_array_write!(i32);
 impl_dyn_to_array_write!(i64);
 
 pub trait CallFunction<T: Number> {
-    fn call_array_function<U: Number> ( // 普通array函数
-        &self, 
-        f: ArrayFunc<T, U>, 
+    fn call_array_function<U: Number>(
+        // 普通array函数
+        &self,
+        f: ArrayFunc<T, U>,
         axis: Option<usize>,
-        par: Option<bool>
+        par: Option<bool>,
     ) -> &PyArrayDyn<U>;
 
-    fn call_ts_function( // 普通滚动函数
-        &self, 
+    fn call_ts_function(
+        // 普通滚动函数
+        &self,
         f: TsFunc<T>,
         window: usize,
-        axis: Option<usize>, 
-        min_periods: Option<usize>, 
-        par: Option<bool>
+        axis: Option<usize>,
+        min_periods: Option<usize>,
+        par: Option<bool>,
     ) -> &PyArrayDyn<f64>;
 
-    fn call_ts_function2( // 有两个输入的滚动函数
-        &self, 
+    fn call_ts_function2(
+        // 有两个输入的滚动函数
+        &self,
         other: &PyArrayDyn<T>,
         f: TsFunc2<T>,
         window: usize,
-        axis: Option<usize>, 
-        min_periods: Option<usize>, 
-        par: Option<bool>
+        axis: Option<usize>,
+        min_periods: Option<usize>,
+        par: Option<bool>,
     ) -> &PyArrayDyn<f64>;
 }
 // 根据维度调用一维的算法函数，可以并行
@@ -105,7 +103,12 @@ macro_rules! impl_call_function {
     ($dtype:ty) => {
         impl CallFunction<$dtype> for PyArrayDyn<$dtype> {
             // 普通对array一个轴应用的函数, 例如argsort，rank等, U是output的dtype
-            fn call_array_function<U: Number> (&self, f: ArrayFunc<$dtype, U>, axis: Option<usize>, par: Option<bool>) -> &PyArrayDyn<U>{
+            fn call_array_function<U: Number>(
+                &self,
+                f: ArrayFunc<$dtype, U>,
+                axis: Option<usize>,
+                par: Option<bool>,
+            ) -> &PyArrayDyn<U> {
                 let par = par.unwrap_or(false);
                 let ndim = self.ndim();
                 let axis = Axis(axis.unwrap_or(0));
@@ -114,7 +117,7 @@ macro_rules! impl_call_function {
                     let x_r = x.to_array1();
                     let out = PyArray1::<U>::zeros(self.py(), x_r.dim(), false);
                     f(x_r, out.readwrite().as_array_mut());
-                    out.to_dyn()  
+                    out.to_dyn()
                 } else if ndim >= 2 {
                     let x = self.readonly();
                     let x_r = x.to_arrayd();
@@ -123,21 +126,32 @@ macro_rules! impl_call_function {
                     let mut out_wr = out.readwrite();
                     let mut out_wr = out_wr.as_array_mut();
                     let arr_zip = Zip::from(out_wr.lanes_mut(axis)).and(x_r.lanes(axis));
-                    if !par { // 非并行
+                    if !par {
+                        // 非并行
                         arr_zip.for_each(|out_wr, x_r| {
                             f(x_r, out_wr);
                         });
-                    } else { // 并行
+                    } else {
+                        // 并行
                         arr_zip.par_for_each(|out_wr, x_r| {
                             f(x_r, out_wr);
                         });
                     }
                     out
-                } else {panic!("不支持0维数组")};
+                } else {
+                    panic!("不支持0维数组")
+                };
                 out
             }
             // 接受单个array的滚动函数
-            fn call_ts_function(&self, f: TsFunc<$dtype>, window: usize, axis: Option<usize>, min_periods: Option<usize>, par: Option<bool>) -> &PyArrayDyn<f64>{
+            fn call_ts_function(
+                &self,
+                f: TsFunc<$dtype>,
+                window: usize,
+                axis: Option<usize>,
+                min_periods: Option<usize>,
+                par: Option<bool>,
+            ) -> &PyArrayDyn<f64> {
                 let min_periods = min_periods.unwrap_or(1); // 默认最小需要的周期为1
                 let axis = Axis(axis.unwrap_or(0));
                 let par = par.unwrap_or(false); // 默认不并行
@@ -147,8 +161,14 @@ macro_rules! impl_call_function {
                     let x_r = x.to_array1();
                     let out_step = x_r.stride_of(axis) as usize; // 目前暂时无用
                     let out = PyArray1::<f64>::zeros(self.py(), x_r.dim(), false);
-                    f(x_r, out.readwrite().as_array_mut(), window, min_periods, out_step);
-                    out.to_dyn()  
+                    f(
+                        x_r,
+                        out.readwrite().as_array_mut(),
+                        window,
+                        min_periods,
+                        out_step,
+                    );
+                    out.to_dyn()
                 } else if ndim >= 2 {
                     let x = self.readonly();
                     let x_r = x.to_arrayd();
@@ -158,22 +178,33 @@ macro_rules! impl_call_function {
                     let mut out_wr = out.readwrite();
                     let mut out_wr = out_wr.as_array_mut();
                     let arr_zip = Zip::from(out_wr.lanes_mut(axis)).and(x_r.lanes(axis));
-                    if !par { // 非并行
+                    if !par {
+                        // 非并行
                         arr_zip.for_each(|out_wr, x_r| {
                             f(x_r, out_wr, window, min_periods, out_step);
                         });
-                    } else { // 并行
+                    } else {
+                        // 并行
                         arr_zip.par_for_each(|out_wr, x_r| {
                             f(x_r, out_wr, window, min_periods, out_step);
                         });
                     }
                     out
-                }
-                else {panic!("不支持0维数组")};
+                } else {
+                    panic!("不支持0维数组")
+                };
                 out
             }
             // 接受两个array的滚动函数
-            fn call_ts_function2(&self, other: &PyArrayDyn<$dtype>, f: TsFunc2<$dtype>, window: usize, axis: Option<usize>, min_periods: Option<usize>, par: Option<bool>) -> &PyArrayDyn<f64>{
+            fn call_ts_function2(
+                &self,
+                other: &PyArrayDyn<$dtype>,
+                f: TsFunc2<$dtype>,
+                window: usize,
+                axis: Option<usize>,
+                min_periods: Option<usize>,
+                par: Option<bool>,
+            ) -> &PyArrayDyn<f64> {
                 let min_periods = min_periods.unwrap_or(1); // 默认最小需要的周期为1
                 let axis = Axis(axis.unwrap_or(0));
                 let par = par.unwrap_or(false); // 默认不并行
@@ -183,8 +214,15 @@ macro_rules! impl_call_function {
                     let (x_r, y_r) = (x.to_array1(), y.to_array1());
                     let out_step = x_r.stride_of(axis) as usize; // 目前暂时无用
                     let out = PyArray1::<f64>::zeros(self.py(), x_r.dim(), false);
-                    f(x_r, y_r, out.readwrite().as_array_mut(), window, min_periods, out_step);
-                    out.to_dyn()  
+                    f(
+                        x_r,
+                        y_r,
+                        out.readwrite().as_array_mut(),
+                        window,
+                        min_periods,
+                        out_step,
+                    );
+                    out.to_dyn()
                 } else if ndim >= 2 {
                     let (x, y) = (self.readonly(), other.readonly());
                     let (x_r, y_r) = (x.to_arrayd(), y.to_arrayd());
@@ -193,19 +231,24 @@ macro_rules! impl_call_function {
                     let out = PyArrayDyn::<f64>::zeros(self.py(), x_r.dim(), f_contiguous_flag);
                     let mut out_wr = out.readwrite();
                     let mut out_wr = out_wr.as_array_mut();
-                    let arr_zip = Zip::from(out_wr.lanes_mut(axis)).and(x_r.lanes(axis)).and(y_r.lanes(axis));
-                    if !par { // 非并行
+                    let arr_zip = Zip::from(out_wr.lanes_mut(axis))
+                        .and(x_r.lanes(axis))
+                        .and(y_r.lanes(axis));
+                    if !par {
+                        // 非并行
                         arr_zip.for_each(|out_wr, x_r, y_r| {
                             f(x_r, y_r, out_wr, window, min_periods, out_step);
                         });
-                    } else { // 并行
+                    } else {
+                        // 并行
                         arr_zip.par_for_each(|out_wr, x_r, y_r| {
                             f(x_r, y_r, out_wr, window, min_periods, out_step);
                         });
                     }
                     out
-                }
-                else {panic!("不支持0维数组")};
+                } else {
+                    panic!("不支持0维数组")
+                };
                 out
             }
         }
@@ -226,7 +269,6 @@ pub enum PyArrayOk<'py> {
     I64(&'py PyArrayDyn<i64>),
 }
 
-
 impl<'py> PyArrayOk<'py> {
     // 获得维度信息
     pub fn ndim(&self) -> usize {
@@ -243,13 +285,29 @@ impl<'py> PyArrayOk<'py> {
 macro_rules! impl_arrayfunc {
     ($name:ident, $func:ident, $otype:ty) => {
         impl<'py> PyArrayOk<'py> {
-            pub fn $name (self, axis: Option<usize>, par: Option<bool>) -> &'py PyArrayDyn<$otype> {
+            pub fn $name(self, axis: Option<usize>, par: Option<bool>) -> &'py PyArrayDyn<$otype> {
                 use PyArrayOk::*;
                 match self {
-                    F32(arr) => arr.call_array_function::<$otype>($func::<f32> as ArrayFunc<f32, $otype>, axis, par),
-                    F64(arr) => arr.call_array_function::<$otype>($func::<f64> as ArrayFunc<f64, $otype>, axis, par),
-                    I32(arr) => arr.call_array_function::<$otype>($func::<i32> as ArrayFunc<i32, $otype>, axis, par),
-                    I64(arr) => arr.call_array_function::<$otype>($func::<i64> as ArrayFunc<i64, $otype>, axis, par),
+                    F32(arr) => arr.call_array_function::<$otype>(
+                        $func::<f32> as ArrayFunc<f32, $otype>,
+                        axis,
+                        par,
+                    ),
+                    F64(arr) => arr.call_array_function::<$otype>(
+                        $func::<f64> as ArrayFunc<f64, $otype>,
+                        axis,
+                        par,
+                    ),
+                    I32(arr) => arr.call_array_function::<$otype>(
+                        $func::<i32> as ArrayFunc<i32, $otype>,
+                        axis,
+                        par,
+                    ),
+                    I64(arr) => arr.call_array_function::<$otype>(
+                        $func::<i64> as ArrayFunc<i64, $otype>,
+                        axis,
+                        par,
+                    ),
                     // _ => todo!()
                 }
             }
@@ -261,13 +319,43 @@ macro_rules! impl_arrayfunc {
 macro_rules! impl_tsfunc {
     ($name:ident, $func:ident) => {
         impl<'py> PyArrayOk<'py> {
-            pub fn $name(self, window: usize, axis: Option<usize>, min_periods: Option<usize>, par: Option<bool>) -> &'py PyArrayDyn<f64> {
+            pub fn $name(
+                self,
+                window: usize,
+                axis: Option<usize>,
+                min_periods: Option<usize>,
+                par: Option<bool>,
+            ) -> &'py PyArrayDyn<f64> {
                 use PyArrayOk::*;
                 match self {
-                    F32(arr) => arr.call_ts_function($func::<f32> as TsFunc<f32>, window, axis, min_periods, par),
-                    F64(arr) => arr.call_ts_function($func::<f64> as TsFunc<f64>, window, axis, min_periods, par),
-                    I32(arr) => arr.call_ts_function($func::<i32> as TsFunc<i32>, window, axis, min_periods, par),
-                    I64(arr) => arr.call_ts_function($func::<i64> as TsFunc<i64>, window, axis, min_periods, par),
+                    F32(arr) => arr.call_ts_function(
+                        $func::<f32> as TsFunc<f32>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    F64(arr) => arr.call_ts_function(
+                        $func::<f64> as TsFunc<f64>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    I32(arr) => arr.call_ts_function(
+                        $func::<i32> as TsFunc<i32>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    I64(arr) => arr.call_ts_function(
+                        $func::<i64> as TsFunc<i64>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
                     // _ => todo!()
                 }
             }
@@ -279,14 +367,49 @@ macro_rules! impl_tsfunc {
 macro_rules! impl_tsfunc2 {
     ($name:ident, $func:ident) => {
         impl<'py> PyArrayOk<'py> {
-            pub fn $name(self, other: &PyArrayOk, window: usize, axis: Option<usize>, min_periods: Option<usize>, par: Option<bool>) -> &'py PyArrayDyn<f64> {
+            pub fn $name(
+                self,
+                other: &PyArrayOk,
+                window: usize,
+                axis: Option<usize>,
+                min_periods: Option<usize>,
+                par: Option<bool>,
+            ) -> &'py PyArrayDyn<f64> {
                 use PyArrayOk::*;
                 match (self, other) {
-                    (F32(arr), F32(other)) => arr.call_ts_function2(other, $func::<f32> as TsFunc2<f32>, window, axis, min_periods, par),
-                    (F64(arr), F64(other)) => arr.call_ts_function2(other, $func::<f64> as TsFunc2<f64>, window, axis, min_periods, par),
-                    (I32(arr), I32(other)) => arr.call_ts_function2(other, $func::<i32> as TsFunc2<i32>, window, axis, min_periods, par),
-                    (I64(arr), I64(other)) => arr.call_ts_function2(other, $func::<i64> as TsFunc2<i64>, window, axis, min_periods, par),
-                    _ => panic!("左右两边array的类型不匹配")
+                    (F32(arr), F32(other)) => arr.call_ts_function2(
+                        other,
+                        $func::<f32> as TsFunc2<f32>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    (F64(arr), F64(other)) => arr.call_ts_function2(
+                        other,
+                        $func::<f64> as TsFunc2<f64>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    (I32(arr), I32(other)) => arr.call_ts_function2(
+                        other,
+                        $func::<i32> as TsFunc2<i32>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    (I64(arr), I64(other)) => arr.call_ts_function2(
+                        other,
+                        $func::<i64> as TsFunc2<i64>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    _ => panic!("左右两边array的类型不匹配"),
                 }
             }
         }

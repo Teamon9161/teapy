@@ -1,8 +1,8 @@
-use num::{Num, NumCast, traits::NumOps, FromPrimitive, ToPrimitive, cast::AsPrimitive, One, Zero};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
-use std::cmp::PartialOrd;
+use num::{cast::AsPrimitive, traits::NumOps, FromPrimitive, Num, NumCast, One, ToPrimitive, Zero};
 use numpy::ndarray::{ArrayView1, ArrayViewMut1};
 use numpy::Element;
+use std::cmp::PartialOrd;
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
 pub enum DataType {
     F32T,
@@ -36,14 +36,34 @@ impl_datatype!(I32T, i32);
 impl_datatype!(I64T, i64);
 impl_datatype!(UintT, usize);
 
-pub trait Number : Copy + Clone + FromPrimitive + NumOps + Num + NumCast + 
-AddAssign + SubAssign + MulAssign + DivAssign + PartialOrd + GetDataType + Element + 
-ToPrimitive + Zero + One + AsPrimitive<f64> + AsPrimitive<usize> + AsPrimitive<i32> {
+pub trait Number:
+    Copy
+    + Clone
+    + FromPrimitive
+    + NumOps
+    + Num
+    + NumCast
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + PartialOrd
+    + GetDataType
+    + Element
+    + ToPrimitive
+    + Zero
+    + One
+    + AsPrimitive<f64>
+    + AsPrimitive<usize>
+    + AsPrimitive<i32>
+{
     type Dtype;
     fn min_() -> Self;
     fn max_() -> Self;
     fn f64(self) -> f64;
-    fn to<T: Number>(self) -> T where Self: AsPrimitive<T>;
+    fn to<T: Number>(self) -> T
+    where
+        Self: AsPrimitive<T>;
     fn isnan(self) -> bool;
     fn notnan(self) -> bool;
 }
@@ -53,14 +73,22 @@ macro_rules! impl_number {
         impl Number for $dtype {
             type Dtype = $datatype;
             #[inline(always)]
-            fn min_() -> $dtype {<$dtype>::MIN}
+            fn min_() -> $dtype {
+                <$dtype>::MIN
+            }
             #[inline(always)]
-            fn max_() -> $dtype {<$dtype>::MAX}
+            fn max_() -> $dtype {
+                <$dtype>::MAX
+            }
             #[inline(always)]
-            fn f64(self) -> f64 {AsPrimitive::<f64>::as_(self)}
+            fn f64(self) -> f64 {
+                AsPrimitive::<f64>::as_(self)
+            }
             #[inline(always)]
-            fn to<T: Number>(self) -> T 
-            where Self: AsPrimitive<T> {
+            fn to<T: Number>(self) -> T
+            where
+                Self: AsPrimitive<T>,
+            {
                 AsPrimitive::<T>::as_(self)
             }
             #[inline(always)]

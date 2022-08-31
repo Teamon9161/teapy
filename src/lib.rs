@@ -1,14 +1,10 @@
 // pub mod ffi;
+pub mod array;
 pub mod datatype;
 pub mod pyarray;
 pub mod window_func;
-pub mod array;
 
-use pyo3::{
-    pymodule, pyfunction, wrap_pyfunction, 
-    types::PyModule,
-    PyAny, PyResult, Python,
-};
+use pyo3::{pyfunction, pymodule, types::PyModule, wrap_pyfunction, PyAny, PyResult, Python};
 
 use crate::pyarray::PyArrayOk;
 
@@ -17,7 +13,8 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     macro_rules! impl_pyarrayfunc {
         ($func:ident) => {
             #[pyfunction]
-            fn $func<'py> ( // 滚动移动平均
+            fn $func<'py>(
+                // 滚动移动平均
                 x: PyArrayOk<'py>,
                 axis: Option<usize>,
                 par: Option<bool>,
@@ -25,15 +22,15 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 let out = x.$func(axis, par);
                 return Ok(out.into())
             }
-        m.add_function(wrap_pyfunction!($func, m)?)?;
+            m.add_function(wrap_pyfunction!($func, m)?)?;
         };
     }
-    
 
     macro_rules! impl_pytsfunc {
         ($func:ident) => {
             #[pyfunction]
-            fn $func<'py> ( // 滚动移动平均
+            fn $func<'py>(
+                // 滚动移动平均
                 x: PyArrayOk<'py>,
                 window: usize,
                 axis: Option<usize>,
@@ -43,7 +40,7 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 let out = x.$func(window, axis, min_periods, par);
                 return Ok(out.into())
             }
-        m.add_function(wrap_pyfunction!($func, m)?)?;
+            m.add_function(wrap_pyfunction!($func, m)?)?;
         };
     }
 
@@ -51,7 +48,8 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     macro_rules! impl_pytsfunc2 {
         ($func:ident) => {
             #[pyfunction]
-            fn $func<'py> ( // 滚动移动平均
+            fn $func<'py>(
+                // 滚动移动平均
                 x: PyArrayOk<'py>,
                 y: PyArrayOk<'py>,
                 window: usize,
@@ -70,7 +68,7 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     impl_pyarrayfunc!(argsort);
     impl_pyarrayfunc!(rank);
     impl_pyarrayfunc!(rank_pct);
-    
+
     // feature
     impl_pytsfunc!(ts_sma);
     impl_pytsfunc!(ts_ewm);
@@ -107,5 +105,3 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     Ok(())
 }
-
-

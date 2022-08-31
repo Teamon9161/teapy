@@ -15,17 +15,27 @@ pub struct Window<T: Number> {
 }
 
 impl<T: Number> Window<T> {
-    pub fn new(data: Vec<T>, window: usize, min_periods: usize, sum_flag: bool, std_flag: bool) -> Self 
-    where usize: AsPrimitive<T>
-    {   
+    pub fn new(
+        data: Vec<T>,
+        window: usize,
+        min_periods: usize,
+        sum_flag: bool,
+        std_flag: bool,
+    ) -> Self
+    where
+        usize: AsPrimitive<T>,
+    {
         assert!(window >= min_periods, "滚动window不能小于最小期数");
         assert!(window >= 1, "滚动window不能小于1");
-        assert!(data.len() == window, "初始化窗口时，数据长度和window长度不相等");
+        assert!(
+            data.len() == window,
+            "初始化窗口时，数据长度和window长度不相等"
+        );
         let init_value = 0_usize.as_();
         let mut w = Window {
             f: Window::push0,
             data,
-            window, 
+            window,
             min_periods,
             sum_flag,
             std_flag,
@@ -39,66 +49,95 @@ impl<T: Number> Window<T> {
         match (sum_flag, std_flag) {
             (_, true) => {
                 todo!()
-            },
-            (true, false) => { // 只需求可用窗口以及窗口中的和
+            }
+            (true, false) => {
+                // 只需求可用窗口以及窗口中的和
                 w.f = Window::push1;
                 for i in 0..window {
-                    unsafe { // 安全性：i必定比data的长度要小
+                    unsafe {
+                        // 安全性：i必定比data的长度要小
                         let v = *w.data.get_unchecked(i);
-                        if IsNan!(v) {w.valid_window -= 1} else {w.sum += v};
+                        if IsNan!(v) {
+                            w.valid_window -= 1
+                        } else {
+                            w.sum += v
+                        };
                     }
                 }
-            },
+            }
             (false, false) => {
                 for i in 0..window {
-                    unsafe { // 安全性：i必定比data的长度要小
+                    unsafe {
+                        // 安全性：i必定比data的长度要小
                         let v = *w.data.get_unchecked(i);
-                        if IsNan!(v) {w.valid_window -= 1};
+                        if IsNan!(v) {
+                            w.valid_window -= 1
+                        };
                     }
                 }
             }
         }
-        w    
+        w
     }
 
     #[inline(always)]
     fn next(&mut self) {
         self.head_idx += 1;
-        if self.head_idx >= self.window {self.head_idx = 0;}
+        if self.head_idx >= self.window {
+            self.head_idx = 0;
+        }
     }
 
     #[inline(always)]
-    fn push0(&mut self, v: T) { // 最低计算要求的滚动，只更新可用窗口
-        unsafe { // 安全性：window的长度必定大于等于1
+    fn push0(&mut self, v: T) {
+        // 最低计算要求的滚动，只更新可用窗口
+        unsafe {
+            // 安全性：window的长度必定大于等于1
             if IsNan!(*self.data.get_unchecked(self.head_idx)) {
                 self.valid_window += 1; // 有一个nan数据过期，可用窗口加一
             }
         }
         if IsNan!(v) {
             self.valid_window -= 1;
-        } 
+        }
         unsafe { *self.data.get_unchecked_mut(self.head_idx) = v }
         self.next();
     }
 
     #[inline(always)]
-    fn push1(&mut self, v: T) { // 更新可用窗口和窗口的和
-        let v_first = unsafe { *self.data.get_unchecked(self.head_idx)}; // 安全性：window的长度必定大于等于1
-        if IsNan!(v_first) { self.valid_window += 1;} 
-        else { self.sum -= v_first;}
-        if IsNan!(v) {self.valid_window -= 1;}
-        else { self.sum += v;}
+    fn push1(&mut self, v: T) {
+        // 更新可用窗口和窗口的和
+        let v_first = unsafe { *self.data.get_unchecked(self.head_idx) }; // 安全性：window的长度必定大于等于1
+        if IsNan!(v_first) {
+            self.valid_window += 1;
+        } else {
+            self.sum -= v_first;
+        }
+        if IsNan!(v) {
+            self.valid_window -= 1;
+        } else {
+            self.sum += v;
+        }
         unsafe { *self.data.get_unchecked_mut(self.head_idx) = v }
         self.next();
     }
 
     #[inline(always)]
-    fn push2(&mut self, v: T) { // 更新可用窗口、窗口的和、窗口的平方和
-        let v_first = unsafe { *self.data.get_unchecked(self.head_idx)}; // 安全性：window的长度必定大于等于1
-        if IsNan!(v_first) { self.valid_window += 1;} 
-        else { self.sum -= v_first; self.sum2 -= v_first * v_first }
-        if IsNan!(v) { self.valid_window -= 1; }
-        else { self.sum += v; self.sum2 += v * v }
+    fn push2(&mut self, v: T) {
+        // 更新可用窗口、窗口的和、窗口的平方和
+        let v_first = unsafe { *self.data.get_unchecked(self.head_idx) }; // 安全性：window的长度必定大于等于1
+        if IsNan!(v_first) {
+            self.valid_window += 1;
+        } else {
+            self.sum -= v_first;
+            self.sum2 -= v_first * v_first
+        }
+        if IsNan!(v) {
+            self.valid_window -= 1;
+        } else {
+            self.sum += v;
+            self.sum2 += v * v
+        }
         unsafe { *self.data.get_unchecked_mut(self.head_idx) = v }
         self.next();
     }
@@ -109,28 +148,35 @@ impl<T: Number> Window<T> {
     }
 
     #[inline(always)]
-    pub fn mean(& self) -> f64 { // 窗口均值
+    pub fn mean(&self) -> f64 {
+        // 窗口均值
         if self.valid_window >= self.min_periods {
             AsPrimitive::<f64>::as_(self.sum) / AsPrimitive::<f64>::as_(self.valid_window)
-        }
-        else {
+        } else {
             f64::NAN
         }
     }
 
     #[inline(always)]
-    pub fn sum(&self) -> f64 { if self.valid_window >= self.min_periods {self.sum.as_()} else {f64::NAN} } // 窗口和
+    pub fn sum(&self) -> f64 {
+        if self.valid_window >= self.min_periods {
+            self.sum.as_()
+        } else {
+            f64::NAN
+        }
+    } // 窗口和
 
     #[inline(always)]
     pub fn std(&self) -> f64 {
         let mean2 = if self.valid_window >= self.min_periods {
-            let mut v = AsPrimitive::<f64>::as_(self.sum2) / AsPrimitive::<f64>::as_(self.valid_window);
+            let mut v =
+                AsPrimitive::<f64>::as_(self.sum2) / AsPrimitive::<f64>::as_(self.valid_window);
             v -= self.mean().powi(2);
             v
-        }
-        else { f64::NAN };
+        } else {
+            f64::NAN
+        };
         let v_window = AsPrimitive::<f64>::as_(self.valid_window);
         (mean2 * v_window / (v_window - 1f64)).sqrt()
     }
-
 }
