@@ -1,0 +1,23 @@
+[package]
+name = "teapy"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "teapy"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = {version = "0.16", features = ["extension-module", "abi3-py38", "macros"]}
+numpy = {git = "https://github.com/PyO3/rust-numpy.git", branch = "main"}
+num = "0.4"
+cxx = "1.0"
+rayon = "1.5"
+ndarray = {features=['rayon'], version="0.15"}
+# libc = "0.2"
+
+[build-dependencies]
+cxx-build = "1.0"
+# cc = {version="1.0", features = ["parallel"]}
+# serde = "1.0"
+# polars = {version = "0.23.2", features = ['polars-io', 'lazy', 'csv-file']}
