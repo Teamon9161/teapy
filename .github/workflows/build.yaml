@@ -1,0 +1,39 @@
+on: [push]
+
+name: build
+
+jobs:
+  test-rust:
+    name: teapy build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            override: true
+            components: rustfmt, clippy
+      - name: Cache Cargo
+        uses: actions/cache@v3
+        with:
+          path: /github/home/.cargo
+          key: cargo-cache-
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: /github/home/target
+          key: ubuntu-x86-64-target-cache-stable
+      - name: Install dependencies
+        run: |
+          rm -f dprint-x86_64-unknown-linux-gnu.zip
+      - name: Run formatting checks
+        run: |
+          cargo fmt --all -- --check
+      - name: Run linting checks
+        run : |
+          # do not produce debug symbols to keep memory usage down
+          export RUSTFLAGS="-C debuginfo=0"
+          cargo clippy -- -D warnings
+
+      
