@@ -1,4 +1,12 @@
-on: [push]
+on:
+  pull_request:
+    paths:
+      - 'teapy/**'
+      - '.github/workflows/build.yaml'
+  push:
+    paths:
+      - 'teapy/**'
+      - '.github/workflows/build.yaml'
 
 name: build
 
