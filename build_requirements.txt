@@ -1,0 +1,3 @@
+numpy
+pandas
+maturin==0.13.0
