@@ -40,7 +40,7 @@ jobs:
           cargo fmt --all -- --check
       - name: Run linting
         run: |
-          flake8
+          flake8 --ignore E501
       - name: Run tests
         run: |
           export RUSTFLAGS="-C debuginfo=0"

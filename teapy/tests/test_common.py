@@ -8,11 +8,17 @@ from teapy.testing import assert_allclose
 
 
 def test_continuity():
+    # test output continuity
     arr1 = np.array(np.random.randn(100, 20), order="c")
     assert tp.ts_sma(arr1, window=3).flags["C_CONTIGUOUS"]
     arr2 = np.array(np.random.randn(100, 20), order="f")
     assert tp.ts_sma(arr2, window=3).flags["F_CONTIGUOUS"]
     assert tp.ts_cov(arr1, arr2, window=5).flags["C_CONTIGUOUS"]
+
+    # test argsort on discontinuous axis
+    res1 = tp.argsort(arr1, axis=0)
+    res2 = arr1.argsort(axis=0)
+    assert_allclose(res1, res2)
 
 
 def test_high_dimensional():
@@ -40,3 +46,8 @@ def test_parallel():
 
     if cpu_count() > 1:
         assert time1 < time2
+        
+def test_special():
+    tp.rank(np.array([])) # test rank a array with 0 element
+    tp.rank(np.array([2])) # test rank a array with 1 element
+    tp.rank(np.array([np.nan, np.nan])) # test rank all nan array

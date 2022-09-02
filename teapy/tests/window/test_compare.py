@@ -65,3 +65,12 @@ def test_ts_rank(arr, window):
         .apply(lambda x: x.rank().iloc[-1])
     )
     assert_series_equal(pd.Series(res1), res2)
+
+    # rank pct
+    res3 = tp.ts_rank(arr, window, pct=True, min_periods=min_periods)
+    res4 = (
+        pd.Series(arr[:1000])
+        .rolling(window, min_periods=min_periods)
+        .apply(lambda x: x.rank(pct=True).iloc[-1])
+    )
+    assert_series_equal(pd.Series(res3), res4)
