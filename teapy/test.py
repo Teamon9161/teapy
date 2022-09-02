@@ -1,4 +1,4 @@
-import teapy as rt
+import teapy as tp
 import numpy as np
 import pandas as pd
 # import polars as pl
@@ -18,7 +18,7 @@ import pandas as pd
 
 # a = np.array([4,6,np.nan,5,3,4,np.nan, 55, 21, 123, 325, 1233, 5])
 
-# rt.rank_pct(a, axis=1, par=True)
+# tp.rank_pct(a, axis=1, par=True)
 # ts.rank(a)
 # pd.Series(a).rank(pct=True)
 # a.argsort()
@@ -26,12 +26,12 @@ import pandas as pd
 
 # b = b[0, :]
 # bb = pd.DataFrame(b)
-# timeit rt.ts_sma(b, 10, axis=1, par=False)
+# timeit tp.ts_sma(b, 10, axis=1, par=False)
 # timeit ts.ts_sma(b, 10, axis=1)
 # timeit b.argsort(axis=1)
 
 
-
+'''
 if __name__ == '__main__':
     from numpy.testing import assert_allclose
     from functools import partial
@@ -51,53 +51,53 @@ if __name__ == '__main__':
                 
                 # 测试argsort(如果有重复值或nan的话排序不稳定，最后的排序不会一致)
                 if arr.dtype != np.int32:
-                    res1 = rt.argsort(arr[~np.isnan(arr)])
+                    res1 = tp.argsort(arr[~np.isnan(arr)])
                     res2 = arr[~np.isnan(arr)].argsort()
                     assert_allclose(res1, res2)
                 
                 # 测试rank
-                res1 = rt.rank(arr)
+                res1 = tp.rank(arr)
                 res2 = pd.Series(arr).rank().values
                 assert_allclose(res1, res2)
                 
-                res1 = rt.rank(arr, pct=True)
+                res1 = tp.rank(arr, pct=True)
                 res2 = pd.Series(arr).rank(pct=True).values
                 assert_allclose(res1, res2)
                 
                 # 测试移动平均
-                res1 = rt.ts_sma(arr, window, min_periods=min_periods)
+                res1 = tp.ts_sma(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).mean().values
                 assert_allclose(res1, res2)
                 
                 # 测试移动求和
-                res1 = rt.ts_sum(arr, window, min_periods=min_periods)
+                res1 = tp.ts_sum(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).sum().values
                 assert_allclose(res1, res2)
             
                 # 测试移动连乘
-                res1 = rt.ts_prod(arr, window, min_periods=min_periods)
+                res1 = tp.ts_prod(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(lambda x: x.prod()).values
                 assert_allclose(res1, res2)
                 
                 # 测试移动几何平均
-                res1 = rt.ts_prod_mean(arr, window, min_periods=min_periods)
+                res1 = tp.ts_prod_mean(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(
                     lambda x: x.prod() ** (1 / x.notnull().sum())).values
                 assert_allclose(res1, res2)
                 
                 # 测试移动最大值
-                res1 = rt.ts_max(arr, window, min_periods=min_periods)
+                res1 = tp.ts_max(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).max().values
                 assert_allclose(res1, res2)
                 
                 # 测试移动最小值
-                res1 = rt.ts_min(arr, window, min_periods=min_periods)
+                res1 = tp.ts_min(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).min().values
                 assert_allclose(res1, res2)
                 
                 # 测试移动最小值索引(在window中)
                 if arr.dtype != np.int32: # 整数arr可能有重复值，对于重复值总是取最后一个，而pandas取的是第一个
-                    res1 = rt.ts_argmin(arr, window, min_periods=min_periods)
+                    res1 = tp.ts_argmin(arr, window, min_periods=min_periods)
                     res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(
                         lambda x: x.idxmin() - x.index[0] + 1
                     ).values
@@ -105,19 +105,19 @@ if __name__ == '__main__':
                 
                 # 测试移动最大值索引(在window中)
                 if arr.dtype != np.int32: # 整数arr可能有重复值，对于重复值总是取最后一个，而pandas取的是第一个
-                    res1 = rt.ts_argmax(arr, window, min_periods=min_periods)
+                    res1 = tp.ts_argmax(arr, window, min_periods=min_periods)
                     res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(
                         lambda x: x.idxmax() - x.index[0] + 1
                     ).values
                     assert_allclose(res1, res2)  
                 
                 # 测试移动标准差
-                res1 = rt.ts_std(arr, window, min_periods=min_periods)
+                res1 = tp.ts_std(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).std().values
                 assert_allclose(res1, res2)  
                 
                 # 测试移动偏度
-                res1 = rt.ts_skew(arr, window, min_periods=min_periods)
+                res1 = tp.ts_skew(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).skew().values
                 assert_allclose(res1, res2)
                 
@@ -126,31 +126,31 @@ if __name__ == '__main__':
                         print(i)
                 
                 # 测试移动峰度
-                res1 = rt.ts_kurt(arr, window, min_periods=min_periods)
+                res1 = tp.ts_kurt(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).kurt().values
                 assert_allclose(res1, res2) 
                 
                 # 测试移动排名(pandas is slow, so only 1000)
-                res1 = rt.ts_rank(arr[:1000], window, min_periods=min_periods)
+                res1 = tp.ts_rank(arr[:1000], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:1000]).rolling(window, min_periods=min_periods).apply(lambda x: x.rank().iloc[-1]).values
                 assert_allclose(res1, res2) 
                 
                 # 测试移动stable标准化
-                res1 = rt.ts_stable(arr[:1000], window, min_periods=min_periods)
+                res1 = tp.ts_stable(arr[:1000], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:1000]).rolling(window, min_periods=min_periods).apply(
                     lambda x: x.mean() / x.std()
                 ).values
                 assert_allclose(res1, res2) 
                 
                 # 测试移动meanstd标准化
-                res1 = rt.ts_meanstdnorm(arr[:1000], window, min_periods=min_periods)
+                res1 = tp.ts_meanstdnorm(arr[:1000], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:1000]).rolling(window, min_periods=min_periods).apply(
                     lambda x: (x.iloc[-1]-x.mean()) / x.std()
                 ).values
                 assert_allclose(res1, res2) 
                 
                 # 测试移动minmax标准化
-                res1 = rt.ts_minmaxnorm(arr[:1000], window, min_periods=min_periods)
+                res1 = tp.ts_minmaxnorm(arr[:1000], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:1000]).rolling(window, min_periods=min_periods).apply(
                     lambda x: (x.iloc[-1] - x.min()) / (x.max() - x.min())
                 ).values
@@ -166,7 +166,7 @@ if __name__ == '__main__':
                         return (weight * s[~s.isna()]).sum()
                     else:
                         return np.nan
-                res1 = rt.ts_ewm(arr, window, min_periods=min_periods)
+                res1 = tp.ts_ewm(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(ewm)
                 
                 def wma(s):
@@ -177,7 +177,7 @@ if __name__ == '__main__':
                         return (weight * s[~s.isna()]).sum()
                     else:
                         return np.nan
-                res1 = rt.ts_wma(arr, window, min_periods=min_periods)
+                res1 = tp.ts_wma(arr, window, min_periods=min_periods)
                 res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(wma)    
                 
                 # 测试移动回归
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                         return reg.params[0] + reg.params[1] * s.size
                     else:
                         return np.nan
-                res1 = rt.ts_minmaxnorm(arr[:100], window, min_periods=min_periods)
+                res1 = tp.ts_minmaxnorm(arr[:100], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:100]).rolling(window, min_periods=min_periods).apply(ts_reg)
                 
                 def ts_reg_intercept(s):
@@ -200,7 +200,7 @@ if __name__ == '__main__':
                         return reg.params[0]
                     else:
                         return np.nan
-                res1 = rt.ts_reg_intercept(arr[:100], window, min_periods=min_periods)
+                res1 = tp.ts_reg_intercept(arr[:100], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:100]).rolling(window, min_periods=min_periods).apply(ts_reg_intercept)
                 
                 def ts_reg_slope(s):
@@ -210,7 +210,7 @@ if __name__ == '__main__':
                         return reg.params[1]
                     else:
                         return np.nan
-                res1 = rt.ts_reg_slope(arr[:100], window, min_periods=min_periods)
+                res1 = tp.ts_reg_slope(arr[:100], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:100]).rolling(window, min_periods=min_periods).apply(ts_reg_slope)
                 
                 def ts_tsf(s):
@@ -220,22 +220,23 @@ if __name__ == '__main__':
                         return reg.params[0] + reg.params[1] * (s.size + 1)
                     else:
                         return np.nan
-                res1 = rt.ts_tsf(arr[:100], window, min_periods=min_periods)
+                res1 = tp.ts_tsf(arr[:100], window, min_periods=min_periods)
                 res2 = pd.Series(arr[:100]).rolling(window, min_periods=min_periods).apply(ts_tsf)
             
             # 测试移动协方差
-            res1 = rt.ts_cov(arr_list[0], arr_list[1], window, min_periods=min_periods)
+            res1 = tp.ts_cov(arr_list[0], arr_list[1], window, min_periods=min_periods)
             res2 = pd.Series(arr_list[0]).rolling(window, min_periods=min_periods).cov(pd.Series(arr_list[1]))
             assert_allclose(res1, res2.replace([np.inf, -np.inf], np.nan).values) 
             
             # 测试移动相关性
-            res1 = rt.ts_corr(arr_list[0], arr_list[1], window, min_periods=min_periods)
+            res1 = tp.ts_corr(arr_list[0], arr_list[1], window, min_periods=min_periods)
             res2 = pd.Series(arr_list[0]).rolling(window, min_periods=min_periods).corr(pd.Series(arr_list[1]))
             assert_allclose(res1, res2.replace([np.inf, -np.inf], np.nan).values) 
     
     # 测试连续性
     a = np.array(np.random.randn(100, 20), order='c')
-    assert rt.ts_sma(a, window=3).flags['C_CONTIGUOUS'] == True
+    assert tp.ts_sma(a, window=3).flags['C_CONTIGUOUS'] == True
     a = np.array(np.random.randn(100, 20), order='f')
-    assert rt.ts_sma(a, window=3).flags['F_CONTIGUOUS'] == True
+    assert tp.ts_sma(a, window=3).flags['F_CONTIGUOUS'] == True
     print('测试通过')
+'''

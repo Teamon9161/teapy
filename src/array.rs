@@ -212,3 +212,31 @@ pub fn rank_pct_1d<T: Number>(arr: ArrayView1<T>, mut out: ArrayViewMut1<f64>) {
         }
     }
 }
+
+pub fn stable_kurt_1d<T: Number>(arr: ArrayView1<T>, out: &mut f64)
+where
+    usize: Number,
+{
+    let mut n = 0usize;
+    let (mut mean, mut m2, mut m3, mut m4) = (0f64, 0f64, 0f64, 0f64);
+
+    for v in arr {
+        let n1 = n;
+        n += 1;
+        let delta = v.f64() - mean;
+        let delta_n = delta / n.f64();
+        let delta_n2 = delta_n.powi(2);
+        let term1 = delta * delta_n * n1.f64();
+        mean += delta_n;
+        m4 += term1 * delta_n2 * (n * n - 3 * n + 3).f64() + 6. * delta_n2 * m2 - 4. * delta_n * m3;
+        m3 += term1 * delta_n * (n.f64() - 2.f64()) - 3. * delta_n * m2;
+        m2 += term1
+    }
+    let n = n.f64();
+    *out = if m2 != 0. {
+        // (n.f64() * m4) / m2.powi(2) - 3.
+        1. / ((n - 2.) * (n - 3.)) * ((n.powi(2) - 1.) * (n * m4) / m2.powi(2) - 3. * (n - 1.).powi(2))
+    } else {
+        f64::NAN
+    }
+}

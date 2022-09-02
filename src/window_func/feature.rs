@@ -205,18 +205,18 @@ pub fn ts_sum_1d<T: Number>(
         out.len() == arr.len(),
         "输入数组的维度必须等于输出数组的维度"
     );
-    let mut sum: T = 0.to();
+    let mut sum = 0f64;
     let mut valid_window = 0usize;
     for i in 0..window - 1 {
         // 安全性：i不会超过arr和out的长度
         unsafe {
-            let v = *arr.uget(i);
+            let v = (*arr.uget(i)).f64();
             if v.notnan() {
                 sum += v;
                 valid_window += 1
             };
             *out.uget_mut(i) = if valid_window >= min_periods {
-                sum.f64()
+                sum
             } else {
                 f64::NAN
             };
@@ -225,17 +225,17 @@ pub fn ts_sum_1d<T: Number>(
     for (start, end) in (window - 1..arr.len()).enumerate() {
         // 安全性：start和end不会超过arr和out的长度
         unsafe {
-            let v = *arr.uget(end);
+            let v = (*arr.uget(end)).f64();
             if v.notnan() {
                 sum += v;
                 valid_window += 1
             };
             *out.uget_mut(end) = if valid_window >= min_periods {
-                sum.f64()
+                sum
             } else {
                 f64::NAN
             };
-            let v = *arr.uget(start);
+            let v = (*arr.uget(start)).f64();
             if v.notnan() {
                 sum -= v;
                 valid_window -= 1
@@ -264,12 +264,12 @@ pub fn ts_std_1d<T: Number>(
         "输入数组的维度必须等于输出数组的维度"
     );
 
-    let mut sum: T = 0.to();
-    let mut sum2: T = 0.to();
+    let mut sum = 0f64;
+    let mut sum2 = 0f64;
     let mut valid_window = 0usize;
     for i in 0..window - 1 {
         // 安全性：i不会超过arr和out的长度
-        let v = unsafe { *arr.uget(i) };
+        let v = unsafe { (*arr.uget(i)).f64() };
         if v.notnan() {
             valid_window += 1;
             sum += v;
@@ -278,8 +278,8 @@ pub fn ts_std_1d<T: Number>(
         unsafe {
             *out.uget_mut(i) = if valid_window >= min_periods {
                 let v_window = valid_window.f64();
-                let mut std = sum2.f64() / v_window;
-                let mean = sum.f64() / v_window;
+                let mut std = sum2 / v_window;
+                let mean = sum / v_window;
                 std -= mean.powi(2);
                 (std * v_window / (v_window - 1f64)).sqrt()
             } else {
@@ -290,7 +290,7 @@ pub fn ts_std_1d<T: Number>(
     for (start, end) in (window - 1..arr.len()).enumerate() {
         // 安全性：start和end不会超过arr和out的长度
         unsafe {
-            let v = *arr.uget(end);
+            let v = (*arr.uget(end)).f64();
             if v.notnan() {
                 valid_window += 1;
                 sum += v;
@@ -298,14 +298,14 @@ pub fn ts_std_1d<T: Number>(
             };
             *out.uget_mut(end) = if valid_window >= min_periods {
                 let v_window = valid_window.f64();
-                let mut std = sum2.f64() / v_window;
-                let mean = sum.f64() / v_window;
+                let mut std = sum2 / v_window;
+                let mean = sum / v_window;
                 std -= mean.powi(2);
                 (std * v_window / (v_window - 1f64)).sqrt()
             } else {
                 f64::NAN
             };
-            let v = *arr.uget(start);
+            let v = (*arr.uget(start)).f64();
             if v.notnan() {
                 valid_window -= 1;
                 sum -= v;
@@ -359,8 +359,8 @@ pub fn ts_skew_1d<T: Number>(
                 let mut std = sum2 / v_window;
                 let mut mean = sum / v_window; // mean
                 std -= mean.powi(2); // var
-                if std == 0f64 {
-                    0f64
+                if std == 0. {
+                    0.
                 }
                 // 标准差为0， 则偏度为0
                 else {
@@ -392,8 +392,8 @@ pub fn ts_skew_1d<T: Number>(
                 let mut std = sum2 / v_window;
                 let mut mean = sum / v_window; // mean
                 std -= mean.powi(2); // var
-                if std == 0f64 {
-                    0f64
+                if std == 0.  {
+                    0.
                 }
                 // 标准差为0， 则偏度为0
                 else {
@@ -462,8 +462,8 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var == 0_f64 {
-                    0_f64
+                if var == 0.  {
+                    0.
                 }
                 // 方差为0， 则峰度为0
                 else {
@@ -498,8 +498,8 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var == 0_f64 {
-                    0_f64
+                if var == 0.  {
+                    0.
                 }
                 // 方差为0， 则峰度为0
                 else {

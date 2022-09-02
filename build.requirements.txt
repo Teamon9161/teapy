@@ -1,0 +1,4 @@
+numpy
+pandas
+maturin==0.13.0
+hypothesis==6.54.4
