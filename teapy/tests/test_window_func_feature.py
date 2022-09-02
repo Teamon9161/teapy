@@ -147,7 +147,7 @@ def test_ts_skew(arr, window, min_periods):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100, stable=True), st.integers(4, 20), st.integers(4, 20))
+@given(make_arr(100, unique=True, stable=True), st.integers(4, 20), st.integers(4, 20))
 def test_ts_kurt(arr, window, min_periods):
     # 测试移动峰度
     assume(min_periods <= window)

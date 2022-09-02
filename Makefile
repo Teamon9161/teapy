@@ -11,7 +11,7 @@ clean:
 	@cargo clean
 
 pytest-cov: make_venv
-	@pytest tests\
+	@pytest teapy/tests \
 	--cov=teapy \
 	--cov-report xml \
 	--import-mode=importlib
