@@ -44,6 +44,7 @@ jobs:
       - name: Run tests
         run: |
           export RUSTFLAGS="-C debuginfo=0"
-          make venv && make pytest-cov
+          make make_venv && make pytest-cov
           maturin develop
           cargo clippy
+          pytest
