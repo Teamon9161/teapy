@@ -278,10 +278,15 @@ pub fn ts_std_1d<T: Number>(
         unsafe {
             *out.uget_mut(i) = if valid_window >= min_periods {
                 let v_window = valid_window.f64();
-                let mut std = sum2 / v_window;
+                let mut var = sum2 / v_window;
                 let mean = sum / v_window;
-                std -= mean.powi(2);
-                (std * v_window / (v_window - 1f64)).sqrt()
+                var -= mean.powi(2);
+                // var肯定大于等于0，否则只能是精度问题
+                if var > 0. {
+                    (var * v_window / (v_window - 1f64)).sqrt()
+                } else {
+                    0.
+                }
             } else {
                 f64::NAN
             };
@@ -298,10 +303,15 @@ pub fn ts_std_1d<T: Number>(
             };
             *out.uget_mut(end) = if valid_window >= min_periods {
                 let v_window = valid_window.f64();
-                let mut std = sum2 / v_window;
+                let mut var = sum2 / v_window;
                 let mean = sum / v_window;
-                std -= mean.powi(2);
-                (std * v_window / (v_window - 1f64)).sqrt()
+                var -= mean.powi(2);
+                // var肯定大于等于0，否则只能是精度问题
+                if var > 0. {
+                    (var * v_window / (v_window - 1f64)).sqrt()
+                } else {
+                    0.
+                }
             } else {
                 f64::NAN
             };
@@ -356,15 +366,15 @@ pub fn ts_skew_1d<T: Number>(
         unsafe {
             *out.uget_mut(i) = if valid_window >= min_periods {
                 let v_window = valid_window.f64();
-                let mut std = sum2 / v_window;
+                let mut var = sum2 / v_window;
                 let mut mean = sum / v_window; // mean
-                std -= mean.powi(2); // var
-                if std == 0. {
+                var -= mean.powi(2); // var
+                if var <= 0. {
                     0.
                 }
                 // 标准差为0， 则偏度为0
                 else {
-                    std = std.sqrt(); // std
+                    let std = var.sqrt(); // std
                     let res = sum3 / v_window; // Ex^3
                     mean /= std; // mean / std
                     let adjust =
@@ -389,15 +399,15 @@ pub fn ts_skew_1d<T: Number>(
             };
             *out.uget_mut(end) = if valid_window >= min_periods {
                 let v_window = valid_window.f64();
-                let mut std = sum2 / v_window;
+                let mut var = sum2 / v_window;
                 let mut mean = sum / v_window; // mean
-                std -= mean.powi(2); // var
-                if std == 0. {
+                var -= mean.powi(2); // var
+                if var <= 0. {
                     0.
                 }
                 // 标准差为0， 则偏度为0
                 else {
-                    std = std.sqrt(); // std
+                    let std = var.sqrt(); // std
                     let res = sum3 / v_window; // Ex^3
                     mean /= std; // mean / std
                     let adjust =
@@ -462,7 +472,7 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var == 0. {
+                if var <= 0. {
                     0.
                 }
                 // 方差为0， 则峰度为0
@@ -498,7 +508,7 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var == 0. {
+                if var <= 0. {
                     0.
                 }
                 // 方差为0， 则峰度为0

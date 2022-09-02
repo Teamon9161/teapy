@@ -1,14 +1,11 @@
 on:
-  pull_request:
-    paths:
-      - 'teapy/**'
-      - '.github/workflows/build.yaml'
   push:
-    paths:
-      - 'teapy/**'
-      - '.github/workflows/build.yaml'
+      branches:
+        - master
+  pull_request:
 
-name: build
+
+name: Build
 
 jobs:
   test-rust:

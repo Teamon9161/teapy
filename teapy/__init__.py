@@ -1,8 +1,10 @@
-from .teapy import *
 from . import teapy as _tp
+from .teapy import *
+
 ts_decay_linear = _tp.ts_wma
 ts_mean = _tp.ts_sma
 ts_ema = _tp.ts_ewm
+
 
 def rank(arr, axis=0, pct=False, par=False):
     if not pct:

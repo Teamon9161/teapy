@@ -38,7 +38,11 @@ pub fn ts_stable_1d<T: Number>(
                 let mut var = sum2 / v_window;
                 let mean = sum / v_window;
                 var -= mean.powi(2);
-                mean / (var * v_window / (v_window - 1f64)).sqrt()
+                if var > 0. {
+                    mean / (var * v_window / (v_window - 1f64)).sqrt()
+                } else {
+                    f64::NAN
+                }
             } else {
                 f64::NAN
             };
@@ -58,7 +62,11 @@ pub fn ts_stable_1d<T: Number>(
                 let mut var = sum2 / v_window;
                 let mean = sum / v_window;
                 var -= mean.powi(2);
-                mean / (var * v_window / (v_window - 1f64)).sqrt()
+                if var > 0. {
+                    mean / (var * v_window / (v_window - 1f64)).sqrt()
+                } else {
+                    f64::NAN
+                }
             } else {
                 f64::NAN
             };
@@ -110,7 +118,11 @@ pub fn ts_meanstdnorm_1d<T: Number>(
                 let mut var = sum2 / v_window;
                 let mean = sum / v_window;
                 var -= mean.powi(2);
-                (v - mean) / (var * v_window / (v_window - 1.)).sqrt()
+                if var > 0. {
+                    (v - mean) / (var * v_window / (v_window - 1.)).sqrt()
+                } else {
+                    f64::NAN
+                }
             } else {
                 f64::NAN
             };
@@ -130,7 +142,11 @@ pub fn ts_meanstdnorm_1d<T: Number>(
                 let mut var = sum2 / v_window;
                 let mean = sum / v_window;
                 var -= mean.powi(2);
-                (v - mean) / (var * v_window / (v_window - 1.)).sqrt()
+                if var > 0. {
+                    (v - mean) / (var * v_window / (v_window - 1.)).sqrt()
+                } else {
+                    f64::NAN
+                }
             } else {
                 f64::NAN
             };

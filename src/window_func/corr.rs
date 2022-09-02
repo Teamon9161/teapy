@@ -1,14 +1,14 @@
 use super::prelude::*;
 
-pub fn ts_cov_1d<T: Number>(
+pub fn ts_cov_1d<T: Number, U: Number>(
     arr1: ArrayView1<T>,
-    arr2: ArrayView1<T>,
+    arr2: ArrayView1<U>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
     min_periods: usize,
     _out_step: usize,
 ) where
-    usize: AsPrimitive<T>,
+    usize: Number,
 {
     if window == 1 {
         return;
@@ -75,15 +75,15 @@ pub fn ts_cov_1d<T: Number>(
     }
 }
 
-pub fn ts_corr_1d<T: Number>(
+pub fn ts_corr_1d<T: Number, U: Number>(
     arr1: ArrayView1<T>,
-    arr2: ArrayView1<T>,
+    arr2: ArrayView1<U>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
     min_periods: usize,
     _out_step: usize,
 ) where
-    usize: AsPrimitive<T>,
+    usize: Number,
 {
     if window == 1 {
         return;
@@ -125,7 +125,11 @@ pub fn ts_corr_1d<T: Number>(
                 let exey = sum_a * sum_b / v_window.powi(2);
                 var_a -= mean_a.powi(2);
                 var_b -= mean_b.powi(2);
-                (exy - exey) / (var_a * var_b).sqrt()
+                if (var_a > 0.) & (var_b > 0.) {
+                    (exy - exey) / (var_a * var_b).sqrt()
+                } else {
+                    f64::NAN
+                }
             } else {
                 f64::NAN
             };
@@ -153,7 +157,11 @@ pub fn ts_corr_1d<T: Number>(
                 let exey = sum_a * sum_b / v_window.powi(2);
                 var_a -= mean_a.powi(2);
                 var_b -= mean_b.powi(2);
-                (exy - exey) / (var_a * var_b).sqrt()
+                if (var_a > 0.) & (var_b > 0.) {
+                    (exy - exey) / (var_a * var_b).sqrt()
+                } else {
+                    f64::NAN
+                }
             } else {
                 f64::NAN
             };

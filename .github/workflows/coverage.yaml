@@ -1,12 +1,10 @@
 name: Coverage
+
 on:
   push:
     branches:
       - master
   pull_request:
-    paths:
-      - 'teapy/**'
-      - '.github/workflows/build.yaml'
 
 jobs:
   coverage:

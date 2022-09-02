@@ -91,7 +91,7 @@ pub trait CallFunction<T: Number> {
         // 有两个输入的滚动函数
         &self,
         other: &PyArrayDyn<T>,
-        f: TsFunc2<T>,
+        f: TsFunc2<T, T>,
         window: usize,
         axis: Option<usize>,
         min_periods: Option<usize>,
@@ -199,7 +199,7 @@ macro_rules! impl_call_function {
             fn call_ts_function2(
                 &self,
                 other: &PyArrayDyn<$dtype>,
-                f: TsFunc2<$dtype>,
+                f: TsFunc2<$dtype, $dtype>,
                 window: usize,
                 axis: Option<usize>,
                 min_periods: Option<usize>,
@@ -379,7 +379,7 @@ macro_rules! impl_tsfunc2 {
                 match (self, other) {
                     (F32(arr), F32(other)) => arr.call_ts_function2(
                         other,
-                        $func::<f32> as TsFunc2<f32>,
+                        $func::<f32, f32> as TsFunc2<f32, f32>,
                         window,
                         axis,
                         min_periods,
@@ -387,7 +387,7 @@ macro_rules! impl_tsfunc2 {
                     ),
                     (F64(arr), F64(other)) => arr.call_ts_function2(
                         other,
-                        $func::<f64> as TsFunc2<f64>,
+                        $func::<f64, f64> as TsFunc2<f64, f64>,
                         window,
                         axis,
                         min_periods,
@@ -395,7 +395,7 @@ macro_rules! impl_tsfunc2 {
                     ),
                     (I32(arr), I32(other)) => arr.call_ts_function2(
                         other,
-                        $func::<i32> as TsFunc2<i32>,
+                        $func::<i32, i32> as TsFunc2<i32, i32>,
                         window,
                         axis,
                         min_periods,
@@ -403,13 +403,13 @@ macro_rules! impl_tsfunc2 {
                     ),
                     (I64(arr), I64(other)) => arr.call_ts_function2(
                         other,
-                        $func::<i64> as TsFunc2<i64>,
+                        $func::<i64, i64> as TsFunc2<i64, i64>,
                         window,
                         axis,
                         min_periods,
                         par,
                     ),
-                    _ => panic!("左右两边array的类型不匹配"),
+                    _ => panic!("dtype of left array doesn't match dtype of right array"),
                 }
             }
         }

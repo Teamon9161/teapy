@@ -54,8 +54,10 @@ pub trait Number:
     + Zero
     + One
     + AsPrimitive<f64>
+    + AsPrimitive<f32>
     + AsPrimitive<usize>
     + AsPrimitive<i32>
+    + AsPrimitive<i64>
 {
     type Dtype;
     fn min_() -> Self;
@@ -112,4 +114,4 @@ impl_number!(usize, UintT);
 // function datatype
 pub type ArrayFunc<T, U> = fn(ArrayView1<T>, ArrayViewMut1<U>);
 pub type TsFunc<T> = fn(ArrayView1<T>, ArrayViewMut1<f64>, usize, usize, usize);
-pub type TsFunc2<T> = fn(ArrayView1<T>, ArrayView1<T>, ArrayViewMut1<f64>, usize, usize, usize);
+pub type TsFunc2<T, U> = fn(ArrayView1<T>, ArrayView1<U>, ArrayViewMut1<f64>, usize, usize, usize);

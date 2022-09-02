@@ -1,4 +1,4 @@
-.PHONY: clean pip pytest-cov coverage
+.PHONY: format clean pip pytest-cov coverage
 
 make_venv:
 	@python -m venv venv
@@ -15,6 +15,12 @@ pytest-cov: make_venv
 	--cov=teapy \
 	--cov-report xml \
 	--import-mode=importlib
+
+format:
+	isort .
+	black .
+	cargo fmt --all
+	flake8
 
 coverage: 
 	@bash -c "\
