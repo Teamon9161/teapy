@@ -18,12 +18,12 @@ pytest-cov: make_venv
 
 coverage: 
 	@bash -c "\
-		$(MAKE) make_venv; \
+		$(MAKE) -C make_venv; \
 		source venv/bin/activate; \
 		source <(cargo llvm-cov show-env --export-prefix); \
 		export CARGO_TARGET_DIR=\$$CARGO_LLVM_COV_TARGET_DIR; \
 		export CARGO_INCREMENTAL=1; \
 		cargo llvm-cov clean --workspace; \
-		$(MAKE) pytest-cov; \
+		$(MAKE) -C pytest-cov; \
 		cargo llvm-cov --no-run --lcov --output-path coverage.lcov; \
 		"
