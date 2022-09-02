@@ -46,8 +46,9 @@ def test_parallel():
 
     if cpu_count() > 1:
         assert time1 < time2
-        
+
+
 def test_special():
-    tp.rank(np.array([])) # test rank a array with 0 element
-    tp.rank(np.array([2])) # test rank a array with 1 element
-    tp.rank(np.array([np.nan, np.nan])) # test rank all nan array
+    tp.rank(np.array([]))  # test rank a array with 0 element
+    tp.rank(np.array([2]))  # test rank a array with 1 element
+    tp.rank(np.array([np.nan, np.nan]))  # test rank all nan array

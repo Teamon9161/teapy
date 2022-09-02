@@ -19,7 +19,7 @@ def test_rank(arr, window):
     res1 = tp.rank(arr)
     res2 = pd.Series(arr).rank()
     assert_series_equal(pd.Series(res1), res2)
-    
+
     res3 = tp.rank(arr, pct=True)
     res4 = pd.Series(arr).rank(pct=True)
     assert_series_equal(pd.Series(res3), res4)
