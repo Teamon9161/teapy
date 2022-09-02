@@ -392,7 +392,7 @@ pub fn ts_skew_1d<T: Number>(
                 let mut std = sum2 / v_window;
                 let mut mean = sum / v_window; // mean
                 std -= mean.powi(2); // var
-                if std == 0.  {
+                if std == 0. {
                     0.
                 }
                 // 标准差为0， 则偏度为0
@@ -462,7 +462,7 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var == 0.  {
+                if var == 0. {
                     0.
                 }
                 // 方差为0， 则峰度为0
@@ -498,7 +498,7 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var == 0.  {
+                if var == 0. {
                     0.
                 }
                 // 方差为0， 则峰度为0

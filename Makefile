@@ -1,5 +1,6 @@
 PYTHON=venv/bin/python
 
+.PHONY: clean pip pytest-cov coverage
 
 make_venv:
 	@python -m venv venv
@@ -11,19 +12,20 @@ clean:
 	@-rm -r venv
 	@cargo clean
 
-pytest-cov: $(PYTHON) -m pytest \
+pytest-cov: make_venv
+	$(PYTHON) -m pytest \
 		--cov=teapy \
 		--cov-report xml \
 		--import-mode=importlib
 
-coverage:
+coverage: 
 	@bash -c "\
-		make_venv
 		source <(cargo llvm-cov show-env --export-prefix); \
 		export CARGO_TARGET_DIR=\$$CARGO_LLVM_COV_TARGET_DIR; \
 		export CARGO_INCREMENTAL=1; \
 		cargo llvm-cov clean --workspace; \
+		$(MAKE) make_venv; \
 		source venv/bin/activate; \
-		pytest-cov; \
+		$(MAKE) pytest-cov; \
 		cargo llvm-cov --no-run --lcov --output-path coverage.lcov; \
 		"
