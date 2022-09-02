@@ -7,3 +7,4 @@ teapy/__pycache__/
 !Cargo.lock
 *.pyc
 /.hypothesis
+/.pytest_cache
