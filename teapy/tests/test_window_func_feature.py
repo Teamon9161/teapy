@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import teapy as tp
-from scipy.stats import skew, kurtosis
 from hypothesis import given, strategies as st, assume
 from teapy.testing import assert_series_equal, make_arr
 
