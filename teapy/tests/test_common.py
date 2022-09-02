@@ -33,7 +33,7 @@ def test_high_dimensional():
 
 
 def test_parallel():
-    arr = np.random.randn(300, 100000)
+    arr = np.random.randn(8, 10000)
     # no parallel
     start = time()
     tp.ts_std(arr, window=10, par=False)
@@ -45,7 +45,7 @@ def test_parallel():
     time2 = time() - start
 
     if cpu_count() > 1:
-        assert time1 < time2
+        assert time1 > time2
 
 
 def test_special():

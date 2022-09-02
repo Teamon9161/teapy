@@ -10,13 +10,13 @@ from pandas.testing import assert_series_equal
 assert_series_equal = partial(
     assert_series_equal,
     rtol=1e-5,
-    atol=1e-6,
+    atol=1e-3,
     check_index=False,
     check_dtype=False,
     check_names=False,
 )
 
-assert_allclose = partial(assert_allclose, rtol=1e-5, atol=1e-6)
+assert_allclose = partial(assert_allclose, rtol=1e-5, atol=1e-3)
 
 
 # 同个数组中的数如果差距过大，在计算时太小的数会被忽略
