@@ -125,7 +125,7 @@ pub fn ts_corr_1d<T: Number, U: Number>(
                 let exey = sum_a * sum_b / v_window.powi(2);
                 var_a -= mean_a.powi(2);
                 var_b -= mean_b.powi(2);
-                if (var_a > 0.) & (var_b > 0.) {
+                if (var_a > 1e-14) & (var_b > 1e-14) {
                     (exy - exey) / (var_a * var_b).sqrt()
                 } else {
                     f64::NAN
@@ -157,7 +157,7 @@ pub fn ts_corr_1d<T: Number, U: Number>(
                 let exey = sum_a * sum_b / v_window.powi(2);
                 var_a -= mean_a.powi(2);
                 var_b -= mean_b.powi(2);
-                if (var_a > 0.) & (var_b > 0.) {
+                if (var_a > 1e-14) & (var_b > 1e-14) {
                     (exy - exey) / (var_a * var_b).sqrt()
                 } else {
                     f64::NAN

@@ -282,7 +282,7 @@ pub fn ts_std_1d<T: Number>(
                 let mean = sum / v_window;
                 var -= mean.powi(2);
                 // var肯定大于等于0，否则只能是精度问题
-                if var > 0. {
+                if var > 1e-14 {
                     (var * v_window / (v_window - 1f64)).sqrt()
                 } else {
                     0.
@@ -307,7 +307,7 @@ pub fn ts_std_1d<T: Number>(
                 let mean = sum / v_window;
                 var -= mean.powi(2);
                 // var肯定大于等于0，否则只能是精度问题
-                if var > 0. {
+                if var > 1e-14 {
                     (var * v_window / (v_window - 1f64)).sqrt()
                 } else {
                     0.
@@ -369,7 +369,7 @@ pub fn ts_skew_1d<T: Number>(
                 let mut var = sum2 / v_window;
                 let mut mean = sum / v_window; // mean
                 var -= mean.powi(2); // var
-                if var <= 0. {
+                if var <= 1e-14 {
                     0.
                 }
                 // 标准差为0， 则偏度为0
@@ -402,7 +402,7 @@ pub fn ts_skew_1d<T: Number>(
                 let mut var = sum2 / v_window;
                 let mut mean = sum / v_window; // mean
                 var -= mean.powi(2); // var
-                if var <= 0. {
+                if var <= 1e-14 {
                     0.
                 }
                 // 标准差为0， 则偏度为0
@@ -472,7 +472,7 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var <= 0. {
+                if var <= 1e-14 {
                     0.
                 }
                 // 方差为0， 则峰度为0
@@ -508,7 +508,7 @@ pub fn ts_kurt_1d<T: Number>(
                 let mean = sum / v_window; // Ex
                 let ex2 = sum2 / v_window; // Ex^2
                 let var = ex2 - mean.powi(2); // var
-                if var <= 0. {
+                if var <= 1e-14 {
                     0.
                 }
                 // 方差为0， 则峰度为0

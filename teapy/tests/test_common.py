@@ -27,21 +27,21 @@ def test_high_dimensional():
     expected_axis1 = np.array([[[0, 1], [2, 4]], [[4, 6], [10, 12]]])
     expected_axis2 = np.array([[[0, 1], [2, 5]], [[4, 9], [6, 13]]])
 
-    assert_allclose(tp.ts_sum(arr, 0), expected_axis0)
-    assert_allclose(tp.ts_sum(arr, 1), expected_axis1)
-    assert_allclose(tp.ts_sum(arr, 2), expected_axis2)
+    assert_allclose(tp.ts_sum(arr, 2, axis=0), expected_axis0)
+    assert_allclose(tp.ts_sum(arr, 2, axis=1), expected_axis1)
+    assert_allclose(tp.ts_sum(arr, 2, axis=2), expected_axis2)
 
 
 def test_parallel():
-    arr = np.random.randn(8, 10000)
+    arr = np.random.randn(8, 50000)
     # no parallel
     start = time()
-    tp.ts_std(arr, window=10, par=False)
+    tp.ts_std(arr, window=10, axis=1, par=False)
     time1 = time() - start
 
     # parallel
     start = time()
-    tp.ts_std(arr, window=10, par=True)
+    tp.ts_std(arr, window=10, axis=1, par=True)
     time2 = time() - start
 
     if cpu_count() > 1:

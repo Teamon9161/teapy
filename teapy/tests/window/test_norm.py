@@ -7,7 +7,7 @@ import teapy as tp
 from teapy.testing import assert_series_equal, make_arr
 
 
-@given(make_arr(30, unique=True), st.integers(1, 5))
+@given(make_arr(30, unique=True, stable=True), st.integers(1, 5))
 def test_ts_stable(arr, window):
     # 测试移动stable标准化
     min_periods = np.random.randint(1, window + 1)
@@ -20,7 +20,7 @@ def test_ts_stable(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(30, unique=True), st.integers(1, 5))
+@given(make_arr(30, unique=True, stable=True), st.integers(1, 5))
 def test_ts_meanstdnorm(arr, window):
     # 测试移动meanstd标准化
     min_periods = np.random.randint(1, window + 1)

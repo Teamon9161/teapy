@@ -20,7 +20,7 @@ assert_allclose = partial(assert_allclose, rtol=1e-5, atol=1e-3)
 
 
 # 同个数组中的数如果差距过大，在计算时太小的数会被忽略
-STABLE_FLOAT_MIN, STABLE_FLOAT_MAX = -1000, 1000
+STABLE_FLOAT_MIN, STABLE_FLOAT_MAX = -10, 10
 STABLE_INT_MIN, STABLE_INT_MAX = int(-1e5), int(1e5)
 dtype_list = [np.float64, np.float32, np.int32, np.int64]
 dtype_element_map_stable = {
@@ -64,11 +64,10 @@ def make_arr(shape=100, nan_p=0.05, unique=False, dtype=None, stable=False):
         if stable:
             if arr_dtype in [np.float64, np.float32]:
                 min_, max_ = np.nanmax(arr), np.nanmin(arr)
+                if ~np.isnan(max_) and max_ - abs(min_) * 1e6:  # suppose max > 0
+                    arr = np.where(arr<1e-4, np.random.randn(*arr.shape), arr)
             else:
                 min_, max_ = np.max(arr), np.min(arr)
-            if ~np.isnan(max_) and max_ < min_ * 1e6:
-                arr[arr < 1e-4] = 0.0
-
         return arr
 
     return draw_arr()
