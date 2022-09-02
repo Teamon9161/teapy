@@ -8,7 +8,7 @@ import teapy as tp
 from teapy.testing import assert_series_equal, make_arr
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_reg(arr, window):
     def ts_reg(s):
         s = s.dropna()
@@ -24,7 +24,7 @@ def test_ts_reg(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_reg_intercept(arr, window):
     def ts_reg_intercept(s):
         s = s.dropna()
@@ -42,7 +42,7 @@ def test_ts_reg_intercept(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_reg_slope(arr, window):
     def ts_reg_slope(s):
         s = s.dropna()
@@ -58,7 +58,7 @@ def test_ts_reg_slope(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_tsf(arr, window):
     def ts_tsf(s):
         s = s.dropna()

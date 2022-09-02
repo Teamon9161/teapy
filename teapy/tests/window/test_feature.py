@@ -7,7 +7,7 @@ import teapy as tp
 from teapy.testing import assert_series_equal, make_arr
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_sma(arr, window):
     # 测试移动平均
     min_periods = np.random.randint(1, window + 1)
@@ -16,7 +16,7 @@ def test_ts_sma(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_ewm(arr, window):
     # 测试指数加权移动平均
     min_periods = np.random.randint(1, window + 1)
@@ -36,7 +36,7 @@ def test_ts_ewm(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_wma(arr, window):
     # 测试加权移动平均
     min_periods = np.random.randint(1, window + 1)
@@ -55,7 +55,7 @@ def test_ts_wma(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_sum(arr, window):
     # 测试移动求和
     min_periods = np.random.randint(1, window + 1)
@@ -64,7 +64,7 @@ def test_ts_sum(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 3))
+@given(make_arr(30), st.integers(1, 3))
 def test_ts_prod(arr, window):
     # 测试移动连乘
     min_periods = np.random.randint(1, window + 1)
@@ -77,7 +77,7 @@ def test_ts_prod(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 3))
+@given(make_arr(30), st.integers(1, 3))
 def test_ts_prod_mean(arr, window):
     # 测试移动几何平均
     min_periods = np.random.randint(1, window + 1)
@@ -90,7 +90,7 @@ def test_ts_prod_mean(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100, stable=True), st.integers(2, 20))
+@given(make_arr(30, stable=True), st.integers(2, 5))
 def test_ts_std(arr, window):
     # 测试移动标准差
     min_periods = np.random.randint(2, window + 1)
@@ -101,7 +101,7 @@ def test_ts_std(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100, stable=True), st.integers(3, 20))
+@given(make_arr(30, stable=True), st.integers(3, 5))
 def test_ts_skew(arr, window):
     # 测试移动偏度
     min_periods = np.random.randint(3, window + 1)
@@ -115,7 +115,7 @@ def test_ts_skew(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100, unique=True, stable=True), st.integers(4, 20))
+@given(make_arr(30, unique=True, stable=True), st.integers(4, 5))
 def test_ts_kurt(arr, window):
     # 测试移动峰度
     min_periods = np.random.randint(4, window + 1)

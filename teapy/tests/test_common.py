@@ -21,9 +21,9 @@ def test_high_dimensional():
     expected_axis1 = np.array([[[0, 1], [2, 4]], [[4, 6], [10, 12]]])
     expected_axis2 = np.array([[[0, 1], [2, 5]], [[4, 9], [6, 13]]])
 
-    assert_allclose(tp.tp_sum(arr, 0), expected_axis0)
-    assert_allclose(tp.tp_sum(arr, 1), expected_axis1)
-    assert_allclose(tp.tp_sum(arr, 2), expected_axis2)
+    assert_allclose(tp.ts_sum(arr, 0), expected_axis0)
+    assert_allclose(tp.ts_sum(arr, 1), expected_axis1)
+    assert_allclose(tp.ts_sum(arr, 2), expected_axis2)
 
 
 def test_parallel():

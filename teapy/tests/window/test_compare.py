@@ -7,7 +7,7 @@ import teapy as tp
 from teapy.testing import assert_series_equal, make_arr
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_max(arr, window):
     # 测试移动最大值
     min_periods = np.random.randint(1, window + 1)
@@ -16,7 +16,7 @@ def test_ts_max(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100), st.integers(1, 20))
+@given(make_arr(30), st.integers(1, 5))
 def test_ts_min(arr, window):
     # 测试移动最小值
     min_periods = np.random.randint(1, window + 1)
@@ -25,7 +25,7 @@ def test_ts_min(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100, nan_p=0, unique=True), st.integers(1, 20))
+@given(make_arr(30, nan_p=0, unique=True), st.integers(1, 5))
 def test_ts_argmax(arr, window):
     # 测试移动最大值索引
     # 对于重复值teapy总是取最后一个，而pandas取的是第一个，在无重复值的测试下进行
@@ -39,7 +39,7 @@ def test_ts_argmax(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100, nan_p=0, unique=True), st.integers(1, 20))
+@given(make_arr(30, nan_p=0, unique=True), st.integers(1, 5))
 def test_ts_argmin(arr, window):
     # 测试移动最小值索引
     # 对于重复值teapy总是取最后一个，而pandas取的是第一个，在无重复值的测试下进行
@@ -53,7 +53,7 @@ def test_ts_argmin(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(100, nan_p=0, unique=True), st.integers(1, 20))
+@given(make_arr(30, nan_p=0, unique=True), st.integers(1, 5))
 def test_ts_rank(arr, window):
     # 测试移动排名
     # 对于重复值teapy总是取最后一个，而pandas取的是第一个，在无重复值的测试下进行
