@@ -17,6 +17,41 @@ def test_ts_sma(arr, window, min_periods):
 
 
 @given(make_arr(100), st.integers(1, 20), st.integers(1, 20))
+def test_ts_ewm(arr, window, min_periods):
+    assume(min_periods <= window)
+    def ewm(s):
+        alpha = 2 / window
+        n = s.count()
+        if n > 0:
+            weight = np.logspace(n-1, 0, num=n, base=(1-alpha))
+            weight /= weight.sum()
+            return (weight * s[~s.isna()]).sum()
+        else:
+            return np.nan
+    # 测试指数加权移动平均
+    res1 = tp.ts_ewm(arr, window, min_periods=min_periods)
+    res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(ewm)
+    assert_series_equal(pd.Series(res1), res2)
+
+
+@given(make_arr(100), st.integers(1, 20), st.integers(1, 20))
+def test_ts_wma(arr, window, min_periods):
+    # 测试加权移动平均
+    assume(min_periods <= window)
+    def wma(s):
+        n = s.count()
+        if n > 0:
+            weight = np.arange(n) + 1
+            weight = weight / weight.sum()
+            return (weight * s[~s.isna()]).sum()
+        else:
+            return np.nan
+    res1 = tp.ts_wma(arr, window, min_periods=min_periods)
+    res2 = pd.Series(arr).rolling(window, min_periods=min_periods).apply(wma)
+    assert_series_equal(pd.Series(res1), res2)
+
+
+@given(make_arr(100), st.integers(1, 20), st.integers(1, 20))
 def test_ts_sum(arr, window, min_periods):
     assume(min_periods <= window)
     # 测试移动求和
