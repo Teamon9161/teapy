@@ -65,7 +65,7 @@ def make_arr(shape=100, nan_p=0.05, unique=False, dtype=None, stable=False):
             if arr_dtype in [np.float64, np.float32]:
                 min_, max_ = np.nanmax(arr), np.nanmin(arr)
                 if ~np.isnan(max_) and max_ - abs(min_) * 1e6:  # suppose max > 0
-                    arr = np.where(arr<1e-4, np.random.randn(*arr.shape), arr)
+                    arr = np.where(arr < 1e-4, np.random.randn(*arr.shape), arr)
             else:
                 min_, max_ = np.max(arr), np.min(arr)
         return arr
