@@ -6,7 +6,6 @@ use numpy::ndarray::{
 use numpy::{PyArray1, PyArrayDyn, PyReadonlyArrayDyn, PyReadwriteArrayDyn};
 use pyo3::FromPyObject;
 
-
 // 只读和读写的动态python array转换为确定维度的ArrayView或可变ArrayView
 pub trait DynToArrayRead {
     type Type: Number;
