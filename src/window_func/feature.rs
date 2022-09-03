@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-pub fn ts_sma_1d<T: Number>(
+pub fn ts_sma<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -11,7 +11,7 @@ pub fn ts_sma_1d<T: Number>(
 {
     // if let DataType::F64T = T::dtype() {
     //     unsafe { // 直接调用c++代码
-    //         ffi::ts_sma_1d(
+    //         ffi::ts_sma(
     //             arr.as_ptr() as *const f64,
     //             out.as_mut_ptr() as *mut f64,
     //             arr.len() as i32,
@@ -68,7 +68,7 @@ pub fn ts_sma_1d<T: Number>(
     }
 }
 
-pub fn ts_ewm_1d<T: Number>(
+pub fn ts_ewm<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -127,7 +127,7 @@ pub fn ts_ewm_1d<T: Number>(
     }
 }
 
-pub fn ts_wma_1d<T: Number>(
+pub fn ts_wma<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -190,7 +190,7 @@ pub fn ts_wma_1d<T: Number>(
     }
 }
 
-pub fn ts_sum_1d<T: Number>(
+pub fn ts_sum<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -244,7 +244,7 @@ pub fn ts_sum_1d<T: Number>(
     }
 }
 
-pub fn ts_std_1d<T: Number>(
+pub fn ts_std<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -325,7 +325,7 @@ pub fn ts_std_1d<T: Number>(
     }
 }
 
-pub fn ts_skew_1d<T: Number>(
+pub fn ts_skew<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -429,7 +429,7 @@ pub fn ts_skew_1d<T: Number>(
     }
 }
 
-pub fn ts_kurt_1d<T: Number>(
+pub fn ts_kurt<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -538,7 +538,7 @@ pub fn ts_kurt_1d<T: Number>(
     }
 }
 
-pub fn ts_prod_1d<T: Number>(
+pub fn ts_prod<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -613,7 +613,7 @@ pub fn ts_prod_1d<T: Number>(
     }
 }
 
-pub fn ts_prod_mean_1d<T: Number>(
+pub fn ts_prod_mean<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,

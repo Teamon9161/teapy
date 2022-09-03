@@ -6,8 +6,6 @@ use numpy::ndarray::{
 use numpy::{PyArray1, PyArrayDyn, PyReadonlyArrayDyn, PyReadwriteArrayDyn};
 use pyo3::FromPyObject;
 
-use crate::array::*;
-use crate::window_func::*;
 
 // 只读和读写的动态python array转换为确定维度的ArrayView或可变ArrayView
 pub trait DynToArrayRead {
@@ -17,28 +15,6 @@ pub trait DynToArrayRead {
     fn to_arrayd(&self) -> ArrayViewD<Self::Type>;
 }
 
-macro_rules! impl_dyn_to_array_read {
-    ($dtype:ty) => {
-        impl DynToArrayRead for PyReadonlyArrayDyn<'_, $dtype> {
-            type Type = $dtype;
-            fn to_array1(&self) -> ArrayView1<$dtype> {
-                self.as_array().into_dimensionality::<Ix1>().unwrap()
-            }
-            fn to_array2(&self) -> ArrayView2<$dtype> {
-                self.as_array().into_dimensionality::<Ix2>().unwrap()
-            }
-            fn to_arrayd(&self) -> ArrayViewD<$dtype> {
-                self.as_array().into_dimensionality::<IxDyn>().unwrap()
-            }
-        }
-    };
-}
-
-impl_dyn_to_array_read!(f64);
-impl_dyn_to_array_read!(f32);
-impl_dyn_to_array_read!(i32);
-impl_dyn_to_array_read!(i64);
-
 pub trait DynToArrayWrite {
     type Type: Number;
     fn to_array1(&mut self) -> ArrayViewMut1<Self::Type>;
@@ -46,28 +22,7 @@ pub trait DynToArrayWrite {
     fn to_arrayd(&mut self) -> ArrayViewMutD<Self::Type>;
 }
 
-macro_rules! impl_dyn_to_array_write {
-    ($dtype:ty) => {
-        impl DynToArrayWrite for PyReadwriteArrayDyn<'_, $dtype> {
-            type Type = $dtype;
-            fn to_array1(&mut self) -> ArrayViewMut1<$dtype> {
-                self.as_array_mut().into_dimensionality::<Ix1>().unwrap()
-            }
-            fn to_array2(&mut self) -> ArrayViewMut2<$dtype> {
-                self.as_array_mut().into_dimensionality::<Ix2>().unwrap()
-            }
-            fn to_arrayd(&mut self) -> ArrayViewMutD<$dtype> {
-                self.as_array_mut().into_dimensionality::<IxDyn>().unwrap()
-            }
-        }
-    };
-}
-
-impl_dyn_to_array_write!(f32);
-impl_dyn_to_array_write!(f64);
-impl_dyn_to_array_write!(i32);
-impl_dyn_to_array_write!(i64);
-
+// 根据维度调用一维的算法函数，可以并行
 pub trait CallFunction<T: Number> {
     fn call_array_function<U: Number>(
         // 普通array函数
@@ -98,9 +53,35 @@ pub trait CallFunction<T: Number> {
         par: Option<bool>,
     ) -> &PyArrayDyn<f64>;
 }
-// 根据维度调用一维的算法函数，可以并行
+
 macro_rules! impl_call_function {
     ($dtype:ty) => {
+        impl DynToArrayRead for PyReadonlyArrayDyn<'_, $dtype> {
+            type Type = $dtype;
+            fn to_array1(&self) -> ArrayView1<$dtype> {
+                self.as_array().into_dimensionality::<Ix1>().unwrap()
+            }
+            fn to_array2(&self) -> ArrayView2<$dtype> {
+                self.as_array().into_dimensionality::<Ix2>().unwrap()
+            }
+            fn to_arrayd(&self) -> ArrayViewD<$dtype> {
+                self.as_array().into_dimensionality::<IxDyn>().unwrap()
+            }
+        }
+
+        impl DynToArrayWrite for PyReadwriteArrayDyn<'_, $dtype> {
+            type Type = $dtype;
+            fn to_array1(&mut self) -> ArrayViewMut1<$dtype> {
+                self.as_array_mut().into_dimensionality::<Ix1>().unwrap()
+            }
+            fn to_array2(&mut self) -> ArrayViewMut2<$dtype> {
+                self.as_array_mut().into_dimensionality::<Ix2>().unwrap()
+            }
+            fn to_arrayd(&mut self) -> ArrayViewMutD<$dtype> {
+                self.as_array_mut().into_dimensionality::<IxDyn>().unwrap()
+            }
+        }
+
         impl CallFunction<$dtype> for PyArrayDyn<$dtype> {
             // 普通对array一个轴应用的函数, 例如argsort，rank等, U是output的dtype
             fn call_array_function<U: Number>(
@@ -259,6 +240,7 @@ impl_call_function!(f32);
 impl_call_function!(f64);
 impl_call_function!(i32);
 impl_call_function!(i64);
+impl_call_function!(usize);
 
 // 所有可接受的python array类型
 #[derive(FromPyObject)]
@@ -267,44 +249,38 @@ pub enum PyArrayOk<'py> {
     F64(&'py PyArrayDyn<f64>),
     I32(&'py PyArrayDyn<i32>),
     I64(&'py PyArrayDyn<i64>),
-}
-
-impl<'py> PyArrayOk<'py> {
-    // 获得维度信息
-    pub fn ndim(&self) -> usize {
-        match self {
-            PyArrayOk::F32(a) => a.ndim(),
-            PyArrayOk::F64(a) => a.ndim(),
-            PyArrayOk::I32(a) => a.ndim(),
-            PyArrayOk::I64(a) => a.ndim(),
-        }
-    }
+    Usize(&'py PyArrayDyn<usize>),
 }
 
 // 为允许的py array添加函数, 接收一个array的普通window func
 macro_rules! impl_arrayfunc {
-    ($name:ident, $func:ident, $otype:ty) => {
+    ($name:ident, $otype:ty) => {
         impl<'py> PyArrayOk<'py> {
             pub fn $name(self, axis: Option<usize>, par: Option<bool>) -> &'py PyArrayDyn<$otype> {
                 use PyArrayOk::*;
                 match self {
                     F32(arr) => arr.call_array_function::<$otype>(
-                        $func::<f32> as ArrayFunc<f32, $otype>,
+                        array_func::$name::<f32> as ArrayFunc<f32, $otype>,
                         axis,
                         par,
                     ),
                     F64(arr) => arr.call_array_function::<$otype>(
-                        $func::<f64> as ArrayFunc<f64, $otype>,
+                        array_func::$name::<f64> as ArrayFunc<f64, $otype>,
                         axis,
                         par,
                     ),
                     I32(arr) => arr.call_array_function::<$otype>(
-                        $func::<i32> as ArrayFunc<i32, $otype>,
+                        array_func::$name::<i32> as ArrayFunc<i32, $otype>,
                         axis,
                         par,
                     ),
                     I64(arr) => arr.call_array_function::<$otype>(
-                        $func::<i64> as ArrayFunc<i64, $otype>,
+                        array_func::$name::<i64> as ArrayFunc<i64, $otype>,
+                        axis,
+                        par,
+                    ),
+                    Usize(arr) => arr.call_array_function::<$otype>(
+                        array_func::$name::<usize> as ArrayFunc<usize, $otype>,
                         axis,
                         par,
                     ),
@@ -317,7 +293,7 @@ macro_rules! impl_arrayfunc {
 
 // 为允许的py array添加函数, 接收一个array的普通window func
 macro_rules! impl_tsfunc {
-    ($name:ident, $func:ident) => {
+    ($name:ident) => {
         impl<'py> PyArrayOk<'py> {
             pub fn $name(
                 self,
@@ -329,28 +305,35 @@ macro_rules! impl_tsfunc {
                 use PyArrayOk::*;
                 match self {
                     F32(arr) => arr.call_ts_function(
-                        $func::<f32> as TsFunc<f32>,
+                        window_func::$name::<f32> as TsFunc<f32>,
                         window,
                         axis,
                         min_periods,
                         par,
                     ),
                     F64(arr) => arr.call_ts_function(
-                        $func::<f64> as TsFunc<f64>,
+                        window_func::$name::<f64> as TsFunc<f64>,
                         window,
                         axis,
                         min_periods,
                         par,
                     ),
                     I32(arr) => arr.call_ts_function(
-                        $func::<i32> as TsFunc<i32>,
+                        window_func::$name::<i32> as TsFunc<i32>,
                         window,
                         axis,
                         min_periods,
                         par,
                     ),
                     I64(arr) => arr.call_ts_function(
-                        $func::<i64> as TsFunc<i64>,
+                        window_func::$name::<i64> as TsFunc<i64>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    Usize(arr) => arr.call_ts_function(
+                        window_func::$name::<usize> as TsFunc<usize>,
                         window,
                         axis,
                         min_periods,
@@ -365,7 +348,7 @@ macro_rules! impl_tsfunc {
 
 // 为允许的py array添加函数, 接收两个array的window func
 macro_rules! impl_tsfunc2 {
-    ($name:ident, $func:ident) => {
+    ($name:ident) => {
         impl<'py> PyArrayOk<'py> {
             pub fn $name(
                 self,
@@ -379,7 +362,7 @@ macro_rules! impl_tsfunc2 {
                 match (self, other) {
                     (F32(arr), F32(other)) => arr.call_ts_function2(
                         other,
-                        $func::<f32, f32> as TsFunc2<f32, f32>,
+                        window_func::$name::<f32, f32> as TsFunc2<f32, f32>,
                         window,
                         axis,
                         min_periods,
@@ -387,7 +370,7 @@ macro_rules! impl_tsfunc2 {
                     ),
                     (F64(arr), F64(other)) => arr.call_ts_function2(
                         other,
-                        $func::<f64, f64> as TsFunc2<f64, f64>,
+                        window_func::$name::<f64, f64> as TsFunc2<f64, f64>,
                         window,
                         axis,
                         min_periods,
@@ -395,7 +378,7 @@ macro_rules! impl_tsfunc2 {
                     ),
                     (I32(arr), I32(other)) => arr.call_ts_function2(
                         other,
-                        $func::<i32, i32> as TsFunc2<i32, i32>,
+                        window_func::$name::<i32, i32> as TsFunc2<i32, i32>,
                         window,
                         axis,
                         min_periods,
@@ -403,7 +386,15 @@ macro_rules! impl_tsfunc2 {
                     ),
                     (I64(arr), I64(other)) => arr.call_ts_function2(
                         other,
-                        $func::<i64, i64> as TsFunc2<i64, i64>,
+                        window_func::$name::<i64, i64> as TsFunc2<i64, i64>,
+                        window,
+                        axis,
+                        min_periods,
+                        par,
+                    ),
+                    (Usize(arr), Usize(other)) => arr.call_ts_function2(
+                        other,
+                        window_func::$name::<usize, usize> as TsFunc2<usize, usize>,
                         window,
                         axis,
                         min_periods,
@@ -415,42 +406,3 @@ macro_rules! impl_tsfunc2 {
         }
     };
 }
-
-// array function
-impl_arrayfunc!(argsort, argsort_1d, usize);
-impl_arrayfunc!(rank, rank_1d, f64);
-impl_arrayfunc!(rank_pct, rank_pct_1d, f64);
-
-// feature
-impl_tsfunc!(ts_sma, ts_sma_1d);
-impl_tsfunc!(ts_ewm, ts_ewm_1d);
-impl_tsfunc!(ts_wma, ts_wma_1d);
-impl_tsfunc!(ts_sum, ts_sum_1d);
-impl_tsfunc!(ts_prod, ts_prod_1d);
-impl_tsfunc!(ts_prod_mean, ts_prod_mean_1d);
-impl_tsfunc!(ts_std, ts_std_1d);
-impl_tsfunc!(ts_skew, ts_skew_1d);
-impl_tsfunc!(ts_kurt, ts_kurt_1d);
-
-// compare
-impl_tsfunc!(ts_max, ts_max_1d);
-impl_tsfunc!(ts_min, ts_min_1d);
-impl_tsfunc!(ts_argmax, ts_argmax_1d);
-impl_tsfunc!(ts_argmin, ts_argmin_1d);
-impl_tsfunc!(ts_rank, ts_rank_1d);
-impl_tsfunc!(ts_rank_pct, ts_rank_pct_1d);
-
-// norm
-impl_tsfunc!(ts_stable, ts_stable_1d);
-impl_tsfunc!(ts_minmaxnorm, ts_minmaxnorm_1d);
-impl_tsfunc!(ts_meanstdnorm, ts_meanstdnorm_1d);
-
-// cov corr
-impl_tsfunc2!(ts_cov, ts_cov_1d);
-impl_tsfunc2!(ts_corr, ts_corr_1d);
-
-// reg
-impl_tsfunc!(ts_reg, ts_reg_1d);
-impl_tsfunc!(ts_tsf, ts_tsf_1d);
-impl_tsfunc!(ts_reg_slope, ts_reg_slope_1d);
-impl_tsfunc!(ts_reg_intercept, ts_reg_intercept_1d);

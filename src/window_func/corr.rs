@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-pub fn ts_cov_1d<T: Number, U: Number>(
+pub fn ts_cov<T: Number, U: Number>(
     arr1: ArrayView1<T>,
     arr2: ArrayView1<U>,
     mut out: ArrayViewMut1<f64>,
@@ -75,7 +75,7 @@ pub fn ts_cov_1d<T: Number, U: Number>(
     }
 }
 
-pub fn ts_corr_1d<T: Number, U: Number>(
+pub fn ts_corr<T: Number, U: Number>(
     arr1: ArrayView1<T>,
     arr2: ArrayView1<U>,
     mut out: ArrayViewMut1<f64>,

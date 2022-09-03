@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-pub fn ts_reg_1d<T: Number>(
+pub fn ts_reg<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -81,7 +81,7 @@ pub fn ts_reg_1d<T: Number>(
     }
 }
 
-pub fn ts_tsf_1d<T: Number>(
+pub fn ts_tsf<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -161,7 +161,7 @@ pub fn ts_tsf_1d<T: Number>(
     }
 }
 
-pub fn ts_reg_slope_1d<T: Number>(
+pub fn ts_reg_slope<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -237,7 +237,7 @@ pub fn ts_reg_slope_1d<T: Number>(
     }
 }
 
-pub fn ts_reg_intercept_1d<T: Number>(
+pub fn ts_reg_intercept<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,

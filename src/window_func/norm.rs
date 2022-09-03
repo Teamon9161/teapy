@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-pub fn ts_stable_1d<T: Number>(
+pub fn ts_stable<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -80,7 +80,7 @@ pub fn ts_stable_1d<T: Number>(
     }
 }
 
-pub fn ts_meanstdnorm_1d<T: Number>(
+pub fn ts_meanstdnorm<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -160,7 +160,7 @@ pub fn ts_meanstdnorm_1d<T: Number>(
     }
 }
 
-pub fn ts_minmaxnorm_1d<T: Number>(
+pub fn ts_minmaxnorm<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,

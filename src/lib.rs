@@ -1,17 +1,19 @@
 // pub mod ffi;
-pub mod array;
+pub mod array_func;
 pub mod datatype;
+#[macro_use]
 pub mod pyarray;
 pub mod window_func;
 
+use crate::datatype::{ArrayFunc, TsFunc, TsFunc2};
+use crate::pyarray::{CallFunction, PyArrayOk};
+use numpy::PyArrayDyn;
 use pyo3::{pyfunction, pymodule, types::PyModule, wrap_pyfunction, PyAny, PyResult, Python};
-
-use crate::pyarray::PyArrayOk;
 
 #[pymodule]
 fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     macro_rules! impl_pyarrayfunc {
-        ($func:ident) => {
+        ($func:ident, $otype:ty) => {
             #[pyfunction]
             fn $func<'py>(
                 // 滚动移动平均
@@ -22,6 +24,7 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 let out = x.$func(axis, par);
                 return Ok(out.into())
             }
+            impl_arrayfunc!($func, $otype);
             m.add_function(wrap_pyfunction!($func, m)?)?;
         };
     }
@@ -40,6 +43,7 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 let out = x.$func(window, axis, min_periods, par);
                 return Ok(out.into())
             }
+            impl_tsfunc!($func);
             m.add_function(wrap_pyfunction!($func, m)?)?;
         };
     }
@@ -60,14 +64,15 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 let out = x.$func(&y, window, axis, min_periods, par);
                 return Ok(out.into())
             }
+            impl_tsfunc2!($func);
             m.add_function(wrap_pyfunction!($func, m)?)?;
         };
     }
 
     // array function
-    impl_pyarrayfunc!(argsort);
-    impl_pyarrayfunc!(rank);
-    impl_pyarrayfunc!(rank_pct);
+    impl_pyarrayfunc!(argsort, usize);
+    impl_pyarrayfunc!(rank, f64);
+    impl_pyarrayfunc!(rank_pct, f64);
 
     // feature
     impl_pytsfunc!(ts_sma);

@@ -1,7 +1,7 @@
-from multiprocessing import cpu_count
 from time import time
 
 import numpy as np
+import pandas as pd
 
 import teapy as tp
 from teapy.testing import assert_allclose
@@ -24,7 +24,7 @@ def test_continuity():
 def test_high_dimensional():
     arr = np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]])
     expected_axis0 = np.array([[[0, 1], [2, 3]], [[4, 6], [8, 10]]])
-    expected_axis1 = np.array([[[0, 1], [2, 4]], [[4, 6], [10, 12]]])
+    expected_axis1 = np.array([[[0, 1], [2, 4]], [[4, 5], [10, 12]]])
     expected_axis2 = np.array([[[0, 1], [2, 5]], [[4, 9], [6, 13]]])
 
     assert_allclose(tp.ts_sum(arr, 2, axis=0), expected_axis0)
@@ -33,12 +33,13 @@ def test_high_dimensional():
 
 
 def test_parallel():
+    from multiprocessing import cpu_count
+
     arr = np.random.randn(8, 50000)
     # no parallel
     start = time()
     tp.ts_std(arr, window=10, axis=1, par=False)
     time1 = time() - start
-
     # parallel
     start = time()
     tp.ts_std(arr, window=10, axis=1, par=True)
@@ -49,6 +50,49 @@ def test_parallel():
 
 
 def test_special():
-    tp.rank(np.array([]))  # test rank a array with 0 element
-    tp.rank(np.array([2]))  # test rank a array with 1 element
-    tp.rank(np.array([np.nan, np.nan]))  # test rank all nan array
+    # test rank a array with 0 element
+    assert tp.rank(np.array([])).tolist() == []
+    assert tp.rank(np.array([2]))[0] == 1  # test rank a array with 1 element
+    # test rank all nan array
+    assert_allclose(tp.rank(np.array([np.nan, np.nan])), np.array([np.nan, np.nan]))
+
+
+def test_array_func_input():
+    from pandas.testing import assert_frame_equal, assert_series_equal
+
+    value, expect = [3, 2, 1], [2, 1, 0]
+    # list input
+    assert tp.argsort(value).tolist() == expect
+    # series input
+    sr = pd.Series(value, name="aa")
+    assert_series_equal(
+        tp.argsort(sr), pd.Series(np.array(expect).astype(np.uint64), name="aa")
+    )
+    df = pd.DataFrame({"a": value})
+    assert_frame_equal(
+        tp.argsort(df, axis=0), pd.DataFrame({"a": np.array(expect).astype(np.uint64)})
+    )
+
+
+def test_ts_func_input():
+    from pandas.testing import assert_frame_equal, assert_series_equal
+
+    value, expect = [1, 1, 1], [1.0, 2, 3]
+    # list input
+    assert tp.ts_sum(value, 3).tolist() == expect
+    # series input
+    sr = pd.Series(value, name="aa")
+    assert_series_equal(tp.ts_sum(sr, 3), pd.Series(expect, name="aa"))
+    df = pd.DataFrame({"a": value})
+    assert_frame_equal(tp.ts_sum(df, 3, axis=0), pd.DataFrame({"a": expect}))
+
+
+def test_ts_func2_input():
+    from pandas.testing import assert_series_equal
+
+    value1, value2, expect = [1, 2, 3], [1, 2, 3], [np.nan, 1.0, 1.0]
+    # list input
+    assert_allclose(tp.ts_corr(value1, value2, 3), np.array(expect))
+    # series input
+    sr1, sr2 = pd.Series(value1, name="aa"), pd.Series(value1, name="bb")
+    assert_series_equal(tp.ts_corr(sr1, sr2, 3), pd.Series(expect, name="aa"))

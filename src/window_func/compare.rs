@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-pub fn ts_max_1d<T: Number>(
+pub fn ts_max<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -68,7 +68,7 @@ pub fn ts_max_1d<T: Number>(
     }
 }
 
-pub fn ts_argmax_1d<T: Number>(
+pub fn ts_argmax<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -136,7 +136,7 @@ pub fn ts_argmax_1d<T: Number>(
     }
 }
 
-pub fn ts_min_1d<T: Number>(
+pub fn ts_min<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -204,7 +204,7 @@ pub fn ts_min_1d<T: Number>(
     }
 }
 
-pub fn ts_argmin_1d<T: Number>(
+pub fn ts_argmin<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -272,7 +272,7 @@ pub fn ts_argmin_1d<T: Number>(
     }
 }
 
-pub fn ts_rank_1d<T: Number>(
+pub fn ts_rank<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,
@@ -346,7 +346,7 @@ pub fn ts_rank_1d<T: Number>(
     }
 }
 
-pub fn ts_rank_pct_1d<T: Number>(
+pub fn ts_rank_pct<T: Number>(
     arr: ArrayView1<T>,
     mut out: ArrayViewMut1<f64>,
     window: usize,

@@ -101,7 +101,7 @@ def test_ts_std(arr, window):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(30, stable=True), st.integers(3, 5))
+@given(make_arr(30, unique=True, stable=True), st.integers(3, 5))
 def test_ts_skew(arr, window):
     # 测试移动偏度
     min_periods = np.random.randint(3, window + 1)

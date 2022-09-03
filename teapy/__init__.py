@@ -1,20 +1,3 @@
-from . import teapy as _tp
-from .teapy import *
-
-ts_decay_linear = _tp.ts_wma
-ts_mean = _tp.ts_sma
-ts_ema = _tp.ts_ewm
-
-
-def rank(arr, axis=0, pct=False, par=False):
-    if not pct:
-        return _tp.rank(arr, axis=axis, par=par)
-    else:
-        return _tp.rank_pct(arr, axis=axis, par=par)
-
-
-def ts_rank(arr, window, min_periods=1, axis=0, pct=False, par=False):
-    if not pct:
-        return _tp.ts_rank(arr, window, min_periods=min_periods, axis=axis, par=par)
-    else:
-        return _tp.ts_rank_pct(arr, window, min_periods=min_periods, axis=axis, par=par)
+from . import teapy as _tp  # internal
+from .array import *
+from .window import *
