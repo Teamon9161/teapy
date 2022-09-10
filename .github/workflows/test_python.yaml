@@ -36,7 +36,7 @@ jobs:
       - name: Run formatting checks
         run: |
           black --check .
-          isort --check .
+          isort --check .  --profile black
           cargo fmt --all -- --check
       - name: Run linting
         run: |

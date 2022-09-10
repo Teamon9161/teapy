@@ -439,7 +439,7 @@ impl<T: Copy + Clone> ArrViewMut1<'_, T> {
     pub fn sort_unstable_by<F>(&mut self, compare: F)
     where
         F: FnMut(&T, &T) -> Ordering,
-    {   
+    {
         if self.0.is_standard_layout() {
             let slice = self.as_slice_mut().unwrap();
             slice.sort_unstable_by(compare);
