@@ -2,6 +2,7 @@ from functools import partial
 from math import isclose
 
 import numpy as np
+from hypothesis import settings, HealthCheck
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 from hypothesis.strategies._internal.utils import defines_strategy
@@ -10,6 +11,9 @@ from pandas.testing import assert_series_equal
 
 rtol = 1e-5
 atol = 1e-3
+
+settings.register_profile('test', suppress_health_check=[HealthCheck(3)])
+settings.load_profile('test')
 
 isclose = partial(isclose, rel_tol=rtol, abs_tol=atol)
 
@@ -81,8 +85,8 @@ def make_arr(shape=100, nan_p=0.05, unique=False, dtype=None, stable=True):
                 min_, max_ = np.nanmax(arr), np.nanmin(arr)
                 if ~np.isnan(max_) and max_ - abs(min_) * 1e6:  # suppose max > 0
                     arr = np.where(arr < 1e-4, np.random.randn(*arr.shape), arr)
-            else:
-                min_, max_ = np.max(arr), np.min(arr)
+            # else:
+            #     min_, max_ = np.max(arr), np.min(arr)
         return arr
 
     return draw_arr()
