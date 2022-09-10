@@ -22,7 +22,7 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly-2022-09-08
           override: true
           components: rustfmt, clippy
       - name: Set up Python
