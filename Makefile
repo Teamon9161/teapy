@@ -11,8 +11,6 @@ clean:
 	@rm -rf target/
 	@rm -rf .hypothesis/
 	@rm -rf .pytest_cache/
-	@rm -f .coverage
-	@rm -f coverage.xml
 	@cargo clean
 
 pytest-cov: venv
@@ -26,6 +24,7 @@ format:
 	black .
 	cargo fmt --all
 	flake8 --ignore E501,F401,F403
+	cargo clippy
 
 coverage: 
 	@bash -c "\
