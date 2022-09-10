@@ -168,7 +168,7 @@ macro_rules! add_functype {
 ///
 /// where m is &PyModule, func is the name of the concrete function and otype is
 /// the dtype of the output array
-#[allow(clippy::too_many_arguments)]
+
 macro_rules! add_functype2 {
     ($impl_macro_name: ident, $func_path:path, $func_type:ident, $trait:ident, $call_func:ident,
     -func_p ( $($func_p_name:ident),* $(,)? ), -p ( $($p_name:ident: $p_type:ty),* $(,)? ), $(-sig $sig:expr)? $(,)?,
@@ -177,6 +177,7 @@ macro_rules! add_functype2 {
         pub type $func_type<T, S, U> = fn(ArrView1<T>, ArrView1<S>, ArrViewMut1<U>, $($func_p_name),*);
         // define a trait so that PyArray can call functions of the same func type
         pub trait $trait <T: Number> {
+            #![allow(clippy::too_many_arguments)]
             fn $call_func<S: Number, U: Number> (
                 &$self,
                 $other: &PyArrayDyn<S>,
