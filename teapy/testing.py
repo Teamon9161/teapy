@@ -12,8 +12,8 @@ from pandas.testing import assert_series_equal
 rtol = 1e-5
 atol = 1e-3
 
-settings.register_profile('test', suppress_health_check=[HealthCheck(3)])
-settings.load_profile('test')
+settings.register_profile("test", suppress_health_check=[HealthCheck(3)])
+settings.load_profile("test")
 
 isclose = partial(isclose, rel_tol=rtol, abs_tol=atol)
 
