@@ -25,7 +25,7 @@ def test_rank(arr, window):
     assert_series_equal(pd.Series(res3), res4)
 
 
-@given(make_arr((30, 30), nan_p=0.5), st.integers(0, 1))
+@given(make_arr((10, 10), nan_p=0.5), st.integers(0, 1))
 def test_count_nan(arr, axis):
     res1 = np.count_nonzero(np.isnan(arr), axis=axis)
     res2 = tp.count_nan(arr, axis=axis)
@@ -35,7 +35,7 @@ def test_count_nan(arr, axis):
     assert_allclose(res3, res4)
 
 
-@given(make_arr((30, 30)), st.integers(0, 1))
+@given(make_arr((10, 10)), st.integers(0, 1))
 def test_mean(arr, axis):
     arr = pd.DataFrame(arr)
     res1 = arr.mean(axis=axis)
@@ -45,7 +45,7 @@ def test_mean(arr, axis):
     assert_series_equal(res1, res3)
 
 
-@given(make_arr((30, 30)), st.integers(0, 1))
+@given(make_arr((10, 10)), st.integers(0, 1))
 def test_std(arr, axis):
     arr = pd.DataFrame(arr)
     res1 = arr.std(axis=axis)
@@ -55,7 +55,7 @@ def test_std(arr, axis):
     assert_series_equal(res1, res3)
 
 
-@given(make_arr((30, 30), unique=True), st.integers(0, 1))
+@given(make_arr((10, 10), unique=True), st.integers(0, 1))
 def test_skew(arr, axis):
     arr = pd.DataFrame(arr)
     res1 = arr.skew(axis=axis)
@@ -75,7 +75,7 @@ def test_kurt(arr, axis):
     assert_series_equal(res1, res3)
 
 
-@given(make_arr((15, 2)))
+@given(make_arr((10, 2)))
 def test_cov(arr):
     cov_pd = pd.DataFrame(arr).cov().iloc[0, 1]
     arr1, arr2 = np.array_split(arr, 2, axis=1)
@@ -84,7 +84,7 @@ def test_cov(arr):
     assert isclose(cov_pd, cov1) & isclose(cov_pd, cov2)
 
 
-@given(make_arr((15, 2)))
+@given(make_arr((10, 2)))
 def test_corr(arr):
     corr_pd = pd.DataFrame(arr).corr().iloc[0, 1]
     arr1, arr2 = np.array_split(arr, 2, axis=1)
