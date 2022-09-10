@@ -2,7 +2,7 @@ from functools import partial
 from math import isclose
 
 import numpy as np
-from hypothesis import settings, HealthCheck
+from hypothesis import HealthCheck, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 from hypothesis.strategies._internal.utils import defines_strategy
