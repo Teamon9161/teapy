@@ -65,7 +65,7 @@ def test_skew(arr, axis):
     assert_series_equal(res1, res3)
 
 
-@given(make_arr((30, 30), unique=True), st.integers(0, 1))
+@given(make_arr((10, 10), unique=True), st.integers(0, 1))
 def test_kurt(arr, axis):
     arr = pd.DataFrame(arr)
     res1 = arr.kurt(axis=axis)
