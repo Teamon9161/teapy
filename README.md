@@ -7,3 +7,4 @@
 Teapy is a blazingly fast window functions library implemented in Rust.
 * Handle NaN
 * Multi-threaded
+* Any Dimension

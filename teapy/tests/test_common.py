@@ -35,7 +35,7 @@ def test_high_dimensional():
 def test_parallel():
     from multiprocessing import cpu_count
 
-    arr = np.random.randn(8, 50000)
+    arr = np.random.randn(16, 100000)
     # no parallel
     start = time()
     tp.ts_std(arr, window=10, axis=1, par=False)
@@ -65,12 +65,10 @@ def test_array_func_input():
     assert tp.argsort(value).tolist() == expect
     # series input
     sr = pd.Series(value, name="aa")
-    assert_series_equal(
-        tp.argsort(sr), pd.Series(np.array(expect).astype(np.uint64), name="aa")
-    )
+    assert_series_equal(tp.argsort(sr), pd.Series(expect, name="aa"), check_dtype=False)
     df = pd.DataFrame({"a": value})
     assert_frame_equal(
-        tp.argsort(df, axis=0), pd.DataFrame({"a": np.array(expect).astype(np.uint64)})
+        tp.argsort(df, axis=0), pd.DataFrame({"a": expect}), check_dtype=False
     )
 
 

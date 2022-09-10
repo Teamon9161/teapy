@@ -1,3 +1,2 @@
-from . import teapy as _tp  # internal
-from .array import *
-from .window import *
+from .array_func import *
+from .window_func import *

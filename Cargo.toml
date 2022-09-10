@@ -1,6 +1,6 @@
 [package]
 name = "teapy"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 
 [lib]
@@ -14,10 +14,7 @@ num = "0.4"
 cxx = "1.0"
 rayon = "1.5"
 ndarray = {features=['rayon'], version="0.15"}
-# libc = "0.2"
+# blas-src = { version = "0.8.0", default-features = false, features = ["netlib"] }
 
-[build-dependencies]
-cxx-build = "1.0"
-# cc = {version="1.0", features = ["parallel"]}
-# serde = "1.0"
-# polars = {version = "0.23.2", features = ['polars-io', 'lazy', 'csv-file']}
+# [build-dependencies]
+# cxx-build = "1.0"

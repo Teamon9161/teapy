@@ -1,4 +1,5 @@
 from functools import partial
+from math import isclose
 
 import numpy as np
 from hypothesis import strategies as st
@@ -7,16 +8,21 @@ from hypothesis.strategies._internal.utils import defines_strategy
 from numpy.testing import assert_allclose
 from pandas.testing import assert_series_equal
 
+rtol = 1e-5
+atol = 1e-3
+
+isclose = partial(isclose, rel_tol=rtol, abs_tol=atol)
+
 assert_series_equal = partial(
     assert_series_equal,
-    rtol=1e-5,
-    atol=1e-3,
+    rtol=rtol,
+    atol=atol,
     check_index=False,
     check_dtype=False,
     check_names=False,
 )
 
-assert_allclose = partial(assert_allclose, rtol=1e-5, atol=1e-3)
+assert_allclose = partial(assert_allclose, rtol=rtol, atol=atol)
 
 
 # 同个数组中的数如果差距过大，在计算时太小的数会被忽略
@@ -35,14 +41,22 @@ dtype_element_map_stable = {
     np.int64: st.integers(min_value=STABLE_INT_MIN, max_value=STABLE_INT_MAX),
 }
 
+dtype_element_map_unstable = {
+    np.float64: st.floats(width=64),
+    np.float32: st.floats(width=32),
+    # both teapy and pandas will overflow
+    np.int32: st.integers(min_value=-(2**25), max_value=2**25 - 1),
+    np.int64: st.integers(min_value=-(2**55), max_value=2**55 - 1),
+}
+
 
 @defines_strategy()
-def make_arr(shape=100, nan_p=0.05, unique=False, dtype=None, stable=False):
+def make_arr(shape=100, nan_p=0.05, unique=False, dtype=None, stable=True):
     """make a random array using hypothesis
-    shape: array shape
-    nan_p: probability of nan in array
-    dtype: dtype of the array
-    stable: maximum value of array < minimum value of array * 1e6
+    shape: Array shape
+    nan_p: Probability of nan in array
+    dtype: Dtype of the array
+    stable: Limit the difference of array elements to avoid floating point errors
     """
     if type(shape) is int:
         shape = (shape,)
@@ -50,11 +64,12 @@ def make_arr(shape=100, nan_p=0.05, unique=False, dtype=None, stable=False):
     @st.composite
     def draw_arr(draw):
         arr_dtype = draw(st.sampled_from(dtype_list)) if dtype is None else dtype
+        dtype_map = dtype_element_map_stable if stable else dtype_element_map_unstable
         arr = draw(
             arrays(
                 arr_dtype,
                 shape,
-                elements=dtype_element_map_stable[arr_dtype],
+                elements=dtype_map[arr_dtype],
                 unique=unique,
             )
         )

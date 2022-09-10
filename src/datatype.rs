@@ -1,5 +1,5 @@
-use num::{cast::AsPrimitive, traits::NumOps, FromPrimitive, Num, NumCast, One, ToPrimitive, Zero};
-use numpy::ndarray::{ArrayView1, ArrayViewMut1};
+use crate::algos::kh_sum;
+use num::{cast::AsPrimitive, FromPrimitive, Num, NumCast, ToPrimitive};
 use numpy::Element;
 use std::cmp::PartialOrd;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
@@ -39,8 +39,8 @@ impl_datatype!(UintT, usize);
 pub trait Number:
     Copy
     + Clone
+    + Sized
     + FromPrimitive
-    + NumOps
     + Num
     + NumCast
     + AddAssign
@@ -51,8 +51,6 @@ pub trait Number:
     + GetDataType
     + Element
     + ToPrimitive
-    + Zero
-    + One
     + AsPrimitive<f64>
     + AsPrimitive<f32>
     + AsPrimitive<usize>
@@ -62,7 +60,10 @@ pub trait Number:
     type Dtype;
     fn min_() -> Self;
     fn max_() -> Self;
+    fn f32(self) -> f32;
     fn f64(self) -> f64;
+    fn i32(self) -> i32;
+    fn fromas<U: Number>(v: U) -> Self;
     fn to<T: Number>(self) -> T
     where
         Self: AsPrimitive<T>;
@@ -85,6 +86,18 @@ macro_rules! impl_number {
             #[inline(always)]
             fn f64(self) -> f64 {
                 AsPrimitive::<f64>::as_(self)
+            }
+            #[inline(always)]
+            fn f32(self) -> f32 {
+                AsPrimitive::<f32>::as_(self)
+            }
+            #[inline(always)]
+            fn i32(self) -> i32 {
+                AsPrimitive::<i32>::as_(self)
+            }
+            #[inline(always)]
+            fn fromas<U: Number>(v: U) -> Self {
+                v.to::<Self>()
             }
             #[inline(always)]
             fn to<T: Number>(self) -> T
@@ -111,7 +124,20 @@ impl_number!(i32, I32T);
 impl_number!(i64, I64T);
 impl_number!(usize, UintT);
 
-// function datatype
-pub type ArrayFunc<T, U> = fn(ArrayView1<T>, ArrayViewMut1<U>);
-pub type TsFunc<T> = fn(ArrayView1<T>, ArrayViewMut1<f64>, usize, usize, usize);
-pub type TsFunc2<T, U> = fn(ArrayView1<T>, ArrayView1<U>, ArrayViewMut1<f64>, usize, usize, usize);
+pub trait KhSum {
+    fn kh_sum(&mut self, v: Self, c: &mut Self);
+}
+
+impl KhSum for f64 {
+    #[inline(always)]
+    fn kh_sum(&mut self, v: f64, c: &mut Self) {
+        *self = kh_sum(*self, v, c);
+    }
+}
+
+impl KhSum for f32 {
+    #[inline(always)]
+    fn kh_sum(&mut self, v: f32, c: &mut Self) {
+        *self = kh_sum(*self, v, c);
+    }
+}
