@@ -145,7 +145,7 @@ def test_remove_nan():
     assert_series_equal(tp.remove_nan(s), s.dropna())
 
 
-def test_zscore(stable):
+def test_zscore():
     s = pd.Series(np.arange(12).astype(float))
     for stable in False, True:
         s1 = tp.zscore(s, stable)
