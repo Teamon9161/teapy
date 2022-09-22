@@ -63,7 +63,7 @@ class Converter:
                 return pd.Series(arr, name=self.name)
         elif self.otype == "pd.DataFrame":
             assert arr.ndim == 2
-            if arr.shape[0] == self.index.size and arr.shape1 == self.columns.len:
+            if arr.shape[0] == self.index.size and arr.shape[1] == self.columns.len:
                 return pd.DataFrame(arr, index=self.index, columns=self.columns)
             elif arr.shape[0] == self.index.size and arr.shape[1] != self.columns.len:
                 return pd.DataFrame(arr, index=self.index)
