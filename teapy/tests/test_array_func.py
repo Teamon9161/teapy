@@ -25,6 +25,20 @@ def test_rank(arr, window):
     assert_series_equal(pd.Series(res3), res4)
 
 
+@given(make_arr((10, 10)), st.integers(0, 1))
+def test_median(arr, axis):
+    res1 = tp.median(arr, axis=axis)
+    res2 = np.nanmedian(arr, axis=axis)
+    assert_allclose(res1, res2)
+
+
+@given(make_arr((10, 10)), st.floats(0, 1), st.integers(0, 1))
+def test_quantile(arr, q, axis):
+    res1 = tp.quantile(arr, q, axis=axis)
+    res2 = np.nanquantile(arr, q, axis=axis)
+    assert_allclose(res1, res2)
+
+
 @given(make_arr((10, 10), nan_p=0.5), st.integers(0, 1))
 def test_count_nan(arr, axis):
     res1 = np.count_nonzero(np.isnan(arr), axis=axis)
@@ -101,3 +115,73 @@ def test_array_func_2d():
     res1 = tp.rank(arr, axis=0)
     res2 = pd.DataFrame(arr).rank(axis=0).values
     assert_allclose(res1, res2)
+
+
+def test_fillna():
+    s = pd.Series([np.nan, 5, 6, 733, np.nan, 34, np.nan, np.nan])
+    for method in ["ffill", "bfill"]:
+        assert_series_equal(tp.fillna(s, method), s.fillna(method=method))
+        # test inplace
+        s1 = s.copy()
+        tp.fillna(s1, method, inplace=True)
+        assert_series_equal(s1, s.fillna(method=method))
+    # test fill value directly
+    fill_value = 101
+    assert_series_equal(tp.fillna(s, value=fill_value), s.fillna(fill_value))
+    tp.fillna(s, value=fill_value, inplace=True)
+    assert_series_equal(s, pd.Series([101, 5, 6, 733, 101, 34, 101, 101]))
+
+
+def test_clip():
+    s = pd.Series([np.nan, 5, 6, 733, np.nan, 34, 456, np.nan])
+    assert_series_equal(tp.clip(s, 5, 100), s.clip(5, 100))
+    s1 = s.copy()
+    tp.clip(s1, 5, 100, inplace=True)
+    assert_series_equal(s1, s.clip(5, 100))
+
+
+def test_remove_nan():
+    s = pd.Series([np.nan, 5, 6, 12, np.nan, 1, np.nan, np.nan])
+    assert_series_equal(tp.remove_nan(s), s.dropna())
+
+
+def test_zscore(stable):
+    s = pd.Series(np.arange(12).astype(float))
+    for stable in False, True:
+        s1 = tp.zscore(s, stable)
+        s2 = (s - s.mean()) / s.std()
+        assert_series_equal(s1, s2)
+        s_copy = s.copy()
+        tp.zscore(s_copy, stable, inplace=True)
+        assert_series_equal(s_copy, s2)
+
+
+def test_winsorize():
+    s = pd.Series(np.arange(12).astype(float))
+
+    # quantile method
+    q = 0.05
+    s1 = tp.winsorize(s, "quantile", q)
+    lower, upper = np.nanquantile(s, [q, 1 - q])
+    s2 = s.clip(lower, upper)
+    assert_series_equal(s1, s2)
+    # test quantile inplace
+    s_copy = s.copy()
+    tp.winsorize(s_copy, "quantile", q, inplace=True)
+    assert_series_equal(s_copy, s2)
+
+    # median method
+    q = 1
+    s1 = tp.winsorize(s, "median", q)
+    median = s.median()
+    mad = (s - median).abs().median()
+    s2 = s.clip(median - q * mad, median + q * mad)
+    assert_series_equal(s1, s2)
+
+    # sigma method
+    q = 1.2
+    s1 = tp.winsorize(s, "sigma", q)
+    mean = s.mean()
+    std = s.std()
+    s2 = s.clip(mean - q * std, mean + q * std)
+    assert_series_equal(s1, s2)

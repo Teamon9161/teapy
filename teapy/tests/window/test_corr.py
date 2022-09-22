@@ -7,7 +7,7 @@ import teapy as tp
 from teapy.testing import assert_series_equal, make_arr
 
 
-@given(make_arr(60, unique=True, stable=True), st.integers(3, 5), st.booleans())
+@given(make_arr(30, unique=True, stable=True), st.integers(3, 5), st.booleans())
 def test_ts_cov(arr, window, stable):
     # 测试移动协方差
     min_periods = np.random.randint(1, window + 1)
@@ -19,7 +19,7 @@ def test_ts_cov(arr, window, stable):
     assert_series_equal(pd.Series(res1), res2)
 
 
-@given(make_arr(60, unique=True, stable=True), st.integers(3, 5), st.booleans())
+@given(make_arr(30, unique=True, stable=True), st.integers(3, 5), st.booleans())
 def test_ts_corr(arr, window, stable):
     # 测试移动相关系数
     min_periods = np.random.randint(1, window + 1)

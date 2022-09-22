@@ -38,6 +38,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "core_simd"
+version = "0.1.0"
+source = "git+https://github.com/rust-lang/portable-simd#d5cd4a8112d958bd3a252327e0d069a6363249bd"
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -476,8 +481,9 @@ checksum = "c02424087780c9b71cc96799eaeddff35af2bc513278cda5c99fc1f5d026d3c1"
 
 [[package]]
 name = "teapy"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
+ "core_simd",
  "cxx",
  "ndarray",
  "num",

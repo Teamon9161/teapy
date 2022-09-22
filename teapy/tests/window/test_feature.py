@@ -68,22 +68,22 @@ def test_ts_sum(arr, window, stable):
     assert_series_equal(res1, res2)
 
 
-@given(make_arr(30), st.integers(1, 3), st.booleans())
-def test_ts_prod(arr, window, stable):
+@given(make_arr(30), st.integers(1, 3))
+def test_ts_prod(arr, window):
     # 测试移动连乘
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
-    res1 = tp.ts_prod(arr, window, min_periods=min_periods, stable=stable)
+    res1 = tp.ts_prod(arr, window, min_periods=min_periods)
     res2 = arr.rolling(window, min_periods=min_periods).apply(lambda x: x.prod())
     assert_series_equal(res1, res2)
 
 
-@given(make_arr(30), st.integers(1, 3), st.booleans())
-def test_ts_prod_mean(arr, window, stable):
+@given(make_arr(30), st.integers(1, 3))
+def test_ts_prod_mean(arr, window):
     # 测试移动几何平均
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
-    res1 = tp.ts_prod_mean(arr, window, min_periods=min_periods, stable=stable)
+    res1 = tp.ts_prod_mean(arr, window, min_periods=min_periods)
     res2 = arr.rolling(window, min_periods=min_periods).apply(
         lambda x: x.prod() ** (1 / x.notnull().sum())
     )

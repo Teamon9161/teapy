@@ -31,7 +31,7 @@ assert_allclose = partial(assert_allclose, rtol=rtol, atol=atol)
 
 # 同个数组中的数如果差距过大，在计算时太小的数会被忽略
 STABLE_FLOAT_MIN, STABLE_FLOAT_MAX = -10, 10
-STABLE_INT_MIN, STABLE_INT_MAX = int(-1e5), int(1e5)
+STABLE_INT_MIN, STABLE_INT_MAX = int(-1e3), int(1e3)
 dtype_list = [np.float64, np.float32, np.int32, np.int64]
 dtype_element_map_stable = {
     np.float64: st.floats(
@@ -62,6 +62,7 @@ def make_arr(shape=100, nan_p=0.05, unique=False, dtype=None, stable=True):
     dtype: Dtype of the array
     stable: Limit the difference of array elements to avoid floating point errors
     """
+    assert nan_p >= 0 and nan_p <= 1, "nan_p must in 0 - 1"
     if type(shape) is int:
         shape = (shape,)
 

@@ -1,77 +1,114 @@
-#![feature(macro_metavar_expr)]
-pub mod array_func;
-pub mod datatype;
-#[macro_use]
+pub mod arr;
+pub(crate) mod macros;
 pub mod pyarray;
 
-#[macro_use]
-pub mod func_type;
-pub mod algos;
-// pub mod window_func;
-pub mod arrview;
-pub(crate) mod macros;
-pub mod window_func;
-
+use crate::macros::*;
 use crate::pyarray::PyArrayOk;
-use func_type::*;
-use numpy::PyArrayDyn;
+use numpy::{PyArray1, PyArrayDyn};
 use pyo3::{pyfunction, pymodule, types::PyModule, wrap_pyfunction, PyAny, PyResult, Python};
+
+use crate::arr::{ArrBase, WrapNdarray};
 
 #[pymodule]
 fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    // array function
-    impl_py_array_func!(m, argsort, i32);
-    impl_py_rank_func!(m, rank, f64);
+    #[pyfn(m)]
+    #[allow(clippy::needless_return)]
+    fn remove_nan(x: PyArrayOk) -> PyResult<&PyAny> {
+        match_pyarray!(x, arr, {
+            let x_r = arr.readonly();
+            assert!(
+                x_r.ndim() == 1,
+                "remove_nan can only be performed on a 1d array"
+            );
+            let x_r = x_r.as_array().wrap().to_dim1();
+            let out = PyArray1::from_owned_array(arr.py(), x_r.remove_nan_1d().0);
+            return Ok(out.into());
+        });
+    }
 
-    // array agg function
-    impl_py_array_agg_func!(m, count_nan, usize);
-    impl_py_array_agg_func!(m, count_notnan, usize);
-    impl_py_array_agg_func!(m, sum, f64);
-    impl_py_array_agg_func!(m, mean, f64);
-    impl_py_array_agg_func!(m, min, f64);
-    impl_py_array_agg_func!(m, max, f64);
-    impl_py_array_agg_func!(m, var, f64);
-    impl_py_array_agg_func!(m, std, f64);
-    impl_py_array_agg_func!(m, skew, f64);
-    impl_py_array_agg_func!(m, kurt, f64);
+    // winsorize pyfunction
+    impl_py_view_func!(m, winsorize,
+        (
+            method: Option<&str>: "None",
+            method_params: Option<f64>: "None",
+            stable: bool: false,
+            axis: usize: "0",
+            par: bool: false
+        )
+    );
+    // winsorize pyfunction
+    impl_py_inplace_func!(m, winsorize_inplace,
+        (
+            method: Option<&str>: "None",
+            method_params: Option<f64>: "None",
+            stable: bool: false,
+            axis: usize: "0",
+            par: bool: false
+        )
+    );
+    impl_py_view_func!(m, clip, (min: f64, max: f64, axis: usize: "0", par: bool: false));
+    impl_py_inplace_func!(m, clip_inplace, (min: f64, max: f64, axis: usize: "0", par: bool: false));
+    impl_py_inplace_func!(m, zscore_inplace, (stable: bool: false, axis: usize: "0", par: bool: false));
+    impl_py_view_func!(m, fillna, (method: Option<&str>: "None", value: Option<f64>: "None", axis: usize: "0", par: bool: false));
+    impl_py_inplace_func!(m, fillna_inplace, (method: Option<&str>: "None", value: Option<f64>: "None", axis: usize: "0", par: bool: false));
+    // impl feature without arg `stable`
+    impl_py_view_func!(
+        m,
+        [count_nan, count_notnan, median, min, max, argsort],
+        (axis: usize: "0", par: bool: false)
+    );
+    // impl feature with arg `stable`
+    impl_py_view_func!(
+        m,
+        [sum, mean, var, std, skew, kurt, zscore],
+        (stable: bool: false, axis: usize: "0", par: bool: false)
+    );
+    // quantile pyfunction
+    impl_py_view_func!(
+        m, quantile,
+        (q: f64, method: Option<&str>: "None", axis: usize: "0", par: bool: false)
+    );
+    // cov and corr pyfunction
+    impl_py_view_func2!(
+        m,
+        [cov, corr],
+        (stable: bool: false, axis: usize: "0", par: bool: false)
+    );
+    // rank pyfunction
+    impl_py_view_func!(
+        m, rank,
+        (pct: bool: false, axis: usize: "0", par: bool: false)
+    );
+    // window functions with arg `stable` function
+    impl_py_view_func!(
+        m,
+        [   // window-feature
+            ts_sma, ts_sum, ts_wma, ts_ewm, ts_std, ts_var, ts_skew, ts_kurt,
+            // window-norm
+            ts_stable, ts_meanstdnorm,
+            // window-reg
+            ts_reg, ts_tsf, ts_reg_slope, ts_reg_intercept,
+        ],
+        (window: usize, min_periods: usize: "1", stable: bool: false, axis: usize: "0", par: bool: false)
+    );
 
-    // array agg function2s
-    impl_py_array_agg_func2!(m, cov, f64);
-    impl_py_array_agg_func2!(m, corr, f64);
+    // window functions with nostable_arg
+    impl_py_view_func!(
+        m,
+        [
+            ts_prod, ts_prod_mean, // window-feature
+            ts_max, ts_min, ts_argmax, ts_argmin, ts_rank, ts_rank_pct, // window-compare
+            ts_minmaxnorm, // window-norm
+        ],
+        (window: usize, min_periods: usize: "1", axis: usize: "0", par: bool: false)
+    );
 
-    // feature
-    impl_py_ts_func!(m, ts_sma, f64);
-    impl_py_ts_func!(m, ts_ewm, f64);
-    impl_py_ts_func!(m, ts_wma, f64);
-    impl_py_ts_func!(m, ts_sum, f64);
-    impl_py_ts_func!(m, ts_prod, f64);
-    impl_py_ts_func!(m, ts_prod_mean, f64);
-    impl_py_ts_func!(m, ts_std, f64);
-    impl_py_ts_func!(m, ts_var, f64);
-    impl_py_ts_func!(m, ts_skew, f64);
-    impl_py_ts_func!(m, ts_kurt, f64);
+    // window-cov corr
+    impl_py_view_func2!(
+        m,
+        [ts_cov, ts_corr],
+        (window: usize, min_periods: usize: "1", stable: bool: false, axis: usize: "0", par: bool: false)
+    );
 
-    // compare
-    impl_py_ts_func!(m, ts_max, f64);
-    impl_py_ts_func!(m, ts_min, f64);
-    impl_py_ts_func!(m, ts_argmax, f64);
-    impl_py_ts_func!(m, ts_argmin, f64);
-    impl_py_ts_func!(m, ts_rank, f64);
-    impl_py_ts_func!(m, ts_rank_pct, f64);
-
-    // norm
-    impl_py_ts_func!(m, ts_stable, f64);
-    impl_py_ts_func!(m, ts_minmaxnorm, f64);
-    impl_py_ts_func!(m, ts_meanstdnorm, f64);
-
-    // reg
-    impl_py_ts_func!(m, ts_reg, f64);
-    impl_py_ts_func!(m, ts_tsf, f64);
-    impl_py_ts_func!(m, ts_reg_slope, f64);
-    impl_py_ts_func!(m, ts_reg_intercept, f64);
-
-    // corr cov
-    impl_py_ts_func2!(m, ts_cov, f64);
-    impl_py_ts_func2!(m, ts_corr, f64);
     Ok(())
 }

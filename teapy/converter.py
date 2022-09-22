@@ -48,17 +48,29 @@ class Converter:
         self.otype = self.io_dict[type(arr)]
         return res
 
-    def process_output(self, arr: np.ndarray):
+    def process_output(self, arr: np.ndarray | None):
+        if arr is None:  # inplace function
+            return
         if arr.ndim == 0:
             return arr.item()
         if self.otype == "np.ndarray":
             return arr
         elif self.otype == "pd.Series":
             assert arr.ndim == 1
-            return pd.Series(arr, index=self.index, name=self.name, copy=False)
+            if arr.size == self.index.size:
+                return pd.Series(arr, index=self.index, name=self.name)
+            else:
+                return pd.Series(arr, name=self.name)
         elif self.otype == "pd.DataFrame":
             assert arr.ndim == 2
-            return pd.DataFrame(arr, index=self.index, columns=self.columns, copy=False)
+            if arr.shape[0] == self.index.size and arr.shape1 == self.columns.len:
+                return pd.DataFrame(arr, index=self.index, columns=self.columns)
+            elif arr.shape[0] == self.index.size and arr.shape1 != self.columns.len:
+                return pd.DataFrame(arr, index=self.index)
+            elif arr.shape[0] != self.index.size and arr.shape1 == self.columns.len:
+                return pd.DataFrame(arr, columns=self.columns)
+            else:
+                return pd.DataFrame(arr)
         elif self.otype == "list":
             return arr.tolist()
         elif self.otype == "tuple":

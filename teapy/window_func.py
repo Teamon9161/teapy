@@ -38,142 +38,138 @@ _tp.ts_ema = _tp.ts_ewm
 
 
 @wrap("ts_func")
-def ts_sum(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_sum(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_sma(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_sma(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_ewm(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_ewm(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_wma(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_wma(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_prod(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_prod(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_prod_mean(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_prod_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_std(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_std(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_var(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_var(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_skew(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_skew(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_kurt(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_kurt(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_max(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_max(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_min(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_min(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_argmax(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_argmax(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_argmin(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_argmin(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_stable(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_stable(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_minmaxnorm(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_minmaxnorm(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_meanstdnorm(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_meanstdnorm(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_reg(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_reg(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_tsf(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_tsf(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_reg_slope(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_reg_slope(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_reg_intercept(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_reg_intercept(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_decay_linear(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_decay_linear(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_mean(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func")
-def ts_ema(arr, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_ema(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func2")
-def ts_cov(arr1, arr2, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_cov(arr1, arr2, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func2")
-def ts_corr(arr1, arr2, window, axis=None, min_periods=1, stable=False, par=False):
+def ts_corr(arr1, arr2, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
 @wrap("ts_func", use=True)
-def ts_rank(arr, window, axis=None, min_periods=1, pct=False, stable=False, par=False):
+def ts_rank(arr, window, min_periods=1, pct=False, axis=None, par=False):
     if not pct:
-        return _tp.ts_rank(
-            arr, window, axis=axis, min_periods=min_periods, stable=stable, par=par
-        )
+        return _tp.ts_rank(arr, window, min_periods=min_periods, axis=axis, par=par)
     else:
-        return _tp.ts_rank_pct(
-            arr, window, axis=axis, min_periods=min_periods, stable=stable, par=par
-        )
+        return _tp.ts_rank_pct(arr, window, min_periods=min_periods, axis=axis, par=par)

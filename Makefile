@@ -1,32 +1,34 @@
-.PHONY: format clean pip pytest-cov coverage
-
-venv:
+venv: ## make a python venv
 	@python -m venv venv
 	@venv/bin/pip install -U pip
 	@venv/bin/pip install -r build.requirements.txt
 	# @source venv/bin/activate && maturin develop
 
-clean:
+.PHONY: clean
+clean: ## clean useless folders
 	@rm -rf venv/
 	@rm -rf target/
 	@rm -rf .hypothesis/
 	@rm -rf .pytest_cache/
 	@cargo clean
 
-pytest-cov: venv
+.PHONY: pytest-cov
+pytest-cov: venv  ## test with coverage report
 	@pytest teapy/tests \
 	--cov=teapy \
 	--cov-report xml \
 	--import-mode=importlib
 
-format:
+.PHONY: format
+format:  ## format and check
 	isort . --profile black
 	black .
 	cargo fmt --all
 	flake8 --ignore E501,F401,F403
 	cargo clippy
 
-coverage: 
+.PHONY: coverage
+coverage: # rust and python coverage
 	@bash -c "\
 		rustup override set nightly-2022-09-08; \
 		$(MAKE) venv; \
@@ -39,3 +41,7 @@ coverage:
 		$(MAKE) pytest-cov; \
 		cargo llvm-cov --no-run --lcov --output-path coverage.lcov; \
 		"
+
+.PHONY: release
+release:
+	maturin develop --release -- -C target-cpu=native
