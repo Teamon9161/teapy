@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=0.14,<0.15"]
+build-backend = "maturin"
+
+[project]
+name = "teapy"
+version = "0.4.0"
+authors = [
+  { name="Teamon", email="teamon9161@163.com" },
+]
+description = "A blazingly fast datadict library"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]

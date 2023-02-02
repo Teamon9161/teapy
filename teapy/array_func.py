@@ -26,6 +26,7 @@ __all__ = [
     "zscore",
     "winsorize",
     "remove_nan",
+    "split_group",
     "clip",
 ]
 
@@ -109,7 +110,7 @@ def count_notnan(arr, axis=0, par=False):
 
 
 @wrap("array_func")
-def argsort(arr, axis=0, par=False):
+def argsort(arr, axis=0, par=False, rev=False):
     pass
 
 
@@ -119,12 +120,12 @@ def cov(arr1, arr2, stable=False, axis=0, par=False):
 
 
 @wrap("array_agg_func2")
-def corr(arr1, arr2, stable=False, axis=0, par=False):
+def corr(arr1, arr2, method=None, stable=False, axis=0, par=False):
     pass
 
 
 @wrap("array_func")
-def rank(arr, pct=False, axis=0, par=False):
+def rank(arr, pct=False, axis=0, par=False, rev=False):
     pass
 
 
@@ -134,7 +135,12 @@ def clip(arr, min, max, axis=0, par=False):
 
 
 @wrap("base")
-def remove_nan(arr, axis=0, par=False):
+def remove_nan(arr):
+    pass
+
+
+@wrap("array_func")
+def split_group(arr, axis=0, par=False):
     pass
 
 
@@ -169,14 +175,19 @@ def winsorize(
     arr : np.ndarray, pd.Series, pd.DataFrame, tuple, list
         Elements to sum.
     method : quantile | median | sigma, default is quantile
-        quantile: if method_params is 1%, then All elements greater than the
-        99% quantile will be set to the 99% quantile, and all elements less
-        than the 1% quantile will be set to the 1% quantile.
+        quantile: if method_params is 1%, then all elements greater than the
+            99% quantile will be set to the 99% quantile, and all elements less
+            than the 1% quantile will be set to the 1% quantile.
+
         median: if method_params is 3, calculate median value at first, and then
-        calculate MAD. MAD is the median of the `|v - median|` array where v is the
-        element of the array. All elements greater than `median + 3 * MAD` will be
-        set to `median + 3 * MAD`, and all elements less than `median - 3 * MAD` will
-        be set to `median - 3 * MAD` by default.
+            calculate MAD. MAD is the median of the `|v - median|` array where v is the
+            element of the array. All elements greater than `median + 3 * MAD` will be
+            set to `median + 3 * MAD`, and all elements less than `median - 3 * MAD` will
+            be set to `median - 3 * MAD` by default.
+
+        sigma: if method_params is 3, calulate the mean and standard deviation of the
+            array, all elements greater than `mean + 3 * std` will be set `mean + 3 * std`,
+            and all elements less than `mean - 3 * std` will be set to `mean - 3 * std`.
     method_params : float64
         if method is quantile: the default is 1%.
         if method is median: the default is 3.
@@ -184,7 +195,7 @@ def winsorize(
     stable :  bool
         whether to use Kahan summation to reduce the numerical error
     axis : int or None
-        axis along which a sum is performed.
+        axis along which a winsorize is performed.
     par : bool
         whether to parallelize.
     inplace : bool

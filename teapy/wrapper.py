@@ -16,6 +16,7 @@ def inplace_wrapper(func):
 
 
 def base_wrapper(func):
+    @wraps(func)
     def _wrapper(arr, *args, **kwargs):
         conv = Converter()
         out = func(conv(arr), *args, **kwargs)
@@ -27,6 +28,7 @@ def base_wrapper(func):
 
 
 def array_func_wrapper(func):
+    @wraps(func)
     def _wrapper(arr, *args, axis=0, **kwargs):
         assert axis >= 0, "axis must equal to 0 or greater"
         conv = Converter()
@@ -39,6 +41,7 @@ def array_func_wrapper(func):
 
 
 def array_agg_func_wrapper(func):
+    @wraps(func)
     def _wrapper(arr, *args, axis=0, **kwargs):
         assert axis >= 0, "axis must equal to 0 or greater"
         conv = Converter()
@@ -54,6 +57,7 @@ def array_agg_func_wrapper(func):
 
 
 def array_agg_func2_wrapper(func):
+    @wraps(func)
     def _wrapper(arr1, arr2, *args, axis=0, **kwargs):
         assert axis >= 0, "axis must equal to 0 or greater"
         conv1, conv2 = Converter(), Converter()
@@ -77,6 +81,7 @@ def array_agg_func2_wrapper(func):
 
 
 def ts_func_wrapper(func):
+    @wraps(func)
     def _wrapper(arr, window, *args, min_periods=1, axis=0, **kwargs):
         assert axis >= 0, "axis must equal to 0 or greater"
         assert window > 0, f"window must be an integer greater than 0, not {window}"
@@ -100,15 +105,16 @@ def ts_func_wrapper(func):
 
 
 def ts_func2_wrapper(func):
+    @wraps(func)
     def _wrapper(arr1, arr2, window, *args, min_periods=1, axis=0, **kwargs):
         assert axis >= 0, "axis must equal to 0 or greater"
         assert window > 0, f"window must be an integer greater than 0, not {window}"
         assert (
             min_periods >= 1
         ), f"min_periods must be an integer equal to 1 or greater, not{min_periods}"
-        assert type(arr1) == type(
-            arr2
-        ), f"input array of {func.__name__} must have the same type"
+        # assert type(arr1) == type(
+        #     arr2
+        # ), f"input array of {func.__name__} must have the same type"
         conv1, conv2 = Converter(), Converter()
         out = func(
             conv1(arr1),
@@ -160,8 +166,12 @@ def wrap(func_type: str, use: bool = False, inplace=False):
     wrapper = wrapper_dict[func_type]
 
     def _wrapfunc(func):
-        func = getattr(_tp, func.__name__) if not use else func
-        func = inplace_wrapper(func) if inplace else func
-        return wrapper(func)
+        try:
+            func = getattr(_tp, func.__name__) if not use else func
+            func = inplace_wrapper(func) if inplace else func
+            wrapper_func = wrapper(func)
+            return wraps(wrapper_func)(wrapper_func)
+        except AttributeError:
+            return wrapper(lambda x: x)  # if src doesn't have feature: eager_api
 
     return _wrapfunc

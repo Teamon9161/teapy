@@ -61,11 +61,12 @@ def test_array_func_input():
     from pandas.testing import assert_frame_equal, assert_series_equal
 
     value, expect = [3, 2, 1], [2, 1, 0]
-    # list input
+    # List input
     assert tp.argsort(value).tolist() == expect
-    # series input
+    # Series input
     sr = pd.Series(value, name="aa")
     assert_series_equal(tp.argsort(sr), pd.Series(expect, name="aa"), check_dtype=False)
+    # DataFrame input
     df = pd.DataFrame({"a": value})
     assert_frame_equal(
         tp.argsort(df, axis=0), pd.DataFrame({"a": expect}), check_dtype=False

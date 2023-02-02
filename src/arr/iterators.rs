@@ -1,7 +1,7 @@
 use super::datatype::Number;
 use super::{ArrBase, Dim1};
 use ndarray::{Axis, Data, DataMut};
-use std::iter::{ExactSizeIterator, IntoIterator, Iterator};
+use std::iter::{ExactSizeIterator, FusedIterator, IntoIterator, Iterator};
 use std::marker::PhantomData;
 use std::ops::Add;
 
@@ -112,6 +112,8 @@ impl<T: Copy, D> DoubleEndedIterator for IntoIter<T, D> {
         }
     }
 }
+
+impl<T: Copy, D> FusedIterator for IntoIter<T, D> {}
 
 pub struct Iter<'a, T, D> {
     ptr: *const T,
@@ -242,6 +244,8 @@ impl<'a, T, D> DoubleEndedIterator for Iter<'a, T, D> {
     }
 }
 
+impl<'a, T, D> FusedIterator for Iter<'a, T, D> {}
+
 pub struct IterMut<'a, T, D> {
     ptr: *mut T,
     end: *mut T,
@@ -333,4 +337,98 @@ impl<'a, T, D> DoubleEndedIterator for IterMut<'a, T, D> {
             Some(unsafe { &mut *self.end })
         }
     }
+}
+
+impl<'a, T, D> FusedIterator for IterMut<'a, T, D> {}
+
+pub struct GroupIter<'a, T1: 'a, T2: 'a, P> {
+    key: &'a [T1], // must be sorted
+    value: &'a [T2],
+    predicate: P,
+}
+
+impl<'a, T1: 'a, T2: 'a, P> GroupIter<'a, T1, T2, P> {
+    pub fn new(key: &'a [T1], value: &'a [T2], predicate: P) -> Self {
+        assert_eq!(key.len(), value.len());
+        GroupIter {
+            key,
+            value,
+            predicate,
+        }
+    }
+}
+
+impl<'a, T1: 'a, T2: 'a, P> Iterator for GroupIter<'a, T1, T2, P>
+where
+    P: FnMut(&T1, &T1) -> bool,
+{
+    type Item = (&'a [T1], &'a [T2]);
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.key.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.key.windows(2);
+            while let Some([l, r]) = iter.next() {
+                if (self.predicate)(l, r) {
+                    len += 1
+                } else {
+                    break;
+                }
+            }
+            let (key_head, key_tail) = self.key.split_at(len);
+            let (value_head, value_tail) = self.value.split_at(len);
+            self.key = key_tail;
+            self.value = value_tail;
+            Some((key_head, value_head))
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.key.is_empty() {
+            (0, Some(0))
+        } else {
+            (1, Some(self.key.len()))
+        }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
+    }
+}
+
+impl<'a, T1: 'a, T2: 'a, P> DoubleEndedIterator for GroupIter<'a, T1, T2, P>
+where
+    P: FnMut(&T1, &T1) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.key.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.key.windows(2);
+            while let Some([l, r]) = iter.next_back() {
+                if (self.predicate)(l, r) {
+                    len += 1
+                } else {
+                    break;
+                }
+            }
+            let split_idx = self.key.len() - len;
+            let (key_head, key_tail) = self.key.split_at(split_idx);
+            let (value_head, value_tail) = self.value.split_at(split_idx);
+            self.key = key_head;
+            self.value = value_head;
+            Some((key_tail, value_tail))
+        }
+    }
+}
+
+impl<'a, T1: 'a, T2: 'a, P> FusedIterator for GroupIter<'a, T1, T2, P> where
+    P: FnMut(&T1, &T1) -> bool
+{
 }

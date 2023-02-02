@@ -4,25 +4,74 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 import teapy as tp
+from teapy import Expr
 from teapy.testing import assert_allclose, assert_series_equal, isclose, make_arr
 
 
-@given(make_arr(30, unique=True, nan_p=0), st.integers(1, 5))
-def test_argsort(arr, window):
+@given(make_arr(30, unique=True, nan_p=0))
+def test_argsort(arr):
     res1 = tp.argsort(arr)
     res2 = arr.argsort()
     assert_allclose(res1, res2)
+    res1 = tp.argsort(arr, rev=True)
+    res2 = arr.argsort()[::-1]
+    assert_allclose(res1, res2)
 
 
-@given(make_arr(30), st.integers(1, 5))
-def test_rank(arr, window):
+@given(make_arr(30))
+def test_rank(arr):
     res1 = tp.rank(arr)
     res2 = pd.Series(arr).rank()
     assert_series_equal(pd.Series(res1), res2)
 
-    res3 = tp.rank(arr, pct=True)
-    res4 = pd.Series(arr).rank(pct=True)
+    res3 = tp.rank(arr, rev=True)
+    res4 = pd.Series(arr).rank(ascending=False)
     assert_series_equal(pd.Series(res3), res4)
+
+    res5 = tp.rank(arr, pct=True)
+    res6 = pd.Series(arr).rank(pct=True)
+    assert_series_equal(pd.Series(res5), res6)
+
+
+@given(make_arr((10, 10)), st.integers(0, 1))
+def test_max(arr, axis):
+    res1 = tp.max(arr, axis=axis)
+    res2 = np.nanmax(arr, axis=axis)
+    assert_allclose(res1, res2)
+
+
+def test_arg_partition():
+    arr = np.array(
+        [
+            [6, 0, -2, 8, -7],
+            [-2, 3, -10, 2, 9],
+            [-11, -2, 5, 9, 3],
+            [-6, 1, 3, -1, 6],
+            [-10, -5, -1, -8, -3],
+        ]
+    )
+    res1 = Expr(arr).arg_partition(1, axis=0).eview()
+    exp1 = np.array([[2, 4, 1, 4, 0], [4, 2, 0, 3, 4]])
+    assert_allclose(res1, exp1)
+    res2 = Expr(arr).arg_partition(1, axis=1, rev=True).eview()
+    exp2 = np.array([[3, 0], [4, 1], [3, 2], [4, 2], [2, 4]])
+    assert_allclose(res2, exp2)
+    arr = Expr([1, np.nan, 3, np.nan, np.nan])
+    assert_allclose(arr.arg_partition(2, rev=True).eview(), np.array([2, 0, -1]))
+
+
+@given(make_arr((10, 10)), st.integers(0, 1))
+def test_min(arr, axis):
+    res1 = tp.min(arr, axis=axis)
+    res2 = np.nanmin(arr, axis=axis)
+    assert_allclose(res1, res2)
+
+
+@given(make_arr((10, 10)), st.integers(0, 1))
+def test_sum(arr, axis):
+    res1 = tp.sum(arr, axis=axis)
+    res2 = np.nansum(arr, axis=axis)
+    assert_allclose(res1, res2)
 
 
 @given(make_arr((10, 10)), st.integers(0, 1))
@@ -69,6 +118,16 @@ def test_std(arr, axis):
     assert_series_equal(res1, res3)
 
 
+@given(make_arr((10, 10)), st.integers(0, 1))
+def test_var(arr, axis):
+    arr = pd.DataFrame(arr)
+    res1 = arr.var(axis=axis)
+    res2 = tp.var(arr, axis=axis)
+    res3 = tp.var(arr, axis=axis, stable=True)
+    assert_series_equal(res1, res2)
+    assert_series_equal(res1, res3)
+
+
 @given(make_arr((10, 10), unique=True), st.integers(0, 1))
 def test_skew(arr, axis):
     arr = pd.DataFrame(arr)
@@ -100,14 +159,16 @@ def test_cov(arr):
 
 @given(make_arr((10, 2)))
 def test_corr(arr):
-    corr_pd = pd.DataFrame(arr).corr().iloc[0, 1]
-    arr1, arr2 = np.array_split(arr, 2, axis=1)
-    corr1 = tp.corr(arr1, arr2, axis=0)[0]
-    corr2 = tp.corr(arr1, arr2, axis=0, stable=True)[0]
-    if np.isnan(corr_pd):
-        assert np.isnan(corr1) & np.isnan(corr2)
-    else:
-        assert isclose(corr_pd, corr1) & isclose(corr_pd, corr2)
+    for method in ["pearson", "spearman"]:
+        corr_pd = pd.DataFrame(arr).corr(method).iloc[0, 1]
+        arr1, arr2 = np.array_split(arr, 2, axis=1)
+        tp.corr(tp.rank(arr1), tp.rank(arr2))
+        corr1 = tp.corr(arr1, arr2, axis=0, method=method)[0]
+        corr2 = tp.corr(arr1, arr2, axis=0, method=method, stable=True)[0]
+        if np.isnan(corr_pd):
+            assert np.isnan(corr1) & np.isnan(corr2)
+        else:
+            assert isclose(corr_pd, corr1) & isclose(corr_pd, corr2)
 
 
 def test_array_func_2d():
@@ -185,3 +246,16 @@ def test_winsorize():
     std = s.std()
     s2 = s.clip(mean - q * std, mean + q * std)
     assert_series_equal(s1, s2)
+
+
+@given(make_arr(20), st.integers(1, 10))
+def test_split_group(arr, group):
+    def split_group_py(x: pd.Series, group=10, method="average"):
+        size = x.size - np.count_nonzero(np.isnan(x))
+        out = np.ceil(x.rank(method=method) / (size / group))
+        return out.fillna(0)
+
+    arr = pd.Series(arr)
+    out1 = tp.split_group(arr, group)
+    out2 = split_group_py(arr, group)
+    assert_series_equal(out1, out2)

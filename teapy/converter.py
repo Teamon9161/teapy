@@ -33,19 +33,24 @@ class Converter:
             raise ValueError("step must be in or out")  # pragma: no cover
 
     def process_input(self, arr) -> np.ndarray:
+        _type = None
         if isinstance(arr, (list, tuple)):
             res = np.asanyarray(arr)
+            _type = type(arr)
         elif isinstance(arr, pd.Series):
             self.index, self.name = arr.index, arr.name
             res = arr.values
+            _type = pd.Series
         elif isinstance(arr, pd.DataFrame):
             self.index, self.columns = arr.index, arr.columns
             res = arr.values
+            _type = pd.DataFrame
         elif isinstance(arr, np.ndarray):
             res = arr
+            _type = np.ndarray
         else:
             raise TypeError(f"Unsupported arr type, {type(arr)}")  # pragma: no cover
-        self.otype = self.io_dict[type(arr)]
+        self.otype = self.io_dict[_type]
         return res
 
     def process_output(self, arr: np.ndarray | None):

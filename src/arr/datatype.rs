@@ -1,19 +1,40 @@
-use super::algos::kh_sum;
-// use core_simd::SimdElement;
+use super::utils::kh_sum;
+use super::{DateTime, TimeDelta};
 use num::{cast::AsPrimitive, traits::MulAdd, FromPrimitive, Num, NumCast, ToPrimitive};
 use numpy::Element;
 use std::cmp::{Ordering, PartialOrd};
+use std::fmt::Display;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
+#[derive(PartialEq, Eq)]
 pub enum DataType {
-    F32T,
-    F64T,
-    I32T,
-    I64T,
-    UintT,
+    Bool,
+    F32,
+    F64,
+    I32,
+    I64,
+    Usize,
+    Str,
+    String,
+    Object,
+    DateTime,
+    TimeDelta,
+    OpUsize,
+    // F64Test,
 }
 
+macro_rules! match_datatype_arm {
+    ($expr: expr, $v: ident, $other_enum: ident, $ty: ty, ($($arm: ident $(($arg: ident))?),*), $body: tt) => {
+        match <$ty>::dtype() {
+            $(DataType::$arm $(($arg))? => {if let $other_enum::$arm($v) = $expr $body else {unreachable!()}},)*
+            _ => unreachable!()
+        }
+    };
+}
+pub(crate) use match_datatype_arm;
+
 pub trait GetDataType: Send + Sync {
+    type Physical;
     fn dtype() -> DataType
     where
         Self: Sized;
@@ -21,9 +42,8 @@ pub trait GetDataType: Send + Sync {
 
 macro_rules! impl_datatype {
     ($tyname:ident, $physical:ty) => {
-        pub struct $tyname {}
-
         impl GetDataType for $physical {
+            type Physical = $physical;
             fn dtype() -> DataType {
                 DataType::$tyname
             }
@@ -31,16 +51,54 @@ macro_rules! impl_datatype {
     };
 }
 
-impl_datatype!(F32T, f32);
-impl_datatype!(F64T, f64);
-impl_datatype!(I32T, i32);
-impl_datatype!(I64T, i64);
-impl_datatype!(UintT, usize);
+impl_datatype!(Bool, bool);
+impl_datatype!(F32, f32);
+impl_datatype!(F64, f64);
+impl_datatype!(I32, i32);
+impl_datatype!(I64, i64);
+impl_datatype!(Usize, usize);
+impl_datatype!(String, String);
+impl_datatype!(DateTime, DateTime);
+impl_datatype!(TimeDelta, TimeDelta);
+
+impl_datatype!(OpUsize, Option<usize>);
+
+// impl_datatype!(F64Test, Option<f64>);
+pub trait GetNone {
+    fn none() -> Self;
+}
+
+impl GetNone for f64 {
+    fn none() -> Self {
+        f64::NAN
+    }
+}
+
+impl GetNone for f32 {
+    fn none() -> Self {
+        f32::NAN
+    }
+}
+
+impl GetNone for String {
+    fn none() -> Self {
+        "None".to_owned()
+    }
+}
+
+impl<'a> GetDataType for &'a str {
+    type Physical = &'a str;
+    fn dtype() -> DataType {
+        DataType::Str
+    }
+}
 
 pub trait Number:
     Copy
     + Clone
     + Sized
+    + Default
+    + Display
     + FromPrimitive
     + Num
     + NumCast
@@ -59,7 +117,7 @@ pub trait Number:
     + AsPrimitive<i32>
     + AsPrimitive<i64>
 {
-    type Dtype;
+    // type Dtype;
     /// return the min value of the data type
     fn min_() -> Self;
 
@@ -148,6 +206,9 @@ pub trait Number:
         self == self
     }
 
+    /// return nan value
+    fn nan() -> Self;
+
     /// if other is nan, then add other to self and n += 1
     /// else just return self
     #[inline(always)]
@@ -186,7 +247,7 @@ pub trait Number:
     }
 
     /// let NaN value be smallest, only for sorting(from largest to smallest)
-    #[inline(always)]
+    #[inline]
     fn nan_sort_cmp_rev(&self, other: &Self) -> Ordering {
         if other.isnan() | (self > other) {
             Ordering::Less
@@ -194,12 +255,50 @@ pub trait Number:
             Ordering::Greater
         }
     }
+
+    /// let NaN value be largest, only for sorting(from smallest to largest)
+    #[inline]
+    fn nan_sort_cmp_stable(&self, other: &Self) -> Ordering {
+        if other.isnan() {
+            if self.isnan() {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            }
+        } else {
+            if self.isnan() | (self > other) {
+                Ordering::Greater
+            } else if self == other {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            }
+        }
+    }
+
+    fn nan_sort_cmp_rev_stable(&self, other: &Self) -> Ordering {
+        if other.isnan() {
+            if self.isnan() {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            }
+        } else {
+            if self.isnan() | (self < other) {
+                Ordering::Greater
+            } else if self == other {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            }
+        }
+    }
 }
 
 macro_rules! impl_number {
     // base impl for number
     (@ base_impl $dtype:ty, $datatype:ident) => {
-        type Dtype = $datatype;
+        // type Dtype = $datatype;
 
         #[inline(always)]
         fn min_() -> $dtype {
@@ -218,6 +317,11 @@ macro_rules! impl_number {
             impl_number!(@ base_impl $dtype, $datatype);
 
             #[inline(always)]
+            fn nan() -> Self {
+                <$dtype>::NAN
+            }
+
+            #[inline(always)]
             fn kh_sum(&mut self, v: Self, c: &mut Self) {
                 *self = kh_sum(*self, v, c);
             }
@@ -227,6 +331,12 @@ macro_rules! impl_number {
     (other $($dtype:ty, $datatype:ident); *) => {
         $(impl Number for $dtype {
             impl_number!(@ base_impl $dtype, $datatype);
+
+            #[inline]
+            fn nan() -> Self {
+                panic!("This type of number doesn't habe NaN value")
+            }
+
             // these types doen't have NaN
             #[inline(always)]
             fn isnan(self) -> bool {
@@ -247,19 +357,22 @@ macro_rules! impl_number {
 
 impl_number!(
     float
-    f32, F32T;
-    f64, F64T
+    f32, F32;
+    f64, F64
 );
 
 impl_number!(
     other
-    i32, I32T;
-    i64, I64T;
-    usize, UintT
+    i32, I32;
+    i64, I64;
+    usize, Usize
 );
 
-// impl<T:Number> AsPrimitive<T> for f32 {}
-// impl<T:Number> AsPrimitive<T> for f64 {}
-// impl<T:Number> AsPrimitive<T> for i32 {}
-// impl<T:Number> AsPrimitive<T> for i64 {}
-// impl<T:Number> AsPrimitive<T> for usize {}
+pub trait BoolType {
+    fn bool_(self) -> bool;
+}
+impl BoolType for bool {
+    fn bool_(self) -> bool {
+        self
+    }
+}

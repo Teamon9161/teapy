@@ -1,0 +1,102 @@
+on:
+  push:
+      branches:
+        - master
+      tags:
+        - release
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  manylinux-x64_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Publish wheel
+        uses: messense/maturin-action@v1
+        env:
+          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
+        with:
+          rust-toolchain: nightly-2023-01-19
+          maturin-version: '0.14.10'
+          command: publish
+          args: --skip-existing -o wheels -u Teamon
+
+  # Needed for Docker on Apple M1
+  manylinux-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Publish wheel
+        uses: messense/maturin-action@v1
+        env:
+          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          JEMALLOC_SYS_WITH_LG_PAGE: 16
+        with:
+          rust-toolchain: nightly-2023-01-19
+          target: aarch64-unknown-linux-gnu
+          maturin-version: '0.14.10'
+          command: publish
+          args: --skip-existing --no-sdist -o wheels -i python -u Teamon
+
+
+  win-macos:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Publish wheel
+        uses: messense/maturin-action@v1
+        env:
+          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2
+        with:
+          rust-toolchain: nightly-2023-01-19
+          maturin-version: '0.14.10'
+          command: publish
+          args: --no-sdist --skip-existing -o wheels -i python -u Teamoon
+
+  macos-aarch64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2023-01-19
+
+      - name: Set up Rust targets
+        run: rustup target add aarch64-apple-darwin
+
+      - name: Publish wheel
+        uses: messense/maturin-action@v1
+        env:
+          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+        with:
+          maturin-version: '0.14.10'
+          command: publish
+          args: --target aarch64-apple-darwin --no-sdist -o wheels -i python -u Teamon

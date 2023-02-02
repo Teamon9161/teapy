@@ -32,9 +32,12 @@ __all__ = [
 ]
 
 # alias
-_tp.ts_decay_linear = _tp.ts_wma
-_tp.ts_mean = _tp.ts_sma
-_tp.ts_ema = _tp.ts_ewm
+try:
+    _tp.ts_decay_linear = _tp.ts_wma
+    _tp.ts_mean = _tp.ts_sma
+    _tp.ts_ema = _tp.ts_ewm
+except AttributeError:
+    pass
 
 
 @wrap("ts_func")

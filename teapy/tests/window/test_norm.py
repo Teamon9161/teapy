@@ -33,7 +33,7 @@ def test_ts_meanstdnorm(arr, window, stable):
 
 @given(make_arr(50, unique=True), st.integers(1, 5))
 def test_ts_minmaxnorm(arr, window):
-    # 测试移动stable标准化
+    # 测试移动minmax标准化
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
     res1 = tp.ts_minmaxnorm(arr, window, min_periods=min_periods)

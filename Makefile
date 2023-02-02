@@ -24,7 +24,7 @@ format:  ## format and check
 	isort . --profile black
 	black .
 	cargo fmt --all
-	flake8 --ignore E501,F401,F403
+	flake8 --ignore E501,F401,F403,W503
 	cargo clippy
 
 .PHONY: coverage
@@ -45,3 +45,7 @@ coverage: # rust and python coverage
 .PHONY: release
 release:
 	maturin develop --release -- -C target-cpu=native
+
+.PHONY: debug
+debug:
+	maturin develop

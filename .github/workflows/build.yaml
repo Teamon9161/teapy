@@ -1,11 +1,11 @@
+name: Build
+
 on:
   push:
       branches:
         - master
   pull_request:
 
-
-name: Build
 
 jobs:
   test-rust:
@@ -16,7 +16,7 @@ jobs:
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly-2022-09-08
+            toolchain: nightly-2023-01-19
             override: true
             components: rustfmt, clippy
       - name: Cache Cargo
