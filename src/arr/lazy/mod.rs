@@ -347,13 +347,7 @@ impl<'a, T: ExprElement> ExprOut<'a, T> {
 
     pub fn is_owned(&self) -> bool {
         match self {
-            ExprOut::Arr(arr) => {
-                if let ArbArray::Owned(_) = arr {
-                    true
-                } else {
-                    false
-                }
-            }
+            ExprOut::Arr(arr) => matches!(arr, ArbArray::Owned(_)),
             ExprOut::OlsRes(_) => true,
             ExprOut::ArrVec(arr_vec) => {
                 let mut out = true;
@@ -906,7 +900,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             ExprBase::ArcArr(arc_arr) => unsafe { Ok(arc_arr.view::<T>().into()) },
             ExprBase::ArrVec(arr_vec) => unsafe {
                 Ok(arr_vec
-                    .into_iter()
+                    .iter()
                     .map(|arr| arr.view::<T>())
                     .collect_trusted()
                     .into())
@@ -930,10 +924,10 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
-    /// Execute the expression and get a view of the output
-    pub fn view(&self) -> ExprOutView<'_, T> {
-        self.try_view().expect("Expression has not been executed.")
-    }
+    // /// Execute the expression and get a view of the output
+    // pub fn view(&self) -> ExprOutView<'_, T> {
+    //     self.try_view().expect("Expression has not been executed.")
+    // }
 
     /// Execute the expression and get a view of array output
     ///
@@ -1139,6 +1133,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     // }
 
     /// Try casting to datetime type
+    #[allow(clippy::unnecessary_unwrap)]
     pub fn cast_datetime(self, unit: Option<TimeUnit>) -> ExprInner<'a, DateTime>
     where
         T: AsPrimitive<i64>,

@@ -67,13 +67,13 @@ impl<'a> Expr<'a, DateTime> {
             if !par {
                 Zip::from(arr.0)
                     .and(other.eval().view_arr().0)
-                    .map_collect(|v1, v2| v1.clone() - v2.clone())
+                    .map_collect(|v1, v2| *v1 - *v2)
                     .wrap()
                     .into()
             } else {
                 Zip::from(arr.0)
                     .and(other.eval().view_arr().0)
-                    .par_map_collect(|v1, v2| v1.clone() - v2.clone())
+                    .par_map_collect(|v1, v2| *v1 - *v2)
                     .wrap()
                     .into()
             }

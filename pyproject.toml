@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "teapy"
-version = "0.4.0"
+version = "0.1.0"
 authors = [
   { name="Teamon", email="teamon9161@163.com" },
 ]

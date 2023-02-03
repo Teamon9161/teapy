@@ -2,7 +2,8 @@
 /// function of the same name on `ArrBase`.
 macro_rules! impl_py_view_func {
     ($m: ident, $func: ident, ($($p:ident: $p_ty:ty $(:$p_default: expr)?),*)) => {
-        #[pyfunction(x $($(,$p = $p_default)?)*)]
+        #[pyfunction]
+        #[pyo3(signature=(x $(,$p$(=$p_default)?)*))]
         fn $func<'py>(x: PyArrayOk<'py> $(, $p: $p_ty)*) -> PyResult<&'py PyAny> {
             match_pyarray!(numeric x, arr, {
                 let out = ArrBase::new(arr.readonly().as_array()).$func($($p),*).0;
@@ -22,7 +23,9 @@ pub(crate) use impl_py_view_func;
 /// function of the same name on `ArrBase`.
 macro_rules! impl_py_view_func2 {
     ($m: ident, $func: ident, ($($p:ident: $p_ty:ty $(:$p_default: expr)?),*)) => {
-        #[pyfunction(x, y $($(,$p = $p_default)?)*)]
+        // #[pyfunction(x, y $($(,$p = $p_default)?)*)]
+        #[pyfunction]
+        #[pyo3(signature=(x, y $(,$p$(=$p_default)?)*))]
         fn $func<'py>(x: PyArrayOk<'py>, y: PyArrayOk $(, $p: $p_ty)*) -> PyResult<&'py PyAny> {
             match_pyarray2!(x, y, arr1, arr2, {
                 let out = arr1.readonly().as_array().wrap().$func(&arr2.readonly().as_array().wrap(), $($p),*).0;
@@ -42,7 +45,9 @@ pub(crate) use impl_py_view_func2;
 /// inplace function of the same name on `ArrBase`.
 macro_rules! impl_py_inplace_func {
     ($m: ident, $func: ident, ($($p:ident: $p_ty:ty $(:$p_default: expr)?),*)) => {
-        #[pyfunction(x $($(,$p = $p_default)?)*)]
+        // #[pyfunction(x $($(,$p = $p_default)?)*)]
+        #[pyfunction]
+        #[pyo3(signature=(x $(,$p$(=$p_default)?)*))]
         fn $func<'py>(x: PyArrayOk<'py> $(, $p: $p_ty)*) -> PyResult<()> {
             match_pyarray!(numeric x, arr, {
                 arr.readwrite().as_array_mut().wrap().$func($($p),*);

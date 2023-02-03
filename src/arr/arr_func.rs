@@ -89,7 +89,7 @@ where
                 let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
                 va.nan_sort_cmp(&vb)
             };
-            idx_sorted.select_nth_unstable_by(kth, sort_func.clone());
+            idx_sorted.select_nth_unstable_by(kth, sort_func);
             idx_sorted.truncate(kth + 1);
             if sort {
                 idx_sorted.sort_unstable_by(sort_func)
@@ -100,7 +100,7 @@ where
                 let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
                 va.nan_sort_cmp_rev(&vb)
             };
-            idx_sorted.select_nth_unstable_by(kth, sort_func.clone());
+            idx_sorted.select_nth_unstable_by(kth, sort_func);
             idx_sorted.truncate(kth + 1);
             if sort {
                 idx_sorted.sort_unstable_by(sort_func)
@@ -512,7 +512,7 @@ impl_map_nd!(
     }
     {
         use FillMethod::*;
-        let method = if let Some(_) = value {
+        let method = if value.is_some() {
             Vfill
         } else {
             method
@@ -814,7 +814,7 @@ impl_map_inplace_nd!(
     }
     {
         use FillMethod::*;
-        let method = if let Some(_) = value {
+        let method = if value.is_some() {
             Vfill
         } else {
             method

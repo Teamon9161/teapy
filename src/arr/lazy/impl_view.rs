@@ -117,12 +117,12 @@ where
                         // adjust when step is smaller than zero so the result when step < 0 is the same with numpy slice
                         if *step < 0 {
                             if *start < 0 {
-                                *start = len + *start;
+                                *start += len;
                             }
                             if end.is_some() {
                                 let mut _end = *end.as_ref().unwrap();
                                 if _end < 0 {
-                                    _end = len + _end;
+                                    _end += len;
                                 } else if _end >= len {
                                     _end = len;
                                 }
@@ -142,14 +142,11 @@ where
                                     (*start, *end) = (0, Some(0));
                                 }
                             }
-                        } else {
-                            if let Some(_end) = end {
-                                if *_end >= len {
-                                    *end = Some(len)
-                                }
+                        } else if let Some(_end) = end {
+                            if *_end >= len {
+                                *end = Some(len)
                             }
                         }
-
                         axis += 1;
                     }
                     SliceInfoElem::Index(_) => axis += 1,
@@ -276,6 +273,9 @@ where
         self.broadcast(shape)
     }
 
+    /// # Safety
+    ///
+    /// the data for the array view should exist
     pub unsafe fn if_then(self, con: Expr<'a, bool>, then: Expr<'a, T>) -> Expr<'a, T> {
         self.chain_view_f(move |arr| {
             let con = con.eval();

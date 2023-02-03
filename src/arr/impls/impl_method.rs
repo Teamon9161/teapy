@@ -213,34 +213,32 @@ where
     {
         let value = if self.ndim() == value.ndim() && self.shape() == value.shape() {
             value.view().to_dim::<D>().unwrap()
+        } else if let Some(value) = value.broadcast(self.raw_dim()) {
+            value
         } else {
-            if let Some(value) = value.broadcast(self.raw_dim()) {
-                value
+            // the number of value array's elements are equal to the number of true values in mask
+            let mask = mask
+                .view()
+                .to_dim1()
+                .expect("mask should be dim1 when set value to masked data");
+            let value = value
+                .view()
+                .to_dim1()
+                .expect("value should be dim1 when set value to masked data");
+            let true_num = mask.count_v_1d(true) as usize;
+            assert_eq!(
+                true_num,
+                value.len_of(Axis(axis)),
+                "number of value are not equal to number of true mask"
+            );
+            let ndim = self.ndim();
+            return if par && (ndim > 1) {
+                Zip::from(self.lanes_mut(Axis(axis)))
+                    .par_for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
             } else {
-                // the number of value array's elements are equal to the number of true values in mask
-                let mask = mask
-                    .view()
-                    .to_dim1()
-                    .expect("mask should be dim1 when set value to masked data");
-                let value = value
-                    .view()
-                    .to_dim1()
-                    .expect("value should be dim1 when set value to masked data");
-                let true_num = mask.count_v_1d(true) as usize;
-                assert_eq!(
-                    true_num,
-                    value.len_of(Axis(axis)),
-                    "number of value are not equal to number of true mask"
-                );
-                let ndim = self.ndim();
-                return if par && (ndim > 1) {
-                    Zip::from(self.lanes_mut(Axis(axis)))
-                        .par_for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
-                } else {
-                    Zip::from(self.lanes_mut(Axis(axis)))
-                        .for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
-                };
-            }
+                Zip::from(self.lanes_mut(Axis(axis)))
+                    .for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
+            };
         };
         let mask = if self.ndim() == mask.ndim() && self.shape() == mask.shape() {
             mask.view().to_dim::<D>().unwrap()

@@ -490,7 +490,7 @@ impl_reduce_nd!(
                 return true;
             }
         }
-        return false
+        false
     }
 );
 
@@ -506,6 +506,6 @@ impl_reduce_nd!(
                 return false;
             }
         }
-        return true
+        true
     }
 );

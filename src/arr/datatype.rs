@@ -265,14 +265,12 @@ pub trait Number:
             } else {
                 Ordering::Less
             }
+        } else if self.isnan() | (self > other) {
+            Ordering::Greater
+        } else if self == other {
+            Ordering::Equal
         } else {
-            if self.isnan() | (self > other) {
-                Ordering::Greater
-            } else if self == other {
-                Ordering::Equal
-            } else {
-                Ordering::Less
-            }
+            Ordering::Less
         }
     }
 
@@ -283,14 +281,12 @@ pub trait Number:
             } else {
                 Ordering::Less
             }
+        } else if self.isnan() | (self < other) {
+            Ordering::Greater
+        } else if self == other {
+            Ordering::Equal
         } else {
-            if self.isnan() | (self < other) {
-                Ordering::Greater
-            } else if self == other {
-                Ordering::Equal
-            } else {
-                Ordering::Less
-            }
+            Ordering::Less
         }
     }
 }

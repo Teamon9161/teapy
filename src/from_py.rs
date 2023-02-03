@@ -32,7 +32,7 @@ impl GetDataType for PyValue {
     }
 }
 
-impl<'a> ExprElement for PyValue {}
+impl ExprElement for PyValue {}
 
 unsafe impl Element for PyValue {
     const IS_COPY: bool = false;
@@ -114,19 +114,12 @@ macro_rules! match_pyarray {
 
 impl<'py> PyArrayOk<'py> {
     pub fn is_object(&self) -> bool {
-        if let PyArrayOk::Object(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, PyArrayOk::Object(_))
     }
 
     pub fn is_datetime(&self) -> bool {
         use PyArrayOk::*;
-        match self {
-            DateTimeMs(_) | DateTimeNs(_) | DateTimeUs(_) => true,
-            _ => false,
-        }
+        matches!(self, DateTimeMs(_) | DateTimeNs(_) | DateTimeUs(_))
     }
 
     pub fn into_object(self) -> PyResult<&'py PyArrayDyn<PyValue>> {

@@ -79,17 +79,13 @@ macro_rules! impl_py_cmp {
 #[pymethods]
 impl PyExpr {
     #[new]
-    #[args(arr, name = "None", copy = false)]
+    #[pyo3(signature=(expr, name=None, copy=false))]
     pub unsafe fn new(expr: &PyAny, name: Option<String>, copy: bool) -> PyResult<Self> {
         let mut out = parse_expr(expr, copy)?;
         if let Some(name) = name {
             out.set_name(name);
         }
         Ok(out)
-    }
-
-    pub fn copy(&self) -> Self {
-        self.clone()
     }
 
     #[getter]
@@ -188,8 +184,7 @@ impl PyExpr {
         }
     }
 
-    #[pyo3(name = "eval")]
-    #[args(self, inplace = false)]
+    #[pyo3(name="eval", signature=(inplace=false))]
     #[allow(unreachable_patterns)]
     pub fn eval_py(&mut self, inplace: bool) -> Option<Self> {
         self.eval_inplace();
@@ -206,13 +201,14 @@ impl PyExpr {
     pub fn get_view(self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
         if self.is_string() || self.is_str() {
             let arr = self.clone().cast_object_eager(py)?.into_arr().to_owned().0;
-            return Ok(PyArray::from_owned_array(py, arr).no_dim0(py)?.into());
+            return PyArray::from_owned_array(py, arr).no_dim0(py);
         } else if let Exprs::DateTime(e) = &self.inner {
-            let arr = e.clone().eval().view_arr().map(|v| {
-                v.clone()
-                    .into_np_datetime::<numpy::datetime::units::Milliseconds>()
-            });
-            return Ok(PyArray::from_owned_array(py, arr.0).no_dim0(py)?.into());
+            let arr = e
+                .clone()
+                .eval()
+                .view_arr()
+                .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
+            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
         }
         match_exprs!(
             &self.inner,
@@ -220,11 +216,11 @@ impl PyExpr {
             {
                 unsafe {
                     let container = PyAny::from_borrowed_ptr(py, self.as_ptr());
-                    let out_view = expr.try_view().map_err(|e| PyValueError::new_err(e))?;
+                    let out_view = expr.try_view().map_err(PyValueError::new_err)?;
                     if matches!(out_view, ExprOutView::ArrVec(_)) {
                         let out = out_view
                             .as_arr_vec()
-                            .into_iter()
+                            .iter()
                             .map(|arr| PyArray::borrow_from_array(arr, container))
                             .collect_trusted();
                         let out = out
@@ -258,13 +254,14 @@ impl PyExpr {
     pub fn value<'py>(&'py self, py: Python<'py>) -> PyResult<PyObject> {
         if self.is_string() || self.is_str() || self.is_timedelta() {
             let arr = self.clone().cast_object_eager(py)?.into_arr().to_owned().0;
-            return Ok(PyArray::from_owned_array(py, arr).no_dim0(py)?.into());
+            return PyArray::from_owned_array(py, arr).no_dim0(py);
         } else if let Exprs::DateTime(e) = &self.inner {
-            let arr = e.clone().eval().view_arr().map(|v| {
-                v.clone()
-                    .into_np_datetime::<numpy::datetime::units::Milliseconds>()
-            });
-            return Ok(PyArray::from_owned_array(py, arr.0).no_dim0(py)?.into());
+            let arr = e
+                .clone()
+                .eval()
+                .view_arr()
+                .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
+            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
         }
         match_exprs!(
             &self.inner,
@@ -284,7 +281,7 @@ impl PyExpr {
                     Ok(out.into_py(py))
                 } else {
                     let out = out.into_arr().to_owned().0;
-                    Ok(PyArray::from_owned_array(py, out).no_dim0(py)?.into())
+                    Ok(PyArray::from_owned_array(py, out).no_dim0(py)?)
                 }
             },
             I32,
@@ -348,17 +345,17 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn strong_count<'py>(&'py mut self) -> usize {
+    pub fn strong_count(&mut self) -> usize {
         match_exprs!(&self.inner, expr, { expr.strong_count() })
     }
 
     #[allow(unreachable_patterns)]
-    pub fn weak_count<'py>(&'py mut self) -> usize {
+    pub fn weak_count(&mut self) -> usize {
         match_exprs!(&self.inner, expr, { expr.weak_count() })
     }
 
     #[allow(unreachable_patterns)]
-    pub fn ref_count<'py>(&'py mut self) -> usize {
+    pub fn ref_count(&mut self) -> usize {
         match_exprs!(&self.inner, expr, { expr.ref_count() })
     }
 
@@ -729,14 +726,13 @@ impl PyExpr {
         self.round(precision)
     }
 
-    #[pyo3(name = "pow")]
-    #[args(self, other, par = false)]
+    #[pyo3(name="pow", signature=(other, par=false))]
     unsafe fn pow_py(&self, other: &PyAny, par: bool) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         self.pow(other, par)
     }
 
-    #[args(self, par = false)]
+    #[pyo3(signature=(par=false))]
     fn abs(&self, par: bool) -> PyResult<Self> {
         Ok(match_exprs!(
             &self.inner,
@@ -795,7 +791,7 @@ impl PyExpr {
         Ok(impl_py_matmul!(cast_to_same other, self.clone(), dot))
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(name))]
     #[allow(unreachable_patterns)]
     pub fn alias(&mut self, name: String) -> Self {
         match_exprs!(&mut self.inner, expr, {
@@ -967,7 +963,7 @@ impl PyExpr {
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     #[allow(unreachable_patterns)]
     pub fn first(&self, axis: usize, par: bool) -> Self {
         match_exprs!(&self.inner, expr, {
@@ -975,7 +971,7 @@ impl PyExpr {
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     #[allow(unreachable_patterns)]
     pub fn last(&self, axis: usize, par: bool) -> Self {
         match_exprs!(&self.inner, expr, {
@@ -983,21 +979,21 @@ impl PyExpr {
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn valid_first(&self, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().valid_first(axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn valid_last(&self, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().valid_last(axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, n = "1", fill = "None", axis = "0", par = false)]
+    #[pyo3(signature=(n=1, fill=None, axis=0, par=false))]
     pub fn shift<'py>(
         &self,
         n: i32,
@@ -1029,11 +1025,21 @@ impl PyExpr {
                 .to_py(self.obj()),
             Exprs::F64(e) => e
                 .clone()
-                .shift(n, fill.unwrap_or(f64::NAN.into()).cast_f64()?, axis, par)
+                .shift(
+                    n,
+                    fill.unwrap_or_else(|| f64::NAN.into()).cast_f64()?,
+                    axis,
+                    par,
+                )
                 .to_py(self.obj()),
             Exprs::F32(e) => e
                 .clone()
-                .shift(n, fill.unwrap_or(f64::NAN.into()).cast_f32()?, axis, par)
+                .shift(
+                    n,
+                    fill.unwrap_or_else(|| f64::NAN.into()).cast_f32()?,
+                    axis,
+                    par,
+                )
                 .to_py(self.obj()),
             Exprs::I64(e) => {
                 if let Some(fill) = fill {
@@ -1079,7 +1085,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or("".to_owned().into()).cast_string()?,
+                    fill.unwrap_or_else(|| "".to_owned().into()).cast_string()?,
                     axis,
                     par,
                 )
@@ -1091,7 +1097,8 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or("".to_owned().into()).cast_timedelta()?,
+                    fill.unwrap_or_else(|| "".to_owned().into())
+                        .cast_timedelta()?,
                     axis,
                     par,
                 )
@@ -1100,7 +1107,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or(DateTime(Default::default()).into())
+                    fill.unwrap_or_else(|| DateTime(Default::default()).into())
                         .cast_datetime(None)?,
                     axis,
                     par,
@@ -1110,7 +1117,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or(PyValue(py.None()).into())
+                    fill.unwrap_or_else(|| PyValue(py.None()).into())
                         .cast_object_eager(py)?,
                     axis,
                     par,
@@ -1124,7 +1131,7 @@ impl PyExpr {
         }
     }
 
-    #[args(self, n = "1", axis = "0", par = false)]
+    #[pyo3(signature=(n=1, axis=0, par=false))]
     pub fn diff(&self, n: i32, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1137,7 +1144,7 @@ impl PyExpr {
         )
     }
 
-    #[args(self, n = "1", axis = "0", par = false)]
+    #[pyo3(signature=(n=1, axis=0, par=false))]
     pub fn pct_change(&self, n: i32, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1150,14 +1157,14 @@ impl PyExpr {
         )
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn count_nan(&self, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().count_nan(axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn count_notnan(&self, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().count_notnan(axis, par).to_py(self.obj())
@@ -1170,7 +1177,7 @@ impl PyExpr {
     // }
 
     #[allow(unreachable_patterns)]
-    #[args(self, axis = "None", par = false)]
+    #[pyo3(signature=(mask, axis=None, par=false))]
     pub unsafe fn filter(&self, mask: &PyAny, axis: Option<&PyAny>, par: bool) -> PyResult<Self> {
         let mask = parse_expr_nocopy(mask)?;
         let axis = if let Some(axis) = axis {
@@ -1201,14 +1208,14 @@ impl PyExpr {
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn median(&self, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().median(axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn all(&self, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1218,7 +1225,7 @@ impl PyExpr {
         )
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn any(&self, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1306,35 +1313,35 @@ impl PyExpr {
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn max(&self, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().max(axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, axis = "0", par = false)]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn min(&self, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().min(axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn sum(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().sum(stable, axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn mean(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().mean(stable, axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn zscore(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1347,12 +1354,23 @@ impl PyExpr {
         )
     }
 
-    #[args(self, method="WinsorizeMethod::Quantile", method_params="0.01", stable = false, axis = "0", par = false)]
-    pub fn winsorize(&self, method: WinsorizeMethod, method_params: Option<f64>, stable: bool, axis: usize, par: bool) -> Self {
+    #[pyo3(signature=(method=WinsorizeMethod::Quantile, method_params=0.01, stable=false, axis=0, par=false))]
+    pub fn winsorize(
+        &self,
+        method: WinsorizeMethod,
+        method_params: Option<f64>,
+        stable: bool,
+        axis: usize,
+        par: bool,
+    ) -> Self {
         match_exprs!(
             &self.inner,
             expr,
-            { expr.clone().winsorize(method, method_params, stable, axis, par).to_py(self.obj()) },
+            {
+                expr.clone()
+                    .winsorize(method, method_params, stable, axis, par)
+                    .to_py(self.obj())
+            },
             F64,
             I32,
             F32,
@@ -1360,7 +1378,7 @@ impl PyExpr {
         )
     }
 
-    #[args(self, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn var(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1373,7 +1391,7 @@ impl PyExpr {
         )
     }
 
-    #[args(self, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn std(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1386,7 +1404,7 @@ impl PyExpr {
         )
     }
 
-    #[args(self, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn skew(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1399,7 +1417,7 @@ impl PyExpr {
         )
     }
 
-    #[args(self, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn kurt(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1412,14 +1430,14 @@ impl PyExpr {
         )
     }
 
-    #[args(self, pct = false, rev = false, axis = "0", par = false)]
+    #[pyo3(signature=(pct=false, rev=false, axis=0, par=false))]
     pub fn rank(&self, pct: bool, rev: bool, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().rank(pct, rev, axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, q, method = "QuantileMethod::Linear", axis = "0", par = false)]
+    #[pyo3(signature=(q, method=QuantileMethod::Linear, axis=0, par=false))]
     pub fn quantile(&self, q: f64, method: QuantileMethod, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1428,14 +1446,14 @@ impl PyExpr {
         })
     }
 
-    #[args(self, rev = false, axis = "0", par = false)]
+    #[pyo3(signature=(rev=false, axis=0, par=false))]
     pub fn argsort(&self, rev: bool, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().argsort(rev, axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, kth, sort = true, rev = false, axis = "0", par = false)]
+    #[pyo3(signature=(kth, sort=true, rev=false, axis=0, par=false))]
     pub fn arg_partition(&self, kth: usize, sort: bool, rev: bool, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1444,7 +1462,7 @@ impl PyExpr {
         })
     }
 
-    #[args(self, group, rev = false, axis = "0", par = false)]
+    #[pyo3(signature=(group, rev=false, axis=0, par=false))]
     pub fn split_group(&self, group: usize, rev: bool, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1453,7 +1471,7 @@ impl PyExpr {
         })
     }
 
-    #[args(self, other, stable = false, axis = "0", par = false)]
+    #[pyo3(signature=(other, stable=false, axis=0, par=false))]
     pub fn cov(&self, other: Self, stable: bool, axis: usize, par: bool) -> Self {
         let obj = other.obj();
         match_exprs!(
@@ -1468,14 +1486,7 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        other,
-        method = "CorrMethod::Pearson",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[pyo3(signature=(other, method=CorrMethod::Pearson, stable=false, axis=0, par=false))]
     pub fn corr(
         &self,
         other: Self,
@@ -1498,7 +1509,7 @@ impl PyExpr {
     }
 
     #[cfg(feature = "window")]
-    #[args(self, window, min_periods = "1", axis = "0", par = false)]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmin(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1507,7 +1518,8 @@ impl PyExpr {
         })
     }
 
-    #[args(self, window, min_periods = "1", axis = "0", par = false)]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmax(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1516,7 +1528,8 @@ impl PyExpr {
         })
     }
 
-    #[args(self, window, min_periods = "1", axis = "0", par = false)]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_min(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1525,7 +1538,8 @@ impl PyExpr {
         })
     }
 
-    #[args(self, window, min_periods = "1", axis = "0", par = false)]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_max(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1534,7 +1548,8 @@ impl PyExpr {
         })
     }
 
-    #[args(self, window, min_periods = "1", pct = false, axis = "0", par = false)]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, pct=false, axis=0, par=false))]
     pub fn ts_rank(
         &self,
         window: usize,
@@ -1558,7 +1573,8 @@ impl PyExpr {
         }
     }
 
-    #[args(self, window, min_periods = "1", axis = "0", par = false)]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_prod(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1567,7 +1583,8 @@ impl PyExpr {
         })
     }
 
-    #[args(self, window, min_periods = "1", axis = "0", par = false)]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_prod_mean(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -1576,7 +1593,8 @@ impl PyExpr {
         })
     }
 
-    #[args(self, window, min_periods = "1", axis = "0", par = false)]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_minmaxnorm(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(
             &self.inner,
@@ -1593,15 +1611,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        other,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_cov(
         &self,
         other: Self,
@@ -1624,15 +1635,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        other,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_corr(
         &self,
         other: Self,
@@ -1655,14 +1659,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_sum(
         &self,
         window: usize,
@@ -1678,14 +1676,8 @@ impl PyExpr {
         })
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_sma(
         &self,
         window: usize,
@@ -1701,14 +1693,8 @@ impl PyExpr {
         })
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_ewm(
         &self,
         window: usize,
@@ -1724,14 +1710,8 @@ impl PyExpr {
         })
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_wma(
         &self,
         window: usize,
@@ -1747,14 +1727,8 @@ impl PyExpr {
         })
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_std(
         &self,
         window: usize,
@@ -1778,14 +1752,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_var(
         &self,
         window: usize,
@@ -1809,14 +1777,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_skew(
         &self,
         window: usize,
@@ -1840,14 +1802,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_kurt(
         &self,
         window: usize,
@@ -1871,14 +1827,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_stable(
         &self,
         window: usize,
@@ -1902,14 +1852,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_meanstdnorm(
         &self,
         window: usize,
@@ -1933,14 +1877,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_reg(
         &self,
         window: usize,
@@ -1964,14 +1902,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_tsf(
         &self,
         window: usize,
@@ -1995,14 +1927,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_reg_slope(
         &self,
         window: usize,
@@ -2026,14 +1952,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        window,
-        min_periods = "1",
-        stable = false,
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_reg_intercept(
         &self,
         window: usize,
@@ -2057,13 +1977,8 @@ impl PyExpr {
         )
     }
 
-    #[args(
-        self,
-        method = "FillMethod::Ffill",
-        value = "None",
-        axis = "0",
-        par = false
-    )]
+    #[cfg(feature = "window")]
+    #[pyo3(signature=(method, value=None, axis=0, par=false))]
     pub fn fillna(&self, method: FillMethod, value: Option<f64>, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
@@ -2072,26 +1987,26 @@ impl PyExpr {
         })
     }
 
-    #[args(self, min, max, axis = "0", par = false)]
+    #[pyo3(signature=(min, max, axis=0, par=false))]
     pub fn clip(&self, min: f64, max: f64, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().clip(min, max, axis, par).to_py(self.obj())
         })
     }
 
-    #[args(self, slc, axis = "0")]
+    #[pyo3(signature=(slc, axis=0))]
     pub unsafe fn select(&self, slc: &PyAny, axis: usize) -> PyResult<Self> {
         let slc = parse_expr_nocopy(slc)?;
         self._select_on_axis_by_expr(slc, axis.into())
     }
 
-    #[args(self, slc, axis = "0", par = false)]
+    #[pyo3(signature=(slc, axis=0, par=false))]
     pub unsafe fn take(&self, slc: &PyAny, axis: usize, par: bool) -> PyResult<Self> {
         let slc = parse_expr_nocopy(slc)?;
         self._take_on_axis_by_expr(slc, axis, par)
     }
 
-    #[args(loc = "None", scale = "None")]
+    #[pyo3(signature=(df, loc=None, scale=None))]
     pub unsafe fn t_cdf(&self, df: &PyAny, loc: Option<f64>, scale: Option<f64>) -> PyResult<Self> {
         let df = parse_expr_nocopy(df)?;
         let obj = df.obj();
@@ -2104,7 +2019,7 @@ impl PyExpr {
         Ok(out)
     }
 
-    #[args(mean = "None", std = "None")]
+    #[pyo3(signature=(mean=None, std=None))]
     pub unsafe fn norm_cdf(&self, mean: Option<f64>, std: Option<f64>) -> PyResult<Self> {
         let out = match_exprs!(numeric & self.inner, e, {
             e.clone().norm_cdf(mean, std).to_py(self.obj())
@@ -2126,7 +2041,7 @@ impl PyExpr {
         Ok(out)
     }
 
-    #[args(self, by, rev = false, return_idx = false)]
+    #[pyo3(signature=(by, rev=false, return_idx=false))]
     pub fn sort_by(&self, by: Vec<Self>, rev: bool, return_idx: bool) -> Self {
         if !return_idx {
             self.sort_by_expr(by, rev)
@@ -2145,7 +2060,7 @@ impl PyExpr {
         }
     }
 
-    #[args(axis = "0", par = false)]
+    #[pyo3(signature=(mask, value, axis=0, par=false))]
     pub unsafe fn put_mask(
         self: PyRef<Self>,
         mask: &PyAny,
@@ -2207,14 +2122,14 @@ impl PyExpr {
         Ok(rtn.add_obj(obj1).add_obj(obj2))
     }
 
-    #[args(par = false)]
+    #[pyo3(signature=(mask, value, par=false))]
     pub unsafe fn where_(&self, mask: &PyAny, value: &PyAny, par: bool) -> PyResult<PyExpr> {
         let mask = parse_expr_nocopy(mask)?;
         let value = parse_expr_nocopy(value)?;
         where_(self.clone(), mask, value, par)
     }
 
-    #[args(par = false)]
+    #[pyo3(signature=(con, then))]
     pub unsafe fn if_then(
         self: PyRef<Self>,
         con: &PyAny,
@@ -2308,7 +2223,7 @@ impl PyExpr {
 
     #[cfg(feature = "blas")]
     #[allow(unreachable_patterns)]
-    #[args(full = true, calc_uvt = true, split = true)]
+    #[pyo3(signature=(full=true, calc_uvt=true, split=true))]
     pub fn svd(&self, full: bool, calc_uvt: bool, split: bool, py: Python) -> PyResult<PyObject> {
         if split {
             match_exprs!(numeric & self.inner, e, {
@@ -2334,7 +2249,7 @@ impl PyExpr {
 
     #[cfg(feature = "blas")]
     #[allow(unreachable_patterns)]
-    #[args(r_cond = "None", return_s = false, split = true)]
+    #[pyo3(signature=(return_s=false, r_cond=None, split=true))]
     pub fn pinv(
         &self,
         return_s: bool,
@@ -2390,14 +2305,14 @@ impl PyExpr {
     }
 
     #[pyo3(name = "concat")]
-    #[args(axis = "0")]
+    #[pyo3(signature=(other, axis=0))]
     pub unsafe fn concat_py(&self, other: &PyAny, axis: usize) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
         self.concat(other, axis)
     }
 
     #[pyo3(name = "stack")]
-    #[args(axis = "0")]
+    #[pyo3(signature=(other, axis=0))]
     pub unsafe fn stack_py(&self, other: &PyAny, axis: usize) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
         self.stack(other, axis)
@@ -2460,7 +2375,7 @@ impl PyExpr {
         Ok(out)
     }
 
-    #[args(axis = "0", py_kwargs = "None")]
+    #[pyo3(signature=(index, duration, func, axis=0, **py_kwargs))]
     pub unsafe fn rolling_apply_by_time(
         &self,
         index: &PyAny,
@@ -2516,7 +2431,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    #[args(axis = "0", py_kwargs = "None")]
+    #[pyo3(signature=(window, func, axis=0, **py_kwargs))]
     pub unsafe fn rolling_apply(
         &mut self,
         window: usize,

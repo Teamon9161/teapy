@@ -53,6 +53,7 @@ where
     S: Data<Elem = T>,
     T: LinalgScalar,
 {
+    // #[allow(clippy::useless_conversion)]
     pub fn dot<S2>(&self, other: &ArrBase<S2, IxDyn>) -> ArrD<T>
     where
         S2: Data<Elem = T>,
@@ -94,7 +95,7 @@ where
                 .unwrap(),
             _ => panic!("dot for this dim is not suppported"),
         }
-        .into()
+        // .into()
     }
 }
 

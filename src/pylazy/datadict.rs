@@ -61,24 +61,24 @@ impl PyDataDict {
         self.data.len()
     }
 
-    fn create_column_map(&mut self) {
-        let mut column_map = HashMap::<String, usize>::with_capacity(self.data.len());
-        let mut name_auto = 0;
-        for i in 0..self.data.len() {
-            // we must check the name of PyExpr
-            let expr = unsafe { self.data.get_unchecked_mut(i) };
-            if let Some(name) = expr.get_name() {
-                column_map.insert(name.to_string(), i);
-            } else {
-                // the expr doen't have a name, we must ensure the name of
-                // expr are the same with the name in column_map.
-                column_map.insert(name_auto.to_string(), i);
-                expr.set_name(name_auto.to_string());
-                name_auto += 1;
-            }
-        }
-        self.column_map = Arc::new(Mutex::new(column_map));
-    }
+    // fn create_column_map(&mut self) {
+    //     let mut column_map = HashMap::<String, usize>::with_capacity(self.data.len());
+    //     let mut name_auto = 0;
+    //     for i in 0..self.data.len() {
+    //         // we must check the name of PyExpr
+    //         let expr = unsafe { self.data.get_unchecked_mut(i) };
+    //         if let Some(name) = expr.get_name() {
+    //             column_map.insert(name.to_string(), i);
+    //         } else {
+    //             // the expr doen't have a name, we must ensure the name of
+    //             // expr are the same with the name in column_map.
+    //             column_map.insert(name_auto.to_string(), i);
+    //             expr.set_name(name_auto.to_string());
+    //             name_auto += 1;
+    //         }
+    //     }
+    //     self.column_map = Arc::new(Mutex::new(column_map));
+    // }
 
     /// If the name of expression has changed after evaluating, we should update the column_map.
     fn update_column_map(
@@ -218,7 +218,7 @@ impl PyDataDict {
             .get_name()
             .expect("The value expression must have a name when insert");
         let col_idx = *column_map.get(col_name.as_str()).unwrap_or(&self.len());
-        let col_name = col_name.to_string();
+        // let col_name = col_name.to_string();
         if col_idx == self.len() {
             // insert a new column
             column_map.insert(col_name, self.len());
@@ -226,7 +226,7 @@ impl PyDataDict {
         } else {
             // update a existed column
             let col = self.data.get_mut(col_idx).unwrap();
-            let col_name_to_drop = col.get_name().unwrap().to_string(); // record the old name
+            let col_name_to_drop = col.get_name().unwrap(); // record the old name
             *col = value;
             let res = column_map.insert(col_name, col_idx);
             if res.is_none() {
@@ -257,7 +257,7 @@ impl PyDataDict {
             // We use the value's name by default if the value expression has a name.
             if value.get_name().is_none() {
                 // if the value expression doesn't have a name, we use the old name
-                value.set_name(self.data[col_idx].get_name().unwrap().to_string())
+                value.set_name(self.data[col_idx].get_name().unwrap())
             }
             self._insert(value);
         } else {
@@ -287,9 +287,8 @@ impl PyDataDict {
         }
     }
 
-    // #[allow(clippy::borrow_deref_ref)]
     /// Evaluate some columns of the datadict in parallel
-    pub fn eval_multi(&mut self, cols: &Vec<&str>) -> PyResult<()> {
+    pub fn eval_multi(&mut self, cols: &[&str]) -> PyResult<()> {
         self.data.par_iter_mut().for_each(|e| {
             if cols.contains(&e.get_name().unwrap().as_str()) {
                 e.eval_inplace()
@@ -298,16 +297,14 @@ impl PyDataDict {
         Ok(())
     }
 
-    // #[allow(clippy::borrow_deref_ref)]
     /// Evaluate the whole datadict
     pub fn eval_all(&mut self) -> PyResult<()> {
         self.data.par_iter_mut().for_each(|e| e.eval_inplace());
         Ok(())
     }
 
-    // #[allow(clippy::borrow_deref_ref)]
     /// Evaluate some columns of the datadict in parallel
-    pub fn eval_multi_by_idx(&mut self, cols: &Vec<i32>) -> PyResult<()> {
+    pub fn eval_multi_by_idx(&mut self, cols: &[i32]) -> PyResult<()> {
         let len = self.data.len();
         let cols = cols
             .iter()
@@ -331,12 +328,13 @@ impl PyDataDict {
 #[pymethods]
 impl PyDataDict {
     #[new]
-    #[args(data, columns = "None", copy = false)]
+    #[pyo3(signature=(data, columns=None, copy=false))]
     pub unsafe fn init(data: &PyAny, columns: Option<Vec<String>>, copy: bool) -> PyResult<Self> {
         let data = parse_expr_list(data, copy)?;
         Ok(Self::new(data, columns))
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_pd(&mut self) -> PyResult<PyObject> {
         self.eval_all()?;
         Python::with_gil(|py| {
@@ -345,7 +343,8 @@ impl PyDataDict {
         })
     }
 
-    #[args(inplace = false)]
+    // #[args(inplace = false)]
+    #[pyo3(signature=(columns, inplace=false))]
     pub fn drop(&mut self, columns: &PyAny, inplace: bool) -> PyResult<Option<Self>> {
         if let Ok(columns) = columns.extract::<&str>() {
             Ok(self._drop(vec![columns], inplace))
@@ -367,6 +366,7 @@ impl PyDataDict {
         Ok(res)
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_dict<'py>(&'py mut self, py: Python<'py>) -> PyResult<&'py PyDict> {
         self.eval_all()?;
         let dict = PyDict::new(py);
@@ -411,21 +411,16 @@ impl PyDataDict {
         zip(self.data.iter_mut(), columns.into_iter()).for_each(|(e, name)| {
             // We should get the original name at first, and then find
             // the column index and insert a new map in `column_map`
-            let name_ori = e.get_name().unwrap().to_string();
+            let name_ori = e.get_name().unwrap();
             let idx = column_map.remove(&name_ori).unwrap();
             column_map.insert(name.clone(), idx);
             e.set_name(name);
         });
     }
 
-    #[allow(clippy::borrow_deref_ref)]
-    #[args(ob = "None", inplace = true)]
+    #[pyo3(signature=(ob=None, inplace=true))]
     pub fn eval(&mut self, ob: Option<&PyAny>, inplace: bool) -> PyResult<Option<Self>> {
-        if ob.is_none() {
-            // eval the whole datadict
-            self.eval_all()?;
-        } else {
-            let ob = ob.unwrap();
+        if let Some(ob) = ob {
             if let Ok(col_name) = ob.extract::<&str>() {
                 self.eval_by_str(col_name)?;
             } else if let Ok(col_idx) = ob.extract::<i32>() {
@@ -440,6 +435,9 @@ impl PyDataDict {
             } else {
                 return Err(PyValueError::new_err("Not support type in eval"));
             }
+        } else if ob.is_none() {
+            // eval the whole datadict
+            self.eval_all()?;
         }
         if inplace {
             Ok(None)
@@ -526,7 +524,7 @@ impl PyDataDict {
         Ok(PyDataDict::new(exprs, None))
     }
 
-    #[args(inplace = false)]
+    #[pyo3(signature=(exprs, inplace=false))]
     pub unsafe fn with_columns(&mut self, exprs: &PyAny, inplace: bool) -> PyResult<Option<Self>> {
         let exprs = parse_expr_list(exprs, false)?;
         if !inplace {
@@ -542,7 +540,7 @@ impl PyDataDict {
         }
     }
 
-    #[args(axis = "0", check = true, py_kwargs = "None")]
+    #[pyo3(signature=(window, func, axis=0, check=true, **py_kwargs))]
     #[allow(unreachable_patterns)]
     pub fn rolling_apply(
         &mut self,
@@ -611,13 +609,13 @@ impl PyDataDict {
         Ok(PyDataDict::new(out_data, None))
     }
 
-    #[args(axis = "0", index = "None", check = true, py_kwargs = "None")]
+    #[pyo3(signature=(duration, func, index=None, axis=0, check=true, **py_kwargs))]
     #[allow(unreachable_patterns)]
     pub fn rolling_apply_by_time(
         &mut self,
-        index: Option<&str>,
         duration: &str,
         func: &PyAny,
+        index: Option<&str>,
         axis: usize,
         check: bool,
         py_kwargs: Option<&PyDict>,
@@ -702,10 +700,10 @@ impl PyDataDict {
         Ok(PyDataDict::new(out_data, None))
     }
 
-    #[args(self, by, rev = false, inplace = false)]
+    #[pyo3(signature=(by, rev=false, inplace=false))]
     pub fn sort_by(&mut self, by: Vec<&str>, rev: bool, inplace: bool) -> Option<Self> {
         let key: Vec<PyExpr> = by.into_iter().map(|n| self.get_by_str(n).clone()).collect();
-        if self.data.len() == 0 {
+        if self.data.is_empty() {
             return Some(self.clone());
         }
         let idx = self.data.get(0).unwrap().clone().sort_by_expr_idx(key, rev);
@@ -724,7 +722,7 @@ impl PyDataDict {
         }
     }
 
-    #[args(self, by, axis = "0", sort = true, par = false)]
+    #[pyo3(signature=(by, axis=0, sort=true, par=false))]
     pub fn groupby(
         &mut self,
         by: &PyAny,
@@ -738,15 +736,7 @@ impl PyDataDict {
 
     /// Groupby and consume the dfs generated during the groupby process
     /// this is faster as we don't need to clone `Vec<PyDataDict>`
-    #[args(
-        self,
-        func,
-        by,
-        axis = "0",
-        sort = true,
-        par = false,
-        py_kwargs = "None"
-    )]
+    #[pyo3(signature=(py_func, by, axis=0, sort=true, par=false, **py_kwargs))]
     pub fn groupby_apply(
         &mut self,
         py_func: &PyAny,
@@ -762,7 +752,7 @@ impl PyDataDict {
     }
 
     #[allow(unreachable_patterns)]
-    #[args(self, right, method = "JoinType::Left")]
+    #[pyo3(signature=(right, left_on, right_on, method=JoinType::Left))]
     pub fn join(
         &mut self,
         mut right: Self,
@@ -867,8 +857,8 @@ impl PyDataDict {
         }
     }
 
+    #[pyo3(signature=(subset, keep="first", inplace=false, axis=0))]
     #[allow(unreachable_patterns)]
-    #[args(self, subset, keep = "\"first\"", inplace = false, axis = "0")]
     pub fn unique(
         &mut self,
         subset: &PyAny,
@@ -894,12 +884,9 @@ impl PyDataDict {
                 for i in 0..len {
                     let hash = unsafe { *hashed_key.uget(i) };
                     let entry = map.raw_entry_mut().from_key_hashed_nocheck(hash, &hash);
-                    match entry {
-                        RawEntryMut::Vacant(entry) => {
-                            entry.insert_hashed_nocheck(hash, hash, 1);
-                            out_idx.push(i);
-                        }
-                        _ => {}
+                    if let RawEntryMut::Vacant(entry) = entry {
+                        entry.insert_hashed_nocheck(hash, hash, 1);
+                        out_idx.push(i);
                     }
                 }
             } else {
@@ -910,12 +897,9 @@ impl PyDataDict {
                         .collect_trusted();
                     let hash = hasher.hash_one(&tuple_keys);
                     let entry = map.raw_entry_mut().from_key_hashed_nocheck(hash, &hash);
-                    match entry {
-                        RawEntryMut::Vacant(entry) => {
-                            entry.insert_hashed_nocheck(hash, hash, 1);
-                            out_idx.push(i);
-                        }
-                        _ => {}
+                    if let RawEntryMut::Vacant(entry) = entry {
+                        entry.insert_hashed_nocheck(hash, hash, 1);
+                        out_idx.push(i);
                     }
                 }
             }

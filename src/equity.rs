@@ -6,7 +6,8 @@ use ahash::{HashMap, HashMapExt};
 use ndarray::{Array1, Axis};
 use pyo3::{pyfunction, PyResult};
 
-#[pyfunction(c_rate = "0.0006", hold_time = "1", init_cash = "10000.")]
+#[pyfunction]
+#[pyo3(signature=(factor, price, select_num, c_rate=0.0006, hold_time=1, init_cash=10000.))]
 pub fn calc_digital_ret(
     factor: PyExpr,
     price: PyExpr,
@@ -90,7 +91,7 @@ pub fn calc_digital_ret(
                 }
             }
             // close position
-            for (_hold_symbol, (hold_num, cost)) in &hold_amt {
+            for (hold_num, cost) in hold_amt.values() {
                 profit -= hold_num.abs() * *cost * c_rate
             }
             cash += profit;
@@ -99,8 +100,6 @@ pub fn calc_digital_ret(
         }
         let out = Arr1::from_vec(cash_vec).to_dimd().unwrap();
         out.into()
-        // let out: Expr<f64> = cash_vec.into();
-        // Ok(out.into())
     });
     Ok(out_expr.into())
 }

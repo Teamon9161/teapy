@@ -14,11 +14,11 @@ use std::{
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
 /// The number of nanoseconds in a millisecond.
-const NANOS_PER_MILLI: i32 = 1000_000;
+const NANOS_PER_MILLI: i32 = 1_000_000;
 /// The number of nanoseconds in seconds.
 const NANOS_PER_SEC: i32 = 1_000_000_000;
 /// The number of microseconds per second.
-const MICROS_PER_SEC: i64 = 1000_000;
+const MICROS_PER_SEC: i64 = 1_000_000;
 /// The number of milliseconds per second.
 const MILLIS_PER_SEC: i64 = 1000;
 /// The number of seconds in a minute.
@@ -30,7 +30,7 @@ const SECS_PER_DAY: i64 = 86400;
 /// The number of (non-leap) seconds in a week.
 const SECS_PER_WEEK: i64 = 604800;
 
-#[derive(Clone, Copy, Default, Debug, Hash, Eq)]
+#[derive(Clone, Copy, Default, Debug, Hash, Eq, PartialEq, PartialOrd)]
 pub struct DateTime(pub NaiveDateTime);
 
 impl Deref for DateTime {
@@ -40,17 +40,17 @@ impl Deref for DateTime {
     }
 }
 
-impl PartialEq for DateTime {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
+// impl PartialEq for DateTime {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.0.eq(&other.0)
+//     }
+// }
 
-impl PartialOrd for DateTime {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
-}
+// impl PartialOrd for DateTime {
+//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//         self.0.partial_cmp(&other.0)
+//     }
+// }
 
 impl DateTime {
     #[inline]
@@ -160,7 +160,7 @@ pub struct PyDateTime(DateTime);
 
 impl ToPyObject for DateTime {
     fn to_object(&self, py: Python<'_>) -> PyObject {
-        PyDateTime(self.clone()).into_py(py)
+        PyDateTime(*self).into_py(py)
     }
 }
 
@@ -195,7 +195,7 @@ impl Default for TimeUnit {
     }
 }
 
-#[derive(Clone, Debug, Hash, Eq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct TimeDelta {
     pub months: i32,
     pub inner: Duration,
@@ -383,15 +383,15 @@ impl Div<i32> for TimeDelta {
     }
 }
 
-impl PartialEq for TimeDelta {
-    fn eq(&self, other: &Self) -> bool {
-        if self.months != other.months {
-            false
-        } else {
-            self.inner.eq(&other.inner)
-        }
-    }
-}
+// impl PartialEq for TimeDelta {
+//     fn eq(&self, other: &Self) -> bool {
+//         if self.months != other.months {
+//             false
+//         } else {
+//             self.inner.eq(&other.inner)
+//         }
+//     }
+// }
 
 impl PartialOrd for TimeDelta {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

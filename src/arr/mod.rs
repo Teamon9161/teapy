@@ -311,7 +311,7 @@ where
     }
 
     /// Try to cast to pyobject
-    pub fn to_object<'py>(&self, py: Python<'py>) -> Arr<PyValue, D>
+    pub fn to_object(&self, py: Python) -> Arr<PyValue, D>
     where
         T: Debug + Clone + ToPyObject,
     {
@@ -319,7 +319,7 @@ where
     }
 
     /// Try to cast to datetime
-    pub fn to_datetime<'py>(&self, _unit: TimeUnit) -> Arr<DateTime, D>
+    pub fn to_datetime(&self, _unit: TimeUnit) -> Arr<DateTime, D>
     where
         T: AsPrimitive<i64> + GetDataType,
     {

@@ -5,6 +5,7 @@ use pyo3::{pyclass, pymethods, IntoPy, ToPyObject};
 pub struct PyTimeDelta(TimeDelta);
 
 #[pymethods]
+// #[allow(clippy::borrow_deref_ref)]
 impl PyTimeDelta {
     #[staticmethod]
     pub fn parse(rule: &str) -> Self {

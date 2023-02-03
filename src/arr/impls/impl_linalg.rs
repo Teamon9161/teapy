@@ -27,12 +27,10 @@ impl ArrD<f64> {
         let (jobu, jobvt) = if calc_uvt {
             if full {
                 (b'A', b'A')
+            } else if m == k {
+                (b'S', b'O')
             } else {
-                if m == k {
-                    (b'S', b'O')
-                } else {
-                    (b'O', b'S')
-                }
+                (b'O', b'S')
             }
         } else {
             (b'N', b'N')

@@ -77,7 +77,7 @@ pub struct PyGroupBy {
 #[pymethods]
 impl PyGroupBy {
     #[new]
-    #[args(data, axis = "0")]
+    #[pyo3(signature=(data, axis=0))]
     pub fn new(data: Vec<PyDataDict>, axis: usize) -> Self {
         PyGroupBy { data, axis }
     }

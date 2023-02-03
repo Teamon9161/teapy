@@ -146,7 +146,7 @@ impl PyExpr {
     }
 
     // Cast the output of the expression to object ndarray lazily
-    pub fn cast_object<'py>(self) -> PyResult<Expr<'static, PyValue>> {
+    pub fn cast_object(self) -> PyResult<Expr<'static, PyValue>> {
         if let Ok(v) = self.inner.cast_object() {
             Ok(v)
         } else {
@@ -347,23 +347,7 @@ impl PyExpr {
 
     pub fn pow(&self, other: PyExpr, par: bool) -> PyResult<Self> {
         let obj = other.obj();
-        let out: PyExpr = if other.inner.is_i32() {
-            match_exprs!(
-                &self.inner,
-                e1,
-                {
-                    e1.clone()
-                        .cast::<f64>()
-                        .powi(other.cast_i32()?, par)
-                        .to_py(self.obj())
-                        .add_obj(obj)
-                },
-                F64,
-                I32,
-                F32,
-                I64
-            )
-        } else if other.inner.is_i64() {
+        let out: PyExpr = if other.inner.is_int() {
             match_exprs!(
                 &self.inner,
                 e1,
@@ -423,7 +407,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn concat<'py>(&self, other: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
+    pub fn concat(&self, other: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
         let obj_vec = other.iter().map(|e| e.obj()).collect_trusted();
         macro_rules! concat_macro {
             ($({$arm: ident => $cast_func: ident $(($arg: expr))?, $name: expr}),*) => {

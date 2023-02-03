@@ -3,7 +3,7 @@ use pyo3::Python;
 use crate::arr::{DateTime, TimeDelta, TimeUnit};
 use crate::from_py::PyValue;
 
-use super::super::{match_datatype_arm, ArrD, ArrViewD, DataType, GetDataType};
+use super::super::{match_datatype_arm, DataType, GetDataType};
 use super::expr_view::ExprOutView;
 use super::{Expr, ExprElement, ExprInner};
 
@@ -375,18 +375,18 @@ impl<'a> ExprsInner<'a> {
         match_exprs_inner!(self, e, { e.step_acc() })
     }
 
-    #[allow(unreachable_patterns)]
-    pub(super) fn view_arr<T: GetDataType>(&self) -> Result<ArrViewD<'_, T>, &'static str> {
-        // we have known the datatype of the enum ,so only one arm will be executed
-        match_datatype_arm!(
-            self,
-            e,
-            ExprsInner,
-            T,
-            (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
-            { e.try_view_arr().map(|arr| unsafe { arr.into_dtype::<T>() }) }
-        )
-    }
+    // #[allow(unreachable_patterns)]
+    // pub(super) fn view_arr<T: GetDataType>(&self) -> Result<ArrViewD<'_, T>, &'static str> {
+    //     // we have known the datatype of the enum ,so only one arm will be executed
+    //     match_datatype_arm!(
+    //         self,
+    //         e,
+    //         ExprsInner,
+    //         T,
+    //         (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
+    //         { e.try_view_arr().map(|arr| unsafe { arr.into_dtype::<T>() }) }
+    //     )
+    // }
 
     #[allow(unreachable_patterns)]
     pub(super) fn view<T: GetDataType>(&self) -> Result<ExprOutView<'_, T>, &'static str> {
@@ -401,23 +401,23 @@ impl<'a> ExprsInner<'a> {
         )
     }
 
-    /// execute the expression and clone the output
-    ///
-    /// # Safety
-    ///
-    /// The data of the array view must exists.
-    #[allow(unreachable_patterns)]
-    pub(super) fn value<T: GetDataType>(&mut self) -> Result<ArrD<T>, &'static str> {
-        // we have known the datatype of the enum ,so only one arm will be executed
-        match_datatype_arm!(
-            self,
-            e,
-            ExprsInner,
-            T,
-            (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
-            { unsafe { Ok(e.value().into_dtype::<T>()) } }
-        )
-    }
+    // /// execute the expression and clone the output
+    // ///
+    // /// # Safety
+    // ///
+    // /// The data of the array view must exists.
+    // #[allow(unreachable_patterns)]
+    // pub(super) fn value<T: GetDataType>(&mut self) -> Result<ArrD<T>, &'static str> {
+    //     // we have known the datatype of the enum ,so only one arm will be executed
+    //     match_datatype_arm!(
+    //         self,
+    //         e,
+    //         ExprsInner,
+    //         T,
+    //         (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
+    //         { unsafe { Ok(e.value().into_dtype::<T>()) } }
+    //     )
+    // }
 
     #[allow(unreachable_patterns)]
     pub(super) fn eval_inplace(&mut self) {

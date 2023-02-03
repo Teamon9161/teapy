@@ -226,10 +226,12 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
             if !calc_uvt {
                 s.into()
             } else {
-                let mut res_vec = Vec::<ArbArray<'a, f64>>::with_capacity(3);
-                res_vec.push(u.unwrap().into());
-                res_vec.push(s.into());
-                res_vec.push(vt.unwrap().into());
+                // let mut res_vec = Vec::<ArbArray<'a, f64>>::with_capacity(3);
+                // res_vec.push(u.unwrap().into());
+                // res_vec.push(s.into());
+                // res_vec.push(vt.unwrap().into());
+                let res_vec: Vec<ArbArray<'a, f64>> =
+                    vec![u.unwrap().into(), s.into(), vt.unwrap().into()];
                 res_vec.into()
             }
         })

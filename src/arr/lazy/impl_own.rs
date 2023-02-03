@@ -1,6 +1,6 @@
 //! impl methods that return an array.
 
-use crate::arr::{GetNone, TimeDelta, ArbArray};
+use crate::arr::{ArbArray, GetNone, TimeDelta};
 use crate::from_py::PyValue;
 
 use super::super::{
@@ -46,17 +46,22 @@ where
         })
     }
 
-    pub fn arange(start: Option<T>, end: Expr<'a, T>, step: Option<T>) -> Expr<'a, T>
+    pub fn arange(start: Option<Expr<'a, T>>, end: Expr<'a, T>, step: Option<T>) -> Expr<'a, T>
     where
         T: Float + Zero + One,
     {
         end.chain_owned_f(move |arr| {
+            let start = start.map(|s| *s.eval().view_arr().to_dim0().unwrap().0.into_scalar());
             let end = arr.to_dim0().unwrap().0.into_scalar();
-            Array1::range(start.unwrap_or(T::zero()), end, step.unwrap_or(T::one()))
-                .wrap()
-                .to_dimd()
-                .unwrap()
-                .into()
+            Array1::range(
+                start.unwrap_or_else(T::zero),
+                end,
+                step.unwrap_or_else(T::one),
+            )
+            .wrap()
+            .to_dimd()
+            .unwrap()
+            .into()
         })
     }
 
@@ -88,11 +93,11 @@ where
                 ViewMut(mut arr) => {
                     arr.fillna_inplace(method, value, axis, par);
                     ViewMut(arr)
-                },
+                }
                 Owned(mut arr) => {
                     arr.view_mut().fillna_inplace(method, value, axis, par);
                     Owned(arr)
-                },
+                }
             }
         })
     }
@@ -111,11 +116,11 @@ where
                 ViewMut(mut arr) => {
                     arr.clip_inplace(min, max, axis, par);
                     ViewMut(arr)
-                },
+                }
                 Owned(mut arr) => {
                     arr.view_mut().clip_inplace(min, max, axis, par);
                     Owned(arr)
-                },
+                }
             }
         })
     }
@@ -521,6 +526,10 @@ where
     }
 
     /// take values on a given axis
+    ///
+    /// # Safety
+    ///
+    /// The index in slc must be correct.
     pub unsafe fn take_option_on_axis_by_expr_unchecked(
         self,
         slc: Expr<'a, Option<usize>>,
@@ -700,7 +709,7 @@ impl<'a> Expr<'a, DateTime> {
                 .iter()
                 .enumerate()
                 .map(|(i, dt)| {
-                    let dt = dt.clone();
+                    let dt = *dt;
                     if dt < start_time + duration.clone() {
                         start
                     } else {

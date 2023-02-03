@@ -1,7 +1,7 @@
 use super::{export::*, Exprs};
 use crate::{match_, match_exprs};
-use rayon::prelude::*;
 use ahash::{HashMap, RandomState};
+use rayon::prelude::*;
 use std::collections::hash_map::RawEntryMut;
 
 /// Get the partition size for parallel
@@ -44,7 +44,7 @@ pub(crate) fn prepare_groupby(
     keys: &Vec<&Exprs>,
     hasher: Option<RandomState>,
 ) -> (usize, RandomState, Vec<Arr1<u64>>) {
-    let hasher = hasher.unwrap_or(RandomState::new());
+    let hasher = hasher.unwrap_or_default();
     let hashed_keys = keys
         .iter()
         .map(|e| {
@@ -67,7 +67,7 @@ pub(crate) fn prepare_groupby(
         .collect_trusted();
     // check the length of each key is the same
     assert!(
-        keys.len() >= 1,
+        !keys.is_empty(),
         "The length of groupby key should be greater than 0."
     );
     let len = hashed_keys[0].len();
@@ -84,10 +84,8 @@ pub(super) fn collect_hashmap_one_key(
     hasher: RandomState,
     hashed_key: &Arr1<u64>,
 ) -> HashMap<u64, (usize, Vec<usize>)> {
-    let mut group_dict = HashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
-        GROUP_DICT_INIT_SIZE,
-        hasher.clone(),
-    );
+    let mut group_dict =
+        HashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(GROUP_DICT_INIT_SIZE, hasher);
     for i in 0..len {
         let hash = unsafe { *hashed_key.uget(i) };
         let entry = group_dict
@@ -111,7 +109,7 @@ pub(super) fn collect_hashmap_one_key(
 pub(super) fn collect_hashmap_keys(
     len: usize,
     hasher: RandomState,
-    hashed_keys: &Vec<Arr1<u64>>,
+    hashed_keys: &[Arr1<u64>],
 ) -> HashMap<Vec<u64>, (usize, Vec<usize>)> {
     let mut group_dict = HashMap::<Vec<u64>, (usize, Vec<usize>)>::with_capacity_and_hasher(
         GROUP_DICT_INIT_SIZE,
@@ -174,7 +172,7 @@ pub fn groupby_par(keys: Vec<&Exprs>, sort: bool) -> Vec<(usize, Vec<usize>)> {
                 let hashed_key = &hashed_keys[0];
                 let mut group_dict = HashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
                     GROUP_DICT_INIT_SIZE,
-                    hasher.clone(),
+                    hasher,
                 );
                 for i in 0..len {
                     let hash = unsafe { *hashed_key.uget(i) };
@@ -214,7 +212,7 @@ pub fn groupby_par(keys: Vec<&Exprs>, sort: bool) -> Vec<(usize, Vec<usize>)> {
                         .map(|keys| unsafe { *keys.uget(i) })
                         .collect_trusted();
                     let hash = hasher.hash_one(&tuple_keys);
-                    if partition_here(hash.clone(), thread, n_partition) {
+                    if partition_here(hash, thread, n_partition) {
                         let entry = group_dict
                             .raw_entry_mut()
                             .from_key_hashed_nocheck(hash, &tuple_keys);

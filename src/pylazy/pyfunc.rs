@@ -7,18 +7,19 @@ use super::super::from_py::{PyArrayOk, PyList};
 use super::export::*;
 
 #[pyfunction]
-pub unsafe fn parse_expr_nocopy<'py>(obj: &'py PyAny) -> PyResult<PyExpr> {
+pub unsafe fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
     parse_expr(obj, false)
 }
 
-#[pyfunction(copy = false)]
-pub unsafe fn parse_expr<'py>(obj: &'py PyAny, copy: bool) -> PyResult<PyExpr> {
+#[pyfunction]
+#[pyo3(signature=(obj, copy=false))]
+pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
     if let Ok(expr) = obj.extract::<PyExpr>() {
         Ok(expr)
     } else if let Ok(val) = obj.extract::<i32>() {
-        Ok(Expr::new(val.clone().into(), None).into())
+        Ok(Expr::new(val.into(), None).into())
     } else if let Ok(val) = obj.extract::<f64>() {
-        Ok(Expr::new(val.clone().into(), None).into())
+        Ok(Expr::new(val.into(), None).into())
     } else if let Ok(val) = obj.extract::<String>() {
         Ok(Expr::new(val.into(), None).into())
     } else if let Ok(pyarr) = obj.extract::<PyArrayOk>() {
@@ -43,7 +44,7 @@ pub unsafe fn parse_expr<'py>(obj: &'py PyAny, copy: bool) -> PyResult<PyExpr> {
                 DateTimeMs(arr) => Expr::new_from_owned(
                     arr.readonly()
                         .as_array()
-                        .map(|v| Into::<DateTime>::into(v.clone()))
+                        .map(|v| Into::<DateTime>::into(*v))
                         .wrap(),
                     None,
                 )
@@ -51,7 +52,7 @@ pub unsafe fn parse_expr<'py>(obj: &'py PyAny, copy: bool) -> PyResult<PyExpr> {
                 DateTimeNs(arr) => Expr::new_from_owned(
                     arr.readonly()
                         .as_array()
-                        .map(|v| Into::<DateTime>::into(v.clone()))
+                        .map(|v| Into::<DateTime>::into(*v))
                         .wrap(),
                     None,
                 )
@@ -59,7 +60,7 @@ pub unsafe fn parse_expr<'py>(obj: &'py PyAny, copy: bool) -> PyResult<PyExpr> {
                 DateTimeUs(arr) => Expr::new_from_owned(
                     arr.readonly()
                         .as_array()
-                        .map(|v| Into::<DateTime>::into(v.clone()))
+                        .map(|v| Into::<DateTime>::into(*v))
                         .wrap(),
                     None,
                 )
@@ -111,8 +112,9 @@ pub unsafe fn parse_expr<'py>(obj: &'py PyAny, copy: bool) -> PyResult<PyExpr> {
     }
 }
 
-#[pyfunction(copy = false)]
-pub unsafe fn parse_expr_list<'py>(obj: &'py PyAny, copy: bool) -> PyResult<Vec<PyExpr>> {
+#[pyfunction]
+#[pyo3(signature=(obj, copy=false))]
+pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> {
     if obj.is_instance_of::<PyList3>()? || obj.is_instance_of::<PyTuple>()? {
         if let Ok(seq) = obj.extract::<Vec<&PyAny>>() {
             Ok(seq
@@ -131,7 +133,8 @@ pub unsafe fn parse_expr_list<'py>(obj: &'py PyAny, copy: bool) -> PyResult<Vec<
     }
 }
 
-#[pyfunction(axis = "0")]
+#[pyfunction]
+#[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
 pub fn concat_expr(exprs: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
     let e1 = exprs.get(0).unwrap().clone();
@@ -156,7 +159,8 @@ pub fn concat_expr(exprs: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
     Ok(rtn.add_obj_vec(obj_vec))
 }
 
-#[pyfunction(inplace = true)]
+#[pyfunction]
+#[pyo3(signature=(exprs, inplace=false))]
 pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> Option<Vec<PyExpr>> {
     exprs.par_iter_mut().for_each(|e| e.eval_inplace());
     if inplace {
@@ -166,8 +170,8 @@ pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> Option<Vec<PyExpr>> {
     }
 }
 
-#[pyfunction(par = false)]
-#[pyo3(name = "where_")]
+#[pyfunction]
+#[pyo3(name="where_", signature=(expr, mask, value, par=false))]
 pub unsafe fn where_py(expr: &PyAny, mask: &PyAny, value: &PyAny, par: bool) -> PyResult<PyExpr> {
     let expr = parse_expr_nocopy(expr)?;
     let mask = parse_expr_nocopy(mask)?;
@@ -229,12 +233,23 @@ pub unsafe fn full(shape: &PyAny, value: &PyAny, py: Python) -> PyResult<PyObjec
     Ok(out.into_py(py))
 }
 
-#[pyfunction(start = "None", step = "None")]
+#[pyfunction]
+#[pyo3(signature=(start, end=None, step=None))]
 #[allow(unreachable_patterns)]
-pub unsafe fn arange(start: Option<f64>, end: &PyAny, step: Option<f64>) -> PyResult<PyExpr> {
-    let end = parse_expr_nocopy(end)?;
-    let obj = end.obj();
-    Ok(Expr::arange(start, end.cast_f64()?, step).to_py(obj))
+pub unsafe fn arange(start: &PyAny, end: Option<&PyAny>, step: Option<f64>) -> PyResult<PyExpr> {
+    let start = parse_expr_nocopy(start)?;
+    let obj_start = start.obj();
+    if let Some(end) = end {
+        let end = parse_expr_nocopy(end)?;
+        let obj_end = end.obj();
+        Ok(Expr::arange(Some(start.cast_f64()?), end.cast_f64()?, step)
+            .to_py(obj_start)
+            .add_obj(obj_end))
+    } else {
+        // we only have start argument, this is actually end argument
+        Ok(Expr::arange(None, start.cast_f64()?, step).to_py(obj_start))
+    }
+    // Ok(Expr::arange(start, end.cast_f64()?, step).to_py(obj))
 }
 
 #[pyfunction]
@@ -246,7 +261,7 @@ pub fn timedelta(rule: &str) -> PyExpr {
 #[pyfunction]
 pub fn datetime(s: &str, fmt: &str) -> PyResult<PyExpr> {
     let e: Expr<'static, DateTime> = DateTime::parse(s, fmt)
-        .map_err(|e| PyValueError::new_err(e))?
+        .map_err(PyValueError::new_err)?
         .into();
     Ok(e.into())
 }

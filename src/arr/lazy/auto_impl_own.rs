@@ -1,7 +1,7 @@
 use num::traits::AsPrimitive;
 
 use super::super::{CorrMethod, Number, QuantileMethod, WinsorizeMethod};
-use super::{Expr, ExprElement, ArbArray};
+use super::{ArbArray, Expr, ExprElement};
 
 macro_rules! impl_view_lazy {
     (in1, $func:ident -> $otype:ident, ($($p:ident: $p_ty:ty),* $(,)?)) => {
@@ -75,17 +75,17 @@ where
     );
     impl_view_lazy!(in1-inplace,
         [
-            zscore, zscore_inplace -> T, 
+            zscore, zscore_inplace -> T,
         ],
         (stable: bool, axis: usize, par: bool)
     );
     impl_view_lazy!(in1-inplace,
         [
-            winsorize, winsorize -> T, 
+            winsorize, winsorize_inplace -> T,
         ],
         (method: WinsorizeMethod, method_params: Option<f64>, stable: bool, axis: usize, par: bool)
     );
-    
+
     impl_view_lazy!(in1, quantile -> f64, (q: f64, method: QuantileMethod, axis: usize, par: bool));
     impl_view_lazy!(in1, rank -> f64, (pct: bool, rev: bool, axis: usize, par: bool));
     impl_view_lazy!(in1, argsort -> i32, (rev: bool, axis: usize, par: bool));
