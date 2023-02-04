@@ -27,7 +27,7 @@ jobs:
           rust-toolchain: nightly-2023-01-19
           maturin-version: '0.14.10'
           command: publish
-          args: --skip-existing -o wheels -u Teamon
+          args: --skip-existing -o wheels -u teamon
 
   # Needed for Docker on Apple M1
   manylinux-aarch64:
@@ -48,7 +48,7 @@ jobs:
           target: aarch64-unknown-linux-gnu
           maturin-version: '0.14.10'
           command: publish
-          args: --skip-existing --no-sdist -o wheels -i python -u Teamon
+          args: --skip-existing --no-sdist -o wheels -i python -u teamon
 
 
   win-macos:
@@ -73,7 +73,7 @@ jobs:
           rust-toolchain: nightly-2023-01-19
           maturin-version: '0.14.10'
           command: publish
-          args: --no-sdist --skip-existing -o wheels -i python -u Teamoon
+          args: --no-sdist --skip-existing -o wheels -i python -u teamon
 
   macos-aarch64:
     runs-on: macos-latest
@@ -99,4 +99,4 @@ jobs:
         with:
           maturin-version: '0.14.10'
           command: publish
-          args: --target aarch64-apple-darwin --no-sdist -o wheels -i python -u Teamon
+          args: --target aarch64-apple-darwin --no-sdist -o wheels -i python -u teamon

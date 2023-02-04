@@ -25,7 +25,7 @@ format:  ## format and check
 	black .
 	cargo fmt --all
 	flake8 --ignore E501,F401,F403,W503
-	cargo clippy
+	cargo clippy -- -D warnings
 
 .PHONY: coverage
 coverage: # rust and python coverage

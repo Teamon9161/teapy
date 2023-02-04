@@ -994,13 +994,13 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(n=1, fill=None, axis=0, par=false))]
-    pub fn shift<'py>(
+    pub fn shift(
         &self,
         n: i32,
         fill: Option<&PyAny>,
         axis: usize,
         par: bool,
-        py: Python<'py>,
+        py: Python,
     ) -> PyResult<Self> {
         let fill = if let Some(fill) = fill {
             if fill.is_none() {
@@ -2362,7 +2362,7 @@ impl PyExpr {
             {
                 e.clone()
                     .chain_view_f::<_, String>(move |arr| {
-                        arr.map(|v| format!("{:.*}", precision, v)).into()
+                        arr.map(|v| format!("{v:.precision$}")).into()
                     })
                     .to_py(self.obj())
             },
@@ -2416,9 +2416,7 @@ impl PyExpr {
             .map(|i| {
                 let group_vec = output
                     .iter()
-                    .map(|single_output_exprs| {
-                        single_output_exprs.get(i as usize).unwrap().no_dim0()
-                    })
+                    .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
                     .collect_trusted();
                 concat_expr(group_vec, axis).expect("concat expr error")
             })
@@ -2447,7 +2445,7 @@ impl PyExpr {
         self.eval_inplace();
         let length = match_exprs!(&self.inner, expr, { expr.view_arr().shape()[axis] });
         let mut output = zip(repeat(0).take(window - 1), 0..window - 1)
-            .chain((window - 1..length).into_iter().enumerate())
+            .chain((window - 1..length).enumerate())
             .map(|(end, start)| {
                 let pye = self.take_by_slice(Some(axis), start, end, None);
                 let res = func
@@ -2469,9 +2467,7 @@ impl PyExpr {
             .map(|i| {
                 let group_vec = output
                     .iter()
-                    .map(|single_output_exprs| {
-                        single_output_exprs.get(i as usize).unwrap().no_dim0()
-                    })
+                    .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
                     .collect_trusted();
                 concat_expr(group_vec, axis).expect("Concat expr error")
             })

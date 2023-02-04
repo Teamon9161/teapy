@@ -616,6 +616,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(self) enum ExprBase<'a> {
     Expr(Arc<Mutex<ExprsInner<'a>>>), // an expression based on another expression
@@ -634,6 +635,7 @@ impl Default for ExprBase<'_> {
 }
 
 impl<'a, T: ExprElement> ExprInner<'a, T> {
+    #[allow(dead_code)]
     pub fn new(arr: ExprOut<'a, T>, name: Option<String>) -> Self {
         match arr {
             ExprOut::Arr(arr) => Self::new_with_arr(arr, name),
@@ -667,6 +669,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_with_arc_arr(arr: Arc<ArrOk<'a>>, name: Option<String>) -> Self {
         ExprInner::<T> {
             base: ExprBase::ArcArr(arr),
@@ -705,6 +708,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_with_expr_vec(
         expr_vec: Vec<Arc<Mutex<ExprsInner<'a>>>>,
         name: Option<String>,
@@ -765,18 +769,18 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
 
     #[inline(always)]
     pub fn set_base_by_arr(&mut self, base: ArrOk<'a>) {
-        self.base = ExprBase::Arr(base);
+        self.set_base(ExprBase::Arr(base));
     }
 
     #[inline(always)]
     pub fn set_base_by_arr_vec(&mut self, base: Vec<ArrOk<'a>>) {
-        self.base = ExprBase::ArrVec(base);
+        self.set_base(ExprBase::ArrVec(base));
     }
 
     #[cfg(feature = "blas")]
     #[inline(always)]
     pub fn set_base_by_ols_res(&mut self, base: Arc<OlsResult<'a>>) {
-        self.base = ExprBase::OlsRes(base);
+        self.set_base(ExprBase::OlsRes(base));
     }
 
     #[inline(always)]
@@ -802,7 +806,8 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     #[inline(always)]
     /// Reset the function chain.
     pub fn reset_func(&mut self) {
-        self.func = EmptyNew::empty_new();
+        self.set_func(EmptyNew::empty_new());
+        // self.func = EmptyNew::empty_new();
     }
 
     #[inline(always)]
@@ -945,6 +950,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     ///
     /// The data of the array view must exists.
     #[inline]
+    #[allow(dead_code)]
     pub fn try_view_arr_vec(&self) -> Result<Vec<ArrViewD<'_, T>>, &'static str> {
         self.try_view()?.try_into_arr_vec()
     }

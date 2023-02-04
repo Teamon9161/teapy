@@ -177,7 +177,7 @@ impl PyDataDict {
                     .lock()
                     .unwrap()
                     .get(col_name)
-                    .unwrap_or_else(|| panic!("{} isn't a column", col_name)),
+                    .unwrap_or_else(|| panic!("{col_name} isn't a column")),
             )
             .unwrap()
     }
@@ -190,7 +190,7 @@ impl PyDataDict {
                     .lock()
                     .unwrap()
                     .get(col_name)
-                    .unwrap_or_else(|| panic!("{} isn't a column", col_name)),
+                    .unwrap_or_else(|| panic!("{col_name} isn't a column")),
             )
             .unwrap()
     }
@@ -199,14 +199,14 @@ impl PyDataDict {
         let col_idx = self.valid_idx(col_idx);
         self.data
             .get(col_idx)
-            .unwrap_or_else(|| panic!("col index {} doesn't exist", col_idx))
+            .unwrap_or_else(|| panic!("col index: {col_idx} doesn't exist"))
     }
 
     pub fn get_mut_by_idx(&mut self, col_idx: i32) -> &mut PyExpr {
         let col_idx = self.valid_idx(col_idx);
         self.data
             .get_mut(col_idx)
-            .unwrap_or_else(|| panic!("col index {} doesn't exist", col_idx))
+            .unwrap_or_else(|| panic!("col index: {col_idx} doesn't exist"))
     }
 
     /// Insert a new value or update the old value,
@@ -570,7 +570,7 @@ impl PyDataDict {
         }
         let mut column_num = 0;
         let mut output = zip(repeat(0).take(window - 1), 0..window - 1)
-            .chain((window - 1..length).into_iter().enumerate())
+            .chain((window - 1..length).enumerate())
             .map(|(start, end)| {
                 let mut step_df = Vec::with_capacity(self.len());
                 self.data.iter().for_each(|pyexpr| unsafe {
@@ -599,9 +599,7 @@ impl PyDataDict {
             .map(|i| {
                 let group_vec = output
                     .iter()
-                    .map(|single_output_exprs| {
-                        single_output_exprs.get(i as usize).unwrap().no_dim0()
-                    })
+                    .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
                     .collect_trusted();
                 concat_expr(group_vec, axis).expect("Concat expr error")
             })
@@ -690,9 +688,7 @@ impl PyDataDict {
             .map(|i| {
                 let group_vec = output
                     .iter()
-                    .map(|single_output_exprs| {
-                        single_output_exprs.get(i as usize).unwrap().no_dim0()
-                    })
+                    .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
                     .collect_trusted();
                 concat_expr(group_vec, axis).expect("Concat expr error")
             })
@@ -939,7 +935,7 @@ impl PyDataDict {
                     }
                 }
             }
-            out_idx = map.into_iter().map(|(_, v)| v).collect_trusted();
+            out_idx = map.into_values().collect_trusted();
             out_idx.sort_unstable()
         } else {
             return Err(PyValueError::new_err("keep must be either first or last"));

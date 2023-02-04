@@ -144,10 +144,10 @@ pub fn groupby(keys: Vec<&Exprs>, sort: bool) -> Vec<(usize, Vec<usize>)> {
     // fast path for only one key
     let mut vec = if hashed_keys.len() == 1 {
         let group_dict = collect_hashmap_one_key(len, hasher, &hashed_keys[0]);
-        group_dict.into_iter().map(|(_k, v)| v).collect_trusted()
+        group_dict.into_values().collect_trusted()
     } else {
         let group_dict = collect_hashmap_keys(len, hasher, &hashed_keys);
-        group_dict.into_iter().map(|(_k, v)| v).collect_trusted()
+        group_dict.into_values().collect_trusted()
     };
     if sort {
         vec.sort_unstable_by_key(|v| v.0);
@@ -194,11 +194,11 @@ pub fn groupby_par(keys: Vec<&Exprs>, sort: bool) -> Vec<(usize, Vec<usize>)> {
                     }
                 }
                 if sort {
-                    let mut vec = group_dict.into_iter().map(|(_k, v)| v).collect_trusted();
+                    let mut vec = group_dict.into_values().collect_trusted();
                     vec.sort_unstable_by_key(|v| v.0);
                     vec
                 } else {
-                    group_dict.into_iter().map(|(_k, v)| v).collect_trusted()
+                    group_dict.into_values().collect_trusted()
                 }
             } else {
                 let mut group_dict =
@@ -230,11 +230,11 @@ pub fn groupby_par(keys: Vec<&Exprs>, sort: bool) -> Vec<(usize, Vec<usize>)> {
                     }
                 }
                 if sort {
-                    let mut vec = group_dict.into_iter().map(|(_k, v)| v).collect_trusted();
+                    let mut vec = group_dict.into_values().collect_trusted();
                     vec.sort_unstable_by_key(|v| v.0);
                     vec
                 } else {
-                    group_dict.into_iter().map(|(_k, v)| v).collect_trusted()
+                    group_dict.into_values().collect_trusted()
                 }
             }
         })

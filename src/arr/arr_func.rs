@@ -660,12 +660,12 @@ impl_map_nd!(
         let mut idx_sorted = Arr1::from_iter(0..len);
         if !rev {
             idx_sorted.sort_unstable_by(|a, b| {
-                let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
+                let (va, vb) = unsafe { (*self.uget(*a), *self.uget(*b)) }; // safety: out不超过self的长度
                 va.nan_sort_cmp(&vb)
             });
         } else {
             idx_sorted.sort_unstable_by(|a, b| {
-                let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
+                let (va, vb) = unsafe { (*self.uget(*a), *self.uget(*b)) }; // safety: out不超过self的长度
                 va.nan_sort_cmp_rev(&vb)
             });
         }

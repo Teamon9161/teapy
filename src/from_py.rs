@@ -189,7 +189,7 @@ impl<'source> FromPyObject<'source> for CorrMethod {
         let out = match s.as_str() {
             "pearson" => CorrMethod::Pearson,
             "spearman" => CorrMethod::Spearman,
-            _ => panic!("Not supported method: {} in correlation", s),
+            _ => panic!("Not supported method: {s} in correlation"),
         };
         Ok(out)
     }
@@ -203,7 +203,7 @@ impl<'source> FromPyObject<'source> for FillMethod {
             "ffill" => FillMethod::Ffill,
             "bfill" => FillMethod::Bfill,
             "vfill" => FillMethod::Vfill,
-            _ => panic!("Not support method: {} in fillna", s),
+            _ => panic!("Not support method: {s} in fillna"),
         };
         Ok(out)
     }
@@ -217,7 +217,7 @@ impl<'source> FromPyObject<'source> for WinsorizeMethod {
             "quantile" => WinsorizeMethod::Quantile,
             "median" => WinsorizeMethod::Median,
             "sigma" => WinsorizeMethod::Sigma,
-            _ => panic!("Not support {} method in winsorize", s),
+            _ => panic!("Not support {s} method in winsorize"),
         };
         Ok(out)
     }
@@ -232,7 +232,7 @@ impl<'source> FromPyObject<'source> for QuantileMethod {
             "lower" => QuantileMethod::Lower,
             "higher" => QuantileMethod::Higher,
             "midpoint" => QuantileMethod::MidPoint,
-            _ => panic!("Not supported quantile method: {}", s),
+            _ => panic!("Not supported quantile method: {s}"),
         };
         Ok(out)
     }
@@ -247,7 +247,7 @@ impl<'source> FromPyObject<'source> for JoinType {
             "right" => JoinType::Right,
             "inner" => JoinType::Inner,
             "outer" => JoinType::Outer,
-            _ => panic!("Not supported join method: {}", s),
+            _ => panic!("Not supported join method: {s}"),
         };
         Ok(out)
     }

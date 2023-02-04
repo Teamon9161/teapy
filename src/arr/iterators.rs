@@ -348,6 +348,7 @@ pub struct GroupIter<'a, T1: 'a, T2: 'a, P> {
 }
 
 impl<'a, T1: 'a, T2: 'a, P> GroupIter<'a, T1, T2, P> {
+    #[allow(dead_code)]
     pub fn new(key: &'a [T1], value: &'a [T2], predicate: P) -> Self {
         assert_eq!(key.len(), value.len());
         GroupIter {

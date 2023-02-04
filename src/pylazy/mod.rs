@@ -10,7 +10,7 @@ pub use datadict::PyDataDict;
 pub use groupby::PyGroupBy;
 pub use pyexpr::PyExpr;
 pub use pyfunc::{
-    arange, concat_expr, eval, from_pandas, full, get_newey_west_adjust_s, parse_expr,
+    arange, concat_expr, datetime, eval, from_pandas, full, get_newey_west_adjust_s, parse_expr,
     parse_expr_list, parse_expr_nocopy, timedelta, where_py,
 };
 
@@ -25,6 +25,7 @@ pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(where_py, m)?)?;
     m.add_function(wrap_pyfunction!(full, m)?)?;
     m.add_function(wrap_pyfunction!(arange, m)?)?;
+    m.add_function(wrap_pyfunction!(datetime, m)?)?;
     m.add_function(wrap_pyfunction!(timedelta, m)?)?;
     m.add_function(wrap_pyfunction!(from_pandas, m)?)?;
     m.add_function(wrap_pyfunction!(get_newey_west_adjust_s, m)?)?;

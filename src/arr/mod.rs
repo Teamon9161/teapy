@@ -305,7 +305,7 @@ where
             } else if v.as_() == 1 {
                 true
             } else {
-                panic!("can not cast {:?} to bool", v)
+                panic!("can not cast {v:?} to bool")
             }
         })
     }

@@ -157,7 +157,7 @@ impl PyExpr {
     }
 
     // Cast the output of the expression to object ndarray
-    pub fn cast_object_eager<'py>(self, py: Python<'py>) -> PyResult<Expr<'static, PyValue>> {
+    pub fn cast_object_eager(self, py: Python) -> PyResult<Expr<'static, PyValue>> {
         if let Ok(v) = self.inner.cast_object_eager(py) {
             Ok(v)
         } else {
@@ -217,7 +217,7 @@ impl PyExpr {
         }
     }
 
-    #[allow(unreachable_patterns)]
+    #[allow(unreachable_patterns, dead_code)]
     pub(crate) fn eval(self) -> Self {
         match_exprs!(self.inner, expr, {
             let expr = expr.eval();
@@ -400,8 +400,7 @@ impl PyExpr {
             "datetime" => Ok(self.clone().cast_datetime_default()?.to_py(self.obj())),
             "timedelta" => Ok(self.clone().cast_timedelta()?.to_py(self.obj())),
             _ => Err(PyValueError::new_err(format!(
-                "cast to type: {} is not implemented",
-                ty_name
+                "cast to type: {ty_name} is not implemented"
             ))),
         }
     }
@@ -500,9 +499,7 @@ impl<T: ExprElement + 'static> Expr<'static, T> {
                                 .into_arr()
                                 .to_dim1()
                                 .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe {
-                                (*key_arr.uget((*a) as usize), *key_arr.uget((*b) as usize))
-                            };
+                            let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
                             if !rev {
                                 va.nan_sort_cmp_stable(&vb)
                             } else {
@@ -515,9 +512,7 @@ impl<T: ExprElement + 'static> Expr<'static, T> {
                                 .into_arr()
                                 .to_dim1()
                                 .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe {
-                                (*key_arr.uget((*a) as usize), *key_arr.uget((*b) as usize))
-                            };
+                            let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
                             if !rev {
                                 va.nan_sort_cmp_stable(&vb)
                             } else {
@@ -530,9 +525,7 @@ impl<T: ExprElement + 'static> Expr<'static, T> {
                                 .into_arr()
                                 .to_dim1()
                                 .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe {
-                                (key_arr.uget((*a) as usize), key_arr.uget((*b) as usize))
-                            };
+                            let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
                             if !rev {
                                 va.cmp(vb)
                             } else {
@@ -545,9 +538,7 @@ impl<T: ExprElement + 'static> Expr<'static, T> {
                                 .into_arr()
                                 .to_dim1()
                                 .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe {
-                                (key_arr.uget((*a) as usize), key_arr.uget((*b) as usize))
-                            };
+                            let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
                             if !rev {
                                 va.0.cmp(&vb.0)
                             } else {

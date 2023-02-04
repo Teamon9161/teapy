@@ -2,14 +2,24 @@ use std::mem::MaybeUninit;
 
 pub trait VecAssumeInit {
     type Elem;
+    /// # Safety
+    /// 
+    /// the elements in the vector must be initialized
     unsafe fn assume_init(self) -> Vec<Self::Elem>;
+
 
     /// An replacement of unstable API
     /// https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.slice_assume_init_ref
+    /// # Safety
+    /// 
+    /// the elements in the vector must be initialized
     unsafe fn slice_assume_init_ref(&self) -> &[Self::Elem];
 
     /// An replacement of unstable API
     /// https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.slice_assume_init_mut
+    /// # Safety
+    /// 
+    /// the elements in the vector must be initialized    
     unsafe fn slice_assume_init_mut(&mut self) -> &mut [Self::Elem];
 }
 

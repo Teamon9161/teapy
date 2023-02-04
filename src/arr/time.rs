@@ -124,7 +124,7 @@ impl DateTime {
 
     pub fn parse(s: &str, fmt: &str) -> Result<Self, String> {
         Ok(Self(
-            NaiveDateTime::parse_from_str(s, fmt).map_err(|e| format!("{}", e))?,
+            NaiveDateTime::parse_from_str(s, fmt).map_err(|e| format!("{e}"))?,
         ))
     }
 
@@ -176,7 +176,7 @@ impl DateTime {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TimeUnit {
     Year,
     Month,
@@ -184,16 +184,17 @@ pub enum TimeUnit {
     Hour,
     Minute,
     Second,
+    #[default]
     Millisecond,
     Microsecond,
     Nanosecond,
 }
 
-impl Default for TimeUnit {
-    fn default() -> Self {
-        TimeUnit::Millisecond
-    }
-}
+// impl Default for TimeUnit {
+//     fn default() -> Self {
+//         TimeUnit::Millisecond
+//     }
+// }
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct TimeDelta {
@@ -313,7 +314,7 @@ impl TimeDelta {
                     "w" => secs += n * SECS_PER_WEEK,
                     "mo" => months += n as i32,
                     "y" => months += n as i32 * 12,
-                    unit => panic!("unit: '{}' not supported", unit),
+                    unit => panic!("unit: '{unit}' not supported"),
                 }
                 unit.clear();
             }

@@ -72,7 +72,7 @@ impl ArrD<f64> {
             );
         }
         if info != 0 {
-            panic!("SVD error: info = {}", info);
+            panic!("SVD error: info = {info}");
         }
         let lwork = work_size[0] as i32;
         let mut work = vec_uninit::<f64>(lwork.try_into().unwrap());
@@ -100,7 +100,7 @@ impl ArrD<f64> {
             );
         }
         if info != 0 {
-            panic!("SVD error: info = {}", info);
+            panic!("SVD error: info = {info}");
         }
         let s = unsafe { s.assume_init() };
         let s = Arr1::from_vec(s).to_dimd().unwrap();
