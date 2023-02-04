@@ -49,3 +49,7 @@ release:
 .PHONY: debug
 debug:
 	maturin develop
+
+.PHONY: publish
+publish:
+	maturin publish -i python -o wheels -u teamon
