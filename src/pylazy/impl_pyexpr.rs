@@ -1508,7 +1508,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmin(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
@@ -1518,7 +1518,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmax(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
@@ -1528,7 +1528,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_min(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
@@ -1538,7 +1538,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_max(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
@@ -1548,7 +1548,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, pct=false, axis=0, par=false))]
     pub fn ts_rank(
         &self,
@@ -1573,7 +1573,7 @@ impl PyExpr {
         }
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_prod(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
@@ -1583,7 +1583,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_prod_mean(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
@@ -1593,7 +1593,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_minmaxnorm(&self, window: usize, min_periods: usize, axis: usize, par: bool) -> Self {
         match_exprs!(
@@ -1611,7 +1611,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_cov(
         &self,
@@ -1635,7 +1635,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_corr(
         &self,
@@ -1659,7 +1659,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_sum(
         &self,
@@ -1676,7 +1676,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_sma(
         &self,
@@ -1693,7 +1693,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_ewm(
         &self,
@@ -1710,7 +1710,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_wma(
         &self,
@@ -1727,7 +1727,7 @@ impl PyExpr {
         })
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_std(
         &self,
@@ -1752,7 +1752,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_var(
         &self,
@@ -1777,7 +1777,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_skew(
         &self,
@@ -1802,7 +1802,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_kurt(
         &self,
@@ -1827,7 +1827,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_stable(
         &self,
@@ -1852,7 +1852,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_meanstdnorm(
         &self,
@@ -1877,7 +1877,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_reg(
         &self,
@@ -1902,7 +1902,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_tsf(
         &self,
@@ -1927,7 +1927,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_reg_slope(
         &self,
@@ -1952,7 +1952,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_reg_intercept(
         &self,
@@ -1977,7 +1977,7 @@ impl PyExpr {
         )
     }
 
-    #[cfg(feature="window_func")]
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(method, value=None, axis=0, par=false))]
     pub fn fillna(&self, method: FillMethod, value: Option<f64>, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
