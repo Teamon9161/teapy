@@ -8,4 +8,4 @@ from .teapy import timedelta
 from .teapy import where_ as where
 from .window_func import *
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
