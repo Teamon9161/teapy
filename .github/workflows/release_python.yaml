@@ -29,35 +29,30 @@ jobs:
           command: publish
           args: --skip-existing -o wheels -u teamon
 
-  # Needed for Docker on Apple M1
-  manylinux-aarch64:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
+  # # Needed for Docker on Apple M1
+  # manylinux-aarch64:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.8'
 
-      - name: Publish wheel
-        uses: messense/maturin-action@v1
-        env:
-          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
-          JEMALLOC_SYS_WITH_LG_PAGE: 16
-        with:
-          rust-toolchain: nightly-2023-01-19
-          target: aarch64-unknown-linux-gnu
-          maturin-version: '0.14.10'
-          command: publish
-          args: --skip-existing --no-sdist -o wheels -i python -u teamon
+  #     - name: Publish wheel
+  #       uses: messense/maturin-action@v1
+  #       env:
+  #         MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+  #         JEMALLOC_SYS_WITH_LG_PAGE: 16
+  #       with:
+  #         rust-toolchain: nightly-2023-01-19
+  #         target: aarch64-unknown-linux-gnu
+  #         maturin-version: '0.14.10'
+  #         command: publish
+  #         args: --skip-existing --no-sdist -o wheels -i python -u teamon
 
 
-  win-macos:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-
+  win-latest:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -69,6 +64,26 @@ jobs:
         env:
           MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
           RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2
+        with:
+          rust-toolchain: nightly-2023-01-19
+          maturin-version: '0.14.10'
+          command: publish
+          args: --no-sdist --skip-existing -o wheels -i python -u teamon
+
+  macos_latest:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Publish wheel
+        uses: messense/maturin-action@v1
+        env:
+          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2
+          CXXFLAGS: -stdlib=libc++
         with:
           rust-toolchain: nightly-2023-01-19
           maturin-version: '0.14.10'
