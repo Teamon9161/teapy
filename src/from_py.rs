@@ -9,6 +9,10 @@ use numpy::{
 };
 use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 
+#[cfg(feature = "lazy")]
+use crate::arr::DropNaMethod;
+use crate::arr::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
+
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct PyValue(pub PyObject);
@@ -181,7 +185,6 @@ pub enum GroupByKey<'py> {
     Usize(&'py PyArray1<usize>),
 }
 
-use crate::arr::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
 impl<'source> FromPyObject<'source> for CorrMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;
@@ -248,6 +251,20 @@ impl<'source> FromPyObject<'source> for JoinType {
             "inner" => JoinType::Inner,
             "outer" => JoinType::Outer,
             _ => panic!("Not supported join method: {s}"),
+        };
+        Ok(out)
+    }
+}
+
+#[cfg(feature = "lazy")]
+impl<'source> FromPyObject<'source> for DropNaMethod {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        let s: Option<&str> = ob.extract()?;
+        let s = s.unwrap_or("any").to_lowercase();
+        let out = match s.as_str() {
+            "all" => DropNaMethod::All,
+            "any" => DropNaMethod::Any,
+            _ => panic!("Not supported dropna method: {s}"),
         };
         Ok(out)
     }

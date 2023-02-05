@@ -9,7 +9,7 @@ use crate::{
     from_py::PyValue,
 };
 
-#[pyclass]
+#[pyclass(subclass)]
 #[derive(Clone, Default)]
 pub struct PyExpr {
     pub inner: Exprs<'static>,

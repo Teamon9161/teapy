@@ -15,6 +15,11 @@ use rayon::prelude::*;
 use statrs::distribution::ContinuousCDF;
 use std::mem;
 
+pub enum DropNaMethod {
+    Any,
+    All,
+}
+
 impl<'a, T> Expr<'a, T>
 where
     T: ExprElement + 'a,
@@ -438,6 +443,44 @@ where
                 par,
             )
             .into()
+        })
+    }
+
+    pub fn dropna<'b: 'a>(self, axis: Expr<'a, usize>, how: DropNaMethod, par: bool) -> Self
+    where
+        T: Clone + Number,
+    {
+        self.chain_view_f(move |arr| {
+            let ndim = arr.ndim();
+            let axis = *axis
+                .eval()
+                .view_arr()
+                .to_dim0()
+                .expect("axis should be dim 0")
+                .into_scalar();
+            match ndim {
+                1 => arr
+                    .to_dim1()
+                    .unwrap()
+                    .remove_nan_1d()
+                    .to_dimd()
+                    .unwrap()
+                    .into(),
+                2 => {
+                    let arr = arr.to_dim2().unwrap();
+                    let mask = match (axis, how) {
+                        (0, DropNaMethod::Any) => arr.not_nan().all(1, par),
+                        (0, DropNaMethod::All) => arr.not_nan().any(1, par),
+                        (1, DropNaMethod::Any) => arr.not_nan().all(0, par),
+                        (1, DropNaMethod::All) => arr.not_nan().any(0, par),
+                        _ => panic!("axis should be 0 or 1 and how should be any or all"),
+                    };
+                    arr.filter(&mask, axis, par).to_dimd().unwrap().into()
+                }
+                dim => unimplemented!(
+                    "dropna only support 1d and 2d array currently, but the array is dim {dim}"
+                ),
+            }
         })
     }
 

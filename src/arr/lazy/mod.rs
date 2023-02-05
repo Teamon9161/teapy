@@ -11,6 +11,7 @@ mod impl_view;
 mod linalg;
 
 pub use exprs::Exprs;
+pub use impl_own::DropNaMethod;
 #[cfg(feature = "blas")]
 pub use linalg::OlsResult;
 use pyo3::{Python, ToPyObject};

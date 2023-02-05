@@ -7,12 +7,16 @@ use super::super::from_py::{PyArrayOk, PyList};
 use super::export::*;
 
 #[pyfunction]
+/// A util function to convert python object to PyExpr without copy
 pub unsafe fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
     parse_expr(obj, false)
 }
 
 #[pyfunction]
 #[pyo3(signature=(obj, copy=false))]
+/// A util function to convert python object to PyExpr
+///
+/// copy: whether to copy numpy.ndarray when creating the PyExpr
 pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
     if let Ok(expr) = obj.extract::<PyExpr>() {
         Ok(expr)
@@ -22,7 +26,32 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         Ok(Expr::new(val.into(), None).into())
     } else if let Ok(val) = obj.extract::<String>() {
         Ok(Expr::new(val.into(), None).into())
+    } else if obj.get_type().name()? == "DataFrame" {
+        // cast pandas.DataFrame to PyExpr
+        let module_name = obj.getattr("__module__")?.extract::<&str>()?;
+        let module_name = module_name.split('.').next().unwrap();
+        if module_name == "pandas" {
+            let obj = obj.getattr("values")?;
+            return parse_expr(obj, copy);
+        } else {
+            return Err(PyValueError::new_err(format!(
+                "DataFrame of module {module_name} is not supported"
+            )));
+        }
+    } else if obj.get_type().name()? == "Series" {
+        // cast pandas.DataFrame to PyExpr
+        let module_name = obj.getattr("__module__")?.extract::<&str>()?;
+        let module_name = module_name.split('.').next().unwrap();
+        if module_name == "pandas" {
+            let obj = obj.getattr("values")?;
+            return parse_expr(obj, copy);
+        } else {
+            return Err(PyValueError::new_err(format!(
+                "Series of module {module_name} is not supported"
+            )));
+        }
     } else if let Ok(pyarr) = obj.extract::<PyArrayOk>() {
+        // cast numpy.ndarray to PyExpr
         if pyarr.is_object() {
             let arr = pyarr.into_object()?;
             if copy {
@@ -76,6 +105,8 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                 arr,
                 { Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into()) },
                 F64,
+                F32,
+                I64,
                 I32,
                 Bool
             )

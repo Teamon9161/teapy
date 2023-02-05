@@ -4,22 +4,24 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 import teapy as tp
-from teapy.testing import assert_series_equal, make_arr
+from teapy import Expr
+from teapy.testing import assert_allclose3, make_arr
 
 
 @given(make_arr(30), st.integers(1, 5), st.booleans())
 def test_ts_sma(arr, window, stable):
-    # 测试移动平均
+    # test moving average
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
-    res1 = tp.ts_mean(arr, window, min_periods=min_periods, stable=stable)
-    res2 = arr.rolling(window, min_periods=min_periods).mean()
-    assert_series_equal(res1, res2)
+    res1 = tp.ts_sma(arr, window, min_periods=min_periods, stable=stable)
+    res2 = Expr(arr).ts_sma(window, min_periods=min_periods, stable=stable).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).mean()
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30), st.integers(1, 5), st.booleans())
 def test_ts_ewm(arr, window, stable):
-    # 测试指数加权移动平均
+    # test exponential weighted moving average
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
 
@@ -34,13 +36,14 @@ def test_ts_ewm(arr, window, stable):
             return np.nan
 
     res1 = tp.ts_ewm(arr, window, min_periods=min_periods, stable=stable)
-    res2 = arr.rolling(window, min_periods=min_periods).apply(ewm)
-    assert_series_equal(res1, res2)
+    res2 = Expr(arr).ts_ewm(window, min_periods=min_periods, stable=stable).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).apply(ewm)
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30), st.integers(1, 5), st.booleans())
 def test_ts_wma(arr, window, stable):
-    # 测试加权移动平均
+    # test weighted moving average
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
 
@@ -54,79 +57,88 @@ def test_ts_wma(arr, window, stable):
             return np.nan
 
     res1 = tp.ts_wma(arr, window, min_periods=min_periods, stable=stable)
-    res2 = arr.rolling(window, min_periods=min_periods).apply(wma)
-    assert_series_equal(res1, res2)
+    res2 = Expr(arr).ts_wma(window, min_periods=min_periods, stable=stable).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).apply(wma)
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30), st.integers(1, 5), st.booleans())
 def test_ts_sum(arr, window, stable):
-    # 测试移动求和
+    # test moving sum
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
     res1 = tp.ts_sum(arr, window, min_periods=min_periods, stable=stable)
-    res2 = arr.rolling(window, min_periods=min_periods).sum()
-    assert_series_equal(res1, res2)
+    res2 = Expr(arr).ts_sum(window, min_periods=min_periods, stable=stable).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).sum()
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30), st.integers(1, 3))
 def test_ts_prod(arr, window):
-    # 测试移动连乘
+    # test moving product
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
     res1 = tp.ts_prod(arr, window, min_periods=min_periods)
-    res2 = arr.rolling(window, min_periods=min_periods).apply(lambda x: x.prod())
-    assert_series_equal(res1, res2)
+    res2 = Expr(arr).ts_prod(window, min_periods=min_periods).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).apply(lambda x: x.prod())
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30), st.integers(1, 3))
 def test_ts_prod_mean(arr, window):
-    # 测试移动几何平均
+    # test moving geometric mean
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
     res1 = tp.ts_prod_mean(arr, window, min_periods=min_periods)
-    res2 = arr.rolling(window, min_periods=min_periods).apply(
+    res2 = Expr(arr).ts_prod_mean(window, min_periods=min_periods).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).apply(
         lambda x: x.prod() ** (1 / x.notnull().sum())
     )
-    assert_series_equal(res1, res2)
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30, unique=True), st.integers(2, 5), st.booleans())
 def test_ts_std(arr, window, stable):
-    # 测试移动标准差
+    # test moving standard deviation
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(2, window + 1)
     res1 = tp.ts_std(arr, window, min_periods=min_periods, stable=True)
-    res2 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.std())
-    assert_series_equal(res1, res2)
+    res2 = Expr(arr).ts_std(window, min_periods=min_periods).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.std())
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30), st.integers(2, 5), st.booleans())
 def test_ts_var(arr, window, stable):
-    # 测试移动方差
+    # test moving variance
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(2, window + 1)
     res1 = tp.ts_var(arr, window, min_periods=min_periods, stable=stable)
-    res2 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.var())
-    assert_series_equal(res1, res2)
+    res2 = Expr(arr).ts_var(window, min_periods=min_periods, stable=stable).eview()
+    res3 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.var())
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30, unique=True), st.integers(3, 5), st.booleans())
 def test_ts_skew(arr, window, stable):
-    # 测试移动偏度
+    # test moving skewness
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(3, window + 1)
     res1 = tp.ts_skew(arr, window, min_periods=min_periods, stable=stable)
+    res2 = Expr(arr).ts_skew(window, min_periods=min_periods, stable=stable).eview()
     # 不直接使用Rolling.skew的原因是当window中所有元素一样时会给出nan
-    res2 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.skew())
-    assert_series_equal(res1, res2)
+    res3 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.skew())
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr(30, unique=True), st.integers(4, 5), st.booleans())
 def test_ts_kurt(arr, window, stable):
-    # 测试移动峰度
+    # test moving kurtosis
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(4, window + 1)
     res1 = tp.ts_kurt(arr, window, min_periods=min_periods, stable=stable)
-    # 不直接使用Rolling.kurt的原因是当window中所有元素一样时会给出nan，
-    res2 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.kurt())
-    assert_series_equal(res1, res2)
+    res2 = Expr(arr).ts_kurt(window, min_periods=min_periods, stable=stable).eview()
+    # the reason why we don't use Rolling.kurt is that when all
+    # elements in window are the same, the function will return nan
+    res3 = arr.rolling(window, min_periods=min_periods).apply(lambda s: s.kurt())
+    assert_allclose3(res1, res2, res3)

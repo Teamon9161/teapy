@@ -17,6 +17,14 @@ settings.load_profile("test")
 
 isclose = partial(isclose, rel_tol=rtol, abs_tol=atol)
 
+
+def assert_isclose3(a, b, c, *args):
+    assert isclose(a, b)
+    assert isclose(b, c)
+    for v in args:
+        assert isclose(a, v)
+
+
 assert_series_equal = partial(
     assert_series_equal,
     rtol=rtol,
@@ -27,6 +35,13 @@ assert_series_equal = partial(
 )
 
 assert_allclose = partial(assert_allclose, rtol=rtol, atol=atol)
+
+
+def assert_allclose3(a, b, c, *args):
+    assert_allclose(a, b)
+    assert_allclose(b, c)
+    for v in args:
+        assert_allclose(a, v)
 
 
 # 同个数组中的数如果差距过大，在计算时太小的数会被忽略

@@ -1,6 +1,8 @@
 use super::export::*;
 use super::pyfunc::{parse_expr, parse_expr_list, parse_expr_nocopy, where_};
-use crate::arr::{DateTime, ExprOut, ExprOutView, Number, TimeDelta, WinsorizeMethod};
+use crate::arr::{
+    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, TimeDelta, WinsorizeMethod,
+};
 use crate::from_py::{NoDim0, PyValue};
 use ndarray::SliceInfoElem;
 use num::PrimInt;
@@ -1196,6 +1198,36 @@ impl PyExpr {
         }))
     }
 
+    #[pyo3(signature=(axis=None, how=DropNaMethod::Any, par=false))]
+    pub unsafe fn dropna(
+        &self,
+        axis: Option<&PyAny>,
+        how: DropNaMethod,
+        par: bool,
+    ) -> PyResult<Self> {
+        let axis = if let Some(axis) = axis {
+            parse_expr_nocopy(axis)?
+        } else {
+            0.into()
+        };
+        let obj = axis.obj();
+        Ok(match_exprs!(
+            &self.inner,
+            expr,
+            {
+                expr.clone()
+                    .dropna(axis.cast_usize()?, how, par)
+                    .to_py(self.obj())
+                    .add_obj(obj)
+            },
+            F32,
+            F64,
+            I32,
+            I64,
+            Usize
+        ))
+    }
+
     pub fn is_nan(&self) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().is_nan().to_py(self.obj())
@@ -1472,9 +1504,16 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(other, stable=false, axis=0, par=false))]
-    pub fn cov(&self, other: Self, stable: bool, axis: usize, par: bool) -> Self {
+    pub unsafe fn cov(
+        &self,
+        other: &PyAny,
+        stable: bool,
+        axis: usize,
+        par: bool,
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        match_exprs!(
+        let res = match_exprs!(
             (&self.inner, e1, F64, F32, I64, I32),
             (&other.inner, e2, F64, F32, I64, I32),
             {
@@ -1483,20 +1522,22 @@ impl PyExpr {
                     .to_py(self.obj())
                     .add_obj(obj)
             }
-        )
+        );
+        Ok(res)
     }
 
     #[pyo3(signature=(other, method=CorrMethod::Pearson, stable=false, axis=0, par=false))]
-    pub fn corr(
+    pub unsafe fn corr(
         &self,
-        other: Self,
+        other: &PyAny,
         method: CorrMethod,
         stable: bool,
         axis: usize,
         par: bool,
-    ) -> Self {
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        match_exprs!(
+        let res = match_exprs!(
             (&self.inner, e1, F64, F32, I64, I32),
             (&other.inner, e2, F64, F32, I64, I32),
             {
@@ -1505,7 +1546,8 @@ impl PyExpr {
                     .to_py(self.obj())
                     .add_obj(obj)
             }
-        )
+        );
+        Ok(res)
     }
 
     #[cfg(feature = "window_func")]
@@ -1613,17 +1655,18 @@ impl PyExpr {
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
-    pub fn ts_cov(
+    pub unsafe fn ts_cov(
         &self,
-        other: Self,
+        other: &PyAny,
         window: usize,
         min_periods: usize,
         stable: bool,
         axis: usize,
         par: bool,
-    ) -> Self {
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        match_exprs!(
+        let res = match_exprs!(
             (&self.inner, e1, F64, F32, I64, I32),
             (&other.inner, e2, F64, F32, I64, I32),
             {
@@ -1632,22 +1675,24 @@ impl PyExpr {
                     .to_py(self.obj())
                     .add_obj(obj)
             }
-        )
+        );
+        Ok(res)
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
-    pub fn ts_corr(
+    pub unsafe fn ts_corr(
         &self,
-        other: Self,
+        other: &PyAny,
         window: usize,
         min_periods: usize,
         stable: bool,
         axis: usize,
         par: bool,
-    ) -> Self {
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        match_exprs!(
+        let res = match_exprs!(
             (&self.inner, e1, F64, F32, I64, I32),
             (&other.inner, e2, F64, F32, I64, I32),
             {
@@ -1656,7 +1701,8 @@ impl PyExpr {
                     .to_py(self.obj())
                     .add_obj(obj)
             }
-        )
+        );
+        Ok(res)
     }
 
     #[cfg(feature = "window_func")]
@@ -1978,7 +2024,7 @@ impl PyExpr {
     }
 
     #[cfg(feature = "window_func")]
-    #[pyo3(signature=(method, value=None, axis=0, par=false))]
+    #[pyo3(signature=(method=FillMethod::Ffill, value=None, axis=0, par=false))]
     pub fn fillna(&self, method: FillMethod, value: Option<f64>, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone()
