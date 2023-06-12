@@ -56,6 +56,7 @@ def test_special():
     # test rank all nan array
     assert_allclose(tp.rank(np.array([np.nan, np.nan])), np.array([np.nan, np.nan]))
 
+
 # # currently only numpy array output is supported
 # def test_array_func_input():
 #     from pandas.testing import assert_frame_equal, assert_series_equal

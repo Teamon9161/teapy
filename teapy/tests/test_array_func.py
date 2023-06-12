@@ -201,7 +201,9 @@ def test_fillna():
     s = pd.Series([np.nan, 5, 6, 733, np.nan, 34, np.nan, np.nan])
     for method in ["ffill", "bfill"]:
         assert_series_equal(tp.fillna(s, method), s.fillna(method=method))
-        assert_allclose(Expr(s, copy=True).fillna(method).eview(), s.fillna(method=method).values)
+        assert_allclose(
+            Expr(s, copy=True).fillna(method).eview(), s.fillna(method=method).values
+        )
         # test inplace
         s1 = s.copy()
         tp.fillna(s1, method, inplace=True)
