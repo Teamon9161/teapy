@@ -83,6 +83,7 @@ jobs:
         env:
           MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
         with:
+          rust-toolchain: nightly-2023-01-19
           maturin-version: '0.14.10'
           command: publish
           args: --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u teamon
