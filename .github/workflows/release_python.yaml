@@ -59,7 +59,7 @@ jobs:
         uses: messense/maturin-action@v1
         env:
           MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
-          RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2
+          RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
           CXXFLAGS: -stdlib=libc++
         with:
           rust-toolchain: nightly-2023-01-19
@@ -76,10 +76,10 @@ jobs:
           python-version: '3.8'
 
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly-2023-01-19
+      # - name: Set up Rust
+      #   uses: dtolnay/rust-toolchain@master
+      #   with:
+      #     toolchain: nightly-2023-01-19
 
       - name: Set up Rust targets
         run: rustup target add aarch64-apple-darwin
@@ -95,6 +95,7 @@ jobs:
 
 
   # # the dependency of ndarry-linalg crate can not be build on manylinux-arrch64 currently
+  
   # # Needed for Docker on Apple M1
   # manylinux-aarch64:
   #   runs-on: ubuntu-latest
