@@ -1,11 +1,11 @@
 [package]
 name = "teapy"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 
 [lib]
 name = "teapy"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["lazy", "eager_api", "blas"]

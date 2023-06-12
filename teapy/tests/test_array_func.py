@@ -201,7 +201,7 @@ def test_fillna():
     s = pd.Series([np.nan, 5, 6, 733, np.nan, 34, np.nan, np.nan])
     for method in ["ffill", "bfill"]:
         assert_series_equal(tp.fillna(s, method), s.fillna(method=method))
-        assert_allclose(Expr(s).fillna(method).eview(), s.fillna(method=method).values)
+        assert_allclose(Expr(s, copy=True).fillna(method).eview(), s.fillna(method=method).values)
         # test inplace
         s1 = s.copy()
         tp.fillna(s1, method, inplace=True)
@@ -211,7 +211,7 @@ def test_fillna():
     fill_value = 101
     assert_series_equal(tp.fillna(s, value=fill_value), s.fillna(fill_value))
     assert_allclose(
-        Expr(s).fillna(value=fill_value).eview(), s.fillna(fill_value).values
+        Expr(s, copy=True).fillna(value=fill_value).eview(), s.fillna(fill_value).values
     )
     # test inplace
     tp.fillna(s, value=fill_value, inplace=True)
@@ -258,7 +258,7 @@ def test_winsorize():
     # quantile method
     q = 0.05
     s1 = tp.winsorize(s, "quantile", q)
-    s2 = Expr(s).winsorize("quantile", q).eview()
+    s2 = Expr(s, copy=True).winsorize("quantile", q).eview()
     lower, upper = np.nanquantile(s, [q, 1 - q])
     s3 = s.clip(lower, upper)
     assert_allclose3(s1, s2, s3)
@@ -270,7 +270,7 @@ def test_winsorize():
     # median method
     q = 1
     s1 = tp.winsorize(s, "median", q)
-    s2 = Expr(s).winsorize("median", q).eview()
+    s2 = Expr(s, copy=True).winsorize("median", q).eview()
     median = s.median()
     mad = (s - median).abs().median()
     s3 = s.clip(median - q * mad, median + q * mad)
@@ -279,7 +279,7 @@ def test_winsorize():
     # sigma method
     q = 1.2
     s1 = tp.winsorize(s, "sigma", q)
-    s2 = Expr(s).winsorize("sigma", q).eview()
+    s2 = Expr(s, copy=True).winsorize("sigma", q).eview()
     mean = s.mean()
     std = s.std()
     s3 = s.clip(mean - q * std, mean + q * std)

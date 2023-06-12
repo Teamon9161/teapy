@@ -20,18 +20,21 @@ pub unsafe fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
 pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
     if let Ok(expr) = obj.extract::<PyExpr>() {
         Ok(expr)
-    } else if let Ok(val) = obj.extract::<i32>() {
-        Ok(Expr::new(val.into(), None).into())
-    } else if let Ok(val) = obj.extract::<f64>() {
-        Ok(Expr::new(val.into(), None).into())
-    } else if let Ok(val) = obj.extract::<String>() {
-        Ok(Expr::new(val.into(), None).into())
+    } else if obj.hasattr("__name__")? && obj.getattr("__name__")?.extract::<&str>()? == "PyExpr" {
+        // PyExpr from other crates whick extends this crate
+        let expr_obj = &*(&obj as *const _ as *const Py<PyExpr>);
+        Ok(expr_obj.extract::<PyExpr>(obj.py())?)
     } else if obj.get_type().name()? == "DataFrame" {
-        // cast pandas.DataFrame to PyExpr
+        // cast pandas.DataFrame or polars DataFrame to PyExpr
         let module_name = obj.getattr("__module__")?.extract::<&str>()?;
         let module_name = module_name.split('.').next().unwrap();
         if module_name == "pandas" {
             let obj = obj.getattr("values")?;
+            return parse_expr(obj, copy);
+        } else if module_name == "polars" {
+            let kwargs = PyDict::new(obj.py());
+            kwargs.set_item("writable", false)?;
+            let obj = obj.getattr("to_numpy")?.call((), Some(kwargs))?;
             return parse_expr(obj, copy);
         } else {
             return Err(PyValueError::new_err(format!(
@@ -39,11 +42,16 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
             )));
         }
     } else if obj.get_type().name()? == "Series" {
-        // cast pandas.DataFrame to PyExpr
+        // cast pandas.Series to PyExpr
         let module_name = obj.getattr("__module__")?.extract::<&str>()?;
         let module_name = module_name.split('.').next().unwrap();
         if module_name == "pandas" {
             let obj = obj.getattr("values")?;
+            return parse_expr(obj, copy);
+        } else if module_name == "polars" {
+            let kwargs = PyDict::new(obj.py());
+            kwargs.set_item("writable", false)?;
+            let obj = obj.getattr("to_numpy")?.call((), Some(kwargs))?;
             return parse_expr(obj, copy);
         } else {
             return Err(PyValueError::new_err(format!(
@@ -57,14 +65,25 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
             if copy {
                 return Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into());
             } else {
-                let mut arr = arr.readwrite();
-                let arr_write = arr.as_array_mut();
-                let arb_arr = ArbArray::ViewMut(arr_write.wrap());
-                // This is only safe when the pyarray exists
-                return Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
-                    Expr::new(arb_arr, None).into(),
-                )
-                .to_py(Some(vec![obj.to_object(obj.py())])));
+                let arr_res = arr.try_readwrite();
+                if let Ok(mut arr) = arr_res {
+                    let arr_write = arr.as_array_mut();
+                    let arb_arr = ArbArray::ViewMut(arr_write.wrap());
+                    // This is only safe when the pyarray exists
+                    return Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
+                        Expr::new(arb_arr, None).into(),
+                    )
+                    .to_py(Some(vec![obj.to_object(obj.py())])));
+                } else {
+                    // not writable
+                    let arr_read = arr.as_array();
+                    let arb_arr = ArbArray::View(arr_read.wrap());
+                    // This is only safe when the pyarray exists
+                    return Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
+                        Expr::new(arb_arr, None).into(),
+                    )
+                    .to_py(Some(vec![obj.to_object(obj.py())])));
+                };
             }
         } else if pyarr.is_datetime() {
             // we don't need to reference to the pyobject here because we made a copy
@@ -115,14 +134,24 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                 pyarr,
                 arr,
                 {
-                    let mut arr = arr.readwrite();
-                    let arr_write = arr.as_array_mut();
-                    let arb_arr = ArbArray::ViewMut(arr_write.wrap());
-                    // safe when pyarray exists
-                    Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
-                        Expr::new(arb_arr, None).into(),
-                    )
-                    .to_py(Some(vec![obj.to_object(obj.py())])))
+                    let arr_res = arr.try_readwrite();
+                    if let Ok(mut arr) = arr_res {
+                        let arr_write = arr.as_array_mut();
+                        let arb_arr = ArbArray::ViewMut(arr_write.wrap());
+                        // safe when pyarray exists
+                        Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
+                            Expr::new(arb_arr, None).into(),
+                        )
+                        .to_py(Some(vec![obj.to_object(obj.py())])))
+                    } else {
+                        let arr_read = arr.as_array();
+                        let arb_arr = ArbArray::View(arr_read.wrap());
+                        // safe when pyarray exists
+                        Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
+                            Expr::new(arb_arr, None).into(),
+                        )
+                        .to_py(Some(vec![obj.to_object(obj.py())])))
+                    }
                 },
                 F64,
                 F32,
@@ -135,6 +164,12 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         match_pylist!(pylist, l, {
             Ok(Expr::new_from_owned(Arr1::from_vec(l).to_dimd().unwrap(), None).into())
         })
+    } else if let Ok(val) = obj.extract::<i32>() {
+        Ok(Expr::new(val.into(), None).into())
+    } else if let Ok(val) = obj.extract::<f64>() {
+        Ok(Expr::new(val.into(), None).into())
+    } else if let Ok(val) = obj.extract::<String>() {
+        Ok(Expr::new(val.into(), None).into())
     } else {
         Err(PyValueError::new_err(format!(
             "Not support this type of Pyobject {}",
@@ -144,6 +179,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
 }
 
 #[pyfunction]
+#[allow(clippy::missing_safety_doc)]
 #[pyo3(signature=(obj, copy=false))]
 pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> {
     if obj.is_instance_of::<PyList3>()? || obj.is_instance_of::<PyTuple>()? {
@@ -191,6 +227,17 @@ pub fn concat_expr(exprs: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
 }
 
 #[pyfunction]
+#[allow(clippy::missing_safety_doc)]
+#[pyo3(name="concat", signature=(exprs, axis=0))]
+pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: usize) -> PyResult<PyExpr> {
+    let exprs = exprs
+        .into_iter()
+        .map(|e| parse_expr_nocopy(e))
+        .collect::<PyResult<Vec<PyExpr>>>()?;
+    concat_expr(exprs, axis)
+}
+
+#[pyfunction]
 #[pyo3(signature=(exprs, inplace=false))]
 pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> Option<Vec<PyExpr>> {
     exprs.par_iter_mut().for_each(|e| e.eval_inplace());
@@ -202,6 +249,7 @@ pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> Option<Vec<PyExpr>> {
 }
 
 #[pyfunction]
+#[allow(clippy::missing_safety_doc)]
 #[pyo3(name="where_", signature=(expr, mask, value, par=false))]
 pub unsafe fn where_py(expr: &PyAny, mask: &PyAny, value: &PyAny, par: bool) -> PyResult<PyExpr> {
     let expr = parse_expr_nocopy(expr)?;
@@ -251,6 +299,7 @@ pub fn where_(expr: PyExpr, mask: PyExpr, value: PyExpr, par: bool) -> PyResult<
 }
 
 #[pyfunction]
+#[allow(clippy::missing_safety_doc)]
 #[allow(unreachable_patterns)]
 pub unsafe fn full(shape: &PyAny, value: &PyAny, py: Python) -> PyResult<PyObject> {
     let shape = parse_expr_nocopy(shape)?;
@@ -266,7 +315,7 @@ pub unsafe fn full(shape: &PyAny, value: &PyAny, py: Python) -> PyResult<PyObjec
 
 #[pyfunction]
 #[pyo3(signature=(start, end=None, step=None))]
-#[allow(unreachable_patterns)]
+#[allow(unreachable_patterns, clippy::missing_safety_doc)]
 pub unsafe fn arange(start: &PyAny, end: Option<&PyAny>, step: Option<f64>) -> PyResult<PyExpr> {
     let start = parse_expr_nocopy(start)?;
     let obj_start = start.obj();

@@ -18,6 +18,7 @@ pub struct PyDataDict {
     column_map: Arc<Mutex<HashMap<String, usize>>>,
 }
 
+#[allow(clippy::missing_safety_doc)]
 impl PyDataDict {
     pub fn new(mut data: Vec<PyExpr>, columns: Option<Vec<String>>) -> Self {
         if let Some(columns) = columns {
@@ -59,6 +60,11 @@ impl PyDataDict {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     // fn create_column_map(&mut self) {
@@ -326,11 +332,12 @@ impl PyDataDict {
 }
 
 #[pymethods]
+#[allow(clippy::missing_safety_doc)]
 impl PyDataDict {
     #[new]
     #[pyo3(signature=(data, columns=None, copy=false))]
-    pub unsafe fn init(data: &PyAny, columns: Option<Vec<String>>, copy: bool) -> PyResult<Self> {
-        let data = parse_expr_list(data, copy)?;
+    pub fn init(data: &PyAny, columns: Option<Vec<String>>, copy: bool) -> PyResult<Self> {
+        let data = unsafe { parse_expr_list(data, copy)? };
         Ok(Self::new(data, columns))
     }
 
@@ -550,7 +557,7 @@ impl PyDataDict {
         check: bool,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Self> {
-        if self.len() == 0 {
+        if self.is_empty() {
             return Ok(self.clone());
         }
         if window == 0 {
@@ -618,7 +625,7 @@ impl PyDataDict {
         check: bool,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Self> {
-        if self.len() == 0 {
+        if self.is_empty() {
             return Ok(self.clone());
         }
         self.eval_all()?;

@@ -14,7 +14,6 @@ macro_rules! impl_view_lazy {
     };
     (in1-inplace, $func:ident, $func_inplace: ident -> $otype:ident, ($($p:ident: $p_ty:ty),* $(,)?)) => {
         pub fn $func (self $(, $p: $p_ty)*) -> Expr<'a, $otype> {
-            // self.chain_view_f(move |arr| arr.$func($($p),*).into())
             self.chain_arr_f(move |arb_arr| {
                 use ArbArray::*;
                 match arb_arr {

@@ -75,6 +75,7 @@ macro_rules! impl_from {
                 unsafe {
                     match T::dtype() {
                         $(DataType::$arm => ArrOk::$arm(arr.into_dtype::<$ty>()),)*
+                        DataType::Str => ArrOk::Str(arr.into_dtype::<&'a str>()),
                         _ => unimplemented!("Create ArrOk from this type of ArbArray is not implemented")
                     }
                 }
@@ -100,6 +101,7 @@ macro_rules! impl_from {
                 }
             }
         )*
+
     };
 }
 
@@ -116,3 +118,21 @@ impl_from!(
     (TimeDelta, TimeDelta), //, (Str, &str)
     (OpUsize, Option<usize>)
 );
+
+impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {
+    fn from(arr: ArrD<&'a str>) -> Self {
+        ArrOk::Str(arr.into())
+    }
+}
+
+impl<'a> From<ArrViewD<'a, &'a str>> for ArrOk<'a> {
+    fn from(arr: ArrViewD<'a, &'a str>) -> Self {
+        ArrOk::Str(arr.into())
+    }
+}
+
+impl<'a> From<ArrViewMutD<'a, &'a str>> for ArrOk<'a> {
+    fn from(arr: ArrViewMutD<'a, &'a str>) -> Self {
+        ArrOk::Str(arr.into())
+    }
+}

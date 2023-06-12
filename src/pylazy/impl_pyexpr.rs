@@ -79,6 +79,7 @@ macro_rules! impl_py_cmp {
 }
 
 #[pymethods]
+#[allow(clippy::missing_safety_doc)]
 impl PyExpr {
     #[new]
     #[pyo3(signature=(expr, name=None, copy=false))]
@@ -107,6 +108,20 @@ impl PyExpr {
             TimeDelta(_) => "TimeDelta",
             OpUsize(_) => "OptionUsize",
         }
+    }
+
+    #[getter]
+    #[allow(unreachable_patterns)]
+    pub fn get_base_type(&self) -> &'static str {
+        match_exprs!(&self.inner, e, { e.get_base_type() })
+    }
+
+    #[getter]
+    #[allow(unreachable_patterns)]
+    pub fn get_base_strong_count(&self) -> PyResult<usize> {
+        match_exprs!(&self.inner, e, {
+            e.get_base_strong_count().map_err(PyValueError::new_err)
+        })
     }
 
     fn __traverse__(&self, visit: PyVisit<'_>) -> Result<(), PyTraverseError> {
@@ -193,7 +208,7 @@ impl PyExpr {
         if !inplace {
             Some(self.clone())
         } else {
-            self.eval_inplace();
+            // self.eval_inplace();
             None
         }
     }
@@ -223,12 +238,16 @@ impl PyExpr {
                         let out = out_view
                             .as_arr_vec()
                             .iter()
-                            .map(|arr| PyArray::borrow_from_array(arr, container))
+                            .map(|arr| {
+                                PyArray::borrow_from_array(arr, container)
+                                    .no_dim0(py)
+                                    .unwrap()
+                            })
                             .collect_trusted();
-                        let out = out
-                            .into_iter()
-                            .map(|e| e.no_dim0(py).unwrap())
-                            .collect_trusted();
+                        // let out = out
+                        //     .into_iter()
+                        //     .map(|e| e.no_dim0(py).unwrap())
+                        //     .collect_trusted();
                         Ok(out.into_py(py))
                     } else {
                         Ok(PyArray::borrow_from_array(out_view.as_arr(), container).no_dim0(py)?)
@@ -328,7 +347,7 @@ impl PyExpr {
             if let Some(owned) = expr.owned() {
                 Ok(owned)
             } else {
-                Err(PyValueError::new_err("expression is not evaluated"))
+                Err(PyValueError::new_err("Expression is not evaluated"))
             }
         })
     }
@@ -359,6 +378,11 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     pub fn ref_count(&mut self) -> usize {
         match_exprs!(&self.inner, expr, { expr.ref_count() })
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn hint_arr_type(&mut self) -> Self {
+        match_exprs!(&self.inner, expr, { expr.clone().hint_arr_type().into() })
     }
 
     unsafe fn __add__(&self, other: &PyAny) -> PyResult<Self> {
@@ -817,6 +841,19 @@ impl PyExpr {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().exp2().to_py(self.obj())
         })
+    }
+
+    /// Returns the sign of each element.
+    fn sign(&self) -> PyResult<Self> {
+        Ok(match_exprs!(
+            &self.inner,
+            e,
+            { e.clone().sign(false).to_py(self.obj()) },
+            F64,
+            F32,
+            I32,
+            I64
+        ))
     }
 
     /// Returns the natural logarithm of each element.

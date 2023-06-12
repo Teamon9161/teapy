@@ -3,7 +3,7 @@ from warnings import warn
 import numpy as np
 
 from . import teapy as _tp
-from .wrapper import wrap
+from .wrapper import default_wrapper, impl_by_lazy, wrap
 
 __all__ = [
     "sum",
@@ -28,10 +28,12 @@ __all__ = [
     "remove_nan",
     "split_group",
     "clip",
+    "shift",
 ]
 
 
-@wrap("array_agg_func")
+# @wrap("array_agg_func")
+@impl_by_lazy()
 def sum(arr, stable=False, axis=0, par=False):
     """
     Sum of array elements in a given axis.
@@ -54,77 +56,80 @@ def sum(arr, stable=False, axis=0, par=False):
     """
 
 
-@wrap("array_agg_func")
+# @wrap("array_agg_func")
+@impl_by_lazy()
 def min(arr, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def max(arr, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def mean(arr, stable=False, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def median(arr, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def quantile(arr, q, method="Linear", axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def std(arr, stable=False, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def var(arr, stable=False, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def skew(arr, stable=False, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def kurt(arr, stable=False, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def count_nan(arr, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func")
+@impl_by_lazy()
 def count_notnan(arr, axis=0, par=False):
     pass
 
 
-@wrap("array_func")
+# @wrap("array_func")
+@impl_by_lazy()
 def argsort(arr, axis=0, par=False, rev=False):
     pass
 
 
-@wrap("array_agg_func2")
+# @wrap("array_agg_func2")
+@impl_by_lazy("default2")
 def cov(arr1, arr2, stable=False, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func2")
+@impl_by_lazy("default2")
 def corr(arr1, arr2, method=None, stable=False, axis=0, par=False):
     pass
 
 
-@wrap("array_func")
+@impl_by_lazy()
 def rank(arr, pct=False, axis=0, par=False, rev=False):
     pass
 
@@ -135,16 +140,19 @@ def clip(arr, min, max, axis=0, par=False):
 
 
 @wrap("base")
+# @impl_by_lazy()
 def remove_nan(arr):
     pass
 
 
-@wrap("array_func")
+# @wrap("array_func")
+@impl_by_lazy()
 def split_group(arr, axis=0, par=False):
     pass
 
 
 @wrap("array_agg_func", inplace=True)
+# @impl_by_lazy()
 def fillna(arr, method=None, value=None, axis=0, par=False, inplace=False):
     pass
 
@@ -214,3 +222,8 @@ def winsorize(
         )
     else:
         return _tp.winsorize(arr, method, method_params, stable, axis=axis, par=par)
+
+
+@impl_by_lazy()
+def shift(arr, n=1, fill=None, axis=0, par=False):
+    pass

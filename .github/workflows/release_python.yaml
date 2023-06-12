@@ -1,7 +1,5 @@
 on:
   push:
-      branches:
-        - master
       tags:
         - teapy*
 
@@ -93,7 +91,7 @@ jobs:
         with:
           maturin-version: '0.14.10'
           command: publish
-          args: --target aarch64-apple-darwin --no-sdist -o wheels -i python -u teamon
+          args: --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u teamon
 
 
   # # the dependency of ndarry-linalg crate can not be build on manylinux-arrch64 currently

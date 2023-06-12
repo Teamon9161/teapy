@@ -643,6 +643,20 @@ impl<'a, T> ArbArray<'a, T> {
         match_arbarray!(self, a, { a.ndim() })
     }
 
+    #[inline]
+    pub fn is_owned(&self) -> bool {
+        matches!(self, ArbArray::Owned(_))
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_type(&self) -> &'static str {
+        match self {
+            ArbArray::Owned(_) => "Owned Array",
+            ArbArray::ViewMut(_) => "ViewMut Array",
+            ArbArray::View(_) => "View Array",
+        }
+    }
+
     #[allow(unreachable_patterns)]
     pub fn strides(&self) -> &[isize] {
         match_arbarray!(self, a, { a.strides() })
@@ -730,6 +744,10 @@ impl<'a> ArrOk<'a> {
 
     pub fn ndim(&self) -> usize {
         match_arr!(self, a, { a.ndim() })
+    }
+
+    pub fn get_type(&self) -> &'static str {
+        match_arr!(self, a, { a.get_type() })
     }
 
     #[allow(unreachable_patterns)]

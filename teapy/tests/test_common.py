@@ -56,42 +56,42 @@ def test_special():
     # test rank all nan array
     assert_allclose(tp.rank(np.array([np.nan, np.nan])), np.array([np.nan, np.nan]))
 
+# # currently only numpy array output is supported
+# def test_array_func_input():
+#     from pandas.testing import assert_frame_equal, assert_series_equal
 
-def test_array_func_input():
-    from pandas.testing import assert_frame_equal, assert_series_equal
+#     value, expect = [3, 2, 1], [2, 1, 0]
+#     # List input
+#     assert tp.argsort(value).tolist() == expect
+#     # Series input
+#     sr = pd.Series(value, name="aa")
+#     assert_series_equal(tp.argsort(sr), pd.Series(expect, name="aa"), check_dtype=False)
+#     # DataFrame input
+#     df = pd.DataFrame({"a": value})
+#     assert_frame_equal(
+#         tp.argsort(df, axis=0), pd.DataFrame({"a": expect}), check_dtype=False
+#     )
 
-    value, expect = [3, 2, 1], [2, 1, 0]
-    # List input
-    assert tp.argsort(value).tolist() == expect
-    # Series input
-    sr = pd.Series(value, name="aa")
-    assert_series_equal(tp.argsort(sr), pd.Series(expect, name="aa"), check_dtype=False)
-    # DataFrame input
-    df = pd.DataFrame({"a": value})
-    assert_frame_equal(
-        tp.argsort(df, axis=0), pd.DataFrame({"a": expect}), check_dtype=False
-    )
+# # currently only numpy array output is supported
+# def test_ts_func_input():
+#     from pandas.testing import assert_frame_equal, assert_series_equal
 
+#     value, expect = [1, 1, 1], [1.0, 2, 3]
+#     # list input
+#     assert tp.ts_sum(value, 3).tolist() == expect
+#     # series input
+#     sr = pd.Series(value, name="aa")
+#     assert_series_equal(tp.ts_sum(sr, 3), pd.Series(expect, name="aa"))
+#     df = pd.DataFrame({"a": value})
+#     assert_frame_equal(tp.ts_sum(df, 3, axis=0), pd.DataFrame({"a": expect}))
 
-def test_ts_func_input():
-    from pandas.testing import assert_frame_equal, assert_series_equal
+# # currently only numpy array output is supported
+# def test_ts_func2_input():
+#     from pandas.testing import assert_series_equal
 
-    value, expect = [1, 1, 1], [1.0, 2, 3]
-    # list input
-    assert tp.ts_sum(value, 3).tolist() == expect
-    # series input
-    sr = pd.Series(value, name="aa")
-    assert_series_equal(tp.ts_sum(sr, 3), pd.Series(expect, name="aa"))
-    df = pd.DataFrame({"a": value})
-    assert_frame_equal(tp.ts_sum(df, 3, axis=0), pd.DataFrame({"a": expect}))
-
-
-def test_ts_func2_input():
-    from pandas.testing import assert_series_equal
-
-    value1, value2, expect = [1, 2, 3], [1, 2, 3], [np.nan, 1.0, 1.0]
-    # list input
-    assert_allclose(tp.ts_corr(value1, value2, 3), np.array(expect))
-    # series input
-    sr1, sr2 = pd.Series(value1, name="aa"), pd.Series(value1, name="bb")
-    assert_series_equal(tp.ts_corr(sr1, sr2, 3), pd.Series(expect, name="aa"))
+#     value1, value2, expect = [1, 2, 3], [1, 2, 3], [np.nan, 1.0, 1.0]
+#     # list input
+#     assert_allclose(tp.ts_corr(value1, value2, 3), np.array(expect))
+#     # series input
+#     sr1, sr2 = pd.Series(value1, name="aa"), pd.Series(value1, name="bb")
+#     assert_series_equal(tp.ts_corr(sr1, sr2, 3), pd.Series(expect, name="aa"))

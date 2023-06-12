@@ -18,7 +18,7 @@ pub(crate) mod eager_macros;
 mod eager_api;
 
 #[cfg(feature = "lazy")]
-mod pylazy;
+pub mod pylazy;
 
 #[cfg(feature = "lazy")]
 mod equity;
@@ -46,5 +46,6 @@ fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     add_lazy(m)?;
     add_eager(m)?;
     m.add_function(wrap_pyfunction!(equity::calc_digital_ret, m)?)?;
+    m.add_function(wrap_pyfunction!(equity::calc_ret_single, m)?)?;
     Ok(())
 }

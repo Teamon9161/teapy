@@ -159,6 +159,13 @@ where
         self.map(|v| abs(v.clone()))
     }
 
+    pub fn sign(&self, _par: bool) -> Arr<T, D>
+    where
+        T: Signed + Clone,
+    {
+        self.map(|v| v.signum())
+    }
+
     pub fn powi<S2, D2>(
         &self,
         rhs: &ArrBase<S2, D2>,

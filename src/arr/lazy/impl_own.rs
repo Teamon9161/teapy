@@ -24,6 +24,18 @@ impl<'a, T> Expr<'a, T>
 where
     T: ExprElement + 'a,
 {
+    pub fn hint_arr_type(self) -> Expr<'a, &'a str> {
+        self.chain_arr_f(move |arb_arr| {
+            use ArbArray::*;
+            let out: Vec<&'a str> = match arb_arr {
+                View(_) => vec!["View"],
+                ViewMut(_) => vec!["ViewMut"],
+                Owned(_) => vec!["Owned"],
+            };
+            ArbArray::Owned(Arr1::from_vec(out).to_dimd().unwrap())
+        })
+    }
+
     pub fn full(shape: Expr<'a, usize>, value: Expr<'a, T>) -> Expr<'a, T>
     where
         T: Clone,
@@ -373,6 +385,13 @@ where
         self.chain_view_f(move |arr| arr.abs(par).into())
     }
 
+    pub fn sign(self, par: bool) -> Self
+    where
+        T: Signed + Clone,
+    {
+        self.chain_view_f(move |arr| arr.sign(par).into())
+    }
+
     pub fn powi(self, other: Expr<'a, i32>, par: bool) -> Self
     where
         T: Real,
@@ -669,6 +688,19 @@ where
                 .into()
         })
     }
+
+    // pub fn apply_on_vec_arr<F>(self, func: F, axis: usize) -> Expr<'a, T>
+    // {
+    //     self.chain_f(|input| {
+    //         if let ExprOut::ArrVec(arr_vec) = input {
+    //             let view_vec = arr_vec.iter().map(|arr| arr.view()).collect_trusted();
+    //             use ndarray::Zip;
+    //             let shape =
+    //             let out = Vec::with_capacity(arr_vec.len());
+    //         }
+
+    //     })
+    // }
 }
 
 impl<'a> Expr<'a, bool> {

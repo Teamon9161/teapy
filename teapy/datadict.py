@@ -4,6 +4,7 @@ from .teapy import from_pandas
 
 def _new_with_dd(dd=None):
     if dd is None:
+        # for inplace functions
         return None
     out = DataDict()
     out._dd = dd
@@ -11,6 +12,8 @@ def _new_with_dd(dd=None):
 
 
 def construct(func):
+    """For functions that return a DataDict"""
+
     def inner(*args, **kwargs):
         dd = func(*args, **kwargs)
         return _new_with_dd(dd)
@@ -95,7 +98,7 @@ class DataDict:
         if len(args) or len(kwargs):
             self._dd = _DataDict(*args, **kwargs)
         else:
-            self._dd = None
+            self._dd = _DataDict([])
 
     def __getitem__(self, key):
         return self._dd[key]

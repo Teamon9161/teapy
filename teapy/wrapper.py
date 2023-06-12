@@ -6,6 +6,35 @@ from .converter import Converter
 __all__ = ["wrap"]
 
 
+def default_wrapper(func):
+    @wraps(func)
+    def _wrapper(arr, *args, **kwargs):
+        func_name = f"{func.__name__}"
+        return getattr(_tp.PyExpr(arr), func_name)(*args, **kwargs).value()
+
+    return _wrapper
+
+
+def default_wrapper2(func):
+    @wraps(func)
+    def _wrapper(arr1, arr2, *args, **kwargs):
+        func_name = f"{func.__name__}"
+        return getattr(_tp.PyExpr(arr1), func_name)(
+            _tp.PyExpr(arr2), *args, **kwargs
+        ).value()
+
+    return _wrapper
+
+
+def impl_by_lazy(func_type: str = "default"):
+    if func_type == "default":
+        return default_wrapper
+    elif func_type == "default2":
+        return default_wrapper2
+    else:
+        raise ValueError("Not support func_type: %s" % func_type)
+
+
 def inplace_wrapper(func):
     @wraps(func)
     def _wrapper(*args, inplace=False, **kwargs):

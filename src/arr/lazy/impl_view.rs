@@ -17,32 +17,48 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn reshape(self, shape: Expr<'a, usize>) -> Self {
-        self.chain_view_f(|arr| {
+        self.chain_view_out_f(|arr| {
             let shape = shape.eval();
             let sh = shape.view_arr();
             let ndim = sh.ndim();
             if ndim == 0 {
                 let shape = sh.to_dim0().unwrap().into_scalar();
-                let out: ArbArray<'_, T> = arr
+                // let out: ArbArray<'_, T> = arr
+                //     .0
+                //     .into_shape(*shape)
+                //     .expect("Shape Error")
+                //     .wrap()
+                //     .to_dimd()
+                //     .unwrap()
+                //     .into();
+                // // safe because the view exist in lifetime 'a
+                // mem::transmute(out)
+                let out = arr
                     .0
                     .into_shape(*shape)
                     .expect("Shape Error")
                     .wrap()
                     .to_dimd()
-                    .unwrap()
-                    .into();
+                    .unwrap();
                 // safe because the view exist in lifetime 'a
                 mem::transmute(out)
             } else if ndim == 1 {
                 let shape = sh.to_dim1().unwrap();
-                let out: ArbArray<'_, T> = arr
+                // let out: ArbArray<'_, T> = arr
+                //     .0
+                //     .into_shape(shape.to_slice().unwrap())
+                //     .expect("Shape Error")
+                //     .wrap()
+                //     .to_dimd()
+                //     .unwrap()
+                //     .into();
+                let out = arr
                     .0
                     .into_shape(shape.to_slice().unwrap())
                     .expect("Shape Error")
                     .wrap()
                     .to_dimd()
-                    .unwrap()
-                    .into();
+                    .unwrap();
                 mem::transmute(out)
             } else {
                 panic!("the dim of shape should not be greater than 1")
