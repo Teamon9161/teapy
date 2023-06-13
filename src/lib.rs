@@ -19,7 +19,6 @@ mod equity;
 
 use pyo3::{pyfunction, pymodule, types::PyModule, wrap_pyfunction, PyResult, Python};
 
-
 #[cfg(feature = "lazy")]
 use crate::pylazy::add_lazy;
 
@@ -27,7 +26,6 @@ use crate::pylazy::add_lazy;
 fn add_lazy(_m: &PyModule) -> PyResult<()> {
     Ok(())
 }
-
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
