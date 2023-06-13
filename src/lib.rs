@@ -23,7 +23,7 @@ pub mod pylazy;
 #[cfg(feature = "lazy")]
 mod equity;
 
-use pyo3::{pymodule, types::PyModule, wrap_pyfunction, PyResult, Python};
+use pyo3::{pyfunction, pymodule, types::PyModule, wrap_pyfunction, PyResult, Python};
 
 // #[cfg(feature = "eager_api")]
 // use eager_api::add_eager;
@@ -41,10 +41,17 @@ fn add_lazy(_m: &PyModule) -> PyResult<()> {
 //     Ok(())
 // }
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[pyfunction]
+pub fn get_version() -> &'static str {
+    VERSION
+}
+
 #[pymodule]
 fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     add_lazy(m)?;
-    // add_eager(m)?;
+    m.add_function(wrap_pyfunction!(get_version, m)?)?;
     m.add_function(wrap_pyfunction!(equity::calc_digital_ret, m)?)?;
     m.add_function(wrap_pyfunction!(equity::calc_ret_single, m)?)?;
     Ok(())

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "teapy"
-version = "0.1.5"
+# version = "0.1.6"
 dependencies = ["numpy>=1.16.0"]
 authors = [
   { name="Teamon", email="teamon9161@163.com" },

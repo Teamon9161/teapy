@@ -86,16 +86,18 @@ pub unsafe fn calc_ret_single(
                             * last_pos.signum();
                     }
                     // 因为采用pos来判断加减仓，所以杠杆leverage必须是个常量，不应修改leverage的类型
-                    if pos != last_pos {
-                        // 仓位出现变化
-                        // 计算新的理论持仓手数
-                        let lot_num = ((cash * leverage * pos.abs())
-                            / (multiplier.f64() * opening_cost))
-                            .floor();
-                        let lot_num_change = if !contract_signal {
-                            (lot_num * pos.signum() - last_lot_num * last_pos.signum()).abs()
+                    if (pos != last_pos) || contract_signal {
+                        let (lot_num, lot_num_change) = if !contract_signal {
+                            // 仓位出现变化，计算新的理论持仓手数
+                            let l = ((cash * leverage * pos.abs())
+                                / (multiplier.f64() * opening_cost))
+                                .floor();
+                            (
+                                l,
+                                (l * pos.signum() - last_lot_num * last_pos.signum()).abs(),
+                            )
                         } else {
-                            last_lot_num.abs() * 2.
+                            (last_lot_num, last_lot_num.abs() * 2.)
                         };
                         // 扣除手续费变动
                         if let CommisionType::Percent = commision_type {
@@ -113,9 +115,9 @@ pub unsafe fn calc_ret_single(
                     // 计算当期损益
                     if last_lot_num != 0. {
                         cash += last_lot_num
+                            * last_pos.signum()
                             * (closing_cost - opening_cost)
-                            * multiplier.f64()
-                            * last_pos.signum();
+                            * multiplier.f64();
                     }
                     last_close = closing_cost; // 更新上期收盘价
 
@@ -194,14 +196,14 @@ pub unsafe fn calc_ret_single(
 //     ret: &PyAny,
 //     time: &PyAny,
 //     rf: f64
-// ) -> PyResult<Self> {
+// ) -> PyResult<PyExpr> {
 //     let ret = parse_expr_nocopy(ret)?;
 //     let time = parse_expr_nocopy(time)?;
 //     let (obj, obj1) = (ret.obj(), time.obj());
 //     let time = time.cast_datetime(None)?;
 //     let out_expr: Expr<f64> = ret.cast_f64()?.chain_view_f(move |ret| {
-//         let ret = ret.to_dim1().unwrap("Ret array should be dim 1");
-//         let cash = (1. + ret).cumprod();
+//         // let ret = ret.to_dim1().expect("Ret array should be dim 1");
+//         let cash = (ret.0 + 1.).cumprod();
 //         let time = time.eval();
 //         let time_arr = time.view_arr().to_dim1().unwrap();
 //     });
