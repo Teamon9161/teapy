@@ -6,29 +6,44 @@ on:
         - master
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-rust:
     name: teapy build
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.8" ]
+        os: [ "ubuntu-latest" ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+
+      - name: Set up Rust
+        run: rustup show
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
         with:
-            toolchain: nightly-2023-01-19
-            override: true
-            components: rustfmt, clippy
-      - name: Cache Cargo
-        uses: actions/cache@v3
-        with:
-          path: /github/home/.cargo
-          key: cargo-cache-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v3
-        with:
-          path: /github/home/target
-          key: ubuntu-x86-64-target-cache-stable
+          shared-key: shared-${{ matrix.os }}
+      # - name: Install Rust
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #       toolchain: nightly-2023-01-19
+      #       override: true
+      #       components: rustfmt, clippy
+      # - name: Cache Cargo
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: /github/home/.cargo
+      #     key: cargo-cache-
+      # - name: Cache Rust dependencies
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: /github/home/target
+      #     key: ubuntu-x86-64-target-cache-stable
       - name: Run formatting checks
         run: |
           cargo fmt --all -- --check

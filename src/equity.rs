@@ -188,6 +188,26 @@ pub unsafe fn calc_ret_single(
         .add_obj(obj3))
 }
 
+// #[pyfunction]
+// #[pyo3(signature=(ret, time, rf=0.))]
+// pub unsafe fn calc_sharpe_by_ret(
+//     ret: &PyAny,
+//     time: &PyAny,
+//     rf: f64
+// ) -> PyResult<Self> {
+//     let ret = parse_expr_nocopy(ret)?;
+//     let time = parse_expr_nocopy(time)?;
+//     let (obj, obj1) = (ret.obj(), time.obj());
+//     let time = time.cast_datetime(None)?;
+//     let out_expr: Expr<f64> = ret.cast_f64()?.chain_view_f(move |ret| {
+//         let ret = ret.to_dim1().unwrap("Ret array should be dim 1");
+//         let cash = (1. + ret).cumprod();
+//         let time = time.eval();
+//         let time_arr = time.view_arr().to_dim1().unwrap();
+//     });
+//     Ok(out_expr.to_py(obj).add_obj(obj1))
+// }
+
 #[pyfunction]
 #[pyo3(signature=(factor, price, select_num, c_rate=0.0006, hold_time=1, init_cash=10000.))]
 pub fn calc_digital_ret(

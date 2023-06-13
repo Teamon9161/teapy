@@ -1,31 +1,31 @@
 from .wrapper import impl_by_lazy
 
-__all__ = [
-    "sum",
-    "min",
-    "max",
-    "mean",
-    "median",
-    "quantile",
-    "std",
-    "var",
-    "skew",
-    "kurt",
-    "count_nan",
-    "count_notnan",
-    "argsort",
-    "rank",
-    "cov",
-    "corr",
-    "fillna",
-    "zscore",
-    "winsorize",
-    "dropna",
-    # "remove_nan",
-    "split_group",
-    "clip",
-    "shift",
-]
+# __all__ = [
+#     "sum",
+#     "min",
+#     "max",
+#     "mean",
+#     "median",
+#     "quantile",
+#     "std",
+#     "var",
+#     "skew",
+#     "kurt",
+#     "count_nan",
+#     "count_notnan",
+#     "argsort",
+#     "rank",
+#     "cov",
+#     "corr",
+#     "fillna",
+#     "zscore",
+#     "winsorize",
+#     "dropna",
+#     # "remove_nan",
+#     "split_group",
+#     "clip",
+#     "shift",
+# ]
 
 
 @impl_by_lazy()
@@ -49,6 +49,21 @@ def sum(arr, stable=False, axis=0, par=False):
     array_like.
 
     """
+
+
+@impl_by_lazy()
+def prod(arr, axis=0, par=False):
+    pass
+
+
+@impl_by_lazy()
+def cumsum(arr, stable=False, axis=0, par=False):
+    pass
+
+
+@impl_by_lazy()
+def cumprod(arr, axis=0, par=False):
+    pass
 
 
 @impl_by_lazy()

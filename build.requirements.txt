@@ -3,7 +3,7 @@ numpy
 pandas
 
 # Tools for build
-maturin==0.13.0
+maturin==1.0.1
 
 # Tools for test
 statsmodels==0.13.2

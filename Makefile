@@ -30,7 +30,7 @@ format:  ## format and check
 .PHONY: coverage
 coverage: # rust and python coverage
 	@bash -c "\
-		rustup override set nightly-2023-01-19; \
+		rustup override set nightly-2023-06-01; \
 		$(MAKE) venv; \
 		source venv/bin/activate; \
 		source <(cargo llvm-cov show-env --export-prefix); \

@@ -331,10 +331,7 @@ where
         S2: Data<Elem = usize> + Send + Sync,
     {
         let max_idx = self.shape()[axis] - 1;
-        assert!(
-            slc.max_1d() <= max_idx as f64,
-            "The index to take is out of bound"
-        );
+        assert!(slc.max_1d() <= max_idx, "The index to take is out of bound");
         unsafe { self.take_clone_unchecked(slc, axis, par) }
     }
 
@@ -369,6 +366,53 @@ where
         out
     }
 }
+
+impl_map_nd!(
+    cumsum,
+    pub fn cumsum_1d<S2>(&self, out: &mut ArrBase<S2, D>, stable: bool) -> T
+    {where T: Number,}
+    {
+        let mut sum = T::zero();
+        if !stable {
+            out.apply_mut_with(self, |vo, v| {
+                if v.notnan() {
+                    sum += *v;
+                    *vo = sum;
+                } else {
+                    *vo = T::nan();
+                }
+            });
+        } else {
+            let c = &mut T::zero();
+            out.apply_mut_with(self, |vo, v| {
+                if v.notnan() {
+                    sum.kh_sum(*v, c);
+                    *vo = sum;
+                } else {
+                    *vo = T::nan();
+                }
+            });
+        }
+
+    }
+);
+
+impl_map_nd!(
+    cumprod,
+    pub fn cumprod_1d<S2>(&self, out: &mut ArrBase<S2, D>) -> T
+    {where T: Number,}
+    {
+        let mut prod = T::one();
+        out.apply_mut_with(self, |vo, v| {
+            if v.notnan() {
+                prod *= *v;
+                *vo = prod;
+            } else {
+                *vo = T::nan();
+            }
+        });
+    }
+);
 
 impl_map_nd!(
     zscore,

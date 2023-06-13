@@ -1412,6 +1412,27 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
+    pub fn cumsum(&self, stable: bool, axis: usize, par: bool) -> Self {
+        match_exprs!(numeric & self.inner, expr, {
+            expr.clone().cumsum(stable, axis, par).to_py(self.obj())
+        })
+    }
+
+    #[pyo3(signature=(axis=0, par=false))]
+    pub fn prod(&self, axis: usize, par: bool) -> Self {
+        match_exprs!(numeric & self.inner, expr, {
+            expr.clone().prod(axis, par).to_py(self.obj())
+        })
+    }
+
+    #[pyo3(signature=(axis=0, par=false))]
+    pub fn cumprod(&self, axis: usize, par: bool) -> Self {
+        match_exprs!(numeric & self.inner, expr, {
+            expr.clone().cumprod(axis, par).to_py(self.obj())
+        })
+    }
+
+    #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn mean(&self, stable: bool, axis: usize, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {
             expr.clone().mean(stable, axis, par).to_py(self.obj())

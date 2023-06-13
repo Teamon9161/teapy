@@ -60,26 +60,22 @@ where
     impl_view_lazy!(in1, [diff -> f64, pct_change -> f64], (n: i32, axis: usize, par: bool));
     impl_view_lazy!(in1,
         [
-            count_notnan -> i32, count_nan -> i32, median -> f64, max -> f64,
-            min -> f64,
+            count_notnan -> i32, count_nan -> i32, median -> f64, max -> T,
+            min -> T, prod -> T, cumprod -> T,
         ],
         (axis: usize, par: bool)
     );
     impl_view_lazy!(in1,
         [
-            sum -> f64, mean -> f64, var -> f64, std -> f64,
-            skew -> f64, kurt -> f64,
+            sum -> T, mean -> f64, var -> f64, std -> f64,
+            skew -> f64, kurt -> f64, cumsum -> T,
         ],
         (stable: bool, axis: usize, par: bool)
     );
-    // impl_view_lazy!(in1-inplace,
-    //     [
-    //         zscore, zscore_inplace -> T,
-    //     ],
-    //     (stable: bool, axis: usize, par: bool)
-    // );
     impl_view_lazy!(in1-inplace,
-        zscore, zscore_inplace -> T,
+        [
+            zscore, zscore_inplace -> T,
+        ],
         (stable: bool, axis: usize, par: bool)
     );
     impl_view_lazy!(in1-inplace,

@@ -223,6 +223,20 @@ pub trait Number:
         }
     }
 
+    /// if other is nan, then product other to self and n += 1
+    /// else just return self
+    #[inline(always)]
+    fn n_prod(self, other: Self, n: &mut usize) -> Self {
+        // note: only check if other is NaN
+        // assume that self is not NaN
+        if other.notnan() {
+            *n += 1;
+            self * other
+        } else {
+            self
+        }
+    }
+
     /// if other is nan, then add other to self
     /// else just return self
     #[inline(always)]

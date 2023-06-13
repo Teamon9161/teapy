@@ -82,9 +82,37 @@ def test_min(arr, axis):
 
 @given(make_arr((10, 10)), st.integers(0, 1))
 def test_sum(arr, axis):
-    res1 = tp.sum(arr, axis=axis)
-    res2 = Expr(arr).sum(axis=axis).eview()
-    res3 = np.nansum(arr, axis=axis)
+    for stable in [True, False]:
+        res1 = tp.sum(arr, axis=axis, stable=stable)
+        res2 = Expr(arr).sum(axis=axis, stable=stable).eview()
+        res3 = np.nansum(arr, axis=axis)
+        assert_allclose3(res1, res2, res3)
+
+
+@given(st.integers(0, 1))
+def test_prod(axis):
+    arr = np.random.randn(100, 10)
+    res1 = tp.prod(arr, axis=axis)
+    res2 = Expr(arr).prod(axis=axis).eview()
+    res3 = np.nanprod(arr, axis=axis)
+    assert_allclose3(res1, res2, res3)
+
+
+@given(make_arr((10, 10)), st.integers(0, 1))
+def test_cumsum(arr, axis):
+    for stable in [True, False]:
+        res1 = tp.cumsum(arr, axis=axis, stable=stable)
+        res2 = Expr(arr).cumsum(axis=axis, stable=stable).eview()
+        res3 = pd.DataFrame(arr).cumsum(axis=axis)
+        assert_allclose3(res1, res2, res3)
+
+
+@given(st.integers(0, 1))
+def test_cumprod(axis):
+    arr = np.random.randn(100, 10)
+    res1 = tp.cumprod(arr, axis=axis)
+    res2 = Expr(arr).cumprod(axis=axis).eview()
+    res3 = pd.DataFrame(arr).cumprod(axis=axis)
     assert_allclose3(res1, res2, res3)
 
 

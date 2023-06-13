@@ -35,26 +35,44 @@ where
 
 impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
     /// sum of the array on a given axis, return valid_num n and the sum of the array
-    pub fn nsum_1d(&self, stable: bool) -> (usize, f64)
+    pub fn nsum_1d(&self, stable: bool) -> (usize, T)
     where
         T: Number,
     {
         if !stable {
             if let Some(slc) = self.as_slice_memory_order() {
                 let (n, sum) = utils::vec_nfold(slc, T::zero, T::n_add);
-                return (n, sum.f64());
+                return (n, sum);
             }
         }
         // fall back to normal calculation
         let (n, acc) = if !stable {
-            self.n_acc_valid(0., |v| v.f64())
+            self.n_acc_valid(T::zero(), |v| *v)
         } else {
-            self.stable_n_acc_valid(0., |v| v.f64())
+            self.stable_n_acc_valid(T::zero(), |v| *v)
         };
         if n >= 1 {
             (n, acc)
         } else {
-            (0, f64::NAN)
+            (0, T::nan())
+        }
+    }
+
+    /// production of the array on a given axis, return valid_num n and the production of the array
+    pub fn nprod_1d(&self) -> (usize, T)
+    where
+        T: Number,
+    {
+        if let Some(slc) = self.as_slice_memory_order() {
+            let (n, prod) = utils::vec_nfold(slc, T::one, T::n_prod);
+            return (n, prod);
+        }
+        // fall back to normal calculation
+        let (n, acc) = self.n_fold_valid(T::one(), |acc, v| acc * *v);
+        if n >= 1 {
+            (n, acc)
+        } else {
+            (0, T::nan())
         }
     }
 }
@@ -209,15 +227,15 @@ impl_reduce_nd!(
 impl_reduce_nd!(
     max,
     /// Max value of the array on a given axis
-    pub fn max_1d(&self) -> f64
+    pub fn max_1d(&self) -> T
     {T: Number,}
     {
         if let Some(slc) = self.0.as_slice_memory_order() {
             let res = utils::vec_fold(slc, T::min_, T::max_with);
             return if res == T::min_() {
-                f64::NAN
+                T::nan()
             } else {
-                res.f64()
+                res
             };
         }
         let mut max = T::min_();
@@ -228,9 +246,9 @@ impl_reduce_nd!(
         });
         // note: assume that not all of the elements are the max value of type T
         if max == T::min_() {
-            f64::NAN
+            T::nan()
         } else {
-            max.f64()
+            max
         }
     }
 );
@@ -238,15 +256,15 @@ impl_reduce_nd!(
 impl_reduce_nd!(
     min,
     /// Min value of the array on a given axis
-    pub fn min_1d(&self) -> f64
+    pub fn min_1d(&self) -> T
     {T: Number,}
     {
         if let Some(slc) = self.as_slice_memory_order() {
             let res = utils::vec_fold(slc, T::max_, T::min_with);
             return if res == T::max_() {
-                f64::NAN
+                T::nan()
             } else {
-                res.f64()
+                res
             };
         }
         let mut min = T::max_();
@@ -257,9 +275,9 @@ impl_reduce_nd!(
         });
         // note: assume that not all of the elements are the max value of type T
         if min == T::max_() {
-            f64::NAN
+            T::nan()
         } else {
-            min.f64()
+            min
         }
     }
 );
@@ -268,10 +286,21 @@ impl_reduce_nd!(
     sum,
     /// sum of the array on a given axis
     #[inline]
-    pub fn sum_1d(&self, stable: bool) -> f64
+    pub fn sum_1d(&self, stable: bool) -> T
     {T: Number,}
     {
         self.nsum_1d(stable).1
+    }
+);
+
+impl_reduce_nd!(
+    prod,
+    /// sum of the array on a given axis
+    #[inline]
+    pub fn prod_1d(&self) -> T
+    {T: Number,}
+    {
+        self.nprod_1d().1
     }
 );
 
@@ -283,7 +312,7 @@ impl_reduce_nd!(
     {T: Number,}
     {
         let(n, sum) = self.nsum_1d(stable);
-        sum / n.f64()
+        sum.f64() / n.f64()
     }
 );
 
