@@ -9,4 +9,4 @@ from .teapy import where_ as where
 from .window_func import *
 
 Expr.where = Expr.where_
-__version__ = "0.1.4"
+__version__ = "0.1.5"

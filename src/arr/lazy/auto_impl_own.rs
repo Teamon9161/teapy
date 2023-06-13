@@ -72,10 +72,14 @@ where
         ],
         (stable: bool, axis: usize, par: bool)
     );
+    // impl_view_lazy!(in1-inplace,
+    //     [
+    //         zscore, zscore_inplace -> T,
+    //     ],
+    //     (stable: bool, axis: usize, par: bool)
+    // );
     impl_view_lazy!(in1-inplace,
-        [
-            zscore, zscore_inplace -> T,
-        ],
+        zscore, zscore_inplace -> T,
         (stable: bool, axis: usize, par: bool)
     );
     impl_view_lazy!(in1-inplace,

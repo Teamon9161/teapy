@@ -20,10 +20,9 @@ pub unsafe fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
 pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
     if let Ok(expr) = obj.extract::<PyExpr>() {
         Ok(expr)
-    } else if obj.hasattr("__name__")? && obj.getattr("__name__")?.extract::<&str>()? == "PyExpr" {
-        // PyExpr from other crates whick extends this crate
-        let expr_obj = &*(&obj as *const _ as *const Py<PyExpr>);
-        Ok(expr_obj.extract::<PyExpr>(obj.py())?)
+    } else if obj.get_type().name()? == "PyExpr" {
+        let cell: &PyCell<PyExpr> = PyTryFrom::try_from_unchecked(obj);
+        Ok(cell.try_borrow()?.clone())
     } else if obj.get_type().name()? == "DataFrame" {
         // cast pandas.DataFrame or polars DataFrame to PyExpr
         let module_name = obj.getattr("__module__")?.extract::<&str>()?;

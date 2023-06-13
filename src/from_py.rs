@@ -93,7 +93,6 @@ pub enum PyArrayOk<'py> {
 
 /// match the enum `PyArrayOk` to get the discrete dtype of `PyArray` so that we can
 /// call functions on a `PyArray` of which dtype is known;
-#[cfg(feature = "eager_api")]
 macro_rules! match_pyarray {
 
     ($pyarr: expr, $e: ident, $body: tt $(,$arm: ident)*) => {
@@ -133,22 +132,6 @@ impl<'py> PyArrayOk<'py> {
             Err(PyValueError::new_err("Dtype of the array is not object"))
         }
     }
-}
-
-/// match the enum `PyArrayOk` to get the discrete dtype of two `PyArray` so that we can
-/// call functions on two `PyArray` of which dtype is known;
-#[cfg(feature = "eager_api")]
-macro_rules! match_pyarray2 {
-    ($array1: ident, $array2: ident, $arr1: ident, $arr2:ident, $body: tt) => {
-        use PyArrayOk::*;
-        match ($array1, $array2) {
-            (F32($arr1), F32($arr2)) => $body,
-            (F64($arr1), F64($arr2)) => $body,
-            (I32($arr1), I32($arr2)) => $body,
-            (I64($arr1), I64($arr2)) => $body,
-            _ => todo!("match two arrays with different dtypes is not yet implemented"),
-        }
-    };
 }
 
 #[derive(FromPyObject)]
@@ -201,7 +184,7 @@ impl<'source> FromPyObject<'source> for CorrMethod {
 impl<'source> FromPyObject<'source> for FillMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;
-        let s = s.unwrap_or("quantile").to_lowercase();
+        let s = s.unwrap_or("ffill").to_lowercase();
         let out = match s.as_str() {
             "ffill" => FillMethod::Ffill,
             "bfill" => FillMethod::Bfill,

@@ -1,5 +1,5 @@
 from . import teapy as _tp
-from .wrapper import wrap
+from .wrapper import impl_by_lazy
 
 __all__ = [
     "ts_sum",
@@ -40,139 +40,141 @@ except AttributeError:
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_sum(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_sma(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_ewm(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_wma(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_prod(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_prod_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_std(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_var(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_skew(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_kurt(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_max(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_min(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_argmax(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_argmin(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_stable(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_minmaxnorm(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_meanstdnorm(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_reg(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_tsf(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_reg_slope(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_reg_intercept(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_decay_linear(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func")
+@impl_by_lazy()
 def ts_ema(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func2")
+@impl_by_lazy("default2")
 def ts_cov(arr1, arr2, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func2")
+@impl_by_lazy("default2")
 def ts_corr(arr1, arr2, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 
-@wrap("ts_func", use=True)
+# @wrap("ts_func", use=True)
+@impl_by_lazy()
 def ts_rank(arr, window, min_periods=1, pct=False, axis=None, par=False):
-    if not pct:
-        return _tp.ts_rank(arr, window, min_periods=min_periods, axis=axis, par=par)
-    else:
-        return _tp.ts_rank_pct(arr, window, min_periods=min_periods, axis=axis, par=par)
+    pass
+    # if not pct:
+    #     return _tp.ts_rank(arr, window, min_periods=min_periods, axis=axis, par=par)
+    # else:
+    #     return _tp.ts_rank_pct(arr, window, min_periods=min_periods, axis=axis, par=par)

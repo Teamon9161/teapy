@@ -200,41 +200,44 @@ def test_array_func_2d():
 def test_fillna():
     s = pd.Series([np.nan, 5, 6, 733, np.nan, 34, np.nan, np.nan])
     for method in ["ffill", "bfill"]:
-        assert_series_equal(tp.fillna(s, method), s.fillna(method=method))
-        assert_allclose(
-            Expr(s, copy=True).fillna(method).eview(), s.fillna(method=method).values
+        assert_allclose3(
+            tp.fillna(s, method),
+            Expr(s, copy=True).fillna(method).eview(),
+            s.fillna(method=method).values,
         )
         # test inplace
         s1 = s.copy()
         tp.fillna(s1, method, inplace=True)
-        assert_series_equal(s1, s.fillna(method=method))
+        assert_allclose(s1, s.fillna(method=method).values)
 
     # test fill value directly
     fill_value = 101
-    assert_series_equal(tp.fillna(s, value=fill_value), s.fillna(fill_value))
-    assert_allclose(
-        Expr(s, copy=True).fillna(value=fill_value).eview(), s.fillna(fill_value).values
+    assert_allclose3(
+        tp.fillna(s, value=fill_value),
+        Expr(s, copy=True).fillna(value=fill_value).eview(),
+        s.fillna(fill_value).values,
     )
     # test inplace
     tp.fillna(s, value=fill_value, inplace=True)
-    assert_series_equal(s, pd.Series([101, 5, 6, 733, 101, 34, 101, 101]))
+    assert_allclose(s, np.array([101, 5, 6, 733, 101, 34, 101, 101]))
 
 
 def test_clip():
     s = pd.Series([np.nan, 5, 6, 733, np.nan, 34, 456, np.nan])
-    assert_series_equal(tp.clip(s, 5, 100), s.clip(5, 100))
-    assert_allclose(Expr(s).clip(5, 100).eview(), s.clip(5, 100))
+    assert_allclose3(
+        tp.clip(s, 5, 100), Expr(s, copy=True).clip(5, 100).eview(), s.clip(5, 100)
+    )
     s1 = s.copy()
     tp.clip(s1, 5, 100, inplace=True)
-    assert_series_equal(s1, s.clip(5, 100))
+    assert_allclose(s1, s.clip(5, 100))
 
 
 @given(make_arr((10, 2), nan_p=0.2), st.integers(0, 1))
 def test_dropna(arr, axis):
     # test dropna 1d
     s = pd.Series([np.nan, 5, 6, 12, np.nan, 1, np.nan, np.nan])
-    assert_series_equal(tp.remove_nan(s), s.dropna())
-    assert_allclose(Expr(s).dropna().eview(), s.dropna())
+    # assert_series_equal(tp.remove_nan(s), s.dropna())
+    assert_allclose3(tp.dropna(s), Expr(s).dropna().eview(), s.dropna())
     # test dropna 2d
     assert_allclose(
         Expr(arr).dropna(axis=axis).eview(), pd.DataFrame(arr).dropna(axis=axis)
@@ -245,7 +248,7 @@ def test_zscore():
     s = pd.Series(np.arange(12).astype(float))
     for stable in False, True:
         s1 = tp.zscore(s, stable)  # eager
-        s2 = Expr(s).zscore(stable).eview()  # lazy
+        s2 = Expr(s, copy=True).zscore(stable).eview()  # lazy
         s3 = (s - s.mean()) / s.std()  # expect
         assert_allclose3(s1, s2, s3)
         # test inplace

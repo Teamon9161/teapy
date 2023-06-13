@@ -92,8 +92,9 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn t(self) -> Self {
-        self.chain_view_f(move |arr| {
-            let out: ArbArray<'_, T> = arr.0.t().wrap().into();
+        self.chain_view_out_f(move |arr| {
+            // let out: ArbArray<'_, T> = arr.0.t().wrap().into();
+            let out = arr.0.t().wrap();
             mem::transmute(out)
         })
     }
@@ -107,8 +108,9 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn diag(self) -> Self {
-        self.chain_view_f(move |arr| {
-            let out: ArbArray<'_, T> = arr.0.diag().wrap().to_dimd().unwrap().into();
+        self.chain_view_out_f(move |arr| {
+            // let out: ArbArray<'_, T> = arr.0.diag().wrap().to_dimd().unwrap().into();
+            let out = arr.0.diag().wrap().to_dimd().unwrap();
             mem::transmute(out)
         })
     }
@@ -122,7 +124,7 @@ where
     where
         T: Clone,
     {
-        self.chain_view_f(move |arr| {
+        self.chain_view_out_f(move |arr| {
             // adjust the slice if start or end is greater than the length of the axis
             let mut axis = 0;
             let shape = arr.shape();
@@ -182,7 +184,8 @@ where
             let slc_info = unsafe {
                 SliceInfo::new_unchecked(slc.as_slice(), PhantomData::<IxDyn>, PhantomData::<IxDyn>)
             };
-            let arr: ArbArray<'_, T> = arr.0.slice_move(slc_info).wrap().into();
+            // let arr: ArbArray<'_, T> = arr.0.slice_move(slc_info).wrap().into();
+            let arr = arr.0.slice_move(slc_info).wrap();
             mem::transmute(arr)
         })
     }
@@ -195,10 +198,11 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn swap_axes(self, ax: usize, bx: usize) -> Self {
-        self.chain_view_f(move |arr| {
+        self.chain_view_out_f(move |arr| {
             let mut arr = arr.0;
             arr.swap_axes(ax, bx);
-            let out: ArbArray<'_, T> = arr.wrap().into();
+            // let out: ArbArray<'_, T> = arr.wrap().into();
+            let out = arr.wrap();
             mem::transmute(out)
         })
     }
@@ -213,14 +217,15 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn permuted_axes(self, axes: Expr<'a, usize>) -> Self {
-        self.chain_view_f(move |arr| {
+        self.chain_view_out_f(move |arr| {
             let axes = axes.eval();
             let axes_view = axes.view_arr().to_dim1().expect("axes should be dim 1");
-            let out: ArbArray<'_, T> = arr
-                .0
-                .permuted_axes(axes_view.to_slice().unwrap())
-                .wrap()
-                .into();
+            // let out: ArbArray<'_, T> = arr
+            //     .0
+            //     .permuted_axes(axes_view.to_slice().unwrap())
+            //     .wrap()
+            //     .into();
+            let out = arr.0.permuted_axes(axes_view.to_slice().unwrap()).wrap();
             mem::transmute(out)
         })
     }
@@ -231,8 +236,9 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn insert_axis(self, axis: usize) -> Self {
-        self.chain_view_f(move |arr| {
-            let out: ArbArray<'_, T> = arr.0.insert_axis(Axis(axis)).wrap().into();
+        self.chain_view_out_f(move |arr| {
+            // let out: ArbArray<'_, T> = arr.0.insert_axis(Axis(axis)).wrap().into();
+            let out = arr.0.insert_axis(Axis(axis)).wrap();
             mem::transmute(out)
         })
     }
@@ -243,8 +249,9 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn remove_axis(self, axis: usize) -> Self {
-        self.chain_view_f(move |arr| {
-            let out: ArbArray<'_, T> = arr.0.remove_axis(Axis(axis)).wrap().into();
+        self.chain_view_out_f(move |arr| {
+            // let out: ArbArray<'_, T> = arr.0.remove_axis(Axis(axis)).wrap().into();
+            let out = arr.0.remove_axis(Axis(axis)).wrap();
             mem::transmute(out)
         })
     }
@@ -253,27 +260,29 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn broadcast(self, shape: Expr<'a, usize>) -> Self {
-        self.chain_view_f(move |arr| {
+        self.chain_view_out_f(move |arr| {
             let shape = shape.eval();
             let sh = shape.view_arr();
             let ndim = sh.ndim();
             if ndim == 0 {
                 let shape = sh.to_dim0().unwrap().into_scalar();
-                let out: ArbArray<'_, T> = arr
-                    .broadcast(*shape)
-                    .expect("broadcast error")
-                    .to_dimd()
-                    .unwrap()
-                    .into();
+                // let out: ArbArray<'_, T> = arr
+                //     .broadcast(*shape)
+                //     .expect("broadcast error")
+                //     .to_dimd()
+                //     .unwrap()
+                //     .into();
+                let out = arr.broadcast(*shape).expect("broadcast error").to_dimd().unwrap();
                 mem::transmute(out)
             } else if ndim == 1 {
                 let shape = sh.to_dim1().unwrap();
-                let out: ArbArray<'_, T> = arr
-                    .broadcast(shape.to_slice().unwrap())
-                    .expect("broadcast error")
-                    .to_dimd()
-                    .unwrap()
-                    .into();
+                // let out: ArbArray<'_, T> = arr
+                //     .broadcast(shape.to_slice().unwrap())
+                //     .expect("broadcast error")
+                //     .to_dimd()
+                //     .unwrap()
+                //     .into();
+                let out = arr.broadcast(shape.to_slice().unwrap()).expect("broadcast error").to_dimd().unwrap();
                 mem::transmute(out)
             } else {
                 panic!("the dim of shape should not be greater than 1")

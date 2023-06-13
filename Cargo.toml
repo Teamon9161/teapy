@@ -1,6 +1,6 @@
 [package]
 name = "teapy"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 
 [lib]
@@ -8,9 +8,9 @@ name = "teapy"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["lazy", "eager_api", "blas"]
+default = ["lazy", "blas"]
 lazy = ["window_func"]
-eager_api = ["window_func"]
+# eager_api = ["window_func"]
 window_func = []
 blas = ["ndarray-linalg", "ndarray/blas", "lazy", "statrs", "lapack-sys"]
 

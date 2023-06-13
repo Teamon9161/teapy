@@ -1325,6 +1325,14 @@ impl PyExpr {
         })
     }
 
+    // #[allow(unreachable_patterns)]
+    // /// Insert new array axis at axis and return the result.
+    // pub unsafe fn insert_axis(&self, axis: usize) -> Self {
+    //     match_exprs!(&self.inner, expr, {
+    //         expr.clone().insert_axis(axis).to_py(None)
+    //     })
+    // }
+
     #[allow(unreachable_patterns)]
     /// Remove new array axis at axis and return the result.
     pub unsafe fn remove_axis(self: PyRef<Self>, axis: usize, py: Python) -> Self {
@@ -1410,9 +1418,23 @@ impl PyExpr {
         })
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false))]
-    pub fn zscore(&self, stable: bool, axis: usize, par: bool) -> Self {
-        match_exprs!(
+    #[pyo3(signature=(stable=false, axis=0, par=false, warning=true))]
+    pub fn zscore(
+        &self,
+        stable: bool,
+        axis: usize,
+        par: bool,
+        warning: bool,
+        py: Python,
+    ) -> PyResult<Self> {
+        if warning && !self.is_float() {
+            let warnings = py.import("warnings")?;
+            warnings.call_method1(
+                "warn",
+                ("The dtype of input is not Float, so note that the result is not float too",),
+            )?;
+        }
+        let out = match_exprs!(
             &self.inner,
             expr,
             { expr.clone().zscore(stable, axis, par).to_py(self.obj()) },
@@ -1420,10 +1442,12 @@ impl PyExpr {
             I32,
             F32,
             I64
-        )
+        );
+        Ok(out)
     }
 
-    #[pyo3(signature=(method=WinsorizeMethod::Quantile, method_params=0.01, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(method=WinsorizeMethod::Quantile, method_params=0.01, stable=false, axis=0, par=false, warning=true))]
+    #[allow(clippy::too_many_arguments)]
     pub fn winsorize(
         &self,
         method: WinsorizeMethod,
@@ -1431,8 +1455,17 @@ impl PyExpr {
         stable: bool,
         axis: usize,
         par: bool,
-    ) -> Self {
-        match_exprs!(
+        warning: bool,
+        py: Python,
+    ) -> PyResult<Self> {
+        if warning && !self.is_float() {
+            let warnings = py.import("warnings")?;
+            warnings.call_method1(
+                "warn",
+                ("The dtype of input is not Float, so note that the result is not float too",),
+            )?;
+        }
+        let out = match_exprs!(
             &self.inner,
             expr,
             {
@@ -1444,7 +1477,8 @@ impl PyExpr {
             I32,
             F32,
             I64
-        )
+        );
+        Ok(out)
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]

@@ -919,6 +919,9 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             let func = mem::replace(&mut self.func, default_func);
             let out = func(base);
             self.set_owned(out.is_owned());
+            if self.get_owned().unwrap() {
+                self.ref_expr = None;
+            }
             match out {
                 ExprOut::Arr(arr) => self.set_base_by_arr(arr.into()),
                 ExprOut::ArrVec(arr_vec) => self.set_base_by_arr_vec(

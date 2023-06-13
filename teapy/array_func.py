@@ -1,9 +1,4 @@
-from warnings import warn
-
-import numpy as np
-
-from . import teapy as _tp
-from .wrapper import default_wrapper, impl_by_lazy, wrap
+from .wrapper import impl_by_lazy
 
 __all__ = [
     "sum",
@@ -25,14 +20,14 @@ __all__ = [
     "fillna",
     "zscore",
     "winsorize",
-    "remove_nan",
+    "dropna",
+    # "remove_nan",
     "split_group",
     "clip",
     "shift",
 ]
 
 
-# @wrap("array_agg_func")
 @impl_by_lazy()
 def sum(arr, stable=False, axis=0, par=False):
     """
@@ -56,7 +51,6 @@ def sum(arr, stable=False, axis=0, par=False):
     """
 
 
-# @wrap("array_agg_func")
 @impl_by_lazy()
 def min(arr, axis=0, par=False):
     pass
@@ -112,13 +106,11 @@ def count_notnan(arr, axis=0, par=False):
     pass
 
 
-# @wrap("array_func")
 @impl_by_lazy()
 def argsort(arr, axis=0, par=False, rev=False):
     pass
 
 
-# @wrap("array_agg_func2")
 @impl_by_lazy("default2")
 def cov(arr1, arr2, stable=False, axis=0, par=False):
     pass
@@ -134,44 +126,41 @@ def rank(arr, pct=False, axis=0, par=False, rev=False):
     pass
 
 
-@wrap("array_func", inplace=True)
-def clip(arr, min, max, axis=0, par=False):
+@impl_by_lazy("inplace")
+def clip(arr, min, max, axis=0, par=False, inplace=False):
     pass
 
 
-@wrap("base")
-# @impl_by_lazy()
-def remove_nan(arr):
+@impl_by_lazy()
+def dropna(arr, axis=0, how="any", par=False):
     pass
 
 
-# @wrap("array_func")
 @impl_by_lazy()
 def split_group(arr, axis=0, par=False):
     pass
 
 
-@wrap("array_agg_func", inplace=True)
-# @impl_by_lazy()
-def fillna(arr, method=None, value=None, axis=0, par=False, inplace=False):
+@impl_by_lazy("inplace")
+def fillna(arr, method="Ffill", value=None, axis=0, par=False, inplace=False):
     pass
 
 
-@wrap("array_func", use=True)
-def zscore(arr, stable=False, axis=0, par=False, inplace=False):
-    if inplace:
-        if arr.dtype not in [np.float64, np.float32, np.float16]:
-            warn(
-                "the dtype of arr is not float, so note that the result is not float too"
-            )
-        return _tp.zscore_inplace(arr, stable, axis=axis, par=par)
-    else:
-        return _tp.zscore(arr, stable, axis=axis, par=par)
+@impl_by_lazy("inplace")
+def zscore(arr, stable=False, axis=0, par=False, inplace=False, warning=True):
+    pass
 
 
-@wrap("array_func", use=True)
+@impl_by_lazy("inplace")
 def winsorize(
-    arr, method=None, method_params=None, stable=False, axis=0, par=False, inplace=False
+    arr,
+    method=None,
+    method_params=None,
+    stable=False,
+    axis=0,
+    par=False,
+    inplace=False,
+    warning=True,
 ):
     """
     Perform winsorization on a given axis. Winsorization is the process of replacing
@@ -208,20 +197,15 @@ def winsorize(
         whether to parallelize.
     inplace : bool
         Whether to modify the data rather than creating a new one.
+    warning: bool
+        Whether to warn when the dtype of input is not float.
+
 
     Returns
     -------
     None if `inplace` is true else array_like.
 
     """
-    if arr.dtype not in [np.float64, np.float32, np.float16]:
-        warn("the dtype of arr is not float, so note that the result is not float too")
-    if inplace:
-        return _tp.winsorize_inplace(
-            arr, method, method_params, stable, axis=axis, par=par
-        )
-    else:
-        return _tp.winsorize(arr, method, method_params, stable, axis=axis, par=par)
 
 
 @impl_by_lazy()

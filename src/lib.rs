@@ -11,11 +11,11 @@
 pub mod arr;
 #[macro_use]
 pub mod from_py;
-#[cfg(feature = "eager_api")]
-pub(crate) mod eager_macros;
+// #[cfg(feature = "eager_api")]
+// pub(crate) mod eager_macros;
 
-#[cfg(feature = "eager_api")]
-mod eager_api;
+// #[cfg(feature = "eager_api")]
+// mod eager_api;
 
 #[cfg(feature = "lazy")]
 pub mod pylazy;
@@ -25,8 +25,8 @@ mod equity;
 
 use pyo3::{pymodule, types::PyModule, wrap_pyfunction, PyResult, Python};
 
-#[cfg(feature = "eager_api")]
-use eager_api::add_eager;
+// #[cfg(feature = "eager_api")]
+// use eager_api::add_eager;
 
 #[cfg(feature = "lazy")]
 use crate::pylazy::add_lazy;
@@ -36,15 +36,15 @@ fn add_lazy(_m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-#[cfg(not(feature = "eager_api"))]
-fn add_eager(_m: &PyModule) -> PyResult<()> {
-    Ok(())
-}
+// #[cfg(not(feature = "eager_api"))]
+// fn add_eager(_m: &PyModule) -> PyResult<()> {
+//     Ok(())
+// }
 
 #[pymodule]
 fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     add_lazy(m)?;
-    add_eager(m)?;
+    // add_eager(m)?;
     m.add_function(wrap_pyfunction!(equity::calc_digital_ret, m)?)?;
     m.add_function(wrap_pyfunction!(equity::calc_ret_single, m)?)?;
     Ok(())
