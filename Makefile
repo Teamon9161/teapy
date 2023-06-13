@@ -15,6 +15,7 @@ clean: ## clean useless folders
 .PHONY: pytest-cov
 pytest-cov: venv  ## test with coverage report
 	@pytest teapy/tests \
+	-n auto \
 	--cov=teapy \
 	--cov-report xml \
 	--import-mode=importlib
@@ -35,10 +36,11 @@ coverage: # rust and python coverage
 		source <(cargo llvm-cov show-env --export-prefix); \
 		export CARGO_TARGET_DIR=\$$CARGO_LLVM_COV_TARGET_DIR; \
 		export CARGO_INCREMENTAL=1; \
+		export RUSTFLAGS="-C instrument-coverage"; \
 		cargo llvm-cov clean --workspace; \
 		maturin develop; \
 		$(MAKE) pytest-cov; \
-		cargo llvm-cov --no-run --lcov --output-path coverage.lcov; \
+		cargo llvm-cov report --lcov --output-path coverage.lcov; \
 		"
 
 .PHONY: release
