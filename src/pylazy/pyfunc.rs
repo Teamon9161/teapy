@@ -181,7 +181,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
 #[allow(clippy::missing_safety_doc)]
 #[pyo3(signature=(obj, copy=false))]
 pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> {
-    if obj.is_instance_of::<PyList3>()? || obj.is_instance_of::<PyTuple>()? {
+    if obj.is_instance_of::<PyList3>() || obj.is_instance_of::<PyTuple>() {
         if let Ok(seq) = obj.extract::<Vec<&PyAny>>() {
             Ok(seq
                 .into_iter()

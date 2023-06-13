@@ -141,7 +141,7 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     pub unsafe fn __getitem__(self: PyRef<Self>, obj: &PyAny, py: Python) -> PyResult<Self> {
         use pyo3::types::{PyList, PySlice, PyTuple};
-        if obj.is_instance_of::<PyList>()? || obj.is_instance_of::<PyTuple>()? {
+        if obj.is_instance_of::<PyList>() || obj.is_instance_of::<PyTuple>() {
             let obj_vec = obj.extract::<Vec<&PyAny>>().unwrap();
             // if item is slice, slice first
             let mut slc_vec = Vec::with_capacity(10);
