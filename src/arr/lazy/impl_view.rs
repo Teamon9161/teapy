@@ -272,7 +272,11 @@ where
                 //     .to_dimd()
                 //     .unwrap()
                 //     .into();
-                let out = arr.broadcast(*shape).expect("broadcast error").to_dimd().unwrap();
+                let out = arr
+                    .broadcast(*shape)
+                    .expect("broadcast error")
+                    .to_dimd()
+                    .unwrap();
                 mem::transmute(out)
             } else if ndim == 1 {
                 let shape = sh.to_dim1().unwrap();
@@ -282,7 +286,11 @@ where
                 //     .to_dimd()
                 //     .unwrap()
                 //     .into();
-                let out = arr.broadcast(shape.to_slice().unwrap()).expect("broadcast error").to_dimd().unwrap();
+                let out = arr
+                    .broadcast(shape.to_slice().unwrap())
+                    .expect("broadcast error")
+                    .to_dimd()
+                    .unwrap();
                 mem::transmute(out)
             } else {
                 panic!("the dim of shape should not be greater than 1")
