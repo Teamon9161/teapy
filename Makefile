@@ -36,7 +36,6 @@ coverage: # rust and python coverage
 		source <(cargo llvm-cov show-env --export-prefix); \
 		export CARGO_TARGET_DIR=\$$CARGO_LLVM_COV_TARGET_DIR; \
 		export CARGO_INCREMENTAL=1; \
-		# export RUSTFLAGS="-C instrument-coverage"; \
 		cargo llvm-cov clean --workspace; \
 		maturin develop; \
 		$(MAKE) pytest-cov; \
