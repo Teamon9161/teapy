@@ -15,23 +15,24 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         with:
           python-version: "3.8"
           cache: "pip"
           cache-dependency-path: "build.requirements.txt"
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2023-01-19
-          override: true
-          profile: minimal
-          components: llvm-tools-preview
+
+      - name: Set up Rust
+        run: rustup show
+      
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      - uses: Swatinem/rust-cache@v1
+
+      - uses: Swatinem/rust-cache@v2
         with:
           key: coverage-cargo-${{ matrix.os }}
         continue-on-error: true
+
       - name: Run coverage
         run: make coverage
       - uses: codecov/codecov-action@v3

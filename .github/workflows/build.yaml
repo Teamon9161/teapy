@@ -28,22 +28,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: shared-${{ matrix.os }}
-      # - name: Install Rust
-      #   uses: actions-rs/toolchain@v1
-      #   with:
-      #       toolchain: nightly-2023-01-19
-      #       override: true
-      #       components: rustfmt, clippy
-      # - name: Cache Cargo
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: /github/home/.cargo
-      #     key: cargo-cache-
-      # - name: Cache Rust dependencies
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: /github/home/target
-      #     key: ubuntu-x86-64-target-cache-stable
+
       - name: Run formatting checks
         run: |
           cargo fmt --all -- --check
