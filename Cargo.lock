@@ -1400,6 +1400,7 @@ dependencies = [
  "once_cell",
  "pyo3",
  "rayon",
+ "regex",
  "statrs",
 ]
 

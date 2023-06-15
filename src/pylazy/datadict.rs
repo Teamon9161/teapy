@@ -2,6 +2,7 @@ use pyo3::exceptions::PyTypeError;
 use std::collections::hash_map::RawEntryMut;
 use std::iter::repeat;
 use std::sync::{Arc, Mutex};
+use regex::Regex;
 
 use crate::arr::{join_left, JoinType};
 
@@ -60,6 +61,11 @@ impl PyDataDict {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    #[inline(always)]
+    pub fn into_data(self) -> Vec<PyExpr> {
+        self.data
     }
 
     #[inline(always)]
@@ -186,6 +192,34 @@ impl PyDataDict {
                     .unwrap_or_else(|| panic!("{col_name} isn't a column")),
             )
             .unwrap()
+    }
+
+    pub fn get_matched_regex_column(&self, col_name: String) -> Vec<String> {
+        if col_name.starts_with("^") & col_name.ends_with("$") {
+            let re = Regex::new(col_name.as_str()).expect("Invalid regex");
+            self.data
+                .iter()
+                .filter(|e| re.is_match(e.get_name().unwrap().as_str()))
+                .map(|e| e.get_name().unwrap())
+                .collect()
+        } else {
+            vec![col_name]
+        }
+    }
+
+    pub fn get_by_regex(&self, col_name: &str) -> Result<Vec<PyExpr>, &'static str> {
+        if col_name.starts_with("^") & col_name.ends_with("$") {
+            let re = Regex::new(col_name).expect("Invalid regex");
+            let out: Vec<PyExpr> = self.data
+                .iter()
+                .filter(|e| re.is_match(e.get_name().unwrap().as_str()))
+                .map(|e| e.clone())
+                .collect();
+            Ok(out)
+        } else {
+            Ok(vec![self.get_by_str(col_name).clone()])
+        }
+        
     }
 
     pub fn get_mut_by_str(&mut self, col_name: &str) -> &mut PyExpr {
@@ -455,16 +489,23 @@ impl PyDataDict {
         }
     }
 
+
     fn __getitem__(&self, ob: &PyAny, py: Python) -> PyResult<PyObject> {
         if let Ok(col_name) = ob.extract::<&str>() {
-            Ok(self.get_by_str(col_name).clone().into_py(py))
+            let out = self.get_by_regex(col_name).map_err(PyValueError::new_err)?;
+            if out.len() == 1 {
+                Ok(out[0].clone().into_py(py))
+            } else {
+                Ok(PyDataDict::new(out, None).into_py(py))
+            }
         } else if let Ok(col_idx) = ob.extract::<i32>() {
             Ok(self.get_by_idx(col_idx).clone().into_py(py))
         } else if let Ok(col_name_vec) = ob.extract::<Vec<&str>>() {
             let out = col_name_vec
                 .into_iter()
-                .map(|col_name| self.get_by_str(col_name).clone())
-                .collect_trusted();
+                .map(|col_name| self.get_by_regex(col_name).unwrap())
+                .flatten()
+                .collect();
             Ok(PyDataDict::new(out, None).into_py(py))
         } else if let Ok(col_idx_vec) = ob.extract::<Vec<i32>>() {
             let out = col_idx_vec
@@ -477,34 +518,61 @@ impl PyDataDict {
         }
     }
 
-    pub unsafe fn __setitem__(&mut self, key: &PyAny, value: &PyAny) -> PyResult<()> {
+    pub unsafe fn __setitem__(&mut self, key: &PyAny, value: &PyAny, py: Python) -> PyResult<()> {
         if let Ok(col_name) = key.extract::<String>() {
-            let value = parse_expr_nocopy(value)?;
-            self.set_by_name(col_name, value);
-            Ok(())
+            let col_name_vec = self.get_matched_regex_column(col_name);
+            if col_name_vec.len() > 1 {
+                let key = col_name_vec.into_py(py);
+                self.__setitem__(key.as_ref(py), value, py)
+            } else if col_name_vec.len() == 1{
+                let value = parse_expr_nocopy(value)?;
+                self.set_by_name(col_name_vec[0].clone(), value);
+                Ok(())
+            } else {
+                Err(PyValueError::new_err("The column name doesn't exist"))
+            }
         } else if let Ok(col_idx) = key.extract::<i32>() {
             let value = parse_expr_nocopy(value)?;
             self.set_by_idx(col_idx, value);
             Ok(())
         } else if let Ok(col_name_vec) = key.extract::<Vec<String>>() {
+            let col_name_vec: Vec<String> = col_name_vec
+                                .into_iter()
+                                .map(|col| self.get_matched_regex_column(col))
+                                .flatten()
+                                .collect();
             let value_vec = parse_expr_list(value, false)?;
             if value_vec.len() != col_name_vec.len() {
-                return Err(PyValueError::new_err(
-                    "The length of columns and values are not equal",
-                ));
-            }
-            zip(col_name_vec, value_vec)
+                if value_vec.len() == 1 {
+                    col_name_vec
+                    .into_iter()
+                    .for_each(|col_name| self.set_by_name(col_name, value_vec[0].deep_copy()));
+                } else {
+                    return Err(PyValueError::new_err(
+                        "The length of columns and values are not equal",
+                    ));
+                }
+            } else {
+                zip(col_name_vec, value_vec)
                 .for_each(|(col_name, value)| self.set_by_name(col_name, value));
+            }
             Ok(())
         } else if let Ok(col_idx_vec) = key.extract::<Vec<i32>>() {
             let value_vec = parse_expr_list(value, false)?;
             if value_vec.len() != col_idx_vec.len() {
-                return Err(PyValueError::new_err(
-                    "The length of columns and values are not equal",
-                ));
+                if value_vec.len() == 1 {
+                    col_idx_vec
+                        .into_iter()
+                        .for_each(|col_idx| self.set_by_idx(col_idx, value_vec[0].deep_copy()));
+                } else {
+                    return Err(PyValueError::new_err(
+                        "The length of columns and values are not equal",
+                    ));
+                }
+            } else {
+                zip(col_idx_vec, value_vec)
+                .for_each(|(col_idx, value)| self.set_by_idx(col_idx, value));                
             }
-            zip(col_idx_vec, value_vec)
-                .for_each(|(col_idx, value)| self.set_by_idx(col_idx, value));
             Ok(())
         } else {
             Err(PyValueError::new_err("Not support type in set item"))
@@ -545,6 +613,28 @@ impl PyDataDict {
             exprs.into_iter().for_each(|e| self._insert(e));
             Ok(None)
         }
+    }
+
+    #[pyo3(signature=(func, **py_kwargs))]
+    // #[allow(unreachable_patterns)]
+    pub fn apply(
+        &self,
+        func: &PyAny,
+        py_kwargs: Option<&PyDict>,
+    ) -> PyResult<Self> {
+        if self.is_empty() {
+            return Ok(self.clone());
+        }
+        let out_data = unsafe {
+            self.data.iter().map(|e| 
+                parse_expr_nocopy(
+                    func.call((e.clone(),), py_kwargs)
+                    .expect("Call python function error!")
+                )
+                .expect("Can not parse fucntion return as Expr")
+            ).collect_trusted()
+        };
+        Ok(PyDataDict::new(out_data, None))
     }
 
     #[pyo3(signature=(window, func, axis=0, check=true, **py_kwargs))]

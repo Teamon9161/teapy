@@ -190,6 +190,8 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
         } else {
             unreachable!()
         }
+    } else if let Ok(datadict) = obj.extract::<PyDataDict>() {
+        Ok(datadict.into_data())
     } else if let Ok(pyexpr) = parse_expr(obj, copy) {
         Ok(vec![pyexpr])
     } else {

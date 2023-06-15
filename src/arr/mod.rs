@@ -25,7 +25,7 @@ pub use arr_func::{FillMethod, WinsorizeMethod};
 pub use corr::CorrMethod;
 pub(crate) use datatype::match_datatype_arm;
 pub use datatype::{BoolType, DataType, GetDataType, GetNone, Number};
-pub use groupby::{groupby, groupby_par};
+pub use groupby::{groupby, groupby_par, flatten};
 pub use iterators::{Iter, IterMut};
 pub use join::{join_left, JoinType};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};

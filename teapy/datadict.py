@@ -94,9 +94,22 @@ class GroupBy:
 
 
 class DataDict:
-    def __init__(self, *args, **kwargs):
-        if len(args) or len(kwargs):
-            self._dd = _DataDict(*args, **kwargs)
+    def __init__(self, data=None, columns=None, copy=False, **kwargs):
+        if data is not None or len(kwargs):
+            if data is None:
+                data = []
+            elif isinstance(data, dict):
+                columns = list(data.keys()) if columns is None else columns
+                data = list(data.values())
+            if len(kwargs):
+                if columns is None:
+                    columns = []
+                if isinstance(data, tuple):
+                    data = list(data)
+                for k, v in kwargs.items():
+                    data.append(v)
+                    columns.append(k)
+            self._dd = _DataDict(data=data, columns=columns, copy=copy)
         else:
             self._dd = _DataDict([])
 
