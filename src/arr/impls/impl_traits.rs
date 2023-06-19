@@ -136,3 +136,33 @@ impl<'a> From<ArrViewMutD<'a, &'a str>> for ArrOk<'a> {
         ArrOk::Str(arr.into())
     }
 }
+
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+
+impl<A, D, S> Serialize for ArrBase<S, D>
+where
+    A: Serialize,
+    D: Dimension + Serialize,
+    S: Data<Elem = A>,
+{
+    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
+    where
+        Se: Serializer
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de, A, Di, S> Deserialize<'de> for ArrBase<S, Di>
+where
+    A: Deserialize<'de>,
+    Di: Dimension + Deserialize<'de>,
+    S: DataOwned<Elem = A>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<ArrBase<S, Di>, D::Error>
+    where
+        D: Deserializer<'de>
+    {   
+        ArrayBase::<S, Di>::deserialize(deserializer).map(|a| a.wrap())
+    }
+}

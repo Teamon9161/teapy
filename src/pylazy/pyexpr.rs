@@ -382,7 +382,9 @@ impl PyExpr {
     pub(crate) fn cast_by_str(&self, ty_name: &str, py: Python) -> PyResult<Self> {
         match ty_name.to_lowercase().as_str() {
             "float" | "f64" => Ok(self.clone().cast_f64()?.to_py(self.obj())),
+            "f32" => Ok(self.clone().cast_f32()?.to_py(self.obj())),
             "int" | "i32" => Ok(self.clone().cast_i32()?.to_py(self.obj())),
+            "i64" => Ok(self.clone().cast_i64()?.to_py(self.obj())),
             "usize" | "uint" => Ok(self.clone().cast_usize()?.to_py(self.obj())),
             "bool" => Ok(self.clone().cast_bool()?.to_py(self.obj())),
             "object" => Ok(self.clone().cast_object_eager(py)?.to_py(self.obj())),

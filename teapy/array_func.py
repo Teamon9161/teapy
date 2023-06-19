@@ -1,32 +1,5 @@
 from .wrapper import impl_by_lazy
 
-# __all__ = [
-#     "sum",
-#     "min",
-#     "max",
-#     "mean",
-#     "median",
-#     "quantile",
-#     "std",
-#     "var",
-#     "skew",
-#     "kurt",
-#     "count_nan",
-#     "count_notnan",
-#     "argsort",
-#     "rank",
-#     "cov",
-#     "corr",
-#     "fillna",
-#     "zscore",
-#     "winsorize",
-#     "dropna",
-#     # "remove_nan",
-#     "split_group",
-#     "clip",
-#     "shift",
-# ]
-
 
 @impl_by_lazy()
 def sum(arr, stable=False, axis=0, par=False):

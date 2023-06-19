@@ -122,25 +122,30 @@ impl PyDataDict {
     }
 
     pub fn _drop(&mut self, columns: Vec<&str>, inplace: bool) -> Option<Self> {
+        let columns: Vec<String> = columns.into_iter()
+            .map(|col| self.get_matched_regex_column(col))
+            .flatten()
+            .collect();
         if inplace {
+
             let mut column_map = self.column_map.lock().unwrap();
             for col in &columns {
-                column_map.remove(*col);
+                column_map.remove(col);
             }
             self.data = self
                 .data
-                .drain_filter(|e| !columns.contains(&e.get_name().unwrap().as_str()))
+                .drain_filter(|e| !columns.contains(&e.get_name().unwrap()))
                 .collect::<Vec<_>>();
             None
         } else {
             let mut column_map = self.column_map.lock().unwrap().clone();
             for col in &columns {
-                column_map.remove(*col);
+                column_map.remove(col);
             }
             let data = self
                 .data
                 .clone()
-                .drain_filter(|e| !columns.contains(&e.get_name().unwrap().as_str()))
+                .drain_filter(|e| !columns.contains(&e.get_name().unwrap()))
                 .collect::<Vec<_>>();
             Some(PyDataDict {
                 data,
@@ -194,16 +199,16 @@ impl PyDataDict {
             .unwrap()
     }
 
-    pub fn get_matched_regex_column(&self, col_name: String) -> Vec<String> {
+    pub fn get_matched_regex_column(&self, col_name: &str) -> Vec<String> {
         if col_name.starts_with("^") & col_name.ends_with("$") {
-            let re = Regex::new(col_name.as_str()).expect("Invalid regex");
+            let re = Regex::new(col_name).expect("Invalid regex");
             self.data
                 .iter()
                 .filter(|e| re.is_match(e.get_name().unwrap().as_str()))
                 .map(|e| e.get_name().unwrap())
                 .collect()
         } else {
-            vec![col_name]
+            vec![col_name.to_string()]
         }
     }
 
@@ -520,7 +525,7 @@ impl PyDataDict {
 
     pub unsafe fn __setitem__(&mut self, key: &PyAny, value: &PyAny, py: Python) -> PyResult<()> {
         if let Ok(col_name) = key.extract::<String>() {
-            let col_name_vec = self.get_matched_regex_column(col_name);
+            let col_name_vec = self.get_matched_regex_column(&col_name);
             if col_name_vec.len() > 1 {
                 let key = col_name_vec.into_py(py);
                 self.__setitem__(key.as_ref(py), value, py)
@@ -538,7 +543,7 @@ impl PyDataDict {
         } else if let Ok(col_name_vec) = key.extract::<Vec<String>>() {
             let col_name_vec: Vec<String> = col_name_vec
                                 .into_iter()
-                                .map(|col| self.get_matched_regex_column(col))
+                                .map(|col| self.get_matched_regex_column(&col))
                                 .flatten()
                                 .collect();
             let value_vec = parse_expr_list(value, false)?;
@@ -1086,7 +1091,7 @@ fn parse_one_or_more_str(s: &PyAny) -> PyResult<Vec<&str>> {
         Ok(s)
     } else {
         Err(PyValueError::new_err(
-            "the type of param on is not supported",
+            "the param cann't be parsed as a vector of string",
         ))
     }
 }

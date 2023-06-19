@@ -1,6 +1,7 @@
 from teapy import DataDict, Expr
 from teapy.testing import assert_allclose, assert_allclose3
 import numpy as np
+import pandas as pd
 
 def test_init():
     dd = DataDict()
@@ -59,3 +60,31 @@ def test_dtypes():
         c=['df', '134', '231']
     )
     assert dd.dtypes == {'a': 'Int32', 'b': 'Float64', 'c': 'String'}
+
+
+def test_join():
+    ldd = DataDict({'left_on': ['a', 'b', 'a', 'c'], 'va': [1, 2, 3, 4]})
+    rdd = DataDict({'right_on': ['b', 'b', 'c'], 'vb': [10, 20, 30]})
+    dd = ldd.join(rdd, left_on='left_on', right_on='right_on', how='left')
+    dd2 = ldd.join(rdd, left_on='left_on', right_on='right_on', how='right')
+    assert_allclose(dd['vb'].eview(), np.array([np.nan, 20, np.nan, 30]))
+    assert_allclose(dd2['va'].eview(), np.array([2, 2, 4]))
+    ldd = ldd.rename({'left_on': 'on'})
+    rdd = rdd.rename({'right_on': 'on'})
+    dd = ldd.join(rdd, on='on', how='left')
+    assert_allclose(dd['vb'].eview(), np.array([np.nan, 20, np.nan, 30]))
+    
+
+def test_groupby():
+    dd = DataDict(
+        {
+            "a": ["a", "b", "a", "b", "b", "c"],
+            "b": [1, 2, 3, 4, 5, 6],
+            "c": [6, 5, 4, 3, 2, 1],
+        }
+    )
+    res = dd.groupby("a").apply(lambda df: df['c'].sum())
+    assert_allclose(res['c'].eview(), np.array([10, 10, 1]))
+    
+    res = dd.groupby("a").apply(lambda df: [df['c'].sum().alias('c1'), df['c'].max().alias('c2')])
+    assert_allclose(res['c2'].eview(), np.array([6, 5, 1]))

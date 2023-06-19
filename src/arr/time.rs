@@ -10,6 +10,7 @@ use std::{
     hash::Hash,
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
+use serde::{Serialize, Deserialize};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -30,7 +31,7 @@ const SECS_PER_DAY: i64 = 86400;
 /// The number of (non-leap) seconds in a week.
 const SECS_PER_WEEK: i64 = 604800;
 
-#[derive(Clone, Copy, Default, Debug, Hash, Eq, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Default, Debug, Hash, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct DateTime(pub NaiveDateTime);
 
 impl Deref for DateTime {
@@ -196,9 +197,11 @@ pub enum TimeUnit {
 //     }
 // }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[serde_with::serde_as]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TimeDelta {
     pub months: i32,
+    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub inner: Duration,
 }
 

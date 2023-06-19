@@ -8,14 +8,26 @@ use numpy::{
     Element, PyArray, PyArray1, PyArrayDescr, PyArrayDyn,
 };
 use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
+// use serde::{Serialize, Deserialize, Serializer};
 
 #[cfg(feature = "lazy")]
 use crate::arr::DropNaMethod;
 use crate::arr::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
 
+
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct PyValue(pub PyObject);
+
+// impl Serialize for PyValue {
+//     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> 
+//     {   
+//         Python::with_gil(|py| {
+//             let obj = self.0.as_ref(py);
+//             serde_pickle::to_vec(&obj, Default::default())
+//         })
+//     }
+// }
 
 impl ToPyObject for PyValue {
     fn to_object(&self, py: Python<'_>) -> PyObject {

@@ -37,7 +37,7 @@ pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs};
 pub use time::{DateTime, TimeDelta, TimeUnit};
 
 use ndarray::{
-    Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
+    Array, Array1, ArrayD, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
     OwnedRepr, RawArrayView, RawArrayViewMut, RawData, RawDataClone, RemoveAxis, ShapeBuilder,
     ShapeError, StrideShape, ViewRepr, Zip,
 };
@@ -47,6 +47,8 @@ use pyo3::{Python, ToPyObject};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::fmt::Debug;
 use std::sync::Arc;
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+
 
 pub struct ArrBase<S, D>(pub ArrayBase<S, D>)
 where
@@ -535,6 +537,7 @@ impl<S: RawDataClone, D: Clone + Dimension> Clone for ArrBase<S, D> {
     }
 }
 
+
 #[derive(Debug)]
 pub enum ArbArray<'a, T> {
     View(ArrViewD<'a, T>),
@@ -542,6 +545,34 @@ pub enum ArbArray<'a, T> {
     Owned(ArrD<T>),
 }
 
+impl<'a, T> Serialize for ArbArray<'a, T>
+where
+    T: Serialize + Clone,
+{
+    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
+    where
+        Se: Serializer
+    {   
+        match self {
+            ArbArray::View(arr_view) => arr_view.to_owned().serialize(serializer),
+            ArbArray::ViewMut(arr_view) => arr_view.to_owned().serialize(serializer),
+            ArbArray::Owned(arr) => arr.serialize(serializer),
+        }
+    }
+}
+
+impl<'a, 'de, T> Deserialize<'de> for ArbArray<'a, T>
+where
+    T: Deserialize<'de> + Clone
+{
+    fn deserialize<D>(deserializer: D) -> Result<ArbArray<'a, T>, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        Ok(ArbArray::<T>::Owned(ArrayD::<T>::deserialize(deserializer)?.wrap()))
+    }
+}
+    
 impl<'a, T: Default> Default for ArbArray<'a, T> {
     fn default() -> Self {
         ArbArray::Owned(Default::default())

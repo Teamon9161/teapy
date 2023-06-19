@@ -827,6 +827,20 @@ impl PyExpr {
         })
     }
 
+    // pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
+    //     match state.extract::<&pyo3::types::PyBytes>(py) {
+    //         Ok(s) => {
+    //             self.foo = bincode::deserialize(s.as_bytes()).unwrap();
+    //             Ok(())
+    //         }
+    //         Err(e) => Err(e),
+    //     }
+    // }
+
+    // pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
+    //     Ok(PyBytes::new(py, &bincode::serialize(&self.foo).unwrap()).to_object(py))
+    // }
+
     /// Returns the square root of a number.
     ///
     /// Returns NaN if self is a negative number other than -0.0.
