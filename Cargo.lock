@@ -1509,7 +1509,7 @@ checksum = "fd1ba337640d60c3e96bc6f0638a939b9c9a7f2c316a1598c279828b3d1dc8c5"
 
 [[package]]
 name = "teapy"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "ahash",
  "bincode",
