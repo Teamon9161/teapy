@@ -716,7 +716,11 @@ where
     {
         self.chain_view_f(move |arr| {
             // evaluate in parallel
-            let axis = arr.norm_axis(axis);
+            let axis = if axis < 0 {
+                Axis(arr.norm_axis(axis).index() + 1)
+            } else {
+                Axis(axis as usize)
+            };
             other.par_iter_mut().for_each(|e| e.eval_inplace());
             let arr1 = vec![arr.0];
             // safety: array view other exists in lifetime '_, and stack will create a own array later
@@ -726,7 +730,7 @@ where
                     .collect()
             };
             ndarray::stack(axis, &arrays)
-                .expect("Shape error when concatenate")
+                .expect("Shape error when stack")
                 .wrap()
                 .into()
         })

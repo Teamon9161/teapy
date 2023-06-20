@@ -621,7 +621,6 @@ impl PyDataDict {
     }
 
     #[pyo3(signature=(func, **py_kwargs))]
-    // #[allow(unreachable_patterns)]
     pub fn apply(&self, func: &PyAny, py_kwargs: Option<&PyDict>) -> PyResult<Self> {
         if self.is_empty() {
             return Ok(self.clone());

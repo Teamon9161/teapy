@@ -1,5 +1,5 @@
 from .teapy import PyDataDict as _DataDict
-from .teapy import from_pandas
+from .teapy import from_pandas, stack
 
 
 def _new_with_dd(dd=None):
@@ -66,6 +66,34 @@ class DataDict:
     def select(self, exprs):
         return self._dd.select(exprs)
 
+    def mean(self, axis=-1, stable=False, par=False):
+        if axis == -1:
+            return stack(self.raw_data, axis=axis).mean(axis=-1, stable=stable, par=par)
+        else:
+            axis = axis + 1 if axis < 0 else axis
+            return self.apply(lambda e: e.mean(axis=axis, stable=stable, par=par))
+
+    def sum(self, axis=-1, stable=False, par=False):
+        if axis == -1:
+            return stack(self.raw_data, axis=axis).sum(axis=-1, stable=stable, par=par)
+        else:
+            axis = axis + 1 if axis < 0 else axis
+            return self.apply(lambda e: e.sum(axis=axis, stable=stable, par=par))
+
+    def min(self, axis=-1, par=False):
+        if axis == -1:
+            return stack(self.raw_data, axis=axis).min(axis=-1, par=par)
+        else:
+            axis = axis + 1 if axis < 0 else axis
+            return self.apply(lambda e: e.min(axis=axis, par=par))
+
+    def max(self, axis=-1, par=False):
+        if axis == -1:
+            return stack(self.raw_data, axis=axis).max(axis=-1, par=par)
+        else:
+            axis = axis + 1 if axis < 0 else axis
+            return self.apply(lambda e: e.max(axis=axis, par=par))
+
     def rename(self, mapper):
         return self.with_columns(
             [
@@ -92,7 +120,7 @@ class DataDict:
 
     @construct
     def apply(self, func, **kwargs):
-        return self._dd.apply(func, kwargs)
+        return self._dd.apply(func, **kwargs)
 
     def rolling(self, window, dd, index=None, check=True, axis=0):
         return Rolling(window, self._dd, index, check, axis)

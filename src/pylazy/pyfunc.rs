@@ -239,6 +239,43 @@ pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> 
 }
 
 #[pyfunction]
+#[pyo3(signature=(exprs, axis=0))]
+#[allow(unreachable_patterns)]
+pub fn stack_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
+    let e1 = exprs.get(0).unwrap().clone();
+    let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
+    macro_rules! stack_macro {
+        ($($arm: ident => $cast_func: ident $(($arg: expr))?),*) => {
+            match e1.inner() {
+                $(Exprs::$arm(expr) => {
+                    let other = exprs.into_iter().skip(1).map(|e| e.$cast_func($(($arg))?).unwrap()).collect_trusted();
+                    expr.clone().stack(other, axis).to_py(e1.obj())
+                }),*
+                _ => unimplemented!("stack is not implemented for this type.")
+            }
+        };
+    }
+    let rtn = stack_macro!(
+        F64 => cast_f64, F32 => cast_f32, I32 => cast_i32, I64 => cast_i64,
+        Bool => cast_bool, Usize => cast_usize,
+        Object => cast_object, String => cast_string, Str => cast_str,
+        DateTime => cast_datetime(None), TimeDelta => cast_timedelta
+    );
+    Ok(rtn.add_obj_vec(obj_vec))
+}
+
+#[pyfunction]
+#[allow(clippy::missing_safety_doc)]
+#[pyo3(name="stack", signature=(exprs, axis=0))]
+pub unsafe fn stack_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
+    let exprs = exprs
+        .into_iter()
+        .map(|e| parse_expr_nocopy(e))
+        .collect::<PyResult<Vec<PyExpr>>>()?;
+    stack_expr(exprs, axis)
+}
+
+#[pyfunction]
 #[pyo3(signature=(exprs, inplace=false))]
 pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> Option<Vec<PyExpr>> {
     exprs.par_iter_mut().for_each(|e| e.eval_inplace());

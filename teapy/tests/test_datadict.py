@@ -55,9 +55,35 @@ def test_drop():
     assert dd.columns == ["a"]
 
 
+def test_mean():
+    dd = DataDict(a=[1, 2, 3, 4], b=[3, 4, 5, 6])
+    assert_allclose(dd.mean(axis=-1).eview(), np.array([2, 3, 4, 5]))
+    assert dd.mean(axis=0)["a"].eview() == 2.5
+
+
+def test_sum():
+    dd = DataDict(a=[1, 2, 3, 4], b=[3, 4, 5, 6])
+    assert_allclose(dd.sum(axis=-1).eview(), np.array([4, 6, 8, 10]))
+    assert dd.sum(axis=0)["a"].eview() == 10
+
+
+def test_min():
+    dd = DataDict(a=[1, 2, 3, 4], b=[3, 4, 5, 6])
+    assert_allclose(dd.min(axis=-1).eview(), np.array([1, 2, 3, 4]))
+    assert dd.min(axis=0)["a"].eview() == 1
+
+
+def test_max():
+    dd = DataDict(a=[1, 2, 3, 4], b=[3, 4, 5, 6])
+    assert_allclose(dd.max(axis=-1).eview(), np.array([3, 4, 5, 6]))
+    assert dd.max(axis=0)["a"].eview() == 4
+
+
 def test_dtypes():
     dd = DataDict(
-        a=np.random.randint(1, 3, 3), b=[1.0, 2.0, 3.0], c=["df", "134", "231"]
+        a=np.random.randint(1, 3, 3).astype(np.int32),
+        b=[1.0, 2.0, 3.0],
+        c=["df", "134", "231"],
     )
     assert dd.dtypes == {"a": "Int32", "b": "Float64", "c": "String"}
 
