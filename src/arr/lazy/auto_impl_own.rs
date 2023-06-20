@@ -57,41 +57,41 @@ where
     // (stable: bool): other arguments of the function
     // impl_view_lazy!(in1, [remove_nan_1d -> f64], ());
     impl_view_lazy!(in1, [is_nan -> bool, not_nan -> bool], ());
-    impl_view_lazy!(in1, [diff -> f64, pct_change -> f64], (n: i32, axis: usize, par: bool));
+    impl_view_lazy!(in1, [diff -> f64, pct_change -> f64], (n: i32, axis: i32, par: bool));
     impl_view_lazy!(in1,
         [
             count_notnan -> i32, count_nan -> i32, median -> f64, max -> T,
             min -> T, prod -> T, cumprod -> T,
         ],
-        (axis: usize, par: bool)
+        (axis: i32, par: bool)
     );
     impl_view_lazy!(in1,
         [
             sum -> T, mean -> f64, var -> f64, std -> f64,
             skew -> f64, kurt -> f64, cumsum -> T,
         ],
-        (stable: bool, axis: usize, par: bool)
+        (stable: bool, axis: i32, par: bool)
     );
     impl_view_lazy!(in1-inplace,
         [
             zscore, zscore_inplace -> T,
         ],
-        (stable: bool, axis: usize, par: bool)
+        (stable: bool, axis: i32, par: bool)
     );
     impl_view_lazy!(in1-inplace,
         [
             winsorize, winsorize_inplace -> T,
         ],
-        (method: WinsorizeMethod, method_params: Option<f64>, stable: bool, axis: usize, par: bool)
+        (method: WinsorizeMethod, method_params: Option<f64>, stable: bool, axis: i32, par: bool)
     );
 
-    impl_view_lazy!(in1, quantile -> f64, (q: f64, method: QuantileMethod, axis: usize, par: bool));
-    impl_view_lazy!(in1, rank -> f64, (pct: bool, rev: bool, axis: usize, par: bool));
-    impl_view_lazy!(in1, argsort -> i32, (rev: bool, axis: usize, par: bool));
-    impl_view_lazy!(in1, split_group -> i32, (group: usize, rev: bool, axis: usize, par: bool));
-    impl_view_lazy!(in1, arg_partition -> i32, (kth: usize, sort: bool, rev: bool, axis: usize, par: bool));
-    impl_view_lazy!(in2, cov -> f64, (stable: bool, axis: usize, par: bool));
-    impl_view_lazy!(in2, corr -> f64, (method: CorrMethod, stable: bool, axis: usize, par: bool));
+    impl_view_lazy!(in1, quantile -> f64, (q: f64, method: QuantileMethod, axis: i32, par: bool));
+    impl_view_lazy!(in1, rank -> f64, (pct: bool, rev: bool, axis: i32, par: bool));
+    impl_view_lazy!(in1, argsort -> i32, (rev: bool, axis: i32, par: bool));
+    impl_view_lazy!(in1, split_group -> i32, (group: usize, rev: bool, axis: i32, par: bool));
+    impl_view_lazy!(in1, arg_partition -> i32, (kth: usize, sort: bool, rev: bool, axis: i32, par: bool));
+    impl_view_lazy!(in2, cov -> f64, (stable: bool, axis: i32, par: bool));
+    impl_view_lazy!(in2, corr -> f64, (method: CorrMethod, stable: bool, axis: i32, par: bool));
 
     // === window expression ===
     // window function without stable argument
@@ -101,11 +101,11 @@ where
             ts_max -> f64, ts_rank -> f64, ts_rank_pct -> f64,
             ts_prod -> f64, ts_prod_mean -> f64, ts_minmaxnorm -> f64,
         ],
-        (window: usize, min_periods: usize, axis: usize, par: bool)
+        (window: usize, min_periods: usize, axis: i32, par: bool)
     );
     // window corr and cov
     impl_view_lazy!(in2, [ts_cov -> f64, ts_corr -> f64],
-        (window: usize, min_periods: usize, stable: bool, axis: usize, par: bool)
+        (window: usize, min_periods: usize, stable: bool, axis: i32, par: bool)
     );
     // window function with stable argument
     impl_view_lazy!(in1,
@@ -115,6 +115,6 @@ where
             ts_stable -> f64, ts_meanstdnorm -> f64, ts_reg -> f64,
             ts_tsf -> f64, ts_reg_slope -> f64, ts_reg_intercept -> f64,
         ],
-        (window: usize, min_periods: usize, stable: bool, axis: usize, par: bool)
+        (window: usize, min_periods: usize, stable: bool, axis: i32, par: bool)
     );
 }

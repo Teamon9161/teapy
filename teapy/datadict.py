@@ -27,7 +27,6 @@ def from_pd(*args, **kwargs):
 
 
 class DataDict:
-    
     def __init__(self, data=None, columns=None, copy=False, **kwargs):
         if data is not None or len(kwargs):
             if data is None:
@@ -47,74 +46,63 @@ class DataDict:
         else:
             self._dd = _DataDict([])
 
-
     def __getitem__(self, key):
         return self._dd[key]
-
 
     def __setitem__(self, item, value):
         self._dd.__setitem__(item, value)
 
-
     def __delitem__(self, item):
         self._dd.__delitem__(item)
 
-
     def __getattr__(self, attr):
         return getattr(self._dd, attr)
-
 
     @construct
     def eval(self, cols=None, inplace=True):
         return self._dd.eval(cols, inplace=inplace)
 
-
     @construct
     def select(self, exprs):
         return self._dd.select(exprs)
-    
-    
-    def rename(self, mapper):
-        return self.with_columns([
-            self[key].alias(mapper[key]) 
-            for key in self.columns
-            if mapper.get(key) is not None
-        ])
-        
 
+    def rename(self, mapper):
+        return self.with_columns(
+            [
+                self[key].alias(mapper[key])
+                for key in self.columns
+                if mapper.get(key) is not None
+            ]
+        )
 
     @construct
     def with_columns(self, exprs, inplace=False):
         return self._dd.with_columns(exprs, inplace=inplace)
-
 
     @construct
     def join(self, right, on=None, left_on=None, right_on=None, how="left"):
         if on is not None:
             left_on = right_on = on
         if how == "right":
-            return right._dd.join(self._dd, left_on=right_on, right_on=left_on, method="left")
+            return right._dd.join(
+                self._dd, left_on=right_on, right_on=left_on, method="left"
+            )
         else:
             return self._dd.join(right._dd, left_on, right_on, method=how)
-        
-        
-    @construct
-    def apply(self, func ,**kwargs):
-        return self._dd.apply(func, kwargs)
 
+    @construct
+    def apply(self, func, **kwargs):
+        return self._dd.apply(func, kwargs)
 
     def rolling(self, window, dd, index=None, check=True, axis=0):
         return Rolling(window, self._dd, index, check, axis)
-
 
     @construct
     def sort_by(self, by, rev=False, inplace=False):
         return self._dd.sort_by(by=by, rev=rev, inplace=inplace)
 
-
     def groupby(self, by, axis=0, sort=True, par=False, reuse=False):
         return GroupBy(self._dd, by, axis, sort, par, reuse=reuse)
-
 
     @construct
     def unique(self, subset, keep="first", inplace=False, check=True, axis=0):

@@ -137,7 +137,7 @@ impl<'a> From<ArrViewMutD<'a, &'a str>> for ArrOk<'a> {
     }
 }
 
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 impl<A, D, S> Serialize for ArrBase<S, D>
 where
@@ -147,7 +147,7 @@ where
 {
     fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
     where
-        Se: Serializer
+        Se: Serializer,
     {
         self.0.serialize(serializer)
     }
@@ -161,8 +161,8 @@ where
 {
     fn deserialize<D>(deserializer: D) -> Result<ArrBase<S, Di>, D::Error>
     where
-        D: Deserializer<'de>
-    {   
+        D: Deserializer<'de>,
+    {
         ArrayBase::<S, Di>::deserialize(deserializer).map(|a| a.wrap())
     }
 }

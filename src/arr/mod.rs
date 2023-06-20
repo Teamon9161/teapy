@@ -25,7 +25,7 @@ pub use arr_func::{FillMethod, WinsorizeMethod};
 pub use corr::CorrMethod;
 pub(crate) use datatype::match_datatype_arm;
 pub use datatype::{BoolType, DataType, GetDataType, GetNone, Number};
-pub use groupby::{groupby, groupby_par, flatten};
+pub use groupby::{flatten, groupby, groupby_par};
 pub use iterators::{Iter, IterMut};
 pub use join::{join_left, JoinType};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
@@ -37,18 +37,17 @@ pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs};
 pub use time::{DateTime, TimeDelta, TimeUnit};
 
 use ndarray::{
-    Array, Array1, ArrayD, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
-    OwnedRepr, RawArrayView, RawArrayViewMut, RawData, RawDataClone, RemoveAxis, ShapeBuilder,
-    ShapeError, StrideShape, ViewRepr, Zip,
+    Array, Array1, ArrayBase, ArrayD, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2,
+    IxDyn, OwnedRepr, RawArrayView, RawArrayViewMut, RawData, RawDataClone, RemoveAxis,
+    ShapeBuilder, ShapeError, StrideShape, ViewRepr, Zip,
 };
 use ndarray_npy::{write_npy, WritableElement, WriteNpyError};
 use num::{traits::AsPrimitive, Zero};
 use pyo3::{Python, ToPyObject};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Debug;
 use std::sync::Arc;
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
-
 
 pub struct ArrBase<S, D>(pub ArrayBase<S, D>)
 where
@@ -76,6 +75,29 @@ where
     #[inline]
     pub fn new(a: ArrayBase<S, D>) -> Self {
         Self(a)
+    }
+
+    #[inline]
+    pub fn ensure_axis(&self, axis: i32) -> usize {
+        if axis < 0 {
+            (self.ndim() as i32 + axis) as usize
+        } else {
+            axis as usize
+        }
+    }
+
+    #[inline]
+    pub fn norm_axis(&self, axis: i32) -> Axis {
+        Axis(self.ensure_axis(axis))
+    }
+
+    #[inline]
+    pub fn ensure_index(&self, index: i32, length: usize) -> usize {
+        if index < 0 {
+            (length as i32 + index) as usize
+        } else {
+            index as usize
+        }
     }
 
     pub fn write_npy<P>(self, path: P) -> Result<(), WriteNpyError>
@@ -537,7 +559,6 @@ impl<S: RawDataClone, D: Clone + Dimension> Clone for ArrBase<S, D> {
     }
 }
 
-
 #[derive(Debug)]
 pub enum ArbArray<'a, T> {
     View(ArrViewD<'a, T>),
@@ -551,8 +572,8 @@ where
 {
     fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
     where
-        Se: Serializer
-    {   
+        Se: Serializer,
+    {
         match self {
             ArbArray::View(arr_view) => arr_view.to_owned().serialize(serializer),
             ArbArray::ViewMut(arr_view) => arr_view.to_owned().serialize(serializer),
@@ -563,16 +584,18 @@ where
 
 impl<'a, 'de, T> Deserialize<'de> for ArbArray<'a, T>
 where
-    T: Deserialize<'de> + Clone
+    T: Deserialize<'de> + Clone,
 {
     fn deserialize<D>(deserializer: D) -> Result<ArbArray<'a, T>, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
-        Ok(ArbArray::<T>::Owned(ArrayD::<T>::deserialize(deserializer)?.wrap()))
+        Ok(ArbArray::<T>::Owned(
+            ArrayD::<T>::deserialize(deserializer)?.wrap(),
+        ))
     }
 }
-    
+
 impl<'a, T: Default> Default for ArbArray<'a, T> {
     fn default() -> Self {
         ArbArray::Owned(Default::default())

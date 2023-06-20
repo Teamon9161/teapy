@@ -5,12 +5,12 @@ use numpy::{
     npyffi::NPY_DATETIMEUNIT,
 };
 use pyo3::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     hash::Hash,
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
-use serde::{Serialize, Deserialize};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;

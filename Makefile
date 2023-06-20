@@ -12,6 +12,11 @@ clean: ## clean useless folders
 	@rm -rf .pytest_cache/
 	@cargo clean
 
+.PHONY: test
+test: 
+	@pytest -n auto
+
+
 .PHONY: pytest-cov
 pytest-cov: venv  ## test with coverage report
 	@pytest teapy/tests \

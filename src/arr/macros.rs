@@ -43,15 +43,16 @@ macro_rules! impl_reduce_nd {
         {
              // make 1d function can be used in ndarray
             $(#[$meta])*
-            pub fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: usize, par: bool) -> Arr<$otype, D::Smaller>
+            pub fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: i32, par: bool) -> Arr<$otype, D::Smaller>
             where
                 D: RemoveAxis,
                 $($generic: $bound $(+ $other_bnd)*,)*
             {
+                let axis = $self.norm_axis(axis);
                 if !par {
-                    Zip::from($self.lanes(Axis(axis))).map_collect(move |lane| lane.wrap().$func_1d($($p.clone()),*)).into()
+                    Zip::from($self.lanes(axis)).map_collect(move |lane| lane.wrap().$func_1d($($p.clone()),*)).into()
                 } else {
-                    Zip::from($self.lanes(Axis(axis))).par_map_collect(move |lane| lane.wrap().$func_1d($($p.clone()),*)).into()
+                    Zip::from($self.lanes(axis)).par_map_collect(move |lane| lane.wrap().$func_1d($($p.clone()),*)).into()
                 }
             }
         }
@@ -89,15 +90,16 @@ macro_rules! impl_map_nd {
             D: Dimension,
         {
             $(#[$meta])*
-            pub fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: usize, par: bool) -> Arr<$otype, D>
+            pub fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: i32, par: bool) -> Arr<$otype, D>
             where
                 $($generic: $bound $(+ $other_bnd)*,)*
             {
+                let axis = $self.norm_axis(axis);
                 let f_flag = !$self.is_standard_layout();
                 let shape = $self.raw_dim().into_shape().set_f(f_flag);
                 let mut out = Arr::<$otype, D>::default(shape);
                 let mut out_wr = out.view_mut();
-                $self.apply_along_axis(&mut out_wr, Axis(axis), par, move |x_1d, mut out_1d| {
+                $self.apply_along_axis(&mut out_wr, axis, par, move |x_1d, mut out_1d| {
                     x_1d.$func_1d(&mut out_1d $(,$p.clone())*)
                 });
                 out
@@ -130,15 +132,16 @@ macro_rules! impl_map_nd {
             D: Dimension,
         {
             $(#[$meta])*
-            pub unsafe fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: usize, par: bool) -> Arr<$otype, D>
+            pub unsafe fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: i32, par: bool) -> Arr<$otype, D>
             where
                 $($generic: $bound $(+ $other_bnd)*,)*
             {
+                let axis = $self.norm_axis(axis);
                 let f_flag = !$self.is_standard_layout();
                 let shape = $self.raw_dim().into_shape().set_f(f_flag);
                 let mut out = Arr::<$otype, D>::default(shape);
                 let mut out_wr = out.view_mut();
-                $self.apply_along_axis(&mut out_wr, Axis(axis), par, |x_1d, mut out_1d| {
+                $self.apply_along_axis(&mut out_wr, axis, par, |x_1d, mut out_1d| {
                     x_1d.$func_1d(&mut out_1d $(,$p.clone())*)
                 });
                 out
@@ -174,7 +177,7 @@ macro_rules! impl_reduce2_nd {
             D: Dimension,
         {
             $(#[$meta])*
-            pub fn $func $(<S2, D2 $(,$t)*>)? (&$self, $other: &ArrBase<S2, D2> $(, $p: $p_ty)*, axis: usize, par: bool) -> Arr<$otype, <<D as DimMax<D2>>::Output as Dimension>::Smaller>
+            pub fn $func $(<S2, D2 $(,$t)*>)? (&$self, $other: &ArrBase<S2, D2> $(, $p: $p_ty)*, axis: i32, par: bool) -> Arr<$otype, <<D as DimMax<D2>>::Output as Dimension>::Smaller>
             where
                 D: DimMax<D2> + RemoveAxis,
                 D2: Dimension,
@@ -188,7 +191,7 @@ macro_rules! impl_reduce2_nd {
                     $self.broadcast_with(&$other).unwrap()
                 };
 
-                let axis = Axis(axis);
+                let axis = lhs.norm_axis(axis);
                 if !par {
                     Zip::from(lhs.lanes(axis)).and(rhs.lanes(axis)).map_collect(|lane1, lane2| lane1.wrap().$func_1d(&lane2.wrap() $(,$p.clone())*)).into()
                 } else {
@@ -230,7 +233,7 @@ macro_rules! impl_map2_nd {
             D: Dimension,
         {
             $(#[$meta])*
-            pub fn $func $(<S2, D2, T2 $(,$t)*>)? (&$self, $other: &ArrBase<S2, D2> $(, $p: $p_ty)*, axis: usize, par: bool) -> Arr<$otype, <D as DimMax<D2>>::Output>
+            pub fn $func $(<S2, D2, T2 $(,$t)*>)? (&$self, $other: &ArrBase<S2, D2> $(, $p: $p_ty)*, axis: i32, par: bool) -> Arr<$otype, <D as DimMax<D2>>::Output>
             where
                 S2: Data<Elem = T2>,
                 D: DimMax<D2>,
@@ -245,11 +248,11 @@ macro_rules! impl_map2_nd {
                 } else {
                     $self.broadcast_with(&$other).unwrap()
                 };
+                let axis = lhs.norm_axis(axis);
                 let shape = lhs.raw_dim().into_shape().set_f(f_flag);
-                // let shape = $self.raw_dim().into_shape().set_f(f_flag);
                 let mut out = Arr::<$otype, <D as DimMax<D2>>::Output>::default(shape);
                 let mut out_wr = out.view_mut();
-                lhs.apply_along_axis_with(rhs, &mut out_wr, Axis(axis), par, |x_1d, y_1d, mut out_1d| {
+                lhs.apply_along_axis_with(rhs, &mut out_wr, axis, par, |x_1d, y_1d, mut out_1d| {
                     x_1d.$func_1d(&y_1d, &mut out_1d $(,$p.clone())*)
                 });
                 out
@@ -285,11 +288,11 @@ macro_rules! impl_map_inplace_nd {
             D: Dimension,
         {
             $(#[$meta])*
-            pub fn $func $(<$($t),*>)? (&mut $self $(, $p: $p_ty)*, axis: usize, par: bool)
+            pub fn $func $(<$($t),*>)? (&mut $self $(, $p: $p_ty)*, axis: i32, par: bool)
             where
                 $($generic: $bound $(+ $other_bnd)*,)*
             {
-                let axis = Axis(axis);
+                let axis = $self.norm_axis(axis);
                 if !par {
                     Zip::from($self.lanes_mut(axis)).for_each(|lane| lane.wrap().$func_1d($($p.clone()),*)).into()
                 } else {

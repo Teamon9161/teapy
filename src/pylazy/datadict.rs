@@ -1,8 +1,9 @@
 use pyo3::exceptions::PyTypeError;
+use regex::Regex;
+use std::cmp::Ordering;
 use std::collections::hash_map::RawEntryMut;
 use std::iter::repeat;
 use std::sync::{Arc, Mutex};
-use regex::Regex;
 
 use crate::arr::{join_left, JoinType};
 
@@ -122,12 +123,11 @@ impl PyDataDict {
     }
 
     pub fn _drop(&mut self, columns: Vec<&str>, inplace: bool) -> Option<Self> {
-        let columns: Vec<String> = columns.into_iter()
-            .map(|col| self.get_matched_regex_column(col))
-            .flatten()
+        let columns: Vec<String> = columns
+            .into_iter()
+            .flat_map(|col| self.get_matched_regex_column(col))
             .collect();
         if inplace {
-
             let mut column_map = self.column_map.lock().unwrap();
             for col in &columns {
                 column_map.remove(col);
@@ -200,7 +200,7 @@ impl PyDataDict {
     }
 
     pub fn get_matched_regex_column(&self, col_name: &str) -> Vec<String> {
-        if col_name.starts_with("^") & col_name.ends_with("$") {
+        if col_name.starts_with('^') & col_name.ends_with('$') {
             let re = Regex::new(col_name).expect("Invalid regex");
             self.data
                 .iter()
@@ -213,18 +213,19 @@ impl PyDataDict {
     }
 
     pub fn get_by_regex(&self, col_name: &str) -> Result<Vec<PyExpr>, &'static str> {
-        if col_name.starts_with("^") & col_name.ends_with("$") {
+        if col_name.starts_with('^') & col_name.ends_with('$') {
             let re = Regex::new(col_name).expect("Invalid regex");
-            let out: Vec<PyExpr> = self.data
+            let out: Vec<PyExpr> = self
+                .data
                 .iter()
                 .filter(|e| re.is_match(e.get_name().unwrap().as_str()))
-                .map(|e| e.clone())
+                .cloned()
+                // .map(|e| e.clone())
                 .collect();
             Ok(out)
         } else {
             Ok(vec![self.get_by_str(col_name).clone()])
         }
-        
     }
 
     pub fn get_mut_by_str(&mut self, col_name: &str) -> &mut PyExpr {
@@ -315,7 +316,7 @@ impl PyDataDict {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn select_on_axis(&self, slc: Vec<usize>, axis: Option<usize>) -> PyDataDict {
+    pub fn select_on_axis(&self, slc: Vec<usize>, axis: Option<i32>) -> PyDataDict {
         let mut out_data = Vec::<PyExpr>::with_capacity(slc.len());
         let axis = axis.unwrap_or(0);
         let slc_expr: Expr<'static, usize> = slc.into();
@@ -494,7 +495,6 @@ impl PyDataDict {
         }
     }
 
-
     fn __getitem__(&self, ob: &PyAny, py: Python) -> PyResult<PyObject> {
         if let Ok(col_name) = ob.extract::<&str>() {
             let out = self.get_by_regex(col_name).map_err(PyValueError::new_err)?;
@@ -508,8 +508,7 @@ impl PyDataDict {
         } else if let Ok(col_name_vec) = ob.extract::<Vec<&str>>() {
             let out = col_name_vec
                 .into_iter()
-                .map(|col_name| self.get_by_regex(col_name).unwrap())
-                .flatten()
+                .flat_map(|col_name| self.get_by_regex(col_name).unwrap())
                 .collect();
             Ok(PyDataDict::new(out, None).into_py(py))
         } else if let Ok(col_idx_vec) = ob.extract::<Vec<i32>>() {
@@ -526,15 +525,17 @@ impl PyDataDict {
     pub unsafe fn __setitem__(&mut self, key: &PyAny, value: &PyAny, py: Python) -> PyResult<()> {
         if let Ok(col_name) = key.extract::<String>() {
             let col_name_vec = self.get_matched_regex_column(&col_name);
-            if col_name_vec.len() > 1 {
-                let key = col_name_vec.into_py(py);
-                self.__setitem__(key.as_ref(py), value, py)
-            } else if col_name_vec.len() == 1{
-                let value = parse_expr_nocopy(value)?;
-                self.set_by_name(col_name_vec[0].clone(), value);
-                Ok(())
-            } else {
-                Err(PyValueError::new_err("The column name doesn't exist"))
+            match col_name_vec.len().cmp(&1) {
+                Ordering::Greater => {
+                    let key = col_name_vec.into_py(py);
+                    self.__setitem__(key.as_ref(py), value, py)
+                }
+                Ordering::Equal => {
+                    let value = parse_expr_nocopy(value)?;
+                    self.set_by_name(col_name_vec[0].clone(), value);
+                    Ok(())
+                }
+                Ordering::Less => Err(PyValueError::new_err("The column name doesn't exist")),
             }
         } else if let Ok(col_idx) = key.extract::<i32>() {
             let value = parse_expr_nocopy(value)?;
@@ -542,16 +543,15 @@ impl PyDataDict {
             Ok(())
         } else if let Ok(col_name_vec) = key.extract::<Vec<String>>() {
             let col_name_vec: Vec<String> = col_name_vec
-                                .into_iter()
-                                .map(|col| self.get_matched_regex_column(&col))
-                                .flatten()
-                                .collect();
+                .into_iter()
+                .flat_map(|col| self.get_matched_regex_column(&col))
+                .collect();
             let value_vec = parse_expr_list(value, false)?;
             if value_vec.len() != col_name_vec.len() {
                 if value_vec.len() == 1 {
                     col_name_vec
-                    .into_iter()
-                    .for_each(|col_name| self.set_by_name(col_name, value_vec[0].deep_copy()));
+                        .into_iter()
+                        .for_each(|col_name| self.set_by_name(col_name, value_vec[0].deep_copy()));
                 } else {
                     return Err(PyValueError::new_err(
                         "The length of columns and values are not equal",
@@ -559,7 +559,7 @@ impl PyDataDict {
                 }
             } else {
                 zip(col_name_vec, value_vec)
-                .for_each(|(col_name, value)| self.set_by_name(col_name, value));
+                    .for_each(|(col_name, value)| self.set_by_name(col_name, value));
             }
             Ok(())
         } else if let Ok(col_idx_vec) = key.extract::<Vec<i32>>() {
@@ -576,7 +576,7 @@ impl PyDataDict {
                 }
             } else {
                 zip(col_idx_vec, value_vec)
-                .for_each(|(col_idx, value)| self.set_by_idx(col_idx, value));                
+                    .for_each(|(col_idx, value)| self.set_by_idx(col_idx, value));
             }
             Ok(())
         } else {
@@ -622,22 +622,21 @@ impl PyDataDict {
 
     #[pyo3(signature=(func, **py_kwargs))]
     // #[allow(unreachable_patterns)]
-    pub fn apply(
-        &self,
-        func: &PyAny,
-        py_kwargs: Option<&PyDict>,
-    ) -> PyResult<Self> {
+    pub fn apply(&self, func: &PyAny, py_kwargs: Option<&PyDict>) -> PyResult<Self> {
         if self.is_empty() {
             return Ok(self.clone());
         }
         let out_data = unsafe {
-            self.data.iter().map(|e| 
-                parse_expr_nocopy(
-                    func.call((e.clone(),), py_kwargs)
-                    .expect("Call python function error!")
-                )
-                .expect("Can not parse fucntion return as Expr")
-            ).collect_trusted()
+            self.data
+                .iter()
+                .map(|e| {
+                    parse_expr_nocopy(
+                        func.call((e.clone(),), py_kwargs)
+                            .expect("Call python function error!"),
+                    )
+                    .expect("Can not parse fucntion return as Expr")
+                })
+                .collect_trusted()
         };
         Ok(PyDataDict::new(out_data, None))
     }
@@ -648,7 +647,7 @@ impl PyDataDict {
         &mut self,
         window: usize,
         func: &PyAny,
-        axis: usize,
+        axis: i32,
         check: bool,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Self> {
@@ -659,10 +658,16 @@ impl PyDataDict {
             return Err(PyValueError::new_err("Window should be greater than 0"));
         }
         self.eval_all()?;
-        let length = match_exprs!(&self.data[0].inner, expr, { expr.view_arr().shape()[axis] });
+        let axis = match_exprs!(&self.data[0].inner, expr, {
+            expr.view_arr().norm_axis(axis)
+        });
+        let axis_i = axis.index() as i32;
+        let length = match_exprs!(&self.data[0].inner, expr, {
+            expr.view_arr().shape()[axis.index()]
+        });
         if check {
             for e in &self.data {
-                let len_ = match_exprs!(&e.inner, expr, { expr.view_arr().shape()[axis] });
+                let len_ = match_exprs!(&e.inner, expr, { expr.view_arr().shape()[axis.index()] });
                 if length != len_ {
                     return Err(PyValueError::new_err(
                         "Each Expressions should have the same length on given axis",
@@ -676,7 +681,7 @@ impl PyDataDict {
             .map(|(start, end)| {
                 let mut step_df = Vec::with_capacity(self.len());
                 self.data.iter().for_each(|pyexpr| unsafe {
-                    step_df.push(pyexpr.take_by_slice(Some(axis), start, end, None));
+                    step_df.push(pyexpr.take_by_slice(Some(axis_i), start, end, None));
                 });
                 let step_df = PyDataDict {
                     data: step_df,
@@ -703,7 +708,7 @@ impl PyDataDict {
                     .iter()
                     .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
                     .collect_trusted();
-                concat_expr(group_vec, axis).expect("Concat expr error")
+                concat_expr(group_vec, axis_i).expect("Concat expr error")
             })
             .collect();
         Ok(PyDataDict::new(out_data, None))
@@ -716,7 +721,7 @@ impl PyDataDict {
         duration: &str,
         func: &PyAny,
         index: Option<&str>,
-        axis: usize,
+        axis: i32,
         check: bool,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Self> {
@@ -743,10 +748,16 @@ impl PyDataDict {
                 out.unwrap()
             }
         };
-        let length = match_exprs!(&self.data[0].inner, expr, { expr.view_arr().shape()[axis] });
+        let axis = match_exprs!(&self.data[0].inner, expr, {
+            expr.view_arr().norm_axis(axis)
+        });
+        let axis_i = axis.index() as i32;
+        let length = match_exprs!(&self.data[0].inner, expr, {
+            expr.view_arr().shape()[axis.index()]
+        });
         if check {
             for e in &self.data {
-                let len_ = match_exprs!(&e.inner, expr, { expr.view_arr().shape()[axis] });
+                let len_ = match_exprs!(&e.inner, expr, { expr.view_arr().shape()[axis.index()] });
                 if length != len_ {
                     return Err(PyValueError::new_err(
                         "Each Expressions should have the same length on given axis",
@@ -766,7 +777,7 @@ impl PyDataDict {
             .map(|(end, start)| {
                 let mut step_df = Vec::with_capacity(self.len());
                 self.data.iter().for_each(|pyexpr| unsafe {
-                    step_df.push(pyexpr.take_by_slice(Some(axis), start, end, None));
+                    step_df.push(pyexpr.take_by_slice(Some(axis_i), start, end, None));
                 });
                 let step_df = PyDataDict {
                     data: step_df,
@@ -792,7 +803,7 @@ impl PyDataDict {
                     .iter()
                     .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
                     .collect_trusted();
-                concat_expr(group_vec, axis).expect("Concat expr error")
+                concat_expr(group_vec, axis_i).expect("Concat expr error")
             })
             .collect();
         Ok(PyDataDict::new(out_data, None))
@@ -821,13 +832,7 @@ impl PyDataDict {
     }
 
     #[pyo3(signature=(by, axis=0, sort=true, par=false))]
-    pub fn groupby(
-        &mut self,
-        by: &PyAny,
-        axis: usize,
-        sort: bool,
-        par: bool,
-    ) -> PyResult<PyGroupBy> {
+    pub fn groupby(&mut self, by: &PyAny, axis: i32, sort: bool, par: bool) -> PyResult<PyGroupBy> {
         let by = parse_one_or_more_str(by)?;
         Ok(PyGroupBy::new(self._groupby(by, axis, sort, par)?, axis))
     }
@@ -839,7 +844,7 @@ impl PyDataDict {
         &mut self,
         py_func: &PyAny,
         by: &PyAny,
-        axis: usize,
+        axis: i32,
         sort: bool,
         par: bool,
         py_kwargs: Option<&PyDict>,
@@ -962,7 +967,7 @@ impl PyDataDict {
         subset: &PyAny,
         keep: &str,
         inplace: bool,
-        axis: usize,
+        axis: i32,
     ) -> PyResult<Option<Self>> {
         let subset = parse_one_or_more_str(subset)?;
         if subset.is_empty() {

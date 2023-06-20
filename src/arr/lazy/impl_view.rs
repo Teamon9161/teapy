@@ -3,7 +3,7 @@
 //! view should not be dropped.
 //! the memory should be managed on python heap if using in python.
 
-use super::super::{ArbArray, Axis, WrapNdarray};
+use super::super::{ArbArray, WrapNdarray};
 use super::{Expr, ExprElement};
 use ndarray::{s, IxDyn, NewAxis, SliceInfo, SliceInfoElem};
 use std::marker::PhantomData;
@@ -197,11 +197,12 @@ where
     /// # Safety
     ///
     /// the data for the array view should exist
-    pub unsafe fn swap_axes(self, ax: usize, bx: usize) -> Self {
+    pub unsafe fn swap_axes(self, ax: i32, bx: i32) -> Self {
         self.chain_view_out_f(move |arr| {
+            let ax = arr.norm_axis(ax);
+            let bx = arr.norm_axis(bx);
             let mut arr = arr.0;
-            arr.swap_axes(ax, bx);
-            // let out: ArbArray<'_, T> = arr.wrap().into();
+            arr.swap_axes(ax.index(), bx.index());
             let out = arr.wrap();
             mem::transmute(out)
         })
@@ -235,10 +236,10 @@ where
     /// # Safety
     ///
     /// the data for the array view should exist
-    pub unsafe fn insert_axis(self, axis: usize) -> Self {
+    pub unsafe fn insert_axis(self, axis: i32) -> Self {
         self.chain_view_out_f(move |arr| {
-            // let out: ArbArray<'_, T> = arr.0.insert_axis(Axis(axis)).wrap().into();
-            let out = arr.0.insert_axis(Axis(axis)).wrap();
+            let axis = arr.norm_axis(axis);
+            let out = arr.0.insert_axis(axis).wrap();
             mem::transmute(out)
         })
     }
@@ -248,10 +249,10 @@ where
     /// # Safety
     ///
     /// the data for the array view should exist
-    pub unsafe fn remove_axis(self, axis: usize) -> Self {
+    pub unsafe fn remove_axis(self, axis: i32) -> Self {
         self.chain_view_out_f(move |arr| {
-            // let out: ArbArray<'_, T> = arr.0.remove_axis(Axis(axis)).wrap().into();
-            let out = arr.0.remove_axis(Axis(axis)).wrap();
+            let axis = arr.norm_axis(axis);
+            let out = arr.0.remove_axis(axis).wrap();
             mem::transmute(out)
         })
     }
@@ -266,12 +267,6 @@ where
             let ndim = sh.ndim();
             if ndim == 0 {
                 let shape = sh.to_dim0().unwrap().into_scalar();
-                // let out: ArbArray<'_, T> = arr
-                //     .broadcast(*shape)
-                //     .expect("broadcast error")
-                //     .to_dimd()
-                //     .unwrap()
-                //     .into();
                 let out = arr
                     .broadcast(*shape)
                     .expect("broadcast error")
@@ -280,12 +275,6 @@ where
                 mem::transmute(out)
             } else if ndim == 1 {
                 let shape = sh.to_dim1().unwrap();
-                // let out: ArbArray<'_, T> = arr
-                //     .broadcast(shape.to_slice().unwrap())
-                //     .expect("broadcast error")
-                //     .to_dimd()
-                //     .unwrap()
-                //     .into();
                 let out = arr
                     .broadcast(shape.to_slice().unwrap())
                     .expect("broadcast error")

@@ -204,7 +204,7 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
 #[pyfunction]
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
-pub fn concat_expr(exprs: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
+pub fn concat_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
     let e1 = exprs.get(0).unwrap().clone();
     let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
     macro_rules! concat_macro {
@@ -230,7 +230,7 @@ pub fn concat_expr(exprs: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
 #[pyfunction]
 #[allow(clippy::missing_safety_doc)]
 #[pyo3(name="concat", signature=(exprs, axis=0))]
-pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: usize) -> PyResult<PyExpr> {
+pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
     let exprs = exprs
         .into_iter()
         .map(|e| parse_expr_nocopy(e))

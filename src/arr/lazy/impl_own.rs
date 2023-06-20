@@ -82,7 +82,7 @@ where
         })
     }
 
-    pub fn count_v(self, value: T, axis: usize, par: bool) -> Expr<'a, i32>
+    pub fn count_v(self, value: T, axis: i32, par: bool) -> Expr<'a, i32>
     where
         T: Eq + Clone,
     {
@@ -97,7 +97,7 @@ where
         self.chain_view_f(move |arr| arr.to_owned().into())
     }
 
-    pub fn fillna<T2>(self, method: FillMethod, value: Option<T2>, axis: usize, par: bool) -> Self
+    pub fn fillna<T2>(self, method: FillMethod, value: Option<T2>, axis: i32, par: bool) -> Self
     where
         T: Number,
         T2: AsPrimitive<T> + Send + Sync,
@@ -119,7 +119,7 @@ where
         })
     }
 
-    pub fn clip<T2, T3>(self, min: T2, max: T3, axis: usize, par: bool) -> Self
+    pub fn clip<T2, T3>(self, min: T2, max: T3, axis: i32, par: bool) -> Self
     where
         T: Number,
         T2: Number + AsPrimitive<T>,
@@ -142,15 +142,18 @@ where
         })
     }
 
-    pub fn last(self, axis: usize, par: bool) -> Self
+    pub fn last(self, axis: i32, par: bool) -> Self
     where
         T: Clone,
     {
-        self.no_dim0()
-            .chain_view_f(move |arr| arr.take_1_on_axis(arr.shape()[axis] - 1, axis, par).into())
+        self.no_dim0().chain_view_f(move |arr| {
+            let axis_n = arr.norm_axis(axis);
+            arr.take_1_on_axis(arr.shape()[axis_n.index()] - 1, axis, par)
+                .into()
+        })
     }
 
-    pub fn shift(self, n: i32, fill: Expr<'a, T>, axis: usize, par: bool) -> Self
+    pub fn shift(self, n: i32, fill: Expr<'a, T>, axis: i32, par: bool) -> Self
     where
         T: Clone,
     {
@@ -354,7 +357,7 @@ where
         self.chain_view_f(move |arr| arr.mapv(|v| v.f64().log(base)).into())
     }
 
-    pub fn valid_last(self, axis: usize, par: bool) -> Self
+    pub fn valid_last(self, axis: i32, par: bool) -> Self
     where
         T: Number,
         f64: AsPrimitive<T>,
@@ -362,7 +365,7 @@ where
         self.chain_view_f(move |arr| arr.valid_last(axis, par).into())
     }
 
-    pub fn first(self, axis: usize, par: bool) -> Self
+    pub fn first(self, axis: i32, par: bool) -> Self
     where
         T: Clone,
     {
@@ -370,7 +373,7 @@ where
             .chain_view_f(move |arr| arr.take_1_on_axis(0, axis, par).into())
     }
 
-    pub fn valid_first(self, axis: usize, par: bool) -> Self
+    pub fn valid_first(self, axis: i32, par: bool) -> Self
     where
         T: Number,
         f64: AsPrimitive<T>,
@@ -442,7 +445,7 @@ where
         })
     }
 
-    pub fn filter(self, mask: Expr<'a, bool>, axis: Expr<'a, usize>, par: bool) -> Self
+    pub fn filter(self, mask: Expr<'a, bool>, axis: Expr<'a, i32>, par: bool) -> Self
     where
         T: Clone,
     {
@@ -465,7 +468,7 @@ where
         })
     }
 
-    pub fn dropna<'b: 'a>(self, axis: Expr<'a, usize>, how: DropNaMethod, par: bool) -> Self
+    pub fn dropna<'b: 'a>(self, axis: Expr<'a, i32>, how: DropNaMethod, par: bool) -> Self
     where
         T: Clone + Number,
     {
@@ -487,11 +490,12 @@ where
                     .into(),
                 2 => {
                     let arr = arr.to_dim2().unwrap();
-                    let mask = match (axis, how) {
-                        (0, DropNaMethod::Any) => arr.not_nan().all(1, par),
-                        (0, DropNaMethod::All) => arr.not_nan().any(1, par),
-                        (1, DropNaMethod::Any) => arr.not_nan().all(0, par),
-                        (1, DropNaMethod::All) => arr.not_nan().any(0, par),
+                    let axis_n = arr.norm_axis(axis);
+                    let mask = match (axis_n, how) {
+                        (Axis(0), DropNaMethod::Any) => arr.not_nan().all(1, par),
+                        (Axis(0), DropNaMethod::All) => arr.not_nan().any(1, par),
+                        (Axis(1), DropNaMethod::Any) => arr.not_nan().all(0, par),
+                        (Axis(1), DropNaMethod::All) => arr.not_nan().any(0, par),
                         _ => panic!("axis should be 0 or 1 and how should be any or all"),
                     };
                     arr.filter(&mask, axis, par).to_dimd().unwrap().into()
@@ -504,7 +508,7 @@ where
     }
 
     /// select on a given axis by a slice expression
-    pub fn select_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: Expr<'a, usize>) -> Self
+    pub fn select_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: Expr<'a, i32>) -> Self
     where
         T: Clone,
     {
@@ -521,21 +525,58 @@ where
                 slc_eval.ndim() <= 1,
                 "The slice must be dim 0 or dim 1 when select on axis"
             );
+            let axis = arr.norm_axis(axis);
             if slc_eval.len() == 1 {
-                arr.index_axis(Axis(axis), slc_eval.to_dim1().unwrap()[0])
+                arr.index_axis(axis, slc_eval.to_dim1().unwrap()[0])
                     .to_owned()
                     .wrap()
                     .into()
             } else {
-                arr.select(Axis(axis), slc_eval.as_slice().unwrap())
-                    .wrap()
-                    .into()
+                arr.select(axis, slc_eval.as_slice().unwrap()).wrap().into()
+            }
+        })
+    }
+
+    /// select on a given axis by a slice expression
+    pub fn select_on_axis_by_i32_expr(self, slc: Expr<'a, i32>, axis: Expr<'a, i32>) -> Self
+    where
+        T: Clone,
+    {
+        self.chain_view_f(move |arr| {
+            let slc = slc.no_dim0().eval();
+            let slc_eval = slc.view_arr();
+            let axis = *axis
+                .eval()
+                .view_arr()
+                .to_dim0()
+                .expect("axis should be dim 0")
+                .into_scalar();
+            assert!(
+                slc_eval.ndim() <= 1,
+                "The slice must be dim 0 or dim 1 when select on axis"
+            );
+            let axis = arr.norm_axis(axis);
+            let length = arr.len_of(axis);
+            if slc_eval.len() == 1 {
+                arr.index_axis(
+                    axis,
+                    arr.ensure_index(slc_eval.to_dim1().unwrap()[0], length),
+                )
+                .to_owned()
+                .wrap()
+                .into()
+            } else {
+                let slc = slc_eval
+                    .to_dim1()
+                    .unwrap()
+                    .mapv(|i| arr.ensure_index(i, length));
+                arr.select(axis, slc.as_slice().unwrap()).wrap().into()
             }
         })
     }
 
     /// take values on a given axis
-    pub fn take_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: usize, par: bool) -> Self
+    pub fn take_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: i32, par: bool) -> Self
     where
         T: Clone,
     {
@@ -564,7 +605,7 @@ where
     pub unsafe fn take_on_axis_by_expr_unchecked(
         self,
         slc: Expr<'a, usize>,
-        axis: usize,
+        axis: i32,
         par: bool,
     ) -> Self
     where
@@ -595,7 +636,7 @@ where
     pub unsafe fn take_option_on_axis_by_expr_unchecked(
         self,
         slc: Expr<'a, Option<usize>>,
-        axis: usize,
+        axis: i32,
         par: bool,
     ) -> Self
     where
@@ -645,12 +686,13 @@ where
         })
     }
 
-    pub fn concat(self, other: Vec<Expr<'a, T>>, axis: usize) -> Expr<'a, T>
+    pub fn concat(self, other: Vec<Expr<'a, T>>, axis: i32) -> Expr<'a, T>
     where
         T: Clone,
     {
         self.no_dim0().chain_view_f(move |arr| {
             // evaluate in parallel
+            let axis = arr.norm_axis(axis);
             let mut other: Vec<Expr<'a, T>> =
                 other.into_iter().map(|e| e.no_dim0()).collect_trusted();
             other.par_iter_mut().for_each(|e| e.eval_inplace());
@@ -661,19 +703,20 @@ where
                     .chain(other.iter().map(|e| mem::transmute(e.view().into_arr().0)))
                     .collect()
             };
-            ndarray::concatenate(Axis(axis), &arrays)
+            ndarray::concatenate(axis, &arrays)
                 .expect("Shape error when concatenate")
                 .wrap()
                 .into()
         })
     }
 
-    pub fn stack(self, mut other: Vec<Expr<'a, T>>, axis: usize) -> Expr<'a, T>
+    pub fn stack(self, mut other: Vec<Expr<'a, T>>, axis: i32) -> Expr<'a, T>
     where
         T: Clone,
     {
         self.chain_view_f(move |arr| {
             // evaluate in parallel
+            let axis = arr.norm_axis(axis);
             other.par_iter_mut().for_each(|e| e.eval_inplace());
             let arr1 = vec![arr.0];
             // safety: array view other exists in lifetime '_, and stack will create a own array later
@@ -682,14 +725,14 @@ where
                     .chain(other.iter().map(|e| mem::transmute(e.view().into_arr().0)))
                     .collect()
             };
-            ndarray::stack(Axis(axis), &arrays)
+            ndarray::stack(axis, &arrays)
                 .expect("Shape error when concatenate")
                 .wrap()
                 .into()
         })
     }
 
-    // pub fn apply_on_vec_arr<F>(self, func: F, axis: usize) -> Expr<'a, T>
+    // pub fn apply_on_vec_arr<F>(self, func: F, axis: i32) -> Expr<'a, T>
     // {
     //     self.chain_f(|input| {
     //         if let ExprOut::ArrVec(arr_vec) = input {
@@ -704,11 +747,11 @@ where
 }
 
 impl<'a> Expr<'a, bool> {
-    pub fn any(self, axis: usize, par: bool) -> Self {
+    pub fn any(self, axis: i32, par: bool) -> Self {
         self.chain_view_f(move |arr| arr.any(axis, par).into())
     }
 
-    pub fn all(self, axis: usize, par: bool) -> Self {
+    pub fn all(self, axis: i32, par: bool) -> Self {
         self.chain_view_f(move |arr| arr.all(axis, par).into())
     }
 }

@@ -235,7 +235,7 @@ where
         self.mapv(|v| v.notnan())
     }
 
-    pub fn filter<S2>(&self, mask: &ArrBase<S2, Ix1>, axis: usize, par: bool) -> Arr<T, D>
+    pub fn filter<S2>(&self, mask: &ArrBase<S2, Ix1>, axis: i32, par: bool) -> Arr<T, D>
     where
         T: Default + Send + Sync + Clone,
         D: Dimension,
@@ -243,16 +243,17 @@ where
     {
         let f_flag = !self.is_standard_layout();
         let mut new_dim = self.raw_dim();
+        let axis = self.norm_axis(axis);
         assert_eq!(
-            new_dim.slice()[axis],
+            new_dim.slice()[axis.index()],
             mask.len(),
             "Number of elements on the axis must equal to the length of mask array"
         );
-        new_dim.slice_mut()[axis] = mask.count_v_1d(true) as usize;
+        new_dim.slice_mut()[axis.index()] = mask.count_v_1d(true) as usize;
         let shape = new_dim.into_shape().set_f(f_flag);
         let mut out = Arr::<T, D>::default(shape);
         let mut out_wr = out.view_mut();
-        self.apply_along_axis(&mut out_wr, Axis(axis), par, |x_1d, out_1d| {
+        self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.wrap().filter_1d(out_1d, mask.view())
         });
         out
@@ -269,7 +270,7 @@ where
     pub unsafe fn take_clone_unchecked<S2>(
         &self,
         slc: ArrBase<S2, Ix1>,
-        axis: usize,
+        axis: i32,
         par: bool,
     ) -> Arr<T, D>
     where
@@ -278,12 +279,13 @@ where
         S2: Data<Elem = usize> + Send + Sync,
     {
         let f_flag = !self.is_standard_layout();
+        let axis = self.norm_axis(axis);
         let mut new_dim = self.raw_dim();
-        new_dim.slice_mut()[axis] = slc.len();
+        new_dim.slice_mut()[axis.index()] = slc.len();
         let shape = new_dim.into_shape().set_f(f_flag);
         let mut out = Arr::<T, D>::default(shape);
         let mut out_wr = out.view_mut();
-        self.apply_along_axis(&mut out_wr, Axis(axis), par, |x_1d, out_1d| {
+        self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.wrap().take_clone_1d_unchecked(out_1d, slc.view())
         });
         out
@@ -297,7 +299,7 @@ where
     pub unsafe fn take_option_clone_unchecked<S2>(
         &self,
         slc: ArrBase<S2, Ix1>,
-        axis: usize,
+        axis: i32,
         par: bool,
     ) -> Arr<T, D>
     where
@@ -306,12 +308,13 @@ where
         S2: Data<Elem = Option<usize>> + Send + Sync,
     {
         let f_flag = !self.is_standard_layout();
+        let axis = self.norm_axis(axis);
         let mut new_dim = self.raw_dim();
-        new_dim.slice_mut()[axis] = slc.len();
+        new_dim.slice_mut()[axis.index()] = slc.len();
         let shape = new_dim.into_shape().set_f(f_flag);
         let mut out = Arr::<T, D>::default(shape);
         let mut out_wr = out.view_mut();
-        self.apply_along_axis(&mut out_wr, Axis(axis), par, |x_1d, out_1d| {
+        self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.wrap()
                 .take_option_clone_1d_unchecked(out_1d, slc.view())
         });
@@ -324,15 +327,16 @@ where
     /// copy them into a new array, use select instead.
     ///
     /// This function is safe because the slice are checked.
-    pub fn take_clone<S2>(&self, slc: ArrBase<S2, Ix1>, axis: usize, par: bool) -> Arr<T, D>
+    pub fn take_clone<S2>(&self, slc: ArrBase<S2, Ix1>, axis: i32, par: bool) -> Arr<T, D>
     where
         T: Clone + Default + Send + Sync,
         D: Dimension,
         S2: Data<Elem = usize> + Send + Sync,
     {
-        let max_idx = self.shape()[axis] - 1;
+        let axis = self.norm_axis(axis);
+        let max_idx = self.shape()[axis.index()] - 1;
         assert!(slc.max_1d() <= max_idx, "The index to take is out of bound");
-        unsafe { self.take_clone_unchecked(slc, axis, par) }
+        unsafe { self.take_clone_unchecked(slc, axis.index() as i32, par) }
     }
 
     pub fn arg_partition(
@@ -340,7 +344,7 @@ where
         kth: usize,
         sort: bool,
         rev: bool,
-        axis: usize,
+        axis: i32,
         par: bool,
     ) -> Arr<i32, D>
     where
@@ -349,18 +353,19 @@ where
     {
         let f_flag = !self.is_standard_layout();
         let mut new_dim = self.raw_dim();
-        if kth >= new_dim.slice_mut()[axis] {
+        let axis = self.norm_axis(axis);
+        if kth >= new_dim.slice_mut()[axis.index()] {
             panic!(
                 "kth(={}) out of bounds ({})",
                 kth,
-                new_dim.slice_mut()[axis]
+                new_dim.slice_mut()[axis.index()]
             )
         }
-        new_dim.slice_mut()[axis] = kth + 1;
+        new_dim.slice_mut()[axis.index()] = kth + 1;
         let shape = new_dim.into_shape().set_f(f_flag);
         let mut out = Arr::<i32, D>::default(shape);
         let mut out_wr = out.view_mut();
-        self.apply_along_axis(&mut out_wr, Axis(axis), par, |x_1d, out_1d| {
+        self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.arg_partition_1d(out_1d, kth, sort, rev)
         });
         out

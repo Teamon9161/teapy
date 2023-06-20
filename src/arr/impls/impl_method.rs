@@ -1,5 +1,5 @@
 use super::super::{Arr, ArrBase, ArrView, Data, RawData, WrapNdarray};
-use ndarray::{Axis, DataMut, DimMax, Dimension, ErrorKind, IntoDimension, ShapeError, Zip};
+use ndarray::{DataMut, DimMax, Dimension, ErrorKind, IntoDimension, ShapeError, Zip};
 // use std::fmt::Debug;
 
 type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
@@ -201,7 +201,7 @@ where
         &mut self,
         mask: &ArrBase<S2, D2>,
         value: &ArrBase<S3, D3>,
-        axis: usize,
+        axis: i32,
         par: bool,
     ) where
         A: Clone + Send + Sync,
@@ -211,6 +211,7 @@ where
         S2: Data<Elem = bool>,
         S3: Data<Elem = A>,
     {
+        let axis = self.norm_axis(axis);
         let value = if self.ndim() == value.ndim() && self.shape() == value.shape() {
             value.view().to_dim::<D>().unwrap()
         } else if let Some(value) = value.broadcast(self.raw_dim()) {
@@ -228,15 +229,15 @@ where
             let true_num = mask.count_v_1d(true) as usize;
             assert_eq!(
                 true_num,
-                value.len_of(Axis(axis)),
+                value.len_of(axis),
                 "number of value are not equal to number of true mask"
             );
             let ndim = self.ndim();
             return if par && (ndim > 1) {
-                Zip::from(self.lanes_mut(Axis(axis)))
+                Zip::from(self.lanes_mut(axis))
                     .par_for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
             } else {
-                Zip::from(self.lanes_mut(Axis(axis)))
+                Zip::from(self.lanes_mut(axis))
                     .for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
             };
         };

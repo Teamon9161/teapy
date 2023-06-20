@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::ops::Deref;
 
-use ndarray::{Axis, Slice, SliceInfoElem};
+use ndarray::{Slice, SliceInfoElem};
 
 use super::export::*;
 use crate::{
@@ -252,13 +252,13 @@ impl PyExpr {
         match_exprs!(&self.inner, expr, {
             Ok(expr
                 .clone()
-                .select_on_axis_by_expr(slc.cast_usize()?, axis.cast_usize()?)
+                .select_on_axis_by_expr(slc.cast_usize()?, axis.cast_i32()?)
                 .to_py(self.obj())
                 .add_obj(obj))
         })
     }
 
-    pub fn _select_on_axis(&self, slc: Vec<usize>, axis: usize) -> Self {
+    pub fn _select_on_axis(&self, slc: Vec<usize>, axis: i32) -> Self {
         let slc_expr: Expr<usize> = slc.into();
         self._select_on_axis_by_expr(slc_expr.into(), axis.into())
             .unwrap()
@@ -277,7 +277,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn _take_on_axis_by_expr(&self, slc: Self, axis: usize, par: bool) -> PyResult<Self> {
+    pub fn _take_on_axis_by_expr(&self, slc: Self, axis: i32, par: bool) -> PyResult<Self> {
         let obj = slc.obj();
         match_exprs!(&self.inner, expr, {
             Ok(expr
@@ -295,7 +295,7 @@ impl PyExpr {
     pub unsafe fn _take_on_axis_by_expr_unchecked(
         &self,
         slc: Self,
-        axis: usize,
+        axis: i32,
         par: bool,
     ) -> PyResult<Self> {
         let obj = slc.obj();
@@ -308,7 +308,7 @@ impl PyExpr {
         })
     }
 
-    pub fn _take_on_axis(&self, slc: Vec<usize>, axis: usize, par: bool) -> Self {
+    pub fn _take_on_axis(&self, slc: Vec<usize>, axis: i32, par: bool) -> Self {
         let slc_expr: Expr<usize> = slc.into();
         self._take_on_axis_by_expr(slc_expr.into(), axis, par)
             .unwrap()
@@ -408,7 +408,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn concat(&self, other: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
+    pub fn concat(&self, other: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
         let obj_vec = other.iter().map(|e| e.obj()).collect_trusted();
         macro_rules! concat_macro {
             ($({$arm: ident => $cast_func: ident $(($arg: expr))?, $name: expr}),*) => {
@@ -430,7 +430,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn stack(&self, other: Vec<PyExpr>, axis: usize) -> PyResult<PyExpr> {
+    pub fn stack(&self, other: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
         let obj_vec = other.iter().map(|e| e.obj()).collect_trusted();
         macro_rules! stack_macro {
             ($({$arm: ident => $cast_func: ident $(($arg: expr))?, $name: expr}),*) => {
@@ -457,7 +457,7 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     pub unsafe fn take_by_slice(
         &self,
-        axis: Option<usize>,
+        axis: Option<i32>,
         start: usize,
         end: usize,
         step: Option<usize>,
@@ -467,10 +467,11 @@ impl PyExpr {
             let step = step.unwrap_or(1);
             let name = e.name();
             let e_view = e.view_arr();
+            let axis = e_view.norm_axis(axis);
             let e = Expr::new(
                 ArbArray::View(
                     e_view
-                        .slice_axis(Axis(axis), Slice::from(start..=end).step_by(step as isize))
+                        .slice_axis(axis, Slice::from(start..=end).step_by(step as isize))
                         .wrap(),
                 ),
                 name,

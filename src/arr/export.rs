@@ -8,8 +8,6 @@ pub(super) use super::{
     ArbArray, Arr, Arr1, ArrBase, ArrD, ArrOk, ArrViewD, ArrViewMutD, DataType, GetDataType,
     WrapNdarray,
 };
-pub(super) use ndarray::{
-    Axis, Data, DataMut, DimMax, Dimension, Ix1, RemoveAxis, ShapeBuilder, Zip,
-};
+pub(super) use ndarray::{Data, DataMut, DimMax, Dimension, Ix1, RemoveAxis, ShapeBuilder, Zip};
 pub(super) use num::traits::{AsPrimitive, MulAdd};
 pub(super) use std::iter::zip;

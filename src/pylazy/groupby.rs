@@ -6,7 +6,7 @@ impl PyDataDict {
     pub(crate) fn _groupby(
         &mut self,
         keys: Vec<&str>,
-        axis: usize,
+        axis: i32,
         sort: bool,
         par: bool,
     ) -> PyResult<Vec<PyDataDict>> {
@@ -31,7 +31,7 @@ impl PyDataDict {
 pub(super) fn groupby_apply(
     group_dfs: Vec<PyDataDict>,
     py_func: &PyAny,
-    axis: usize,
+    axis: i32,
     py_kwargs: Option<&PyDict>,
 ) -> PyResult<PyDataDict> {
     assert!(
@@ -49,7 +49,7 @@ pub(super) fn groupby_apply(
     Ok(groupby_eval(exprs, axis))
 }
 
-fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: usize) -> PyDataDict {
+fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyDataDict {
     let column_num = exprs[0].len(); // each group should have the same column num
     exprs
         .par_iter_mut()
@@ -71,14 +71,14 @@ fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: usize) -> PyDataDict {
 #[pyclass]
 pub struct PyGroupBy {
     data: Vec<PyDataDict>,
-    axis: usize,
+    axis: i32,
 }
 
 #[pymethods]
 impl PyGroupBy {
     #[new]
     #[pyo3(signature=(data, axis=0))]
-    pub fn new(data: Vec<PyDataDict>, axis: usize) -> Self {
+    pub fn new(data: Vec<PyDataDict>, axis: i32) -> Self {
         PyGroupBy { data, axis }
     }
 
