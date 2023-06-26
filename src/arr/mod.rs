@@ -3,6 +3,7 @@ mod arr_func;
 mod corr;
 mod export;
 mod iterators;
+#[cfg(feature = "lazy")]
 mod join;
 mod macros;
 mod option_datetype;
@@ -11,6 +12,7 @@ mod option_datetype;
 mod window;
 
 pub mod datatype;
+#[cfg(feature = "lazy")]
 pub mod groupby;
 #[cfg(feature = "lazy")]
 #[macro_use]
@@ -25,14 +27,16 @@ pub use arr_func::{FillMethod, WinsorizeMethod};
 pub use corr::CorrMethod;
 pub(crate) use datatype::match_datatype_arm;
 pub use datatype::{BoolType, DataType, GetDataType, GetNone, Number};
+#[cfg(feature = "lazy")]
 pub use groupby::{flatten, groupby, groupby_par};
 pub use iterators::{Iter, IterMut};
+#[cfg(feature = "lazy")]
 pub use join::{join_left, JoinType};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
 pub use utils::{kh_sum, DefaultNew, EmptyNew};
 
 #[cfg(feature = "lazy")]
-pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs};
+pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, OlsResult};
 
 pub use time::{DateTime, TimeDelta, TimeUnit};
 
@@ -41,13 +45,16 @@ use ndarray::{
     IxDyn, OwnedRepr, RawArrayView, RawArrayViewMut, RawData, RawDataClone, RemoveAxis,
     ShapeBuilder, ShapeError, StrideShape, ViewRepr, Zip,
 };
-use ndarray_npy::{write_npy, WritableElement, WriteNpyError};
+
 use num::{traits::AsPrimitive, Zero};
 use pyo3::{Python, ToPyObject};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Debug;
 use std::sync::Arc;
+
+#[cfg(feature = "npy")]
+use ndarray_npy::{write_npy, WritableElement, WriteNpyError};
 
 pub struct ArrBase<S, D>(pub ArrayBase<S, D>)
 where
@@ -62,6 +69,7 @@ pub type ArrView<'a, T, D> = ArrBase<ViewRepr<&'a T>, D>;
 pub type ArrViewMut<'a, T, D> = ArrBase<ViewRepr<&'a mut T>, D>;
 pub type ArrBase1<S> = ArrBase<S, Ix1>;
 pub type Arr1<T> = Arr<T, Ix1>;
+pub type Arr2<T> = Arr<T, Ix2>;
 pub type ArrViewMut1<'a, T> = ArrViewMut<'a, T, Ix1>;
 pub type ArrView1<'a, T> = ArrView<'a, T, Ix1>;
 pub type ArrViewMutD<'a, T> = ArrViewMut<'a, T, IxDyn>;
@@ -100,6 +108,7 @@ where
         }
     }
 
+    #[cfg(feature = "npy")]
     pub fn write_npy<P>(self, path: P) -> Result<(), WriteNpyError>
     where
         P: AsRef<std::path::Path>,
@@ -742,6 +751,14 @@ impl<'a, T> ArbArray<'a, T> {
             ArbArray::View(arr) => arr.to_owned(),
             ArbArray::ViewMut(arr) => arr.to_owned(),
             ArbArray::Owned(arr) => arr,
+        }
+    }
+
+    pub fn into_owned_inner(self) -> Result<ArrD<T>, &'static str> {
+        if let ArbArray::Owned(arr) = self {
+            Ok(arr)
+        } else {
+            Err("ArbArray is not owned")
         }
     }
 

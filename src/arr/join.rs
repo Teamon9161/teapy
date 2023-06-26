@@ -2,7 +2,6 @@ use super::{
     groupby::{collect_hashmap_keys, collect_hashmap_one_key, prepare_groupby},
     CollectTrustedToVec, Exprs,
 };
-// use rayon::prelude::*;
 use ahash::RandomState;
 use std::collections::hash_map::RawEntryMut;
 

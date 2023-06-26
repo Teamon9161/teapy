@@ -1,10 +1,5 @@
 use super::super::export::*;
 
-// impl<T, S, D> ArrBase<S, D>
-// where
-//     S: Data<Elem = T>,
-//     D: Dimension,
-// {
 impl_map_nd!(
     ts_argmin,
     pub fn ts_argmin_1d<S2>(

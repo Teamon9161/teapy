@@ -3,7 +3,7 @@
 //! view should not be dropped.
 //! the memory should be managed on python heap if using in python.
 
-use super::super::{ArbArray, WrapNdarray};
+use super::super::WrapNdarray;
 use super::{Expr, ExprElement};
 use ndarray::{s, IxDyn, NewAxis, SliceInfo, SliceInfoElem};
 use std::marker::PhantomData;
@@ -23,16 +23,6 @@ where
             let ndim = sh.ndim();
             if ndim == 0 {
                 let shape = sh.to_dim0().unwrap().into_scalar();
-                // let out: ArbArray<'_, T> = arr
-                //     .0
-                //     .into_shape(*shape)
-                //     .expect("Shape Error")
-                //     .wrap()
-                //     .to_dimd()
-                //     .unwrap()
-                //     .into();
-                // // safe because the view exist in lifetime 'a
-                // mem::transmute(out)
                 let out = arr
                     .0
                     .into_shape(*shape)
@@ -44,14 +34,6 @@ where
                 mem::transmute(out)
             } else if ndim == 1 {
                 let shape = sh.to_dim1().unwrap();
-                // let out: ArbArray<'_, T> = arr
-                //     .0
-                //     .into_shape(shape.to_slice().unwrap())
-                //     .expect("Shape Error")
-                //     .wrap()
-                //     .to_dimd()
-                //     .unwrap()
-                //     .into();
                 let out = arr
                     .0
                     .into_shape(shape.to_slice().unwrap())
@@ -109,7 +91,6 @@ where
     /// the data for the array view should exist
     pub unsafe fn diag(self) -> Self {
         self.chain_view_out_f(move |arr| {
-            // let out: ArbArray<'_, T> = arr.0.diag().wrap().to_dimd().unwrap().into();
             let out = arr.0.diag().wrap().to_dimd().unwrap();
             mem::transmute(out)
         })
@@ -295,11 +276,8 @@ where
         self.broadcast(shape)
     }
 
-    /// # Safety
-    ///
-    /// the data for the array view should exist
-    pub unsafe fn if_then(self, con: Expr<'a, bool>, then: Expr<'a, T>) -> Expr<'a, T> {
-        self.chain_view_f(move |arr| {
+    pub fn if_then(self, con: Expr<'a, bool>, then: Expr<'a, T>) -> Expr<'a, T> {
+        self.chain_arr_f(move |arr| {
             let con = con.eval();
             let flag = con
                 .view_arr()
@@ -308,7 +286,7 @@ where
             if *flag.into_scalar() {
                 then.eval().into_arr()
             } else {
-                mem::transmute::<ArbArray<'_, T>, ArbArray<'a, T>>(arr.into())
+                arr
             }
         })
     }

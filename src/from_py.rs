@@ -1,14 +1,11 @@
-use crate::arr::{
-    datatype::{DataType, GetDataType},
-    lazy::ExprElement,
-    JoinType,
-};
+use crate::arr::datatype::{DataType, GetDataType};
+#[cfg(feature = "lazy")]
+use crate::arr::{lazy::ExprElement, JoinType};
 use numpy::{
     datetime::{units, Datetime},
     Element, PyArray, PyArray1, PyArrayDescr, PyArrayDyn,
 };
 use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
-// use serde::{Serialize, Deserialize, Serializer};
 
 #[cfg(feature = "lazy")]
 use crate::arr::DropNaMethod;
@@ -47,6 +44,7 @@ impl GetDataType for PyValue {
     }
 }
 
+#[cfg(feature = "lazy")]
 impl ExprElement for PyValue {}
 
 unsafe impl Element for PyValue {
@@ -235,6 +233,7 @@ impl<'source> FromPyObject<'source> for QuantileMethod {
     }
 }
 
+#[cfg(feature = "lazy")]
 impl<'source> FromPyObject<'source> for JoinType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;

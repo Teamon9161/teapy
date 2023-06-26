@@ -1,8 +1,9 @@
 use super::{ArbArray, Expr, ExprBase, ExprElement, ExprInner};
-use crate::arr::{Arr1, ArrD, ArrViewD, Axis, WrapNdarray};
+use crate::arr::{Arr1, Arr2, ArrD, ArrViewD, Axis, WrapNdarray};
+use ndarray::Ix2;
 use ndarray::LinalgScalar;
-use ndarray::{Array2, Dimension, Ix2};
-use ndarray_linalg::{conjugate, LeastSquaresResult, LeastSquaresSvd};
+// use ndarray_linalg::{conjugate};
+use super::super::impls::{conjugate, LeastSquaresResult};
 use num::traits::AsPrimitive;
 use std::sync::Arc;
 
@@ -26,20 +27,30 @@ pub struct OlsResult<'a> {
 }
 
 impl<'a> OlsResult<'a> {
-    pub fn new<D: Dimension>(
-        lstsq_result: LeastSquaresResult<f64, D>,
-        x: ArbArray<'a, f64>,
-        y: Expr<'a, f64>,
-    ) -> Self {
+    // pub fn new<D: Dimension>(
+    //     lstsq_result: LeastSquaresResult<f64, D>,
+    //     x: ArbArray<'a, f64>,
+    //     y: Expr<'a, f64>,
+    // ) -> Self {
+    //     OlsResult {
+    //         x,
+    //         y,
+    //         singular_values: lstsq_result.singular_values.wrap(),
+    //         solution: lstsq_result.solution.wrap().to_dimd().unwrap(),
+    //         rank: lstsq_result.rank,
+    //         residual_sum_of_squares: lstsq_result
+    //             .residual_sum_of_squares
+    //             .map(|arr| arr.wrap().to_dimd().unwrap()),
+    //     }
+    // }
+    pub fn new(lstsq_result: LeastSquaresResult, x: ArbArray<'a, f64>, y: Expr<'a, f64>) -> Self {
         OlsResult {
             x,
             y,
-            singular_values: lstsq_result.singular_values.wrap(),
-            solution: lstsq_result.solution.wrap().to_dimd().unwrap(),
+            singular_values: lstsq_result.singular_values,
+            solution: lstsq_result.solution.unwrap(),
             rank: lstsq_result.rank,
-            residual_sum_of_squares: lstsq_result
-                .residual_sum_of_squares
-                .map(|arr| arr.wrap().to_dimd().unwrap()),
+            residual_sum_of_squares: lstsq_result.residual_sum_of_squares,
         }
     }
 
@@ -105,51 +116,19 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
             let x = x.into_arr();
             let y = y.cast::<f64>().eval();
             let y_arr = y.view_arr();
-            match (x.ndim(), y_arr.ndim()) {
-                (1, 1) => OlsResult::new(
-                    x.view()
-                        .to_dim1()
-                        .unwrap()
-                        .0
-                        .insert_axis(Axis(1))
-                        .least_squares(&y_arr.to_dim1().unwrap().0)
-                        .expect("ols shape error"),
-                    x,
-                    y,
-                ),
-                (1, 2) => OlsResult::new(
-                    x.view()
-                        .to_dim1()
-                        .unwrap()
-                        .0
-                        .insert_axis(Axis(1))
-                        .least_squares(&y_arr.to_dim::<Ix2>().unwrap().0)
-                        .expect("ols shape error"),
-                    x,
-                    y,
-                ),
-                (2, 1) => OlsResult::new(
-                    x.view()
-                        .to_dim::<Ix2>()
-                        .unwrap()
-                        .0
-                        .least_squares(&y_arr.to_dim1().unwrap().0)
-                        .expect("ols shape error"),
-                    x,
-                    y,
-                ),
-                (2, 2) => OlsResult::new(
-                    x.view()
-                        .to_dim::<Ix2>()
-                        .unwrap()
-                        .0
-                        .least_squares(&y_arr.to_dim::<Ix2>().unwrap().0)
-                        .expect("ols shape error"),
-                    x,
-                    y,
-                ),
-                _ => panic!("Ols for this dim is not suppported"),
-            }
+            let x_view = match x.ndim() {
+                1 => x.view().to_dim1().unwrap().insert_axis(Axis(1)).wrap(),
+                2 => x.view().to_dim::<Ix2>().unwrap(),
+                _ => panic!("Too much dimension in lstsq"),
+            };
+            OlsResult::new(
+                x_view
+                    .to_owned()
+                    .least_squares(&mut y_arr.to_owned())
+                    .unwrap(),
+                x,
+                y,
+            )
             .into()
         })
     }
@@ -211,8 +190,8 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     {
         self.cast::<f64>().chain_view_f(move |arr| {
             let arr = arr.to_dim2().expect("Array should be dim2 when conjugate");
-            let out: Array2<f64> = conjugate(&arr);
-            out.wrap().to_dimd().unwrap().into()
+            let out: Arr2<f64> = conjugate(&arr);
+            out.to_dimd().unwrap().into()
         })
     }
 
@@ -226,10 +205,6 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
             if !calc_uvt {
                 s.into()
             } else {
-                // let mut res_vec = Vec::<ArbArray<'a, f64>>::with_capacity(3);
-                // res_vec.push(u.unwrap().into());
-                // res_vec.push(s.into());
-                // res_vec.push(vt.unwrap().into());
                 let res_vec: Vec<ArbArray<'a, f64>> =
                     vec![u.unwrap().into(), s.into(), vt.unwrap().into()];
                 res_vec.into()

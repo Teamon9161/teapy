@@ -95,6 +95,7 @@ where
 
     // === window expression ===
     // window function without stable argument
+    #[cfg(feature = "window_func")]
     impl_view_lazy!(in1,
         [
             ts_argmin -> f64, ts_argmax -> f64, ts_min -> f64,
@@ -103,11 +104,14 @@ where
         ],
         (window: usize, min_periods: usize, axis: i32, par: bool)
     );
+    #[cfg(feature = "window_func")]
     // window corr and cov
     impl_view_lazy!(in2, [ts_cov -> f64, ts_corr -> f64],
         (window: usize, min_periods: usize, stable: bool, axis: i32, par: bool)
     );
+
     // window function with stable argument
+    #[cfg(feature = "window_func")]
     impl_view_lazy!(in1,
         [
             ts_sum -> f64, ts_sma -> f64, ts_ewm -> f64, ts_wma -> f64,

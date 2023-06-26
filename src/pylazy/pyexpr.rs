@@ -270,9 +270,12 @@ impl PyExpr {
     ///
     /// the data for the array view should exist
     #[allow(unreachable_patterns)]
-    pub unsafe fn view_by_slice(self: PyRef<Self>, slc: Vec<SliceInfoElem>, py: Python) -> Self {
+    pub unsafe fn view_by_slice(&self, slc: Vec<SliceInfoElem>) -> Self {
+        // match_exprs!(&self.inner, expr, {
+        //     expr.clone().view_by_slice(slc).to_py_ref(self, py)
+        // })
         match_exprs!(&self.inner, expr, {
-            expr.clone().view_by_slice(slc).to_py_ref(self, py)
+            expr.clone().view_by_slice(slc).to_py(self.obj())
         })
     }
 

@@ -47,12 +47,12 @@ class Ols:
         """
         y, x = Expr(y), Expr(x)
         self.n_ori = y.shape[0]
+        self.keep_shape = keep_shape
         if dropna:
             x = x.if_then(x.ndim() == 1, x.insert_axis(1))
             nan_mask = y.is_nan() | x.is_nan().any(axis=1)
             y, x = y.filter(~nan_mask), x.filter(~nan_mask)
             if keep_shape:
-                self.keep_shape = keep_shape
                 self.nan_mask = nan_mask
         self.y = y
         self.x = (
@@ -91,7 +91,7 @@ class Ols:
                 # 计算Q矩阵的渐进估计S矩阵
                 # 详细算法说明可参考 多因子回归检验中的 Newey-West调整
                 # (https://zhuanlan.zhihu.com/p/54913149)
-                S = get_newey_west_adjust_s(self.x, resid, lag) / self.n
+                S = get_newey_west_adjust_s(self.x, resid, Expr(lag)) / self.n
                 # 计算t统计量和p统计量
                 self.tvalues = self.params / (self.n * (X @ S @ X).diag()).sqrt()
                 self.pvalues = (1 - self.tvalues.abs().norm_cdf()) * 2
@@ -159,3 +159,58 @@ class ChowTest:
         for i, v in enumerate(ret):
             ret[i] = v.round(precision)
         return mark_star(*ret, precision=precision, split=split) if mark else ret
+
+
+# =============================================================================
+# test
+# =============================================================================
+if __name__ == "__main__":
+    import numpy as np
+    import statsmodels.api as sm
+    from numpy.testing import assert_allclose
+
+    def sp_ols_sm(y, x, constant=True):
+        """statsmodels的ols回归函数，效率较低，constant为True则加常数项"""
+        x = np.asanyarray(x)
+        x = np.vstack([np.ones(x.shape[0]), x.T]).T if constant else x
+        return sm.OLS(np.asanyarray(y), x, missing="drop").fit()
+
+    def nw_ols_sm(y, x, lag=None, constant=True):
+        """statsmodels实现的ols函数，效率较低，constant为True则加常数项, lag: 滞后阶数"""
+        nlag = int(np.ceil(4 * (y.size / 100) ** (2 / 9))) if lag is None else lag
+        x = np.asanyarray(x)
+        x = np.vstack([np.ones(x.shape[0]), x.T]).T if constant else x
+        return sm.OLS(np.asanyarray(y), x, missing="drop").fit(
+            cov_type="HAC", cov_kwds={"maxlags": nlag}
+        )
+
+    # 结果准确性测试
+    y = np.array([1, 4, 6, 1, np.nan, 43])
+    x = np.array([[5, 6, 12, 5, 7, 2], [7, np.nan, 7, 1, 4, 8]]).T
+
+    def test_ols_result(res1, res2):
+        assert_allclose(res1.params.eview(), res2.params)
+        assert_allclose(res1.resid.eview(), res2.resid)
+        assert_allclose(res1.fitted_values.eview(), res2.fittedvalues)
+        assert_allclose(res1.tvalues.eview(), res2.tvalues)
+
+    res1 = sp_ols(y, x, constant=True, calc_t=True, keep_shape=False)
+    res2 = sp_ols_sm(y, x, constant=True)
+    test_ols_result(res1, res2)
+
+    res3 = sp_ols(y, x, constant=False, calc_t=True, keep_shape=False)
+    res4 = sp_ols_sm(y, x, constant=False)
+    test_ols_result(res3, res4)
+
+    res5 = nw_ols(y, x, constant=True, keep_shape=False)
+    res6 = nw_ols_sm(y, x, constant=True)
+    test_ols_result(res5, res6)
+
+    res7 = nw_ols(y, x, constant=False, keep_shape=False)
+    res8 = nw_ols_sm(y, x, constant=False)
+    test_ols_result(res7, res8)
+
+    res9 = nw_ols(y, x, constant=True, lag=2, keep_shape=False)
+    res10 = nw_ols_sm(y, x, constant=True, lag=2)
+    test_ols_result(res7, res8)
+    print("结果准确性检验通过")

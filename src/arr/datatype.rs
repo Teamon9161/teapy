@@ -6,7 +6,7 @@ use std::cmp::{Ordering, PartialOrd};
 use std::fmt::Display;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum DataType {
     Bool,
     F32,
@@ -26,7 +26,7 @@ pub enum DataType {
 macro_rules! match_datatype_arm {
     ($expr: expr, $v: ident, $other_enum: ident, $ty: ty, ($($arm: ident $(($arg: ident))?),*), $body: tt) => {
         match <$ty>::dtype() {
-            $(DataType::$arm $(($arg))? => {if let $other_enum::$arm($v) = $expr $body else {unreachable!()}},)*
+            $(DataType::$arm $(($arg))? => {if let $other_enum::$arm($v) = $expr $body else {panic!("datatype mismatch {:?} {:?}", <$ty>::dtype(), $expr)}},)*
             _ => unreachable!()
         }
     };

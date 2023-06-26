@@ -1,5 +1,7 @@
 use super::super::ArrViewD;
-use super::{ExprElement, ExprOut, OlsResult};
+#[cfg(feature = "blas")]
+use super::OlsResult;
+use super::{ExprElement, ExprOut};
 use std::sync::Arc;
 
 // to get a view of ExprOut
@@ -23,6 +25,7 @@ impl<'a, T> From<Vec<ArrViewD<'a, T>>> for ExprOutView<'a, T> {
     }
 }
 
+#[cfg(feature = "blas")]
 impl<'a, T> From<Arc<OlsResult<'a>>> for ExprOutView<'a, T> {
     fn from(res: Arc<OlsResult<'a>>) -> Self {
         ExprOutView::OlsRes(res)
@@ -34,6 +37,7 @@ impl<'a, T: ExprElement> From<ExprOutView<'a, T>> for ExprOut<'a, T> {
         match view {
             ExprOutView::Arr(arr) => arr.into(),
             ExprOutView::ArrVec(arr_vec) => arr_vec.into(),
+            #[cfg(feature = "blas")]
             ExprOutView::OlsRes(res) => res.into(),
             // _ => unimplemented!("convert thid type of expression output to expression input is unimplemented")
         }

@@ -1,13 +1,13 @@
-use super::super::{
+use super::super::super::{
     utils::{vec_uninit, VecAssumeInit},
-    Arr1, ArrD, WrapNdarray,
+    Arr1, ArrD,
 };
+use super::{into_matrix, MatrixLayout};
 use lapack_sys::dgesvd_;
-use ndarray_linalg::{into_matrix, AllocatedArray, MatrixLayout};
 
 impl ArrD<f64> {
     pub fn svd_into(self, full: bool, calc_uvt: bool) -> (Option<Self>, Self, Option<Self>) {
-        let mut arr = self.to_dim2().expect("Array should be dim2 when svd").0;
+        let mut arr = self.to_dim2().expect("Array should be dim2 when svd");
         let layout = arr.layout().expect("Array should be contiguous when svd");
         let mut_arr = arr
             .as_slice_memory_order_mut()
@@ -112,11 +112,11 @@ impl ArrD<f64> {
                 if m == k {
                     (
                         u.map(|x| unsafe { x.assume_init() }),
-                        Some(arr.into_raw_vec()),
+                        Some(arr.0.into_raw_vec()),
                     )
                 } else {
                     (
-                        Some(arr.into_raw_vec()),
+                        Some(arr.0.into_raw_vec()),
                         vt.map(|x| unsafe { x.assume_init() }),
                     )
                 }
@@ -134,12 +134,12 @@ impl ArrD<f64> {
             let (u_col, vt_row) = if full { (m, n) } else { (k, k) };
             let u: Self = into_matrix(layout.resized(m, u_col), u.unwrap())
                 .unwrap()
-                .wrap()
+                // .wrap()
                 .to_dimd()
                 .unwrap();
             let vt: Self = into_matrix(layout.resized(vt_row, n), vt.unwrap())
                 .unwrap()
-                .wrap()
+                // .wrap()
                 .to_dimd()
                 .unwrap();
             (Some(u), s, Some(vt))

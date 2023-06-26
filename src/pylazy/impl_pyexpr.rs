@@ -139,7 +139,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub unsafe fn __getitem__(self: PyRef<Self>, obj: &PyAny, py: Python) -> PyResult<Self> {
+    pub unsafe fn __getitem__(&self, obj: &PyAny, py: Python) -> PyResult<Self> {
         use pyo3::types::{PyList, PySlice, PyTuple};
         if let Ok(length) = obj.len() {
             let mut slc_vec = Vec::with_capacity(10);
@@ -182,7 +182,7 @@ impl PyExpr {
                 }
             }
             let ori_dim = self.ndim().cast_i32()?;
-            let mut out = self.view_by_slice(slc_vec, py);
+            let mut out = self.view_by_slice(slc_vec);
             for (idx, slc_obj) in zip(no_slice_idx_vec, no_slice_slc_obj_vec) {
                 let slc = parse_expr_nocopy(slc_obj)?;
                 let obj = slc.obj();
@@ -254,10 +254,6 @@ impl PyExpr {
                                     .unwrap()
                             })
                             .collect_trusted();
-                        // let out = out
-                        //     .into_iter()
-                        //     .map(|e| e.no_dim0(py).unwrap())
-                        //     .collect_trusted();
                         Ok(out.into_py(py))
                     } else {
                         Ok(PyArray::borrow_from_array(out_view.as_arr(), container).no_dim0(py)?)
@@ -363,7 +359,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub unsafe fn reshape(self: PyRef<Self>, shape: &PyAny) -> PyResult<Self> {
+    pub unsafe fn reshape(&self, shape: &PyAny) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
         let out = match_exprs!(&self.inner, expr, {
@@ -1335,49 +1331,39 @@ impl PyExpr {
     ///
     /// Safety
     /// the data for the array view should exist
-    pub unsafe fn diag(self: PyRef<Self>, py: Python) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().diag().to_py_ref(self, py)
-        })
+    pub unsafe fn diag(&self) -> Self {
+        match_exprs!(&self.inner, expr, { expr.clone().diag().to_py(self.obj()) })
     }
 
     #[allow(unreachable_patterns)]
     /// Insert new array axis at axis and return the result.
-    pub unsafe fn insert_axis(self: PyRef<Self>, axis: i32, py: Python) -> Self {
+    pub unsafe fn insert_axis(&self, axis: i32) -> Self {
         match_exprs!(&self.inner, expr, {
-            expr.clone().insert_axis(axis).to_py_ref(self, py)
+            expr.clone().insert_axis(axis).to_py(self.obj())
         })
     }
 
-    // #[allow(unreachable_patterns)]
-    // /// Insert new array axis at axis and return the result.
-    // pub unsafe fn insert_axis(&self, axis: i32) -> Self {
-    //     match_exprs!(&self.inner, expr, {
-    //         expr.clone().insert_axis(axis).to_py(None)
-    //     })
-    // }
-
     #[allow(unreachable_patterns)]
     /// Remove new array axis at axis and return the result.
-    pub unsafe fn remove_axis(self: PyRef<Self>, axis: i32, py: Python) -> Self {
+    pub unsafe fn remove_axis(&self, axis: i32) -> Self {
         match_exprs!(&self.inner, expr, {
-            expr.clone().remove_axis(axis).to_py_ref(self, py)
+            expr.clone().remove_axis(axis).to_py(self.obj())
         })
     }
 
     #[allow(unreachable_patterns)]
     /// Return a transposed view of the array.
-    pub unsafe fn t(self: PyRef<Self>, py: Python) -> Self {
-        match_exprs!(&self.inner, expr, { expr.clone().t().to_py_ref(self, py) })
+    pub unsafe fn t(&self) -> Self {
+        match_exprs!(&self.inner, expr, { expr.clone().t().to_py(self.obj()) })
     }
 
     #[allow(unreachable_patterns)]
     /// Swap axes ax and bx.
     ///
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
-    pub unsafe fn swap_axes(self: PyRef<Self>, ax: i32, bx: i32, py: Python) -> Self {
+    pub unsafe fn swap_axes(&self, ax: i32, bx: i32) -> Self {
         match_exprs!(&self.inner, expr, {
-            expr.clone().swap_axes(ax, bx).to_py_ref(self, py)
+            expr.clone().swap_axes(ax, bx).to_py(self.obj())
         })
     }
 
@@ -1387,13 +1373,13 @@ impl PyExpr {
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
     ///
     ///i in the j-th place in the axes sequence means self's i-th axis becomes self.permuted_axes()'s j-th axis
-    pub unsafe fn permuted_axes(self: PyRef<Self>, axes: &PyAny, py: Python) -> PyResult<Self> {
+    pub unsafe fn permuted_axes(&self, axes: &PyAny) -> PyResult<Self> {
         let axes = parse_expr_nocopy(axes)?;
         let obj = axes.obj();
         let out = match_exprs!(&self.inner, expr, {
             expr.clone()
                 .permuted_axes(axes.cast_usize()?)
-                .to_py_ref(self, py)
+                .to_py(self.obj())
                 .add_obj(obj)
         });
         Ok(out)
@@ -2162,6 +2148,7 @@ impl PyExpr {
         self._take_on_axis_by_expr(slc, axis, par)
     }
 
+    #[cfg(feature = "stat")]
     #[pyo3(signature=(df, loc=None, scale=None))]
     pub unsafe fn t_cdf(&self, df: &PyAny, loc: Option<f64>, scale: Option<f64>) -> PyResult<Self> {
         let df = parse_expr_nocopy(df)?;
@@ -2175,6 +2162,7 @@ impl PyExpr {
         Ok(out)
     }
 
+    #[cfg(feature = "stat")]
     #[pyo3(signature=(mean=None, std=None))]
     pub unsafe fn norm_cdf(&self, mean: Option<f64>, std: Option<f64>) -> PyResult<Self> {
         let out = match_exprs!(numeric & self.inner, e, {
@@ -2183,6 +2171,8 @@ impl PyExpr {
         Ok(out)
     }
 
+    #[cfg(feature = "stat")]
+    #[pyo3(signature=(df1, df2))]
     pub unsafe fn f_cdf(&self, df1: &PyAny, df2: &PyAny) -> PyResult<Self> {
         let df1 = parse_expr_nocopy(df1)?;
         let df2 = parse_expr_nocopy(df2)?;
@@ -2286,45 +2276,34 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(con, then))]
-    pub unsafe fn if_then(
-        self: PyRef<Self>,
-        con: &PyAny,
-        then: &PyAny,
-        py: Python,
-    ) -> PyResult<PyExpr> {
+    pub unsafe fn if_then(&self, con: &PyAny, then: &PyAny, py: Python) -> PyResult<PyExpr> {
         let con = parse_expr_nocopy(con)?;
         let then = parse_expr_nocopy(then)?;
         let con = con.cast_bool()?;
         let out: PyExpr = match self.inner() {
-            Exprs::F64(e) => e.clone().if_then(con, then.cast_f64()?).to_py_ref(self, py),
-            Exprs::F32(e) => e.clone().if_then(con, then.cast_f32()?).to_py_ref(self, py),
-            Exprs::I64(e) => e.clone().if_then(con, then.cast_i64()?).to_py_ref(self, py),
-            Exprs::I32(e) => e.clone().if_then(con, then.cast_i32()?).to_py_ref(self, py),
-            Exprs::Usize(e) => e
-                .clone()
-                .if_then(con, then.cast_usize()?)
-                .to_py_ref(self, py),
-            Exprs::Bool(e) => e
-                .clone()
-                .if_then(con, then.cast_bool()?)
-                .to_py_ref(self, py),
-            Exprs::Str(e) => e.clone().if_then(con, then.cast_str()?).to_py_ref(self, py),
+            Exprs::F64(e) => e.clone().if_then(con, then.cast_f64()?).to_py(self.obj()),
+            Exprs::F32(e) => e.clone().if_then(con, then.cast_f32()?).to_py(self.obj()),
+            Exprs::I64(e) => e.clone().if_then(con, then.cast_i64()?).to_py(self.obj()),
+            Exprs::I32(e) => e.clone().if_then(con, then.cast_i32()?).to_py(self.obj()),
+            Exprs::Usize(e) => e.clone().if_then(con, then.cast_usize()?).to_py(self.obj()),
+            Exprs::Bool(e) => e.clone().if_then(con, then.cast_bool()?).to_py(self.obj()),
+            Exprs::Str(e) => e.clone().if_then(con, then.cast_str()?).to_py(self.obj()),
             Exprs::String(e) => e
                 .clone()
                 .if_then(con, then.cast_string()?)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::DateTime(e) => e
                 .clone()
                 .if_then(con, then.cast_datetime(None)?)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::TimeDelta(e) => e
                 .clone()
                 .if_then(con, then.cast_timedelta()?)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::Object(e) => e
                 .clone()
                 .if_then(con, then.cast_object_eager(py)?)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             _ => unimplemented!("if_then is not implemented for this type."),
         };
         Ok(out)
@@ -2436,26 +2415,26 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub unsafe fn broadcast(self: PyRef<Self>, shape: &PyAny, py: Python) -> PyResult<Self> {
+    pub unsafe fn broadcast(&self, shape: &PyAny) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
         match_exprs!(self.inner(), e, {
             Ok(e.clone()
                 .broadcast(shape.cast_usize()?)
-                .to_py_ref(self, py)
+                .to_py(self.obj())
                 .add_obj(obj))
         })
     }
 
     #[allow(unreachable_patterns)]
-    pub unsafe fn broadcast_with(self: PyRef<Self>, other: &PyAny, py: Python) -> PyResult<Self> {
+    pub unsafe fn broadcast_with(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let shape = other.shape();
         let obj = shape.obj();
         match_exprs!(self.inner(), e, {
             Ok(e.clone()
                 .broadcast(shape.cast_usize()?)
-                .to_py_ref(self, py)
+                .to_py(self.obj())
                 .add_obj(obj))
         })
     }

@@ -21,6 +21,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
     if let Ok(expr) = obj.extract::<PyExpr>() {
         Ok(expr)
     } else if obj.get_type().name()? == "PyExpr" {
+        // For any crate that extends this crate
         let cell: &PyCell<PyExpr> = PyTryFrom::try_from_unchecked(obj);
         Ok(cell.try_borrow()?.clone())
     } else if obj.get_type().name()? == "DataFrame" {

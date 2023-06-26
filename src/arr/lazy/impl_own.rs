@@ -12,6 +12,7 @@ use num::traits::{real::Real, AsPrimitive};
 use num::{Float, One, Signed, Zero};
 use pyo3::Python;
 use rayon::prelude::*;
+#[cfg(feature = "stat")]
 use statrs::distribution::ContinuousCDF;
 use std::mem;
 
@@ -409,6 +410,7 @@ where
         self.chain_view_f(move |arr| arr.powf(&other.eval().view_arr(), par).into())
     }
 
+    #[cfg(feature = "stat")]
     pub fn t_cdf(self, df: Expr<'a, f64>, loc: Option<f64>, scale: Option<f64>) -> Expr<'a, f64>
     where
         T: Number,
@@ -421,6 +423,7 @@ where
         })
     }
 
+    #[cfg(feature = "stat")]
     pub fn norm_cdf(self, mean: Option<f64>, std: Option<f64>) -> Expr<'a, f64>
     where
         T: Number,
@@ -432,6 +435,7 @@ where
         })
     }
 
+    #[cfg(feature = "stat")]
     pub fn f_cdf(self, df1: Expr<'a, f64>, df2: Expr<'a, f64>) -> Expr<'a, f64>
     where
         T: Number,
