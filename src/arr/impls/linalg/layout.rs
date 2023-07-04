@@ -2,7 +2,7 @@ use super::super::super::{
     utils::{vec_uninit, VecAssumeInit},
     Arr2, ArrBase, Data, ShapeError, WrapNdarray,
 };
-use ndarray::{ArrayBase, Dimension, ShapeBuilder};
+use ndarray::{ArrayBase, Dimension};
 use std::mem::MaybeUninit;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,6 +205,7 @@ pub fn transpose_over<T: Copy>(layout: MatrixLayout, from: &[T], to: &mut [T]) -
 }
 
 pub fn into_matrix<T>(l: MatrixLayout, a: Vec<T>) -> Result<Arr2<T>, ShapeError> {
+    use ndarray::ShapeBuilder;
     match l {
         MatrixLayout::C { row, lda } => {
             Ok(ArrayBase::from_shape_vec((row as usize, lda as usize), a)?.wrap())

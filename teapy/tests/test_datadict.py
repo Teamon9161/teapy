@@ -116,3 +116,10 @@ def test_groupby():
         lambda df: [df["c"].sum().alias("c1"), df["c"].max().alias("c2")]
     )
     assert_allclose(res["c2"].eview(), np.array([6, 5, 1]))
+
+    dd = DataDict({"g": ["a", "b", "a", "a", "c"] * 100, "v": np.random.randn(500)})
+    df = pd.DataFrame(dd.to_dict())
+    assert_allclose(
+        dd.groupby("g").apply(lambda df: df["v"].max())["v"].eview(),
+        df.groupby("g").v.max(),
+    )
