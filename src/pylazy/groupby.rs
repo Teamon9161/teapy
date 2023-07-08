@@ -53,7 +53,9 @@ fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyDataDict {
     let column_num = exprs[0].len(); // each group should have the same column num
     exprs
         .par_iter_mut()
-        .for_each(|vec_e| vec_e.par_iter_mut().for_each(|e| e.eval_inplace()));
+        .flatten()
+        .for_each(|e| e.eval_inplace());
+    // .for_each(|vec_e| vec_e.par_iter_mut().for_each(|e| e.eval_inplace()));
     {
         dbg!(exprs
             .iter()
@@ -69,10 +71,6 @@ fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyDataDict {
                 .iter()
                 .map(|single_group_exprs| single_group_exprs.get(i).unwrap().no_dim0())
                 .collect_trusted();
-            // dbg!(group_vec
-            //     .iter()
-            //     .map(|e| e.inner.clone().cast_f64().unwrap().into_arr())
-            //     .collect::<Vec<_>>());
             concat_expr(group_vec, axis).expect("concat expr error")
         })
         .collect();
