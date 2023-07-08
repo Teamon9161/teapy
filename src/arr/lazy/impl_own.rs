@@ -532,13 +532,13 @@ where
             let axis = arr.norm_axis(axis);
 
             if slc_eval.len() == 1 {
-                dbg!("slc=1, arr: {:?}", &arr);
+                // dbg!("slc=1, arr: {:?}", &arr);
                 arr.index_axis(axis, slc_eval.to_dim1().unwrap()[0])
                     .to_owned()
                     .wrap()
                     .into()
             } else {
-                dbg!("slc>1, arr: {:?}", &arr);
+                // dbg!("slc>1, arr: {:?}", &arr);
                 arr.select(axis, slc_eval.as_slice().unwrap()).wrap().into()
             }
         })
