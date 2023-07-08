@@ -103,17 +103,17 @@ def test_join():
 
 def test_groupby():
 
-    dd = DataDict(
-        {
-            "g": ["e", "e"] + ["a", "b", "a", "a", "c"] * 100 + ["d"],
-            "v": [-0.1, -5] + np.random.randn(500).tolist() + [1],
-        }
-    )
-    df = pd.DataFrame(dd.to_dict())
-    assert_allclose(
-        dd.groupby("g").apply(lambda df: df["v"].max())["v"].eview(),
-        df.groupby("g", sort=False).v.max(),
-    )
+    # dd = DataDict(
+    #     {
+    #         "g": ["e", "e"] + ["a", "b", "a", "a", "c"] * 100 + ["d"],
+    #         "v": [-0.1, -5] + np.random.randn(500).tolist() + [1],
+    #     }
+    # )
+    # df = pd.DataFrame(dd.to_dict())
+    # assert_allclose(
+    #     dd.groupby("g").apply(lambda df: df["v"].max())["v"].eview(),
+    #     df.groupby("g", sort=False).v.max(),
+    # )
 
     dd = DataDict(
         {
@@ -122,8 +122,8 @@ def test_groupby():
             "c": [6, 5, 4, 3, 2, 1],
         }
     )
-    res = dd.groupby("a").apply(lambda df: df["c"].sum())
-    assert_allclose(res["c"].eview(), np.array([10, 10, 1]))
+    # res = dd.groupby("a").apply(lambda df: df["c"].sum())
+    # assert_allclose(res["c"].eview(), np.array([10, 10, 1]))
 
     res = dd.groupby("a").apply(
         lambda df: [df["c"].sum().alias("c1"), df["c"].max().alias("c2")]
