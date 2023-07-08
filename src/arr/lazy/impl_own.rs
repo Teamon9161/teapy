@@ -530,7 +530,7 @@ where
                 "The slice must be dim 0 or dim 1 when select on axis"
             );
             let axis = arr.norm_axis(axis);
-            
+
             if slc_eval.len() == 1 {
                 dbg!("slc=1, arr: {:?}", &arr);
                 arr.index_axis(axis, slc_eval.to_dim1().unwrap()[0])
