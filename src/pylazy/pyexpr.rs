@@ -218,24 +218,26 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns, dead_code)]
-    pub(crate) fn eval(self) -> Self {
-        match_exprs!(self.inner, expr, {
-            let expr = expr.eval();
-            if let Some(owned) = expr.owned() {
-                if owned {
-                    // we don't need to reference
-                    expr.into()
-                } else {
-                    expr.to_py(self.obj)
-                }
-            } else {
-                expr.to_py(self.obj)
-            }
-        })
+    pub fn eval(mut self) -> Self {
+        self.eval_inplace();
+        self
+        // match_exprs!(self.inner, expr, {
+        //     let expr = expr.eval();
+        //     if let Some(owned) = expr.owned() {
+        //         if owned {
+        //             // we don't need to reference
+        //             expr.into()
+        //         } else {
+        //             expr.to_py(self.obj)
+        //         }
+        //     } else {
+        //         expr.to_py(self.obj)
+        //     }
+        // })
     }
 
     #[allow(unreachable_patterns)]
-    pub(crate) fn eval_inplace(&mut self) {
+    pub fn eval_inplace(&mut self) {
         match_exprs!(&mut self.inner, expr, {
             expr.eval_inplace();
             if let Some(owned) = expr.owned() {
