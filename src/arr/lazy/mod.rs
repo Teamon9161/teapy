@@ -554,9 +554,9 @@ macro_rules! impl_funcchain_new {
                             ExprBase::Expr(exprs) => {
                                 let ref_count = Arc::strong_count(&exprs);
                                 let mut exprs_lock = exprs.lock().unwrap();
-                                if exprs_lock.step() != 0 {
-                                    exprs_lock.eval_inplace();
-                                }
+                                // if exprs_lock.step() != 0 {
+                                exprs_lock.eval_inplace();
+                                // }
                                 // we should not modify the base expression
                                 // safety: the data of the base expression must exist
                                 if ref_count > 1 {

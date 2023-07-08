@@ -55,12 +55,13 @@ fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyDataDict {
         .par_iter_mut()
         .flatten()
         .for_each(|e| e.eval_inplace());
-
-    dbg!(exprs
-        .iter()
-        .flatten()
-        .map(|e| e.inner.clone().cast_f64().unwrap().into_arr())
-        .collect::<Vec<_>>());
+    {
+        dbg!(exprs
+            .iter()
+            .flatten()
+            .map(|e| e.inner.clone().cast_f64().unwrap().into_arr())
+            .collect::<Vec<_>>());
+    }
 
     let out_data = (0..column_num)
         .into_par_iter()
