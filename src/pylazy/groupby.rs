@@ -54,18 +54,23 @@ fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyDataDict {
     exprs
         .par_iter_mut()
         .for_each(|vec_e| vec_e.par_iter_mut().for_each(|e| e.eval_inplace()));
+    dbg!(exprs
+        .iter()
+        .flatten()
+        .map(|e| e.inner.clone().cast_f64().unwrap().into_arr())
+        .collect::<Vec<_>>());
 
     let out_data = (0..column_num)
         .into_par_iter()
         .map(|i| {
             let group_vec = exprs
                 .iter()
-                .map(|single_group_exprs| single_group_exprs.get(i).unwrap().no_dim0().eval())
+                .map(|single_group_exprs| single_group_exprs.get(i).unwrap().no_dim0())
                 .collect_trusted();
-            dbg!(group_vec
-                .iter()
-                .map(|e| e.inner.clone().cast_f64().unwrap().into_arr())
-                .collect::<Vec<_>>());
+            // dbg!(group_vec
+            //     .iter()
+            //     .map(|e| e.inner.clone().cast_f64().unwrap().into_arr())
+            //     .collect::<Vec<_>>());
             concat_expr(group_vec, axis).expect("concat expr error")
         })
         .collect();
