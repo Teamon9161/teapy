@@ -729,12 +729,12 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     // Create a new expression which is based on a current expression
     pub fn new_with_expr(expr: Arc<Mutex<ExprsInner<'a>>>, name: Option<String>) -> Self {
         // let step: usize;
-        // let owned: Option<bool>;
+        let owned: Option<bool>;
         let name = {
             let e = expr.lock().unwrap();
             let e_ = unsafe { e.get::<T>() };
             // (step, owned) = (e_.step, e_.owned);
-            // owned = e_.owned;
+            owned = e_.owned;
             if name.is_none() {
                 e_.name()
             } else {
@@ -745,7 +745,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         ExprInner::<T> {
             base: ExprBase::Expr(expr),
             func: EmptyNew::empty_new(),
-            owned: Some(false),
+            owned,
             step: 0,
             // step,
             name,
@@ -922,12 +922,16 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             // step is zero but we should check the step of the expression base
             match &self.base {
                 ExprBase::Expr(eb) => {
+                    // self.ref_expr = Some(vec![eb.clone()]);
                     if let Some(is_owned) = self.get_owned() {
                         if !is_owned {
                             self.ref_expr = Some(vec![eb.clone()])
                         }
+                    } else {
+                        self.ref_expr = Some(vec![eb.clone()])
                     }
-                    eb.lock().unwrap().eval_inplace()
+                    eb.lock().unwrap().eval_inplace();
+                    // self.ref_expr = Some(vec![eb.clone()]);
                 }
                 // we assume that the result are not based on the expressions
                 ExprBase::ExprVec(ebs) => ebs

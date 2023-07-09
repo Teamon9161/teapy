@@ -14,8 +14,8 @@ clean: ## clean useless folders
 
 .PHONY: test
 test: 
-	@pytest -s
-	# @pytest -n auto
+	# @pytest -s
+	@pytest -n auto
 
 
 .PHONY: pytest-cov
