@@ -934,19 +934,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         if self.step() != 0 {
             let default_func: FuncChainType<'a, T> = DefaultNew::default_new();
             let func = mem::replace(&mut self.func, default_func);
-            // if let ExprBase::Expr(_) = &self.base {
-            //     // base_expr.lock().unwrap().eval_inplace();
-            //     self.update_ref_expr()
-            //     // if let Some(is_owned) = self.owned {
-            //     //     if !is_owned {
-            //     //         self.ref_expr = Some(vec![base_expr.clone()])
-            //     //     }
-            //     // }
-
-            //     // else {
-            //     //     self.ref_expr = Some(vec![base_expr.clone()])
-            //     // }
-            // }
             self.update_ref_expr();
             let base = mem::take(&mut self.base);
             let out = func(base);
@@ -968,19 +955,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         } else {
             // step is zero but we should check the step of the expression base
             match &self.base {
-                ExprBase::Expr(_) => {
-                    // eb.lock().unwrap().eval_inplace();
-                    self.update_ref_expr()
-                    // if let Some(is_owned) = self.get_owned() {
-                    //     if !is_owned {
-                    //         self.ref_expr = Some(vec![eb.clone()])
-                    //     }
-                    // }
-
-                    // else {
-                    //     self.ref_expr = Some(vec![eb.clone()])
-                    // }
-                }
+                ExprBase::Expr(_) => self.update_ref_expr(),
                 // we assume that the result are not based on the expressions
                 ExprBase::ExprVec(ebs) => ebs
                     .into_par_iter()
@@ -1077,8 +1052,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
 
     #[inline]
     pub fn into_out(self) -> ExprOut<'a, T> {
-        // self.eval_inplace();
-        // self.base.into_out()
         (self.func)(self.base)
     }
     /// chain a new function to current function chain, the function accept
@@ -1143,14 +1116,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             }),
             ref_expr: None,
         }
-        // ExprInner::<'a, T2> {
-        //     base: self.base,
-        //     step: self.step + 1,
-        //     name: self.name,
-        //     owned: self.owned, // We don't know if the expression has ownership of the data after adding a function
-        //     func: Box::new(move |base: ExprBase<'a>| f((self.func)(base))),
-        //     ref_expr: None,
-        // }
     }
 
     /// chain a new function to current function chain, the function accept
@@ -1161,47 +1126,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         T2: ExprElement,
     {
         self.chain_f(|expr_out| f(expr_out.into_arr()).into(), ref_type)
-        // ExprInner::<'a, T2> {
-        //     base: self.base,
-        //     step: self.step + 1,
-        //     name: self.name.clone(),
-        //     owned: self.owned,
-        //     func: Box::new(move |base: ExprBase<'a>| {
-        //         let arb_array = (self.func)(base).into_arr();
-        //         let last_out = if arb_array.is_owned() {
-        //             match ref_type {
-        //                 RefType::True => {
-        //                     let base_expr: ExprsInner =
-        //                         ExprInner::<T>::new_with_arr(arb_array, self.name).into();
-        //                     let base_expr = Arc::new(Mutex::new(base_expr));
-        //                     if let Some(mut ref_expr) = self.ref_expr {
-        //                         ref_expr.push(base_expr);
-        //                         self.ref_expr = Some(ref_expr);
-        //                     } else {
-        //                         self.ref_expr = Some(vec![base_expr]);
-        //                     }
-        //                     if let Some(ref_expr) = &self.ref_expr {
-        //                         // this should always be true
-        //                         let e = ref_expr.last().unwrap().lock().unwrap();
-        //                         let arr_view = e.view::<T>().unwrap().into_arr();
-        //                         let arr_view: ArrViewD<'a, T> = unsafe { mem::transmute(arr_view) };
-        //                         arr_view.into()
-        //                     } else {
-        //                         unreachable!()
-        //                     }
-        //                 },
-        //                 _ => {
-        //                     arb_array
-        //                 }
-        //             }
-        //         } else {
-        //             arb_array
-        //         };
-        //         f(last_out).into()
-        //         // f((self.func)(base).into_arr()).into()
-        //     }),
-        //     ref_expr: None,
-        // }
     }
 
     /// chain a new function to current function chain, the function accept
@@ -1219,111 +1143,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             },
             ref_type,
         )
-
-        // ExprInner::<'a, T2> {
-        //     base: self.base,
-        //     step: self.step + 1,
-        //     name: self.name,
-        //     owned: self.owned,
-        //     func: Box::new(move |base: ExprBase<'a>| {
-        //         let arb_array = (self.func)(base).into_arr();
-        //         match arb_array {
-        //             ArbArray::View(arr) => f(arr).into(),
-        //             ArbArray::ViewMut(arr) => f(arr.view()).into(),
-        //             ArbArray::Owned(arr) => f(arr.view()).into(),
-        //         }
-        //     }),
-        //     ref_expr: None,
-        // }
     }
-
-    // /// chain a new function to current function chain, the function accept
-    // /// an array of type `ArbArray<'a, T>` and return `ArbArray<'a, T2>`
-    // pub fn chain_view_out_arr_f<F, T2>(mut self, f: F) -> ExprInner<'a, T2>
-    // where
-    //     F: FnOnce(ArbArray<'a, T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
-    //     T2: ExprElement,
-    // {
-    //     ExprInner::<'a, T2> {
-    //         base: self.base,
-    //         step: self.step + 1,
-    //         name: self.name.clone(),
-    //         owned: Some(false),
-    //         func: Box::new(move |base: ExprBase<'a>| {
-    //             let arb_array = (self.func)(base).into_arr();
-    //             let last_out = if matches!(arb_array, ArbArray::Owned(_)) {
-    //                 let base_expr: ExprsInner =
-    //                     ExprInner::<T>::new_with_arr(arb_array, self.name).into();
-    //                 let base_expr = Arc::new(Mutex::new(base_expr));
-    //                 if let Some(mut ref_expr) = self.ref_expr {
-    //                     ref_expr.push(base_expr);
-    //                     self.ref_expr = Some(ref_expr);
-    //                 } else {
-    //                     self.ref_expr = Some(vec![base_expr]);
-    //                 }
-    //                 if let Some(ref_expr) = &self.ref_expr {
-    //                     // this should always be true
-    //                     let e = ref_expr.last().unwrap().lock().unwrap();
-    //                     let arr_view = e.view::<T>().unwrap().into_arr();
-    //                     let arr_view: ArrViewD<'a, T> = unsafe { mem::transmute(arr_view) };
-    //                     arr_view.into()
-    //                 } else {
-    //                     unreachable!()
-    //                 }
-    //             } else {
-    //                 arb_array
-    //             };
-    //             f(last_out).into()
-    //         }),
-    //         ref_expr: None,
-    //     }
-    // }
-
-    // /// chain a new function to current function chain, the function accept
-    // /// an array of type `ArrViewD<'a, T>` and return `ArrViewD<'a, T2>`
-    // pub fn chain_view_out_f<F, T2>(mut self, f: F) -> ExprInner<'a, T2>
-    // where
-    //     F: FnOnce(ArrViewD<'_, T>) -> ArrViewD<'a, T2> + Send + Sync + 'a,
-    //     T2: ExprElement,
-    // {
-    //     ExprInner::<'a, T2> {
-    //         base: self.base,
-    //         step: self.step + 1,
-    //         name: self.name.clone(),
-    //         owned: Some(false),
-    //         func: Box::new(move |base: ExprBase<'a>| {
-    //             let arb_array = (self.func)(base).into_arr();
-    //             let last_out = if matches!(arb_array, ArbArray::Owned(_)) {
-    //                 let base_expr: ExprsInner =
-    //                     ExprInner::<T>::new_with_arr(arb_array, self.name).into();
-    //                 let base_expr = Arc::new(Mutex::new(base_expr));
-    //                 if let Some(mut ref_expr) = self.ref_expr {
-    //                     ref_expr.push(base_expr);
-    //                     self.ref_expr = Some(ref_expr);
-    //                 } else {
-    //                     self.ref_expr = Some(vec![base_expr]);
-    //                 }
-    //                 if let Some(ref_expr) = &self.ref_expr {
-    //                     // this should always be true
-    //                     let e = ref_expr.last().unwrap().lock().unwrap();
-    //                     let arr_view = e.view::<T>().unwrap().into_arr();
-    //                     let arr_view: ArrViewD<'a, T> = unsafe { mem::transmute(arr_view) };
-    //                     arr_view.into()
-    //                 } else {
-    //                     unreachable!()
-    //                 }
-    //             } else {
-    //                 arb_array
-    //             };
-    //             match last_out {
-    //                 ArbArray::View(arr) => f(arr).into(),
-    //                 ArbArray::ViewMut(arr) => f(arr.view()).into(),
-    //                 ArbArray::Owned(arr) => f(arr.view()).into(),
-    //             }
-    //         }),
-    //         ref_expr: None,
-    //     }
-    // }
 
     /// chain a new function to current function chain, the function accept
     /// an array of type `ArrViewMutD<'a, T>` and modify inplace.
@@ -1350,31 +1170,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             },
             RefType::False,
         )
-        // ExprInner::<'a, T> {
-        //     base: self.base,
-        //     step: self.step + 1,
-        //     name: self.name,
-        //     owned: self.owned,
-        //     func: Box::new(move |base: ExprBase<'a>| {
-        //         let arb_array = (self.func)(base).into_arr();
-        //         match arb_array {
-        //             ArbArray::View(arr) => {
-        //                 let mut arr = arr.to_owned();
-        //                 f(&mut arr.view_mut());
-        //                 arr.into()
-        //             }
-        //             ArbArray::ViewMut(mut arr) => {
-        //                 f(&mut arr);
-        //                 arr.into()
-        //             }
-        //             ArbArray::Owned(mut arr) => {
-        //                 f(&mut arr.view_mut());
-        //                 arr.into()
-        //             }
-        //         }
-        //     }),
-        //     ref_expr: None,
-        // }
     }
 
     /// chain a new function to current function chain, the function accept
@@ -1393,21 +1188,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             },
             RefType::False,
         )
-        // ExprInner::<'a, T2> {
-        //     base: self.base,
-        //     step: self.step + 1,
-        //     name: self.name,
-        //     owned: self.owned,
-        //     func: Box::new(move |base: ExprBase<'a>| {
-        //         let arb_array = (self.func)(base).into_arr();
-        //         match arb_array {
-        //             ArbArray::View(arr) => f(arr.to_owned()).into(),
-        //             ArbArray::ViewMut(arr) => f(arr.to_owned()).into(),
-        //             ArbArray::Owned(arr) => f(arr).into(),
-        //         }
-        //     }),
-        //     ref_expr: None,
-        // }
     }
 
     /// Cast to another type

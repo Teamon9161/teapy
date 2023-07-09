@@ -1,4 +1,4 @@
-use super::{ArbArray, Expr, ExprBase, ExprElement, ExprInner, RefType};
+use super::{ArbArray, Expr, ExprElement, ExprInner, RefType};
 use crate::arr::{Arr1, Arr2, ArrD, ArrViewD, Axis, WrapNdarray};
 use ndarray::Ix2;
 use ndarray::LinalgScalar;
@@ -80,22 +80,26 @@ impl<'a> OlsResult<'a> {
 }
 
 impl<'a, T: ExprElement> ExprInner<'a, T> {
-    pub fn chain_ols_f<T2, F>(mut self, f: F) -> ExprInner<'a, T2>
+    pub fn chain_ols_f<T2, F>(self, f: F) -> ExprInner<'a, T2>
     where
         F: FnOnce(Arc<OlsResult<'_>>) -> ArbArray<'a, T2> + Send + Sync + 'a,
         T2: ExprElement,
     {
-        ExprInner::<'a, T2> {
-            base: std::mem::take(&mut self.base),
-            step: self.step + 1,
-            name: self.name,
-            owned: None,
-            func: Box::new(move |base: ExprBase<'a>| {
-                let res = (self.func)(base).into_ols_result();
-                f(res).into()
-            }),
-            ref_expr: None,
-        }
+        self.chain_f(
+            |expr_out| f(expr_out.into_ols_result()).into(),
+            RefType::False,
+        )
+        // ExprInner::<'a, T2> {
+        //     base: std::mem::take(&mut self.base),
+        //     step: self.step + 1,
+        //     name: self.name,
+        //     owned: None,
+        //     func: Box::new(move |base: ExprBase<'a>| {
+        //         let res = (self.func)(base).into_ols_result();
+        //         f(res).into()
+        //     }),
+        //     ref_expr: None,
+        // }
     }
 }
 

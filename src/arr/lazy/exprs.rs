@@ -407,24 +407,6 @@ impl<'a> ExprsInner<'a> {
         )
     }
 
-    // /// execute the expression and clone the output
-    // ///
-    // /// # Safety
-    // ///
-    // /// The data of the array view must exists.
-    // #[allow(unreachable_patterns)]
-    // pub(super) fn value<T: GetDataType>(&mut self) -> Result<ArrD<T>, &'static str> {
-    //     // we have known the datatype of the enum ,so only one arm will be executed
-    //     match_datatype_arm!(
-    //         self,
-    //         e,
-    //         ExprsInner,
-    //         T,
-    //         (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
-    //         { unsafe { Ok(e.value().into_dtype::<T>()) } }
-    //     )
-    // }
-
     #[allow(unreachable_patterns)]
     pub(super) fn eval_inplace(&mut self) {
         match_exprs_inner!(self, e, { e.eval_inplace() })
