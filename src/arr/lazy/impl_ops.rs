@@ -1,4 +1,4 @@
-use super::{Expr, ExprElement};
+use super::{Expr, ExprElement, RefType};
 use crate::arr::{DateTime, TimeDelta, WrapNdarray};
 use ndarray::{ScalarOperand, Zip};
 use std::ops::{
@@ -63,20 +63,23 @@ where
 
 impl<'a> Expr<'a, DateTime> {
     pub fn sub_datetime(self, other: Expr<'a, DateTime>, par: bool) -> Expr<'a, TimeDelta> {
-        self.chain_view_f(move |arr| {
-            if !par {
-                Zip::from(arr.0)
-                    .and(other.eval().view_arr().0)
-                    .map_collect(|v1, v2| *v1 - *v2)
-                    .wrap()
-                    .into()
-            } else {
-                Zip::from(arr.0)
-                    .and(other.eval().view_arr().0)
-                    .par_map_collect(|v1, v2| *v1 - *v2)
-                    .wrap()
-                    .into()
-            }
-        })
+        self.chain_view_f(
+            move |arr| {
+                if !par {
+                    Zip::from(arr.0)
+                        .and(other.eval().view_arr().0)
+                        .map_collect(|v1, v2| *v1 - *v2)
+                        .wrap()
+                        .into()
+                } else {
+                    Zip::from(arr.0)
+                        .and(other.eval().view_arr().0)
+                        .par_map_collect(|v1, v2| *v1 - *v2)
+                        .wrap()
+                        .into()
+                }
+            },
+            RefType::False,
+        )
     }
 }

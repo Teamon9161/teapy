@@ -1,12 +1,12 @@
 use num::traits::AsPrimitive;
 
 use super::super::{CorrMethod, Number, QuantileMethod, WinsorizeMethod};
-use super::{ArbArray, Expr, ExprElement};
+use super::{ArbArray, Expr, ExprElement, RefType};
 
 macro_rules! impl_view_lazy {
     (in1, $func:ident -> $otype:ident, ($($p:ident: $p_ty:ty),* $(,)?)) => {
         pub fn $func (self $(, $p: $p_ty)*) -> Expr<'a, $otype> {
-            self.chain_view_f(move |arr| arr.$func($($p),*).into())
+            self.chain_view_f(move |arr| arr.$func($($p),*).into(), RefType::False)
         }
     };
     (in1, [$($func: ident -> $otype:ident),* $(,)?], $other: tt) => {
@@ -27,7 +27,7 @@ macro_rules! impl_view_lazy {
                         Owned(arr)
                     },
                 }
-            })
+            }, RefType::Keep)
         }
     };
     (in1-inplace, [$($func: ident, $func_inplace: ident -> $otype:ident),* $(,)?], $other: tt) => {
@@ -39,7 +39,7 @@ macro_rules! impl_view_lazy {
         where
             T2: Number + ExprElement,
         {
-            self.chain_view_f(move |arr| arr.$func(&other.eval().view_arr(), $($p),*).into())
+            self.chain_view_f(move |arr| arr.$func(&other.eval().view_arr(), $($p),*).into(), RefType::False)
         }
     };
     (in2, [$($func: ident -> $otype:ident),* $(,)?], $other: tt) => {

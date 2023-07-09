@@ -1,4 +1,4 @@
-use super::{ArbArray, Expr, ExprBase, ExprElement, ExprInner};
+use super::{ArbArray, Expr, ExprBase, ExprElement, ExprInner, RefType};
 use crate::arr::{Arr1, Arr2, ArrD, ArrViewD, Axis, WrapNdarray};
 use ndarray::Ix2;
 use ndarray::LinalgScalar;
@@ -112,25 +112,28 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     where
         T: AsPrimitive<f64>,
     {
-        self.cast::<f64>().chain_f(move |x| {
-            let x = x.into_arr();
-            let y = y.cast::<f64>().eval();
-            let y_arr = y.view_arr();
-            let x_view = match x.ndim() {
-                1 => x.view().to_dim1().unwrap().insert_axis(Axis(1)).wrap(),
-                2 => x.view().to_dim::<Ix2>().unwrap(),
-                _ => panic!("Too much dimension in lstsq"),
-            };
-            OlsResult::new(
-                x_view
-                    .to_owned()
-                    .least_squares(&mut y_arr.to_owned())
-                    .unwrap(),
-                x,
-                y,
-            )
-            .into()
-        })
+        self.cast::<f64>().chain_f(
+            move |x| {
+                let x = x.into_arr();
+                let y = y.cast::<f64>().eval();
+                let y_arr = y.view_arr();
+                let x_view = match x.ndim() {
+                    1 => x.view().to_dim1().unwrap().insert_axis(Axis(1)).wrap(),
+                    2 => x.view().to_dim::<Ix2>().unwrap(),
+                    _ => panic!("Too much dimension in lstsq"),
+                };
+                OlsResult::new(
+                    x_view
+                        .to_owned()
+                        .least_squares(&mut y_arr.to_owned())
+                        .unwrap(),
+                    x,
+                    y,
+                )
+                .into()
+            },
+            RefType::False,
+        )
     }
 
     pub fn ols_rank(self) -> Expr<'a, i32> {
@@ -178,69 +181,81 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     where
         T: LinalgScalar,
     {
-        self.chain_view_f(move |arr| {
-            let other = other.eval();
-            arr.dot(&other.view_arr()).into()
-        })
+        self.chain_view_f(
+            move |arr| {
+                let other = other.eval();
+                arr.dot(&other.view_arr()).into()
+            },
+            RefType::False,
+        )
     }
 
     pub fn conjugate(self) -> Expr<'a, f64>
     where
         T: AsPrimitive<f64>,
     {
-        self.cast::<f64>().chain_view_f(move |arr| {
-            let arr = arr.to_dim2().expect("Array should be dim2 when conjugate");
-            let out: Arr2<f64> = conjugate(&arr);
-            out.to_dimd().unwrap().into()
-        })
+        self.cast::<f64>().chain_view_f(
+            move |arr| {
+                let arr = arr.to_dim2().expect("Array should be dim2 when conjugate");
+                let out: Arr2<f64> = conjugate(&arr);
+                out.to_dimd().unwrap().into()
+            },
+            RefType::False,
+        )
     }
 
     pub fn svd(self, full: bool, calc_uvt: bool) -> Expr<'a, f64>
     where
         T: AsPrimitive<f64>,
     {
-        self.cast::<f64>().chain_f(move |arr| {
-            let arr = arr.into_arr().try_to_owned_f();
-            let (u, s, vt) = arr.svd_into(full, calc_uvt);
-            if !calc_uvt {
-                s.into()
-            } else {
-                let res_vec: Vec<ArbArray<'a, f64>> =
-                    vec![u.unwrap().into(), s.into(), vt.unwrap().into()];
-                res_vec.into()
-            }
-        })
+        self.cast::<f64>().chain_f(
+            move |arr| {
+                let arr = arr.into_arr().try_to_owned_f();
+                let (u, s, vt) = arr.svd_into(full, calc_uvt);
+                if !calc_uvt {
+                    s.into()
+                } else {
+                    let res_vec: Vec<ArbArray<'a, f64>> =
+                        vec![u.unwrap().into(), s.into(), vt.unwrap().into()];
+                    res_vec.into()
+                }
+            },
+            RefType::False,
+        )
     }
 
     pub fn pinv(self, rcond: Option<f64>, return_s: bool) -> Expr<'a, f64>
     where
         T: AsPrimitive<f64>,
     {
-        self.cast::<f64>().chain_f(move |arr| {
-            // we don't need to conjugate because the dtype is float64
-            let arr = arr.into_arr().try_to_owned_f();
-            let shape = arr.shape();
-            let m = shape[0];
-            let n = shape[1];
-            let (u, s, vt) = arr.svd_into(false, true);
-            let u = u.unwrap().to_dim2().unwrap();
-            let vt = vt.unwrap().to_dim2().unwrap();
-            let s = s.to_dim1().unwrap();
-            let rcond = rcond.unwrap_or(f64::EPSILON * m.max(n) as f64);
-            let cutoff = rcond * s.max_1d();
-            let s = s.mapv(|v| if v > cutoff { 1. / v } else { 0. });
-            let out: ArbArray<'a, f64> = vt
-                .t()
-                .dot(&(s.to_owned().0.insert_axis(Axis(1)) * u.t()))
-                .wrap()
-                .to_dimd()
-                .unwrap()
-                .into();
-            if return_s {
-                vec![out, s.to_dimd().unwrap().into()].into()
-            } else {
-                out.into()
-            }
-        })
+        self.cast::<f64>().chain_f(
+            move |arr| {
+                // we don't need to conjugate because the dtype is float64
+                let arr = arr.into_arr().try_to_owned_f();
+                let shape = arr.shape();
+                let m = shape[0];
+                let n = shape[1];
+                let (u, s, vt) = arr.svd_into(false, true);
+                let u = u.unwrap().to_dim2().unwrap();
+                let vt = vt.unwrap().to_dim2().unwrap();
+                let s = s.to_dim1().unwrap();
+                let rcond = rcond.unwrap_or(f64::EPSILON * m.max(n) as f64);
+                let cutoff = rcond * s.max_1d();
+                let s = s.mapv(|v| if v > cutoff { 1. / v } else { 0. });
+                let out: ArbArray<'a, f64> = vt
+                    .t()
+                    .dot(&(s.to_owned().0.insert_axis(Axis(1)) * u.t()))
+                    .wrap()
+                    .to_dimd()
+                    .unwrap()
+                    .into();
+                if return_s {
+                    vec![out, s.to_dimd().unwrap().into()].into()
+                } else {
+                    out.into()
+                }
+            },
+            RefType::False,
+        )
     }
 }

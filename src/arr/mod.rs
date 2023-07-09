@@ -36,7 +36,7 @@ pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
 pub use utils::{kh_sum, DefaultNew, EmptyNew};
 
 #[cfg(feature = "lazy")]
-pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, OlsResult};
+pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, OlsResult, RefType};
 
 pub use time::{DateTime, TimeDelta, TimeUnit};
 

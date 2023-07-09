@@ -370,6 +370,12 @@ impl<'a> ExprsInner<'a> {
         match_exprs_inner!(self, e, { e.step() })
     }
 
+    #[allow(dead_code)]
+    #[allow(unreachable_patterns)]
+    pub(super) fn get_owned(&self) -> Option<bool> {
+        match_exprs_inner!(self, e, { e.get_owned() })
+    }
+
     #[allow(unreachable_patterns)]
     pub(super) fn step_acc(&self) -> usize {
         match_exprs_inner!(self, e, { e.step_acc() })

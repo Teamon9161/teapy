@@ -5,7 +5,7 @@ use ndarray::{Slice, SliceInfoElem};
 
 use super::export::*;
 use crate::{
-    arr::{ArbArray, DateTime, ExprElement, Number, TimeDelta, TimeUnit},
+    arr::{ArbArray, DateTime, ExprElement, Number, RefType, TimeDelta, TimeUnit},
     from_py::PyValue,
 };
 
@@ -490,80 +490,83 @@ impl PyExpr {
 
 impl<T: ExprElement + 'static> Expr<'static, T> {
     pub fn sort_by_expr_idx(self, mut by: Vec<PyExpr>, rev: bool) -> Expr<'static, usize> {
-        self.chain_view_f(move |arr| {
-            assert_eq!(arr.ndim(), 1, "Currently only 1 dim Expr can be sorted");
-            let arr = arr.to_dim1().unwrap();
-            let len = arr.len();
-            // evaluate the key expressions first
-            by.par_iter_mut().for_each(|e| e.eval_inplace());
-            let mut idx = Vec::from_iter(0..len);
-            idx.sort_by(move |a, b| {
-                let mut order = Ordering::Equal;
-                for e in by.iter() {
-                    let rtn = match &e.inner {
-                        Exprs::F64(e) => {
-                            let key_view = e.view();
-                            let key_arr = key_view
-                                .into_arr()
-                                .to_dim1()
-                                .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
-                            if !rev {
-                                va.nan_sort_cmp_stable(&vb)
-                            } else {
-                                va.nan_sort_cmp_rev_stable(&vb)
+        self.chain_view_f(
+            move |arr| {
+                assert_eq!(arr.ndim(), 1, "Currently only 1 dim Expr can be sorted");
+                let arr = arr.to_dim1().unwrap();
+                let len = arr.len();
+                // evaluate the key expressions first
+                by.par_iter_mut().for_each(|e| e.eval_inplace());
+                let mut idx = Vec::from_iter(0..len);
+                idx.sort_by(move |a, b| {
+                    let mut order = Ordering::Equal;
+                    for e in by.iter() {
+                        let rtn = match &e.inner {
+                            Exprs::F64(e) => {
+                                let key_view = e.view();
+                                let key_arr = key_view
+                                    .into_arr()
+                                    .to_dim1()
+                                    .expect("Currently only 1 dim Expr can be sort key");
+                                let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
+                                if !rev {
+                                    va.nan_sort_cmp_stable(&vb)
+                                } else {
+                                    va.nan_sort_cmp_rev_stable(&vb)
+                                }
                             }
-                        }
-                        Exprs::I32(e) => {
-                            let key_view = e.view();
-                            let key_arr = key_view
-                                .into_arr()
-                                .to_dim1()
-                                .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
-                            if !rev {
-                                va.nan_sort_cmp_stable(&vb)
-                            } else {
-                                va.nan_sort_cmp_rev_stable(&vb)
+                            Exprs::I32(e) => {
+                                let key_view = e.view();
+                                let key_arr = key_view
+                                    .into_arr()
+                                    .to_dim1()
+                                    .expect("Currently only 1 dim Expr can be sort key");
+                                let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
+                                if !rev {
+                                    va.nan_sort_cmp_stable(&vb)
+                                } else {
+                                    va.nan_sort_cmp_rev_stable(&vb)
+                                }
                             }
-                        }
-                        Exprs::String(e) => {
-                            let key_view = e.view();
-                            let key_arr = key_view
-                                .into_arr()
-                                .to_dim1()
-                                .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
-                            if !rev {
-                                va.cmp(vb)
-                            } else {
-                                va.cmp(vb).reverse()
+                            Exprs::String(e) => {
+                                let key_view = e.view();
+                                let key_arr = key_view
+                                    .into_arr()
+                                    .to_dim1()
+                                    .expect("Currently only 1 dim Expr can be sort key");
+                                let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
+                                if !rev {
+                                    va.cmp(vb)
+                                } else {
+                                    va.cmp(vb).reverse()
+                                }
                             }
-                        }
-                        Exprs::DateTime(e) => {
-                            let key_view = e.view();
-                            let key_arr = key_view
-                                .into_arr()
-                                .to_dim1()
-                                .expect("Currently only 1 dim Expr can be sort key");
-                            let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
-                            if !rev {
-                                va.0.cmp(&vb.0)
-                            } else {
-                                va.0.cmp(&vb.0).reverse()
+                            Exprs::DateTime(e) => {
+                                let key_view = e.view();
+                                let key_arr = key_view
+                                    .into_arr()
+                                    .to_dim1()
+                                    .expect("Currently only 1 dim Expr can be sort key");
+                                let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
+                                if !rev {
+                                    va.0.cmp(&vb.0)
+                                } else {
+                                    va.0.cmp(&vb.0).reverse()
+                                }
                             }
+                            _ => unimplemented!("sort by Expr of this dtype is not implemented"),
+                        };
+                        if rtn != Ordering::Equal {
+                            order = rtn;
+                            break;
                         }
-                        _ => unimplemented!("sort by Expr of this dtype is not implemented"),
-                    };
-                    if rtn != Ordering::Equal {
-                        order = rtn;
-                        break;
                     }
-                }
-                order
-            });
-            Arr1::from_vec(idx).to_dimd().unwrap().into()
-        })
+                    order
+                });
+                Arr1::from_vec(idx).to_dimd().unwrap().into()
+            },
+            RefType::False,
+        )
     }
 
     pub fn sort_by_expr(self, by: Vec<PyExpr>, rev: bool) -> Self

@@ -1,7 +1,7 @@
 use super::export::*;
 use super::pyfunc::{parse_expr, parse_expr_list, parse_expr_nocopy, where_};
 use crate::arr::{
-    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, TimeDelta, WinsorizeMethod,
+    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, RefType, TimeDelta, WinsorizeMethod,
 };
 use crate::from_py::{NoDim0, PyValue};
 use ndarray::SliceInfoElem;
@@ -348,14 +348,8 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub(crate) fn is_owned(&self) -> PyResult<bool> {
-        match_exprs!(&self.inner, expr, {
-            if let Some(owned) = expr.owned() {
-                Ok(owned)
-            } else {
-                Err(PyValueError::new_err("Expression is not evaluated"))
-            }
-        })
+    pub(crate) fn is_owned(&self) -> Option<bool> {
+        match_exprs!(&self.inner, expr, { expr.owned() })
     }
 
     #[allow(unreachable_patterns)]
@@ -2472,13 +2466,16 @@ impl PyExpr {
             e,
             {
                 e.clone()
-                    .chain_view_f::<_, f64>(move |arr| {
-                        arr.mapv(|v| {
-                            let scale = 10.pow(precision) as f64;
-                            (v.f64() * scale).round() / scale
-                        })
-                        .into()
-                    })
+                    .chain_view_f::<_, f64>(
+                        move |arr| {
+                            arr.mapv(|v| {
+                                let scale = 10.pow(precision) as f64;
+                                (v.f64() * scale).round() / scale
+                            })
+                            .into()
+                        },
+                        RefType::False,
+                    )
                     .to_py(self.obj())
             },
             F64,
@@ -2496,9 +2493,10 @@ impl PyExpr {
             e,
             {
                 e.clone()
-                    .chain_view_f::<_, String>(move |arr| {
-                        arr.map(|v| format!("{v:.precision$}")).into()
-                    })
+                    .chain_view_f::<_, String>(
+                        move |arr| arr.map(|v| format!("{v:.precision$}")).into(),
+                        RefType::False,
+                    )
                     .to_py(self.obj())
             },
             F64,
