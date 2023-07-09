@@ -571,9 +571,9 @@ macro_rules! impl_funcchain_new {
                             ExprBase::ExprVec(mut expr_vec) => {
                                 expr_vec.iter_mut().for_each(|e| {
                                     let mut expr_lock = e.lock().unwrap();
-                                    if expr_lock.step() != 0 {
-                                        expr_lock.eval_inplace();
-                                    }
+                                    // if expr_lock.step() != 0 {
+                                    expr_lock.eval_inplace();
+                                    // }
                                 });
                                 let expr_vec = expr_vec.into_iter().map(|e| {
                                     Expr {e, _type: PhantomData}
@@ -729,12 +729,12 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     // Create a new expression which is based on a current expression
     pub fn new_with_expr(expr: Arc<Mutex<ExprsInner<'a>>>, name: Option<String>) -> Self {
         // let step: usize;
-        let owned: Option<bool>;
+        // let owned: Option<bool>;
         let name = {
             let e = expr.lock().unwrap();
             let e_ = unsafe { e.get::<T>() };
             // (step, owned) = (e_.step, e_.owned);
-            owned = e_.owned;
+            // owned = e_.owned;
             if name.is_none() {
                 e_.name()
             } else {
@@ -745,7 +745,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         ExprInner::<T> {
             base: ExprBase::Expr(expr),
             func: EmptyNew::empty_new(),
-            owned,
+            owned: Some(false),
             step: 0,
             // step,
             name,
