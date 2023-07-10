@@ -4,6 +4,7 @@ use super::super::super::{
 };
 use super::{into_matrix, MatrixLayout};
 use lapack_sys::dgesvd_;
+use libc::c_char;
 
 impl ArrD<f64> {
     pub fn svd_into(self, full: bool, calc_uvt: bool) -> (Option<Self>, Self, Option<Self>) {
@@ -51,8 +52,8 @@ impl ArrD<f64> {
         let mut work_size = [0.];
         unsafe {
             dgesvd_(
-                &jobu as *const u8 as *const i8,
-                &jobvt as *const u8 as *const i8,
+                &jobu as *const u8 as *const c_char,
+                &jobvt as *const u8 as *const c_char,
                 &m,
                 &n,
                 std::ptr::null_mut(),       // A
@@ -79,8 +80,8 @@ impl ArrD<f64> {
         info = 0;
         unsafe {
             dgesvd_(
-                &jobu as *const u8 as *const i8,
-                &jobvt as *const u8 as *const i8,
+                &jobu as *const u8 as *const c_char,
+                &jobvt as *const u8 as *const c_char,
                 &m,
                 &n,
                 mut_arr.as_mut_ptr(),

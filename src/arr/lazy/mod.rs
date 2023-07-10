@@ -923,7 +923,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             if let Some(is_owned) = self.owned {
                 if !is_owned {
                     self.ref_expr = Some(vec![base_expr.clone()])
-                } 
+                }
                 // else if is_owned {
                 //     self.ref_expr = Some(vec![base_expr.clone()])
                 // }
@@ -1073,14 +1073,13 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     //     }
     // }
 
-
     /// chain a new function to current function chain, the function accept
     /// an array of type `ExprOut<'a, T>` and return `ExprOut<'a, T>`
     pub fn chain_f<F, T2>(mut self, f: F, ref_type: RefType) -> ExprInner<'a, T2>
     where
         F: FnOnce(ExprOut<'a, T>) -> ExprOut<'a, T2> + Send + Sync + 'a,
         T2: ExprElement,
-    {   
+    {
         if let ExprBase::Expr(base_expr) = &self.base {
             if matches!(ref_type, RefType::True) {
                 if let Some(mut ref_expr) = self.ref_expr {
@@ -1096,10 +1095,8 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         self.set_step(self.step + 1);
         let default_func: FuncChainType<'a, T> = DefaultNew::default_new();
         let ori_func = mem::replace(&mut self.func, default_func);
-        let mut out: ExprInner::<'a, T2> = unsafe{mem::transmute(self)};
-        out.set_func(Box::new(|base: ExprBase<'a>| {
-                f(ori_func(base))
-            }));
+        let mut out: ExprInner<'a, T2> = unsafe { mem::transmute(self) };
+        out.set_func(Box::new(|base: ExprBase<'a>| f(ori_func(base))));
         out
         // ExprInner::<'a, T2> {
         //     base: self.base,

@@ -1642,6 +1642,7 @@ dependencies = [
  "chrono",
  "intel-mkl-src",
  "lapack-sys",
+ "libc",
  "ndarray",
  "ndarray-npy",
  "num",
