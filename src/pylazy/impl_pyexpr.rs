@@ -324,8 +324,14 @@ impl PyExpr {
     #[getter]
     #[allow(unreachable_patterns)]
     pub fn step(&self) -> usize {
-        match_exprs!(&self.inner, expr, { expr.step() })
+        match_exprs!(&self.inner, expr, { expr.step_acc() })
     }
+
+    // #[getter]
+    // #[allow(unreachable_patterns)]
+    // pub fn step_acc(&self) -> usize {
+    //     match_exprs!(&self.inner, expr, { expr.step_acc() })
+    // }
 
     #[getter]
     #[allow(unreachable_patterns)]

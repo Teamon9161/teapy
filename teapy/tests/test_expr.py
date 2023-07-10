@@ -6,12 +6,14 @@ from teapy.testing import assert_allclose
 
 def test_slice():
     a = np.random.randn(100, 39)
-    e = tp.Expr(a)
+    e = tp.Expr(a, copy=False)
     assert_allclose(e[:10, :].eview(), a[:10, :])
     assert_allclose(e[-4:9, :].eview(), a[-4:9, :])
     assert_allclose(e[:, -2:-4].eview(), a[:, -2:-4])
     assert_allclose(e[None, :, :].eview(), a[None, :, :])
     assert_allclose(e[[-3, -5], 3:9].eview(), a[[-3, -5], 3:9])
+    e = tp.Expr(a, copy=True)
+    assert_allclose(e.argsort(axis=1)[:, :10].eview(), a.argsort(axis=1)[:, :10])
     # # currentyly the logic is not the same
     # assert_allclose(e[[-3, -5], [3, -2]].eview(), a[[-3, -5], [3, -2]])
 
