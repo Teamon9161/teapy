@@ -11,10 +11,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number,}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum = 0.;
         let mut n = 0;
         if !stable {
@@ -63,10 +64,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum = 0.;
         let mut n = 0;
         if !stable {
@@ -123,10 +125,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         // 错位相减核心公式：
         // q_x(t) = 1 * new_element - alpha(q_x(t-1 without 1st element)) - 1st element * oma ^ (n-1)
         let mut q_x = 0.; // 权重的分子部分 * 元素，使用错位相减法来计算
@@ -189,10 +192,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum = 0.;
         let mut sum_xt = 0.;
         let mut n = 0;
@@ -256,15 +260,14 @@ impl_map_nd!(
         stable: bool,
     ) -> f64
     {where T: Number}
-    {
-        if window == 1 {
+    {   
+        let window = min(self.len(), window);
+        if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
             return out.apply_mut(|v| *v = f64::NAN);
         }
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+
+        let window = min(self.len(), window);
         let mut sum = 0.;
         let mut sum2 = 0.;
         let mut n = 0;
@@ -352,10 +355,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if (window < min_periods) | (window == 1) {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum = 0.;
         let mut sum2 = 0.;
         let mut n = 0;
@@ -443,16 +447,13 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        // 如果滚动窗口是1或2则返回全nan
-        if window < 3 {
-            out.apply_mut(|v| *v = f64::NAN);
-            return;
-        }
+        
         let min_periods = min_periods.max(3);
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if (window < min_periods) | (window < 3) {
+            // 如果滚动窗口是1或2则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum = 0.;
         let mut sum2 = 0.;
         let mut sum3 = 0.;
@@ -549,16 +550,12 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        // 如果滚动窗口小于4则返回全nan
-        if window < 4 {
-            out.apply_mut(|v| *v = f64::NAN);
-            return;
-        }
         let min_periods = min_periods.max(4);
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if (window < min_periods) | (window < 4) {
+            // 如果滚动窗口是小于4则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum = 0.;
         let mut sum2 = 0.;
         let mut sum3 = 0.;
@@ -669,10 +666,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut prod = 1.;
         let mut zero_num = 0;
         let mut n = 0;
@@ -719,10 +717,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut prod = 1.;
         let mut zero_num = 0;
         let mut n = 0;

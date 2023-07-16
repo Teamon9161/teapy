@@ -11,13 +11,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        if window == 1 {
+        let window = min(self.len(), window);
+        if (window < min_periods) | (window == 1) {
+            // 如果滚动窗口是1则返回全nan
             return out.apply_mut(|v| *v = f64::NAN);
-        } // 如果滚动窗口是1则返回全nan
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        }
         let mut sum = 0.;
         let mut sum2 = 0.;
         let mut n = 0;
@@ -99,13 +97,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        if window == 1 {
+        let window = min(self.len(), window);
+        if (window < min_periods) | (window == 1) {
+            // 如果滚动窗口是1则返回全nan
             return out.apply_mut(|v| *v = f64::NAN);
-        } // 如果滚动窗口是1则返回全nan
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        }
         let mut sum = 0.;
         let mut sum2 = 0.;
         let mut n = 0;
@@ -186,13 +182,11 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        if window == 1 {
+        let window = min(self.len(), window);
+        if (window < min_periods) | (window == 1) {
+            // 如果滚动窗口是1则返回全nan
             return out.apply_mut(|v| *v = f64::NAN);
-        } // 如果滚动窗口是1则返回全nan
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        }
         let mut max: T = T::min_();
         let mut max_idx = 0;
         let mut min: T = T::max_();

@@ -1,10 +1,6 @@
 use super::super::export::*;
 
-// impl<T, S, D> ArrBase<S, D>
-// where
-//     S: Data<Elem = T>,
-//     D: Dimension,
-// {
+
 impl_map2_nd!(
     ts_cov,
     pub fn ts_cov_1d<S2, T2, S3>(
@@ -17,10 +13,12 @@ impl_map2_nd!(
     ) -> f64
     {where T: Number, T2: Number,}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        let window = min(other.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum_a = 0.;
         let mut sum_b = 0.;
         let mut sum_ab = 0.;
@@ -88,10 +86,12 @@ impl_map2_nd!(
     ) -> f64
     {where T: Number, T2: Number,}
     {
-        assert!(
-            window >= min_periods,
-            "window must be greater than min_periods"
-        );
+        let window = min(self.len(), window);
+        let window = min(other.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| *v = f64::NAN);
+        }
         let mut sum_a = 0.;
         let mut sum2_a = 0.;
         let mut sum_b = 0.;
@@ -182,4 +182,4 @@ impl_map2_nd!(
         }
     }
 );
-// }
+
