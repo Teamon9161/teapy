@@ -260,7 +260,7 @@ impl_map_nd!(
         stable: bool,
     ) -> f64
     {where T: Number}
-    {   
+    {
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
@@ -447,7 +447,7 @@ impl_map_nd!(
     ) -> f64
     {where T: Number}
     {
-        
+
         let min_periods = min_periods.max(3);
         let window = min(self.len(), window);
         if (window < min_periods) | (window < 3) {

@@ -1,6 +1,5 @@
 use super::super::export::*;
 
-
 impl_map2_nd!(
     ts_cov,
     pub fn ts_cov_1d<S2, T2, S3>(
@@ -182,4 +181,3 @@ impl_map2_nd!(
         }
     }
 );
-
