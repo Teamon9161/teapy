@@ -48,9 +48,13 @@ coverage: # rust and python coverage
 		cargo llvm-cov report --lcov --output-path coverage.lcov; \
 		"
 
-.PHONY: release
+.PHONY: release_native
 release:
 	maturin develop --release -- -C target-cpu=native
+
+.PHONY: release
+release:
+	maturin develop --release
 
 .PHONY: debug
 debug:
