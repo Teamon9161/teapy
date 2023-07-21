@@ -289,15 +289,15 @@ pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> Option<Vec<PyExpr>> {
 
 #[pyfunction]
 #[allow(clippy::missing_safety_doc)]
-#[pyo3(name="where_", signature=(expr, mask, value, par=false))]
-pub unsafe fn where_py(expr: &PyAny, mask: &PyAny, value: &PyAny, par: bool) -> PyResult<PyExpr> {
+#[pyo3(name="where_", signature=(mask, expr, value, par=false))]
+pub unsafe fn where_py(mask: &PyAny, expr: &PyAny, value: &PyAny, par: bool) -> PyResult<PyExpr> {
     let expr = parse_expr_nocopy(expr)?;
     let mask = parse_expr_nocopy(mask)?;
     let value = parse_expr_nocopy(value)?;
-    where_(expr, mask, value, par)
+    where_(mask, expr, value, par)
 }
 
-pub fn where_(expr: PyExpr, mask: PyExpr, value: PyExpr, par: bool) -> PyResult<PyExpr> {
+pub fn where_(mask: PyExpr, expr: PyExpr, value: PyExpr, par: bool) -> PyResult<PyExpr> {
     let obj_vec = vec![expr.obj(), mask.obj(), value.obj()];
     let out: PyExpr = match (&expr.inner, &value.inner) {
         (Exprs::F64(_), _) | (_, Exprs::F64(_)) => expr

@@ -287,6 +287,16 @@ def test_zscore():
         # assert_series_equal(s_copy, s3)
 
 
+def test_where():
+    a = np.random.randn(10, 10)
+    b = tp.where(a > 0, 1, 0)
+    assert_allclose(np.where(a > 0, 1, 0), b.eview())
+    b = tp.where(a > 0, 1, a)
+    assert_allclose(np.where(a > 0, 1, a), b.eview())
+    b = tp.where(a > 0, a, 0)
+    assert_allclose(np.where(a > 0, a, 0), b.eview())
+
+
 def test_winsorize():
     s = pd.Series(np.arange(12).astype(float))
 

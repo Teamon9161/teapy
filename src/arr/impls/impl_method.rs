@@ -272,27 +272,37 @@ where
         mask: &ArrBase<S2, D2>,
         value: &ArrBase<S3, D3>,
         par: bool,
-    ) -> Arr<A, <D as DimMax<D3>>::Output>
+    ) -> Arr<A, DimMaxOf<D2, DimMaxOf<D, D3>>>
     where
         A: Clone + Send + Sync,
         D: DimMax<D3>,
-        D2: Dimension,
+        D2: Dimension + DimMax<DimMaxOf<D, D3>>,
         D3: Dimension,
         S2: Data<Elem = bool>,
         S3: Data<Elem = A>,
     {
+        // <D2 as DimMax<<D as DimMax<D3>>::Output>>::Output
         let (lhs, rhs) = if self.ndim() == value.ndim() && self.shape() == value.shape() {
-            let lhs = self.view().to_dim::<<D as DimMax<D3>>::Output>().unwrap();
-            let rhs = value.view().to_dim::<<D as DimMax<D3>>::Output>().unwrap();
+            let lhs = self.view().to_dim::<DimMaxOf<D, D3>>().unwrap();
+            let rhs = value.view().to_dim::<DimMaxOf<D, D3>>().unwrap();
             (lhs, rhs)
         } else {
             self.broadcast_with(value).unwrap()
         };
 
-        let mask = if lhs.ndim() == mask.ndim() && lhs.shape() == mask.shape() {
-            mask.view().to_dim::<<D as DimMax<D3>>::Output>().unwrap()
+        let (mask, lhs, rhs) = if lhs.ndim() == mask.ndim() && lhs.shape() == mask.shape() {
+            (
+                mask.view()
+                    .to_dim::<DimMaxOf<D2, DimMaxOf<D, D3>>>()
+                    .unwrap(),
+                lhs.to_dim::<DimMaxOf<D2, DimMaxOf<D, D3>>>().unwrap(),
+                rhs.to_dim::<DimMaxOf<D2, DimMaxOf<D, D3>>>().unwrap(),
+            )
         } else {
-            mask.broadcast(lhs.raw_dim()).unwrap()
+            let (mask_new, lhs) = mask.broadcast_with(&lhs).unwrap();
+            // let rhs = rhs.broadcast(&lhs.raw_dim()).unwrap();
+            let (_, rhs) = mask.broadcast_with(&rhs).unwrap();
+            (mask_new, lhs, rhs)
         };
         if !par {
             Zip::from(&lhs.0)
