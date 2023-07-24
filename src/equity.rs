@@ -65,7 +65,7 @@ pub unsafe fn calc_ret_single(
             }
             // 账户变动信息
             let mut cash = init_cash.f64();
-            let mut last_pos = pos_arr[0];
+            let mut last_pos = 0_f64; // pos_arr[0];
             let mut last_lot_num = 0.;
             let mut last_close = closing_cost_arr[0];
             if let Some(contract_signal) = contract_signal {
@@ -88,17 +88,17 @@ pub unsafe fn calc_ret_single(
                         }
                         // 因为采用pos来判断加减仓，所以杠杆leverage必须是个常量，不应修改leverage的类型
                         if (pos != last_pos) || contract_signal {
+                            // 仓位出现变化，计算新的理论持仓手数
+                            let l = ((cash * leverage * pos.abs())
+                                / (multiplier.f64() * opening_cost))
+                                .floor();
                             let (lot_num, lot_num_change) = if !contract_signal {
-                                // 仓位出现变化，计算新的理论持仓手数
-                                let l = ((cash * leverage * pos.abs())
-                                    / (multiplier.f64() * opening_cost))
-                                    .floor();
                                 (
                                     l,
                                     (l * pos.signum() - last_lot_num * last_pos.signum()).abs(),
                                 )
                             } else {
-                                (last_lot_num, last_lot_num.abs() * 2.)
+                                (l, l.abs() * 2.)
                             };
                             // 扣除手续费变动
                             if let CommisionType::Percent = commision_type {
@@ -123,7 +123,7 @@ pub unsafe fn calc_ret_single(
                         last_close = closing_cost; // 更新上期收盘价
 
                         cash
-                        // cash
+                        // closing_cost - opening_cost
                     })
                     .wrap()
                     .to_dimd()

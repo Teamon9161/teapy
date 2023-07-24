@@ -341,7 +341,7 @@ where
 
     pub fn arg_partition(
         &self,
-        kth: usize,
+        mut kth: usize,
         sort: bool,
         rev: bool,
         axis: i32,
@@ -355,11 +355,12 @@ where
         let mut new_dim = self.raw_dim();
         let axis = self.norm_axis(axis);
         if kth >= new_dim.slice_mut()[axis.index()] {
-            panic!(
-                "kth(={}) out of bounds ({})",
-                kth,
-                new_dim.slice_mut()[axis.index()]
-            )
+            // panic!(
+            //     "kth(={}) out of bounds ({})",
+            //     kth,
+            //     new_dim.slice_mut()[axis.index()]
+            // )
+            kth = new_dim.slice_mut()[axis.index()] - 1
         }
         new_dim.slice_mut()[axis.index()] = kth + 1;
         let shape = new_dim.into_shape().set_f(f_flag);

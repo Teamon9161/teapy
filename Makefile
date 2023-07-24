@@ -49,7 +49,7 @@ coverage: # rust and python coverage
 		"
 
 .PHONY: release_native
-release:
+release_native:
 	maturin develop --release -- -C target-cpu=native
 
 .PHONY: release
