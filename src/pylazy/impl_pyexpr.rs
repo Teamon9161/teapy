@@ -1596,6 +1596,15 @@ impl PyExpr {
         })
     }
 
+    #[pyo3(signature=(kth, sort=true, rev=false, axis=0, par=false))]
+    pub fn partition(&self, kth: usize, sort: bool, rev: bool, axis: i32, par: bool) -> Self {
+        match_exprs!(numeric & self.inner, expr, {
+            expr.clone()
+                .partition(kth, sort, rev, axis, par)
+                .to_py(self.obj())
+        })
+    }
+
     #[pyo3(signature=(group, rev=false, axis=0, par=false))]
     pub fn split_group(&self, group: usize, rev: bool, axis: i32, par: bool) -> Self {
         match_exprs!(numeric & self.inner, expr, {

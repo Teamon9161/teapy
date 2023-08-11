@@ -89,7 +89,7 @@ where
     impl_view_lazy!(in1, rank -> f64, (pct: bool, rev: bool, axis: i32, par: bool));
     impl_view_lazy!(in1, argsort -> i32, (rev: bool, axis: i32, par: bool));
     impl_view_lazy!(in1, split_group -> i32, (group: usize, rev: bool, axis: i32, par: bool));
-    impl_view_lazy!(in1, arg_partition -> i32, (kth: usize, sort: bool, rev: bool, axis: i32, par: bool));
+    impl_view_lazy!(in1, [arg_partition -> i32, partition -> T], (kth: usize, sort: bool, rev: bool, axis: i32, par: bool));
     impl_view_lazy!(in2, cov -> f64, (stable: bool, axis: i32, par: bool));
     impl_view_lazy!(in2, corr -> f64, (method: CorrMethod, stable: bool, axis: i32, par: bool));
 

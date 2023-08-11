@@ -24,12 +24,14 @@ use crate::from_py::PyValue;
 pub use expr_view::ExprOutView;
 use exprs::ExprsInner;
 use num::traits::AsPrimitive;
+use parking_lot::Mutex;
 use rayon::prelude::*;
 use std::{
     fmt::Debug,
     marker::PhantomData,
     mem,
-    sync::{Arc, Mutex},
+    sync::Arc,
+    // sync::{Arc, Mutex},
 };
 
 pub enum RefType {
@@ -83,7 +85,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     fn downcast(self) -> ExprInner<'a, T> {
         match Arc::try_unwrap(self.e) {
             Ok(e) => {
-                let e = e.into_inner().expect("Poison exprs");
+                let e = e.into_inner();
                 unsafe { e.downcast::<T>() }
             }
             Err(e) => ExprInner::new_with_expr(e, None),
@@ -91,26 +93,20 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     }
 
     pub fn name(&self) -> Option<String> {
-        unsafe { self.e.lock().unwrap().get::<T>().name() }
+        unsafe { self.e.lock().get::<T>().name() }
     }
 
     /// Change the name of the Expression immediately
     pub fn rename(&mut self, name: String) {
-        unsafe { self.e.lock().unwrap().get_mut::<T>().rename(name) }
+        unsafe { self.e.lock().get_mut::<T>().rename(name) }
     }
 
     pub fn get_base_type(&self) -> &'static str {
-        unsafe { self.e.lock().unwrap().get::<T>().get_base_type() }
+        unsafe { self.e.lock().get::<T>().get_base_type() }
     }
 
     pub fn get_base_strong_count(&self) -> Result<usize, &'static str> {
-        unsafe {
-            self.e
-                .lock()
-                .unwrap()
-                .get::<T>()
-                .get_base_expr_strong_count()
-        }
+        unsafe { self.e.lock().get::<T>().get_base_expr_strong_count() }
     }
 
     #[inline(always)]
@@ -130,17 +126,17 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     #[inline]
     pub fn step(&self) -> usize {
-        unsafe { self.e.lock().unwrap().get::<T>().step }
+        unsafe { self.e.lock().get::<T>().step }
     }
 
     /// The step of the expression plus the step_acc of the base expression
     pub fn step_acc(&self) -> usize {
-        unsafe { self.e.lock().unwrap().get::<T>().step_acc() }
+        unsafe { self.e.lock().get::<T>().step_acc() }
     }
 
     #[inline]
     pub fn owned(&self) -> Option<bool> {
-        unsafe { self.e.lock().unwrap().get::<T>().get_owned() }
+        unsafe { self.e.lock().get::<T>().get_owned() }
     }
 
     pub fn split_vec_base(self, len: usize) -> Vec<Self>
@@ -245,7 +241,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     #[inline]
     pub fn eval_inplace(&mut self) {
-        unsafe { self.e.lock().unwrap().get_mut::<T>().eval_inplace() }
+        unsafe { self.e.lock().get_mut::<T>().eval_inplace() }
     }
 
     /// create a view of the output array
@@ -267,7 +263,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     #[inline]
     pub fn try_view(&self) -> Result<ExprOutView<'_, T>, &'static str> {
-        let e = self.e.lock().unwrap();
+        let e = self.e.lock();
         let view = unsafe { e.get::<T>().try_view()? };
         Ok(unsafe { mem::transmute(view) })
     }
@@ -278,7 +274,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     where
         T: Clone,
     {
-        unsafe { self.e.lock().unwrap().get_mut::<T>().value() }
+        unsafe { self.e.lock().get_mut::<T>().value() }
     }
 
     #[inline]
@@ -559,7 +555,7 @@ macro_rules! impl_funcchain_new {
                             },
                             ExprBase::Expr(exprs) => {
                                 let ref_count = Arc::strong_count(&exprs);
-                                let mut exprs_lock = exprs.lock().unwrap();
+                                let mut exprs_lock = exprs.lock();
                                 // if exprs_lock.step() != 0 {
                                 exprs_lock.eval_inplace();
                                 // }
@@ -576,7 +572,7 @@ macro_rules! impl_funcchain_new {
                             },
                             ExprBase::ExprVec(mut expr_vec) => {
                                 expr_vec.iter_mut().for_each(|e| {
-                                    let mut expr_lock = e.lock().unwrap();
+                                    let mut expr_lock = e.lock();
                                     // if expr_lock.step() != 0 {
                                     expr_lock.eval_inplace();
                                     // }
@@ -759,7 +755,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         // let step: usize;
         let owned: Option<bool>;
         let name = {
-            let e = expr.lock().unwrap();
+            let e = expr.lock();
             let e_ = unsafe { e.get::<T>() };
             // (step, owned) = (e_.step, e_.owned);
             owned = e_.owned;
@@ -812,10 +808,10 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     /// The step of the expression plus the step_acc of the base expression
     pub fn step_acc(&self) -> usize {
         let base_acc_step = match &self.base {
-            ExprBase::Expr(eb) => eb.lock().unwrap().step_acc(),
+            ExprBase::Expr(eb) => eb.lock().step_acc(),
             ExprBase::ExprVec(ebs) => {
                 let mut acc = 0;
-                ebs.iter().for_each(|e| acc += e.lock().unwrap().step_acc());
+                ebs.iter().for_each(|e| acc += e.lock().step_acc());
                 acc
             }
             _ => 0,
@@ -919,14 +915,11 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
 
     pub fn update_ref_expr(&mut self) {
         if let ExprBase::Expr(base_expr) = &mut self.base {
-            base_expr.lock().unwrap().eval_inplace();
+            base_expr.lock().eval_inplace();
             if let Some(is_owned) = self.owned {
                 if !is_owned {
                     self.ref_expr = Some(vec![base_expr.clone()])
                 }
-                // else if is_owned {
-                //     self.ref_expr = Some(vec![base_expr.clone()])
-                // }
             }
         }
     }
@@ -963,9 +956,9 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             match &self.base {
                 ExprBase::Expr(_) => self.update_ref_expr(),
                 // we assume that the result are not based on the expressions
-                ExprBase::ExprVec(ebs) => ebs
-                    .into_par_iter()
-                    .for_each(|eb| eb.lock().unwrap().eval_inplace()),
+                ExprBase::ExprVec(ebs) => {
+                    ebs.into_par_iter().for_each(|eb| eb.lock().eval_inplace())
+                }
                 _ => {}
             }
         }
@@ -988,7 +981,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
                     .into())
             },
             ExprBase::Expr(expr) => {
-                let expr_lock = expr.lock().unwrap();
+                let expr_lock = expr.lock();
                 if expr_lock.step() == 0 {
                     unsafe { Ok(mem::transmute(expr_lock.view::<T>()?)) }
                 } else {
@@ -1061,18 +1054,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         (self.func)(self.base)
     }
 
-    // pub fn add_depend_expr(&mut self, expr: Arc<Mutex<ExprsInner<'a>>>) {
-    //     if matches!(ref_type, RefType::True) {
-    //         // self.ref_expr = Some(vec![base_expr.clone()])
-    //         if let Some(mut ref_expr) = self.ref_expr {
-    //             ref_expr.push(base_expr);
-    //             self.ref_expr = Some(ref_expr);
-    //         } else {
-    //             self.ref_expr = Some(vec![base_expr]);
-    //         }
-    //     }
-    // }
-
     /// chain a new function to current function chain, the function accept
     /// an array of type `ExprOut<'a, T>` and return `ExprOut<'a, T>`
     pub fn chain_f<F, T2>(mut self, f: F, ref_type: RefType) -> ExprInner<'a, T2>
@@ -1098,64 +1079,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         let mut out: ExprInner<'a, T2> = unsafe { mem::transmute(self) };
         out.set_func(Box::new(|base: ExprBase<'a>| f(ori_func(base))));
         out
-        // ExprInner::<'a, T2> {
-        //     base: self.base,
-        //     step: self.step + 1,
-        //     name: self.name.clone(),
-        //     owned: self.owned,
-        //     func: Box::new(move |base: ExprBase<'a>| {
-        //         // if matches!(base, ExprBase::Expr(_)) & matches!(ref_type, RefType::False) {
-        //         //     self.ref_expr = None
-        //         // }
-        //         let expr_out = (self.func)(base);
-        //         match expr_out {
-        //             ExprOut::Arr(arb_array) => {
-        //                 let last_out = if arb_array.is_owned() {
-        //                     match ref_type {
-        //                         RefType::True => {
-        //                             let base_expr: ExprsInner =
-        //                                 ExprInner::<T>::new_with_arr(arb_array, self.name).into();
-        //                             let base_expr = Arc::new(Mutex::new(base_expr));
-        //                             if let Some(mut ref_expr) = self.ref_expr {
-        //                                 ref_expr.push(base_expr);
-        //                                 self.ref_expr = Some(ref_expr);
-        //                             } else {
-        //                                 self.ref_expr = Some(vec![base_expr]);
-        //                             }
-        //                             if let Some(ref_expr) = &self.ref_expr {
-        //                                 // this should always be true
-        //                                 let e = ref_expr.last().unwrap().lock().unwrap();
-        //                                 let arr_view = e.view::<T>().unwrap().into_arr();
-        //                                 let arr_view: ArrViewD<'a, T> =
-        //                                     unsafe { mem::transmute(arr_view) };
-        //                                 arr_view.into()
-        //                             } else {
-        //                                 unreachable!()
-        //                             }
-        //                         }
-        //                         _ => arb_array,
-        //                     }
-        //                 } else {
-        //                     arb_array
-        //                 };
-        //                 let out = f(ExprOut::Arr(last_out));
-        //                 if out.is_owned() {
-        //                     self.ref_expr = None;
-        //                 }
-        //                 out
-        //             }
-        //             _ => {
-        //                 let out = f(expr_out);
-        //                 if out.is_owned() {
-        //                     self.ref_expr = None;
-        //                 }
-        //                 out
-        //             }
-        //         }
-        //         // f((self.func)(base).into_arr()).into()
-        //     }),
-        //     ref_expr: None,
-        // }
     }
 
     /// chain a new function to current function chain, the function accept

@@ -9,4 +9,5 @@ data/
 wheels/
 venv/
 Cargo.lock
+**/*_bak.rs
 

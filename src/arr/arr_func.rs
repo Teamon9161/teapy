@@ -109,6 +109,41 @@ where
         }
     }
 
+    /// sort: whether to sort the result by the size of the element
+    pub fn partition_1d<S2>(&self, mut out: ArrBase<S2, Ix1>, kth: usize, sort: bool, rev: bool)
+    where
+        T: Number,
+        S2: DataMut<Elem = T>,
+    {
+        let n = self.count_notnan_1d() as usize;
+        if n <= kth + 1 {
+            if !sort {
+                out.apply_mut_with(self, |vo, v| *vo = *v);
+            } else {
+                let mut arr = self.to_owned(); // clone the array
+                if !rev {
+                    arr.sort_unstable_by(|a, b| a.nan_sort_cmp(b));
+                } else {
+                    arr.sort_unstable_by(|a, b| a.nan_sort_cmp_rev(b));
+                }
+                out.apply_mut_with(&arr, |vo, v| *vo = *v);
+            }
+            return;
+        }
+        let mut out_c = self.0.to_owned().into_raw_vec(); // clone the array
+        let sort_func = if !rev {
+            T::nan_sort_cmp
+        } else {
+            T::nan_sort_cmp_rev
+        };
+        out_c.select_nth_unstable_by(kth, sort_func);
+        out_c.truncate(kth + 1);
+        if sort {
+            out_c.sort_unstable_by(sort_func)
+        }
+        out.apply_mut_with(&Arr1::from_vec(out_c), |vo, v| *vo = *v);
+    }
+
     /// Hash each element of the array.
     #[inline]
     pub fn hash_1d(self, hasher: &RandomState) -> Arr1<u64>
@@ -355,11 +390,6 @@ where
         let mut new_dim = self.raw_dim();
         let axis = self.norm_axis(axis);
         if kth >= new_dim.slice_mut()[axis.index()] {
-            // panic!(
-            //     "kth(={}) out of bounds ({})",
-            //     kth,
-            //     new_dim.slice_mut()[axis.index()]
-            // )
             kth = new_dim.slice_mut()[axis.index()] - 1
         }
         new_dim.slice_mut()[axis.index()] = kth + 1;
@@ -368,6 +398,34 @@ where
         let mut out_wr = out.view_mut();
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.arg_partition_1d(out_1d, kth, sort, rev)
+        });
+        out
+    }
+
+    pub fn partition(
+        &self,
+        mut kth: usize,
+        sort: bool,
+        rev: bool,
+        axis: i32,
+        par: bool,
+    ) -> Arr<T, D>
+    where
+        T: Number + Send + Sync,
+        D: Dimension,
+    {
+        let f_flag = !self.is_standard_layout();
+        let mut new_dim = self.raw_dim();
+        let axis = self.norm_axis(axis);
+        if kth >= new_dim.slice_mut()[axis.index()] {
+            kth = new_dim.slice_mut()[axis.index()] - 1
+        }
+        new_dim.slice_mut()[axis.index()] = kth + 1;
+        let shape = new_dim.into_shape().set_f(f_flag);
+        let mut out = Arr::<T, D>::default(shape);
+        let mut out_wr = out.view_mut();
+        self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
+            x_1d.partition_1d(out_1d, kth, sort, rev)
         });
         out
     }

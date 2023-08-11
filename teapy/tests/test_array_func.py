@@ -72,6 +72,37 @@ def test_arg_partition():
     assert_allclose(arr.arg_partition(2, rev=True).eview(), np.array([2, 0, -1]))
 
 
+def test_partition():
+    arr = np.array(
+        [
+            [6, 0, -2, 8, -7],
+            [-2, 3, -10, 2, 9],
+            [-11, -2, 5, 9, 3],
+            [-6, 1, 3, -1, 6],
+            [-10, -5, -1, -8, -3],
+        ]
+    )
+    res1 = Expr(arr).partition(1, axis=0).eview()
+    exp1 = np.array([[-11, -5, -10, -8, -7], [-10, -2, -2, -1, -3]])
+    assert_allclose(res1, exp1)
+    res2 = Expr(arr).partition(1, axis=1, rev=True).eview()
+    exp2 = np.array([[8, 6], [9, 3], [9, 5], [6, 3], [-1, -3]])
+    assert_allclose(res2, exp2)
+    res3 = Expr(arr).partition(4, axis=1, rev=True, sort=True).eview()
+    exp3 = np.array(
+        [
+            [8, 6, 0, -2, -7],
+            [9, 3, 2, -2, -10],
+            [9, 5, 3, -2, -11],
+            [6, 3, 1, -1, -6],
+            [-1, -3, -5, -8, -10],
+        ]
+    )
+    assert_allclose(res3, exp3)
+    arr = Expr([1, np.nan, 3, np.nan, np.nan])
+    assert_allclose(arr.partition(2, rev=True).eview(), np.array([3, 1, np.nan]))
+
+
 @given(make_arr((10, 10)), st.integers(0, 1))
 def test_min(arr, axis):
     res1 = tp.min(arr, axis=axis)
@@ -191,7 +222,6 @@ def test_kurt(arr, axis):
 
 @given(make_arr((10, 2)))
 def test_cov(arr):
-    # arr = make_arr((10, 2)).example()
     cov_pd = pd.DataFrame(arr).cov().iloc[0, 1]
     arr1, arr2 = np.array_split(arr, 2, axis=1)
     cov1 = tp.cov(arr1, arr2, axis=0)[0]

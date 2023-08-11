@@ -1636,7 +1636,7 @@ checksum = "fd1ba337640d60c3e96bc6f0638a939b9c9a7f2c316a1598c279828b3d1dc8c5"
 
 [[package]]
 name = "teapy"
-version = "0.1.13"
+version = "0.1.14"
 dependencies = [
  "ahash",
  "chrono",
@@ -1648,6 +1648,7 @@ dependencies = [
  "num",
  "numpy",
  "openblas-src",
+ "parking_lot",
  "pyo3",
  "rayon",
  "regex",
