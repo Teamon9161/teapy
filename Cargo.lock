@@ -1647,6 +1647,7 @@ dependencies = [
  "ndarray-npy",
  "num",
  "numpy",
+ "once_cell",
  "openblas-src",
  "parking_lot",
  "pyo3",

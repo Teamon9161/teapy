@@ -6,8 +6,32 @@ use crate::arr::{
 use crate::from_py::{NoDim0, PyValue};
 use ndarray::SliceInfoElem;
 use num::PrimInt;
-use pyo3::{pyclass::CompareOp, PyTraverseError, PyVisit};
+use pyo3::{pyclass::CompareOp, PyTraverseError, PyVisit, exceptions::PyAttributeError};
 use std::iter::repeat;
+use ahash::{HashMap, HashMapExt};
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+
+static PYEXPR_ATTRIBUTE: Lazy<Mutex<HashMap::<String, PyObject>>> = Lazy::new(|| {
+    Mutex::new(HashMap::<String, PyObject>::with_capacity(10))
+});
+
+#[pyfunction]
+#[pyo3(signature=(name, f))]
+pub fn expr_register(
+    name: String,
+    f: PyObject,
+) -> PyResult<()> {
+    let mut attr_dict = PYEXPR_ATTRIBUTE.lock();
+    let _ = attr_dict.insert(name.clone(), f);
+    Ok(())
+    // if res.is_none() {
+    //     Ok(())
+    // } else {
+    //     Err(PyValueError::new_err(format!("{name} all ready exists")))
+    // }
+}
+
 
 macro_rules! impl_py_matmul {
     (cast_to_same $self: expr, $other: expr, $func: ident $(,$args: expr)*) => {
@@ -389,6 +413,19 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     pub fn hint_arr_type(&mut self) -> Self {
         match_exprs!(&self.inner, expr, { expr.clone().hint_arr_type().into() })
+    }
+
+    pub fn __getattr__<'py>(self: PyRef<'py, Self>, attr: &'py str, py: Python<'py>) -> PyResult<&'py PyAny> {
+        let attr_dict = PYEXPR_ATTRIBUTE.lock();
+        let res = attr_dict.get(attr);
+        if res.is_some() {
+            let func = res.unwrap().clone();
+            let functools = py.import("functools")?;
+            let partial = functools.getattr("partial")?;
+            partial.call1((func, self))
+        } else {
+            Err(PyAttributeError::new_err(format!("'PyExpr' object has no attribute {attr}")))
+        }
     }
 
     unsafe fn __add__(&self, other: &PyAny) -> PyResult<Self> {
@@ -1842,6 +1879,19 @@ impl PyExpr {
                 .ts_sma(window, min_periods, stable, axis, par)
                 .to_py(self.obj())
         })
+    }
+
+    #[cfg(feature = "window_func")]
+    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    pub fn ts_mean(
+        &self,
+        window: usize,
+        min_periods: usize,
+        stable: bool,
+        axis: i32,
+        par: bool,
+    ) -> Self {
+        self.ts_sma(window, min_periods, stable, axis, par)
     }
 
     #[cfg(feature = "window_func")]
