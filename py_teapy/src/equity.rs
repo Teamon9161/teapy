@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
 
-use crate::arr::{Arr1, Expr, Number, RefType, WrapNdarray};
+use super::pylazy::ExprToPy;
 use crate::pylazy::{parse_expr_nocopy, PyExpr};
 use ahash::{HashMap, HashMapExt};
 use ndarray::{Array1, Axis, Zip};
 use pyo3::{pyfunction, FromPyObject, PyAny, PyResult};
+use tears::{Arr1, Expr, Number, RefType, WrapNdarray};
 
 pub enum CommisionType {
     Percent,

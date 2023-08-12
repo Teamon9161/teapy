@@ -5,7 +5,7 @@ use std::collections::hash_map::RawEntryMut;
 use std::iter::repeat;
 use std::sync::{Arc, Mutex};
 
-use crate::arr::{join_left, JoinType};
+use tears::{join_left, JoinType};
 
 use super::export::*;
 
@@ -884,7 +884,7 @@ impl PyDataDict {
                         .data
                         .into_iter()
                         .map(|e| {
-                            use Exprs::*;
+                            use tears::Exprs::*;
                             match &e.inner {
                                 F32(_) | F64(_) | String(_) => match_exprs!(
                                     &e.inner,
@@ -977,7 +977,7 @@ impl PyDataDict {
             .into_iter()
             .map(|key| &self.get_by_str(key).inner)
             .collect_trusted();
-        let (len, hasher, hashed_keys) = crate::arr::groupby::prepare_groupby(&subset_exprs, None);
+        let (len, hasher, hashed_keys) = tears::groupby::prepare_groupby(&subset_exprs, None);
         let mut out_idx = Vec::with_capacity(len);
         if keep == "first" {
             let mut map = HashMap::<u64, u8>::with_capacity_and_hasher(len, hasher.clone());

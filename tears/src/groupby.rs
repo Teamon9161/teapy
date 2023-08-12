@@ -40,7 +40,7 @@ static GROUP_DICT_INIT_SIZE: usize = 512;
 static GROUP_VEC_INIT_SIZE: usize = 32;
 
 /// Prepare for a groupby, return len of each key, a hasher and hashed keys
-pub(crate) fn prepare_groupby(
+pub fn prepare_groupby(
     keys: &Vec<&Exprs>,
     hasher: Option<RandomState>,
 ) -> (usize, RandomState, Vec<Arr1<u64>>) {

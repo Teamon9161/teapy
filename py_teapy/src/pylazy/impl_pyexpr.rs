@@ -1,12 +1,13 @@
 use super::export::*;
 use super::pyfunc::{parse_expr, parse_expr_list, parse_expr_nocopy, where_};
-use crate::arr::{
-    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, RefType, TimeDelta, WinsorizeMethod,
-};
-use crate::from_py::{NoDim0, PyValue};
+use crate::from_py::NoDim0;
 use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
-use num::PrimInt;
+use tears::PyValue;
+use tears::{
+    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, RefType, TimeDelta, WinsorizeMethod,
+};
+// use num::PrimInt;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use pyo3::{exceptions::PyAttributeError, pyclass::CompareOp, PyTraverseError, PyVisit};
@@ -21,11 +22,6 @@ pub fn expr_register(name: String, f: PyObject) -> PyResult<()> {
     let mut attr_dict = PYEXPR_ATTRIBUTE.lock();
     let _ = attr_dict.insert(name, f);
     Ok(())
-    // if res.is_none() {
-    //     Ok(())
-    // } else {
-    //     Err(PyValueError::new_err(format!("{name} all ready exists")))
-    // }
 }
 
 macro_rules! impl_py_matmul {
@@ -339,6 +335,7 @@ impl PyExpr {
             Object
         )
     }
+
 
     #[getter]
     #[allow(unreachable_patterns)]
@@ -1124,7 +1121,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or_else(|| f64::NAN.into()).cast_f64()?,
+                    fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f64()?,
                     axis,
                     par,
                 )
@@ -1133,7 +1130,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or_else(|| f64::NAN.into()).cast_f32()?,
+                    fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f32()?,
                     axis,
                     par,
                 )
@@ -1182,7 +1179,8 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or_else(|| "".to_owned().into()).cast_string()?,
+                    fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
+                        .cast_string()?,
                     axis,
                     par,
                 )
@@ -1194,7 +1192,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or_else(|| "".to_owned().into())
+                    fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
                         .cast_timedelta()?,
                     axis,
                     par,
@@ -1204,7 +1202,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or_else(|| DateTime(Default::default()).into())
+                    fill.unwrap_or_else(|| DateTime(Default::default()).into_pyexpr())
                         .cast_datetime(None)?,
                     axis,
                     par,
@@ -1214,7 +1212,7 @@ impl PyExpr {
                 .clone()
                 .shift(
                     n,
-                    fill.unwrap_or_else(|| PyValue(py.None()).into())
+                    fill.unwrap_or_else(|| PyValue(py.None()).into_pyexpr())
                         .cast_object_eager(py)?,
                     axis,
                     par,
@@ -1280,7 +1278,7 @@ impl PyExpr {
         let axis = if let Some(axis) = axis {
             parse_expr_nocopy(axis)?
         } else {
-            0.into()
+            0.into_pyexpr()
         };
         let obj = mask.obj();
         let obj2 = axis.obj();
@@ -1303,7 +1301,7 @@ impl PyExpr {
         let axis = if let Some(axis) = axis {
             parse_expr_nocopy(axis)?
         } else {
-            0.into()
+            0.into_pyexpr()
         };
         let obj = axis.obj();
         Ok(match_exprs!(
@@ -2199,7 +2197,7 @@ impl PyExpr {
     #[pyo3(signature=(slc, axis=0))]
     pub unsafe fn select(&self, slc: &PyAny, axis: i32) -> PyResult<Self> {
         let slc = parse_expr_nocopy(slc)?;
-        self._select_on_axis_by_expr(slc, axis.into())
+        self._select_on_axis_by_expr(slc, axis.into_pyexpr())
     }
 
     #[pyo3(signature=(slc, axis=0, par=false))]
@@ -2535,7 +2533,7 @@ impl PyExpr {
                     .chain_view_f::<_, f64>(
                         move |arr| {
                             arr.mapv(|v| {
-                                let scale = 10.pow(precision) as f64;
+                                let scale = 10_i32.pow(precision) as f64;
                                 (v.f64() * scale).round() / scale
                             })
                             .into()

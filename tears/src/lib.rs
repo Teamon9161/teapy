@@ -1,3 +1,17 @@
+#![feature(hash_raw_entry)]
+#![feature(arc_unwrap_or_clone)]
+#![feature(arbitrary_self_types)]
+#![feature(get_mut_unchecked)]
+#![feature(fn_traits)]
+#![feature(min_specialization)]
+#![feature(drain_filter)]
+
+#[cfg(any(feature = "intel-mkl-system", feature = "intel-mkl-static"))]
+extern crate intel_mkl_src as _src;
+
+#[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
+extern crate openblas_src as _src;
+
 mod agg;
 mod arr_func;
 mod corr;
@@ -7,6 +21,8 @@ mod iterators;
 mod join;
 mod macros;
 mod option_datetype;
+#[macro_use]
+mod from_py;
 
 #[cfg(feature = "window_func")]
 mod window;
@@ -18,6 +34,7 @@ pub mod groupby;
 #[macro_use]
 pub mod lazy;
 mod impls;
+pub mod pyvalue;
 pub mod time;
 pub mod util_trait;
 pub mod utils;
@@ -36,8 +53,12 @@ pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
 pub use utils::{kh_sum, DefaultNew, EmptyNew};
 
 #[cfg(feature = "lazy")]
-pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, OlsResult, RefType};
+pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, RefType};
 
+#[cfg(feature = "blas")]
+pub use lazy::OlsResult;
+
+pub use pyvalue::PyValue;
 pub use time::{DateTime, TimeDelta, TimeUnit};
 
 use ndarray::{
@@ -656,8 +677,6 @@ impl<T> From<ArrD<T>> for ArbArray<'_, T> {
         ArbArray::Owned(arr)
     }
 }
-
-use crate::from_py::PyValue;
 
 #[derive(Debug)]
 pub enum ArrOk<'a> {

@@ -1,9 +1,8 @@
+use super::super::impls::{conjugate, LeastSquaresResult};
 use super::{ArbArray, Expr, ExprElement, ExprInner, RefType};
-use crate::arr::{Arr1, Arr2, ArrD, ArrViewD, Axis, WrapNdarray};
+use crate::{Arr1, Arr2, ArrD, ArrViewD, Axis, WrapNdarray};
 use ndarray::Ix2;
 use ndarray::LinalgScalar;
-// use ndarray_linalg::{conjugate};
-use super::super::impls::{conjugate, LeastSquaresResult};
 use num::traits::AsPrimitive;
 use std::sync::Arc;
 
@@ -27,22 +26,6 @@ pub struct OlsResult<'a> {
 }
 
 impl<'a> OlsResult<'a> {
-    // pub fn new<D: Dimension>(
-    //     lstsq_result: LeastSquaresResult<f64, D>,
-    //     x: ArbArray<'a, f64>,
-    //     y: Expr<'a, f64>,
-    // ) -> Self {
-    //     OlsResult {
-    //         x,
-    //         y,
-    //         singular_values: lstsq_result.singular_values.wrap(),
-    //         solution: lstsq_result.solution.wrap().to_dimd().unwrap(),
-    //         rank: lstsq_result.rank,
-    //         residual_sum_of_squares: lstsq_result
-    //             .residual_sum_of_squares
-    //             .map(|arr| arr.wrap().to_dimd().unwrap()),
-    //     }
-    // }
     pub fn new(lstsq_result: LeastSquaresResult, x: ArbArray<'a, f64>, y: Expr<'a, f64>) -> Self {
         OlsResult {
             x,
@@ -89,17 +72,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             |expr_out| f(expr_out.into_ols_result()).into(),
             RefType::False,
         )
-        // ExprInner::<'a, T2> {
-        //     base: std::mem::take(&mut self.base),
-        //     step: self.step + 1,
-        //     name: self.name,
-        //     owned: None,
-        //     func: Box::new(move |base: ExprBase<'a>| {
-        //         let res = (self.func)(base).into_ols_result();
-        //         f(res).into()
-        //     }),
-        //     ref_expr: None,
-        // }
     }
 }
 

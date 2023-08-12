@@ -1,0 +1,45 @@
+[package]
+name = "tears"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Wrapper of NdArray"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["lazy", "window_func", "blas"]
+lazy = []
+window_func = []
+blas = ["ndarray/blas", "lazy", "stat", "lapack-sys", "intel-mkl"]
+npy = ["ndarray-npy"]
+stat = ["statrs"]
+
+# blas choices
+openblas  = ["openblas-static"]
+intel-mkl = ["intel-mkl-static"]
+
+openblas-static = ["openblas-src/static"]
+openblas-system = ["openblas-src/system"]
+
+intel-mkl-static = ["intel-mkl-src/mkl-static-lp64-seq"]
+intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
+
+[dependencies]
+num = { workspace=true }
+ndarray = { workspace=true }
+ahash = { workspace=true }
+numpy = { workspace=true }
+rayon = { workspace=true }
+libc = { workspace=true }
+serde = { workspace=true }
+pyo3 = { workspace=true }
+parking_lot = { workspace=true }
+chrono = { workspace=true }
+serde_with = { workspace=true }
+lapack-sys = { version="0.14.0", optional=true }
+intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }
+openblas-src = { version = "0.10.4", optional = true, default-features = false, features = ["cblas"] }
+statrs = { version = "0.16", optional=true }
+ndarray-npy = { version = "0.8.1", optional=true }

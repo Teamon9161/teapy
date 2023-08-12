@@ -1,7 +1,6 @@
 // use crate::arr::ArbArray;
 
-use crate::arr::TimeDelta;
-use crate::from_py::PyValue;
+use crate::{PyValue, TimeDelta};
 
 use super::super::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};

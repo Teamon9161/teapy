@@ -4,10 +4,7 @@ use std::ops::Deref;
 use ndarray::{Slice, SliceInfoElem};
 
 use super::export::*;
-use crate::{
-    arr::{ArbArray, DateTime, ExprElement, Number, RefType, TimeDelta, TimeUnit},
-    from_py::PyValue,
-};
+use tears::{ArbArray, DateTime, ExprElement, Number, PyValue, RefType, TimeDelta, TimeUnit};
 
 #[pyclass(subclass)]
 #[derive(Clone, Default)]
@@ -25,12 +22,23 @@ impl From<Exprs<'static>> for PyExpr {
     }
 }
 
-impl<T: ExprElement + 'static> From<T> for PyExpr {
-    fn from(v: T) -> Self {
-        let e: Expr<'static, T> = Expr::new(v.into(), None);
+pub trait IntoPyExpr {
+    fn into_pyexpr(self) -> PyExpr;
+}
+
+impl<T: ExprElement + 'static> IntoPyExpr for T {
+    fn into_pyexpr(self) -> PyExpr {
+        let e: Expr<'static, T> = self.into();
         e.into()
     }
 }
+// impl<T: ExprElement + 'static> From<T> for PyExpr {
+//     fn from(v: T) -> Self {
+//         // let e: Expr<'static, T> = Expr::new(v.into(), None);
+//         let e: Expr<'static, T> = v.into();
+//         e.into()
+//     }
+// }
 
 impl Deref for PyExpr {
     type Target = Exprs<'static>;
@@ -50,13 +58,18 @@ where
     }
 }
 
-impl<T: ExprElement + 'static> Expr<'static, T> {
-    pub fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
+pub trait ExprToPy {
+    fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr;
+    fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr;
+}
+
+impl<T: ExprElement + 'static> ExprToPy for Expr<'static, T> {
+    fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
         let exprs: Exprs<'static> = self.into();
         PyExpr { inner: exprs, obj }
     }
 
-    pub fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
+    fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
         let exprs: Exprs<'static> = self.into();
         PyExpr {
             inner: exprs,
@@ -65,11 +78,39 @@ impl<T: ExprElement + 'static> Expr<'static, T> {
     }
 }
 
-impl Exprs<'static> {
-    pub fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
+impl ExprToPy for Exprs<'static> {
+    fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
         PyExpr { inner: self, obj }
     }
+
+    fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
+        PyExpr {
+            inner: self,
+            obj: Some(vec![obj.into_py(py)]),
+        }
+    }
 }
+
+// impl<T: ExprElement + 'static> Expr<'static, T> {
+//     pub fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
+//         let exprs: Exprs<'static> = self.into();
+//         PyExpr { inner: exprs, obj }
+//     }
+
+//     pub fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
+//         let exprs: Exprs<'static> = self.into();
+//         PyExpr {
+//             inner: exprs,
+//             obj: Some(vec![obj.into_py(py)]),
+//         }
+//     }
+// }
+
+// impl Exprs<'static> {
+//     pub fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
+//         PyExpr { inner: self, obj }
+//     }
+// }
 
 impl PyExpr {
     #[inline]
@@ -262,7 +303,7 @@ impl PyExpr {
 
     pub fn _select_on_axis(&self, slc: Vec<usize>, axis: i32) -> Self {
         let slc_expr: Expr<usize> = slc.into();
-        self._select_on_axis_by_expr(slc_expr.into(), axis.into())
+        self._select_on_axis_by_expr(slc_expr.into(), axis.into_pyexpr())
             .unwrap()
     }
 
@@ -488,8 +529,13 @@ impl PyExpr {
     }
 }
 
-impl<T: ExprElement + 'static> Expr<'static, T> {
-    pub fn sort_by_expr_idx(self, mut by: Vec<PyExpr>, rev: bool) -> Expr<'static, usize> {
+pub trait SortExpr {
+    fn sort_by_expr(self, by: Vec<PyExpr>, rev: bool) -> Self;
+    fn sort_by_expr_idx(self, by: Vec<PyExpr>, rev: bool) -> Expr<'static, usize>;
+}
+
+impl<T: ExprElement + Clone + 'static> SortExpr for Expr<'static, T> {
+    fn sort_by_expr_idx(self, mut by: Vec<PyExpr>, rev: bool) -> Expr<'static, usize> {
         self.chain_view_f(
             move |arr| {
                 assert_eq!(arr.ndim(), 1, "Currently only 1 dim Expr can be sorted");
@@ -569,10 +615,7 @@ impl<T: ExprElement + 'static> Expr<'static, T> {
         )
     }
 
-    pub fn sort_by_expr(self, by: Vec<PyExpr>, rev: bool) -> Self
-    where
-        T: Clone,
-    {
+    fn sort_by_expr(self, by: Vec<PyExpr>, rev: bool) -> Self {
         let idx = self.clone().sort_by_expr_idx(by, rev);
         // safety: the idx is valid
         unsafe { self.take_on_axis_by_expr_unchecked(idx, 0, false) }

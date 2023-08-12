@@ -1,5 +1,5 @@
 use super::{Expr, ExprElement, RefType};
-use crate::arr::{DateTime, TimeDelta, WrapNdarray};
+use crate::{DateTime, TimeDelta, WrapNdarray};
 use ndarray::{ScalarOperand, Zip};
 use std::ops::{
     Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Div, DivAssign, Mul, MulAssign, Neg,

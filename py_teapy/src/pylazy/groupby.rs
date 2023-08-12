@@ -1,4 +1,4 @@
-use crate::arr::{groupby, groupby_par};
+use tears::{groupby, groupby_par};
 
 use super::export::*;
 

@@ -1,0 +1,29 @@
+[package]
+name = "py_teapy"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Fash DataDict Library in Python"
+
+
+[features]
+default = ["lazy", "window_func", "blas"]
+lazy = ["tears/lazy"]
+window_func = ["tears/window_func"]
+blas = ["tears/blas", "lazy", "stat"]
+npy = ["tears/npy"]
+stat = ["tears/stat"]
+
+[dependencies]
+tears = { path = "../tears", default-features = false, optional = true}
+
+pyo3 = { workspace=true }
+numpy = { workspace=true }
+parking_lot = { workspace=true }
+ahash = { workspace=true }
+rayon = { workspace=true }
+regex = { workspace=true }
+once_cell = { workspace=true }
+ndarray = { workspace=true }

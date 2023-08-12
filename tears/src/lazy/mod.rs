@@ -20,7 +20,7 @@ use super::{
     ArbArray, Arr1, ArrD, ArrOk, ArrViewD, ArrViewMutD, CollectTrustedToVec, DataType, DateTime,
     DefaultNew, EmptyNew, GetDataType, TimeDelta, TimeUnit,
 };
-use crate::from_py::PyValue;
+use crate::PyValue;
 pub use expr_view::ExprOutView;
 use exprs::ExprsInner;
 use num::traits::AsPrimitive;

@@ -1,7 +1,7 @@
 use ndarray::{Array1, Axis, Slice};
 use pyo3::types::{PyList as PyList3, PyTuple};
 
-use crate::arr::{ArbArray, DateTime, TimeDelta};
+use tears::{ArbArray, DateTime, TimeDelta};
 
 use super::super::from_py::{PyArrayOk, PyList};
 use super::export::*;

@@ -1,7 +1,6 @@
 //! impl methods that return an array.
 
-use crate::arr::{ArbArray, GetNone, TimeDelta};
-use crate::from_py::PyValue;
+use crate::{ArbArray, GetNone, PyValue, TimeDelta};
 
 use super::super::{
     Arr, Arr1, Axis, CollectTrustedToVec, DateTime, FillMethod, Number, WrapNdarray,

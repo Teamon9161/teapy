@@ -4,12 +4,13 @@ mod groupby;
 mod impl_pyexpr;
 mod pyexpr;
 mod pyfunc;
-mod time;
+// mod time;
 
 pub use datadict::PyDataDict;
 pub use groupby::PyGroupBy;
 pub use impl_pyexpr::expr_register;
 pub use pyexpr::PyExpr;
+pub use pyexpr::{ExprToPy, IntoPyExpr, SortExpr};
 pub use pyfunc::{
     arange, concat_expr, concat_expr_py, datetime, eval, from_pandas, full,
     get_newey_west_adjust_s, parse_expr, parse_expr_list, parse_expr_nocopy, stack_expr_py,
