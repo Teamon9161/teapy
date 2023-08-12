@@ -368,8 +368,8 @@ def test_split_group(arr, group):
         out = np.ceil(x.rank(method=method) / (size / group))
         return out.fillna(0)
 
-    arr = pd.Series(arr)
     s1 = tp.split_group(arr, group)
     s2 = Expr(arr).split_group(group).eview()
+    arr = pd.Series(arr)
     s3 = split_group_py(arr, group)
     assert_allclose3(s1, s2, s3)

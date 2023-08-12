@@ -21,7 +21,7 @@ Expr.where = Expr.where_
 
 def register(f):
     """expr function register"""
-    expr_register(f.__qualname__, f)
+    expr_register(f.__name__, f)
     return f
 
 
