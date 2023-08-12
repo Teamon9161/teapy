@@ -8,13 +8,13 @@ mod time;
 
 pub use datadict::PyDataDict;
 pub use groupby::PyGroupBy;
+pub use impl_pyexpr::expr_register;
 pub use pyexpr::PyExpr;
 pub use pyfunc::{
     arange, concat_expr, concat_expr_py, datetime, eval, from_pandas, full,
     get_newey_west_adjust_s, parse_expr, parse_expr_list, parse_expr_nocopy, stack_expr_py,
     timedelta, where_py,
 };
-pub use impl_pyexpr::expr_register;
 
 use pyo3::prelude::{wrap_pyfunction, PyModule, PyResult};
 
@@ -35,6 +35,6 @@ pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_newey_west_adjust_s, m)?)?;
     m.add_function(wrap_pyfunction!(parse_expr, m)?)?;
     m.add_function(wrap_pyfunction!(parse_expr_list, m)?)?;
-    
+
     Ok(())
 }

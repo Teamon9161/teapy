@@ -39,8 +39,10 @@ def test_special():
     # test rank all nan array
     assert_allclose(tp.rank(np.array([np.nan, np.nan])), np.array([np.nan, np.nan]))
 
+
 def test_register():
     @tp.register
     def mean_test(e, axis):
         return e.mean(axis=axis)
+
     assert tp.Expr([1, 2, 3]).mean_test(axis=0).eview() == 2

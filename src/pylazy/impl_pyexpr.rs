@@ -4,26 +4,22 @@ use crate::arr::{
     DateTime, DropNaMethod, ExprOut, ExprOutView, Number, RefType, TimeDelta, WinsorizeMethod,
 };
 use crate::from_py::{NoDim0, PyValue};
+use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
 use num::PrimInt;
-use pyo3::{pyclass::CompareOp, PyTraverseError, PyVisit, exceptions::PyAttributeError};
-use std::iter::repeat;
-use ahash::{HashMap, HashMapExt};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use pyo3::{exceptions::PyAttributeError, pyclass::CompareOp, PyTraverseError, PyVisit};
+use std::iter::repeat;
 
-static PYEXPR_ATTRIBUTE: Lazy<Mutex<HashMap::<String, PyObject>>> = Lazy::new(|| {
-    Mutex::new(HashMap::<String, PyObject>::with_capacity(10))
-});
+static PYEXPR_ATTRIBUTE: Lazy<Mutex<HashMap<String, PyObject>>> =
+    Lazy::new(|| Mutex::new(HashMap::<String, PyObject>::with_capacity(10)));
 
 #[pyfunction]
 #[pyo3(signature=(name, f))]
-pub fn expr_register(
-    name: String,
-    f: PyObject,
-) -> PyResult<()> {
+pub fn expr_register(name: String, f: PyObject) -> PyResult<()> {
     let mut attr_dict = PYEXPR_ATTRIBUTE.lock();
-    let _ = attr_dict.insert(name.clone(), f);
+    let _ = attr_dict.insert(name, f);
     Ok(())
     // if res.is_none() {
     //     Ok(())
@@ -31,7 +27,6 @@ pub fn expr_register(
     //     Err(PyValueError::new_err(format!("{name} all ready exists")))
     // }
 }
-
 
 macro_rules! impl_py_matmul {
     (cast_to_same $self: expr, $other: expr, $func: ident $(,$args: expr)*) => {
@@ -415,16 +410,22 @@ impl PyExpr {
         match_exprs!(&self.inner, expr, { expr.clone().hint_arr_type().into() })
     }
 
-    pub fn __getattr__<'py>(self: PyRef<'py, Self>, attr: &'py str, py: Python<'py>) -> PyResult<&'py PyAny> {
+    pub fn __getattr__<'py>(
+        self: PyRef<'py, Self>,
+        attr: &'py str,
+        py: Python<'py>,
+    ) -> PyResult<&'py PyAny> {
         let attr_dict = PYEXPR_ATTRIBUTE.lock();
         let res = attr_dict.get(attr);
-        if res.is_some() {
-            let func = res.unwrap().clone();
+        if let Some(res) = res {
+            let func = res.clone();
             let functools = py.import("functools")?;
             let partial = functools.getattr("partial")?;
             partial.call1((func, self))
         } else {
-            Err(PyAttributeError::new_err(format!("'PyExpr' object has no attribute {attr}")))
+            Err(PyAttributeError::new_err(format!(
+                "'PyExpr' object has no attribute {attr}"
+            )))
         }
     }
 
