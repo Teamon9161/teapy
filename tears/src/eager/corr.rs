@@ -1,4 +1,4 @@
-use super::export::*;
+use super::super::export::*;
 
 #[derive(Copy, Clone)]
 pub enum CorrMethod {

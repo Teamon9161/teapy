@@ -1,10 +1,33 @@
+pub mod time;
+
+#[cfg(feature = "option_dtype")]
+mod option_datatype;
+mod pyvalue;
+
 use super::utils::kh_sum;
-use super::{DateTime, TimeDelta};
-use num::{cast::AsPrimitive, traits::MulAdd, FromPrimitive, Num, NumCast, ToPrimitive};
-use numpy::Element;
+use num::{cast::AsPrimitive, traits::MulAdd, Num};
+// use numpy::Element;
 use std::cmp::{Ordering, PartialOrd};
-use std::fmt::Display;
+// use std::fmt::Display;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
+
+pub use pyvalue::PyValue;
+
+pub use time::{DateTime, TimeDelta, TimeUnit};
+
+#[cfg(feature = "option_dtype")]
+pub use option_datatype::{ArrToOpt, OptF32, OptF64, OptI32, OptI64, OptUsize};
+
+#[cfg(not(feature = "option_dtype"))]
+pub struct OptF32;
+#[cfg(not(feature = "option_dtype"))]
+pub struct OptF64;
+#[cfg(not(feature = "option_dtype"))]
+pub struct OptI32;
+#[cfg(not(feature = "option_dtype"))]
+pub struct OptI64;
+#[cfg(not(feature = "option_dtype"))]
+pub struct OptUsize;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum DataType {
@@ -20,10 +43,41 @@ pub enum DataType {
     DateTime,
     TimeDelta,
     OpUsize,
-    // F64Test,
+    #[cfg(feature = "option_dtype")]
+    OptF64,
+    #[cfg(feature = "option_dtype")]
+    OptF32,
+    #[cfg(feature = "option_dtype")]
+    OptI32,
+    #[cfg(feature = "option_dtype")]
+    OptI64,
+    #[cfg(feature = "option_dtype")]
+    OptUsize,
 }
 
 macro_rules! match_datatype_arm {
+
+    (all $expr: expr, $v: ident, $other_enum: ident, $ty: ty, $body: tt) => {
+        {
+            #[cfg(not(feature="option_dtype"))]
+            macro_rules! inner_macro {
+                () => {
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize), $body)
+                };
+            }
+            #[cfg(feature="option_dtype")]
+            macro_rules! inner_macro {
+                () => {
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize, OptF64, OptF32, OptI32, OptI64, OptUsize), $body)
+                };
+            }
+            inner_macro!()
+        }
+
+        // match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize), $body);
+        // #[cfg(feature="option_dtype")]
+        // match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize, OptF64, OptF32, OptI32, OptI64, OptUsize), $body);
+    };
     ($expr: expr, $v: ident, $other_enum: ident, $ty: ty, ($($arm: ident $(($arg: ident))?),*), $body: tt) => {
         match <$ty>::dtype() {
             $(DataType::$arm $(($arg))? => {if let $other_enum::$arm($v) = $expr $body else {panic!("datatype mismatch {:?} {:?}", <$ty>::dtype(), $expr)}},)*
@@ -63,7 +117,17 @@ impl_datatype!(TimeDelta, TimeDelta);
 
 impl_datatype!(OpUsize, Option<usize>);
 
-// impl_datatype!(F64Test, Option<f64>);
+#[cfg(feature = "option_dtype")]
+impl_datatype!(OptF64, OptF64);
+#[cfg(feature = "option_dtype")]
+impl_datatype!(OptF32, OptF32);
+#[cfg(feature = "option_dtype")]
+impl_datatype!(OptI32, OptI32);
+#[cfg(feature = "option_dtype")]
+impl_datatype!(OptI64, OptI64);
+#[cfg(feature = "option_dtype")]
+impl_datatype!(OptUsize, OptUsize);
+
 pub trait GetNone {
     fn none() -> Self;
 }
@@ -98,10 +162,10 @@ pub trait Number:
     + Clone
     + Sized
     + Default
-    + Display
-    + FromPrimitive
+    // + Display
+    // + FromPrimitive
     + Num
-    + NumCast
+    // + NumCast
     + AddAssign
     + SubAssign
     + MulAssign
@@ -109,8 +173,8 @@ pub trait Number:
     + PartialOrd
     + MulAdd
     + GetDataType
-    + Element
-    + ToPrimitive
+    // + Element
+    // + ToPrimitive
     + AsPrimitive<f64>
     + AsPrimitive<f32>
     + AsPrimitive<usize>
@@ -124,7 +188,10 @@ pub trait Number:
     /// return the max value of the data type
     fn max_() -> Self;
 
-    fn kh_sum(&mut self, v: Self, c: &mut Self);
+    #[inline(always)]
+    fn kh_sum(&mut self, v: Self, c: &mut Self) {
+        *self = kh_sum(*self, v, c);
+    }
 
     /// return min(self, other)
     /// note that self should not be nan
@@ -331,10 +398,10 @@ macro_rules! impl_number {
                 <$dtype>::NAN
             }
 
-            #[inline(always)]
-            fn kh_sum(&mut self, v: Self, c: &mut Self) {
-                *self = kh_sum(*self, v, c);
-            }
+            // #[inline(always)]
+            // fn kh_sum(&mut self, v: Self, c: &mut Self) {
+            //     *self = kh_sum(*self, v, c);
+            // }
         })*
     };
     // special impl for other type
@@ -344,7 +411,7 @@ macro_rules! impl_number {
 
             #[inline]
             fn nan() -> Self {
-                panic!("This type of number doesn't habe NaN value")
+                panic!("This type of number doesn't have NaN value")
             }
 
             // these types doen't have NaN

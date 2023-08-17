@@ -1159,9 +1159,10 @@ dependencies = [
 
 [[package]]
 name = "py_teapy"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ahash",
+ "chrono",
  "ndarray",
  "numpy",
  "once_cell",
@@ -1658,7 +1659,7 @@ dependencies = [
 
 [[package]]
 name = "tears"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ahash",
  "chrono",

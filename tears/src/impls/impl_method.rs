@@ -1,5 +1,7 @@
-use super::super::{Arr, ArrBase, ArrView, Data, RawData, WrapNdarray};
-use ndarray::{DataMut, DimMax, Dimension, ErrorKind, IntoDimension, ShapeError, Zip};
+use super::super::{Arr, ArrBase, ArrView, WrapNdarray};
+use ndarray::{
+    Data, DataMut, DimMax, Dimension, ErrorKind, IntoDimension, RawData, ShapeError, Zip,
+};
 // use std::fmt::Debug;
 
 type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
@@ -87,6 +89,7 @@ macro_rules! izip {
 ///
 /// Uses the [NumPy broadcasting rules]
 //  (https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html#general-broadcasting-rules).
+#[allow(unused_mut)]
 pub fn co_broadcast<D1, D2, Output>(shape1: &D1, shape2: &D2) -> Result<Output, ShapeError>
 where
     D1: Dimension,
@@ -103,7 +106,7 @@ where
     for (out, s) in izip!(out.slice_mut(), shape1.slice()) {
         *out = *s;
     }
-    for (out, s2) in izip!(&mut out.slice_mut()[k..], shape2.slice()) {
+    for (mut out, s2) in izip!(&mut out.slice_mut()[k..], shape2.slice()) {
         if *out != *s2 {
             if *out == 1 {
                 *out = *s2

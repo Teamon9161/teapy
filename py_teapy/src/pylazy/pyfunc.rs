@@ -3,6 +3,9 @@ use pyo3::types::{PyList as PyList3, PyTuple};
 
 use tears::{ArbArray, DateTime, TimeDelta};
 
+// #[cfg(feature="option_dtype")]
+// use tears::datatype::OptDateTime;
+
 use super::super::from_py::{PyArrayOk, PyList};
 use super::export::*;
 
@@ -88,34 +91,36 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         } else if pyarr.is_datetime() {
             // we don't need to reference to the pyobject here because we made a copy
             use PyArrayOk::*;
-            let out: PyExpr = match pyarr {
-                DateTimeMs(arr) => Expr::new_from_owned(
-                    arr.readonly()
-                        .as_array()
-                        .map(|v| Into::<DateTime>::into(*v))
-                        .wrap(),
-                    None,
-                )
-                .into(),
-                DateTimeNs(arr) => Expr::new_from_owned(
-                    arr.readonly()
-                        .as_array()
-                        .map(|v| Into::<DateTime>::into(*v))
-                        .wrap(),
-                    None,
-                )
-                .into(),
-                DateTimeUs(arr) => Expr::new_from_owned(
-                    arr.readonly()
-                        .as_array()
-                        .map(|v| Into::<DateTime>::into(*v))
-                        .wrap(),
-                    None,
-                )
-                .into(),
-                _ => unreachable!(),
-            };
-            return Ok(out);
+            {
+                let out: PyExpr = match pyarr {
+                    DateTimeMs(arr) => Expr::new_from_owned(
+                        arr.readonly()
+                            .as_array()
+                            .map(|v| Into::<DateTime>::into(*v))
+                            .wrap(),
+                        None,
+                    )
+                    .into(),
+                    DateTimeNs(arr) => Expr::new_from_owned(
+                        arr.readonly()
+                            .as_array()
+                            .map(|v| Into::<DateTime>::into(*v))
+                            .wrap(),
+                        None,
+                    )
+                    .into(),
+                    DateTimeUs(arr) => Expr::new_from_owned(
+                        arr.readonly()
+                            .as_array()
+                            .map(|v| Into::<DateTime>::into(*v))
+                            .wrap(),
+                        None,
+                    )
+                    .into(),
+                    _ => unreachable!(),
+                };
+                return Ok(out);
+            }
         }
 
         if copy {

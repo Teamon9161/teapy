@@ -1,8 +1,8 @@
-use super::super::super::{
+use crate::{
     utils::{vec_uninit, VecAssumeInit},
-    Arr2, ArrBase, Data, ShapeError, WrapNdarray,
+    Arr2, ArrBase, WrapNdarray,
 };
-use ndarray::{ArrayBase, Dimension};
+use ndarray::{ArrayBase, Data, Dimension, ShapeError};
 use std::mem::MaybeUninit;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -34,6 +34,9 @@ use std::{
     // sync::{Arc, Mutex},
 };
 
+#[cfg(feature = "option_dtype")]
+use super::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
+
 pub enum RefType {
     True,
     False,
@@ -54,6 +57,17 @@ impl ExprElement for DateTime {}
 impl ExprElement for TimeDelta {}
 
 impl ExprElement for Option<usize> {}
+
+#[cfg(feature = "option_dtype")]
+impl ExprElement for OptF64 {}
+#[cfg(feature = "option_dtype")]
+impl ExprElement for OptF32 {}
+#[cfg(feature = "option_dtype")]
+impl ExprElement for OptI32 {}
+#[cfg(feature = "option_dtype")]
+impl ExprElement for OptI64 {}
+#[cfg(feature = "option_dtype")]
+impl ExprElement for OptUsize {}
 
 #[derive(Default, Clone, Debug)]
 pub struct Expr<'a, T: ExprElement> {
@@ -516,18 +530,42 @@ where
                     let arr: ArrD<Option<usize>> = Default::default();
                     arr.into_dtype::<T>().into()
                 }),
-                // _ => unimplemented!("Default Func chain of this type is not implemented")
+                #[cfg(feature = "option_dtype")]
+                DataType::OptF64 => Box::new(move |_| {
+                    let arr: ArrD<OptF64> = Default::default();
+                    arr.into_dtype::<T>().into()
+                }),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptF32 => Box::new(move |_| {
+                    let arr: ArrD<OptF32> = Default::default();
+                    arr.into_dtype::<T>().into()
+                }),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptI32 => Box::new(move |_| {
+                    let arr: ArrD<OptI32> = Default::default();
+                    arr.into_dtype::<T>().into()
+                }),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptI64 => Box::new(move |_| {
+                    let arr: ArrD<OptI64> = Default::default();
+                    arr.into_dtype::<T>().into()
+                }),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptUsize => Box::new(move |_| {
+                    let arr: ArrD<OptUsize> = Default::default();
+                    arr.into_dtype::<T>().into()
+                }),
             }
         }
     }
 }
 
 macro_rules! impl_funcchain_new {
-    ($expr: expr, $($arm: ident $(($arg: ident))?),*) => {
+    ($expr: expr, $($(#[$meta: meta])? $arm: ident $(($arg: ident))?),*) => {
         unsafe {
             // Safety: T and the type in each arm are just the same type.
             match $expr {
-                $(DataType::$arm $(($arg))? => {
+                $($(#[$meta])? DataType::$arm $(($arg))? => {
                     Box::new(|base| {
                         match base {
                             ExprBase::Arr(arr_dyn) => {
@@ -586,7 +624,7 @@ macro_rules! impl_funcchain_new {
                         }
                     })
                 },)*
-                _ => unimplemented!("Not support dtype of function chain")
+                // _ => unimplemented!("Not support dtype of function chain")
             }
         }
     };
@@ -611,7 +649,17 @@ where
             Object,
             DateTime,
             TimeDelta,
-            OpUsize
+            OpUsize,
+            #[cfg(feature = "option_dtype")]
+            OptF32,
+            #[cfg(feature = "option_dtype")]
+            OptF64,
+            #[cfg(feature = "option_dtype")]
+            OptI32,
+            #[cfg(feature = "option_dtype")]
+            OptI64,
+            #[cfg(feature = "option_dtype")]
+            OptUsize
         )
     }
 }
@@ -1186,13 +1234,12 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     where
         T: AsPrimitive<i64>,
     {
-        if (T::dtype() == DataType::DateTime) || unit.is_none() {
+        if T::dtype() == DataType::DateTime {
+            // || unit.is_none() {
             unsafe { mem::transmute(self) }
         } else {
-            self.chain_view_f(
-                move |arr| arr.to_datetime(unit.unwrap()).into(),
-                RefType::False,
-            )
+            let unit = unit.unwrap_or_default();
+            self.chain_view_f(move |arr| arr.to_datetime(unit).into(), RefType::False)
         }
     }
 

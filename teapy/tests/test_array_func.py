@@ -1,3 +1,6 @@
+import datetime
+import time
+
 import numpy as np
 import pandas as pd
 from hypothesis import given
@@ -12,6 +15,13 @@ from teapy.testing import (
     assert_series_equal,
     make_arr,
 )
+
+
+def test_cast_datetime():
+    t = int(time.time())
+    now1 = datetime.datetime.utcfromtimestamp(t)
+    now2 = tp.Expr(t).cast("datetime(s)").eview()
+    assert now1 == now2
 
 
 @given(make_arr(30, unique=True, nan_p=0))
@@ -296,7 +306,6 @@ def test_clip():
 def test_dropna(arr, axis):
     # test dropna 1d
     s = pd.Series([np.nan, 5, 6, 12, np.nan, 1, np.nan, np.nan])
-    # assert_series_equal(tp.remove_nan(s), s.dropna())
     assert_allclose3(tp.dropna(s), Expr(s).dropna().eview(), s.dropna())
     # test dropna 2d
     assert_allclose(

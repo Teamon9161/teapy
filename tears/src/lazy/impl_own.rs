@@ -2,11 +2,9 @@
 
 use crate::{ArbArray, GetNone, PyValue, TimeDelta};
 
-use super::super::{
-    Arr, Arr1, Axis, CollectTrustedToVec, DateTime, FillMethod, Number, WrapNdarray,
-};
+use super::super::{Arr, Arr1, CollectTrustedToVec, DateTime, FillMethod, Number, WrapNdarray};
 use super::{Expr, ExprElement, RefType};
-use ndarray::{Array1, ArrayViewD, Zip};
+use ndarray::{Array1, ArrayViewD, Axis, Zip};
 use num::traits::{real::Real, AsPrimitive};
 use num::{Float, One, Signed, Zero};
 use pyo3::Python;

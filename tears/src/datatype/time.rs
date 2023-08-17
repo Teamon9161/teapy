@@ -1,5 +1,6 @@
 use chrono::{Datelike, Duration, Months, NaiveDateTime};
 use ndarray::ScalarOperand;
+use num::traits::AsPrimitive;
 use numpy::{
     datetime::{Datetime as NPDatetime, Unit as NPUnit},
     npyffi::NPY_DATETIMEUNIT,
@@ -32,12 +33,24 @@ const SECS_PER_DAY: i64 = 86400;
 const SECS_PER_WEEK: i64 = 604800;
 
 #[derive(Clone, Copy, Default, Debug, Hash, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct DateTime(pub NaiveDateTime);
+pub struct DateTime(pub Option<NaiveDateTime>);
+
+impl From<Option<NaiveDateTime>> for DateTime {
+    fn from(dt: Option<NaiveDateTime>) -> Self {
+        Self(dt)
+    }
+}
 
 impl Deref for DateTime {
-    type Target = NaiveDateTime;
+    type Target = Option<NaiveDateTime>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl AsPrimitive<i64> for DateTime {
+    fn as_(self) -> i64 {
+        self.map_or(i64::MIN, |dt| dt.timestamp())
     }
 }
 
@@ -55,7 +68,15 @@ impl Deref for DateTime {
 
 impl DateTime {
     #[inline]
+    pub fn from_timestamp_opt(secs: i64, nsecs: u32) -> Self {
+        Self(NaiveDateTime::from_timestamp_opt(secs, nsecs))
+    }
+
+    #[inline]
     pub fn from_timestamp_ms(ms: i64) -> Option<Self> {
+        // if ms == i64::MIN {
+        //     return Self::from_timestamp_opt(ms, 0)
+        // }
         let mut secs = ms / MILLIS_PER_SEC;
         if ms < 0 {
             secs = secs.checked_sub(1)?;
@@ -72,13 +93,14 @@ impl DateTime {
             }
             nsecs
         };
-        Some(Self(
-            NaiveDateTime::from_timestamp_opt(secs, nsecs).unwrap_or_default(),
-        ))
+        Some(Self::from_timestamp_opt(secs, nsecs))
     }
 
     #[inline]
     pub fn from_timestamp_us(us: i64) -> Option<Self> {
+        // if us == i64::MIN {
+        //     return Self::from_timestamp_opt(us, 0)
+        // }
         let mut secs = us / MICROS_PER_SEC;
         if us < 0 {
             secs = secs.checked_sub(1)?;
@@ -95,13 +117,14 @@ impl DateTime {
             }
             nsecs
         };
-        Some(Self(
-            NaiveDateTime::from_timestamp_opt(secs, nsecs).unwrap_or_default(),
-        ))
+        Some(Self::from_timestamp_opt(secs, nsecs))
     }
 
     #[inline]
     pub fn from_timestamp_ns(ns: i64) -> Option<Self> {
+        // if ns == i64::MIN {
+        //     return Self::from_timestamp_opt(ns, 0)
+        // }
         let mut secs = ns / (NANOS_PER_SEC as i64);
         if ns < 0 {
             secs = secs.checked_sub(1)?;
@@ -118,35 +141,39 @@ impl DateTime {
             }
             nsecs
         };
-        Some(Self(
-            NaiveDateTime::from_timestamp_opt(secs, nsecs).unwrap_or_default(),
-        ))
+        Some(Self::from_timestamp_opt(secs, nsecs))
     }
 
     pub fn parse(s: &str, fmt: &str) -> Result<Self, String> {
-        Ok(Self(
+        Ok(Self(Some(
             NaiveDateTime::parse_from_str(s, fmt).map_err(|e| format!("{e}"))?,
-        ))
+        )))
     }
 
     pub fn strftime(&self, fmt: Option<String>) -> String {
         if let Some(fmt) = fmt {
-            self.0.format(&fmt).to_string()
+            self.0
+                .map_or("NaT".to_string(), |dt| dt.format(&fmt).to_string())
         } else {
-            self.0.to_string()
+            self.0.map_or("NaT".to_string(), |dt| dt.to_string())
         }
     }
 }
 
 impl ToString for DateTime {
     fn to_string(&self) -> String {
-        self.0.to_string()
+        self.strftime(None)
+        // self.0.to_string()
     }
 }
 
 impl<U: NPUnit> From<NPDatetime<U>> for DateTime {
     fn from(dt: NPDatetime<U>) -> Self {
         use NPY_DATETIMEUNIT::*;
+        let value: i64 = dt.into();
+        if value == i64::MIN {
+            return DateTime(None);
+        }
         match U::UNIT {
             NPY_FR_ms => DateTime::from_timestamp_ms(dt.into()).unwrap_or_default(),
             NPY_FR_us => DateTime::from_timestamp_us(dt.into()).unwrap_or_default(),
@@ -168,11 +195,15 @@ impl ToPyObject for DateTime {
 impl DateTime {
     pub fn into_np_datetime<T: NPUnit>(self) -> NPDatetime<T> {
         use NPY_DATETIMEUNIT::*;
-        match T::UNIT {
-            NPY_FR_ms => self.timestamp_millis().into(),
-            NPY_FR_us => self.timestamp_micros().into(),
-            NPY_FR_ns => self.timestamp_nanos().into(),
-            _ => unreachable!(),
+        if let Some(dt) = self.0 {
+            match T::UNIT {
+                NPY_FR_ms => dt.timestamp_millis().into(),
+                NPY_FR_us => dt.timestamp_micros().into(),
+                NPY_FR_ns => dt.timestamp_nanos().into(),
+                _ => unreachable!(),
+            }
+        } else {
+            i64::MIN.into()
         }
     }
 }
@@ -185,8 +216,8 @@ pub enum TimeUnit {
     Hour,
     Minute,
     Second,
-    #[default]
     Millisecond,
+    #[default]
     Microsecond,
     Nanosecond,
 }
@@ -207,56 +238,65 @@ pub struct TimeDelta {
 
 impl Default for TimeDelta {
     fn default() -> Self {
-        Self {
-            months: 0,
-            inner: Duration::hours(0),
-        }
+        TimeDelta::nat()
     }
 }
 
 impl Add<TimeDelta> for DateTime {
     type Output = DateTime;
     fn add(self, rhs: TimeDelta) -> Self::Output {
-        let out = if rhs.months != 0 {
-            if rhs.months > 0 {
-                self.0 + Months::new(rhs.months as u32)
+        if let Some(dt) = self.0 && rhs.is_not_nat() {
+            let out = if rhs.months != 0 {
+                if rhs.months > 0 {
+                    dt + Months::new(rhs.months as u32)
+                } else {
+                    dt - Months::new((-rhs.months) as u32)
+                }
             } else {
-                self.0 - Months::new((-rhs.months) as u32)
-            }
+                dt
+            };
+            DateTime(Some(out + rhs.inner))
         } else {
-            self.0
-        };
-        DateTime(out + rhs.inner)
+            DateTime(None)
+        }
     }
 }
 
 impl Sub<TimeDelta> for DateTime {
     type Output = DateTime;
     fn sub(self, rhs: TimeDelta) -> Self::Output {
-        let out = if rhs.months != 0 {
-            if rhs.months > 0 {
-                self.0 - Months::new(rhs.months as u32)
+        if let Some(dt) = self.0 && rhs.is_not_nat(){
+            let out = if rhs.months != 0 {
+                if rhs.months > 0 {
+                    dt - Months::new(rhs.months as u32)
+                } else {
+                    dt + Months::new((-rhs.months) as u32)
+                }
             } else {
-                self.0 + Months::new((-rhs.months) as u32)
-            }
+                dt
+            };
+            DateTime(Some(out + rhs.inner))
         } else {
-            self.0
-        };
-        DateTime(out + rhs.inner)
+            DateTime(None)
+        }
     }
 }
 
 impl Sub<DateTime> for DateTime {
     type Output = TimeDelta;
     fn sub(self, rhs: DateTime) -> Self::Output {
-        let r_year = rhs.0.year();
-        let years = self.0.year() - r_year;
-        let months = self.0.month() as i32 - rhs.0.month() as i32;
-        let duration =
-            self.0.with_year(r_year).unwrap().with_month(1).unwrap() - rhs.0.with_month(1).unwrap();
-        TimeDelta {
-            months: 12 * years + months,
-            inner: duration,
+        if let (Some(dt1), Some(dt2)) = (self.0, rhs.0) {
+            let r_year = dt2.year();
+            let years = dt1.year() - r_year;
+            let months = dt1.month() as i32 - dt2.month() as i32;
+            let duration =
+                dt1.with_year(r_year).unwrap().with_month(1).unwrap() - dt2.with_month(1).unwrap();
+            TimeDelta {
+                months: 12 * years + months,
+                inner: duration,
+            }
+        } else {
+            TimeDelta::nat()
         }
     }
 }
@@ -328,6 +368,22 @@ impl TimeDelta {
             inner: duration,
         }
     }
+
+    fn nat() -> Self {
+        Self {
+            months: i32::MIN,
+            inner: Duration::seconds(0),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn is_nat(&self) -> bool {
+        self.months == i32::MIN
+    }
+
+    fn is_not_nat(&self) -> bool {
+        self.months != i32::MIN
+    }
 }
 
 impl Neg for TimeDelta {
@@ -335,9 +391,13 @@ impl Neg for TimeDelta {
 
     #[inline]
     fn neg(self) -> TimeDelta {
-        Self {
-            months: -self.months,
-            inner: -self.inner,
+        if self.is_not_nat() {
+            Self {
+                months: -self.months,
+                inner: -self.inner,
+            }
+        } else {
+            self
         }
     }
 }
@@ -346,9 +406,13 @@ impl Add for TimeDelta {
     type Output = TimeDelta;
 
     fn add(self, rhs: TimeDelta) -> TimeDelta {
-        Self {
-            months: self.months + rhs.months,
-            inner: self.inner + rhs.inner,
+        if self.is_not_nat() & rhs.is_not_nat() {
+            Self {
+                months: self.months + rhs.months,
+                inner: self.inner + rhs.inner,
+            }
+        } else {
+            TimeDelta::nat()
         }
     }
 }
@@ -357,9 +421,13 @@ impl Sub for TimeDelta {
     type Output = TimeDelta;
 
     fn sub(self, rhs: TimeDelta) -> TimeDelta {
-        Self {
-            months: self.months - rhs.months,
-            inner: self.inner - rhs.inner,
+        if self.is_not_nat() & rhs.is_not_nat() {
+            Self {
+                months: self.months - rhs.months,
+                inner: self.inner - rhs.inner,
+            }
+        } else {
+            TimeDelta::nat()
         }
     }
 }
@@ -368,9 +436,13 @@ impl Mul<i32> for TimeDelta {
     type Output = TimeDelta;
 
     fn mul(self, rhs: i32) -> Self {
-        Self {
-            months: self.months * rhs,
-            inner: self.inner * rhs,
+        if self.is_not_nat() {
+            Self {
+                months: self.months * rhs,
+                inner: self.inner * rhs,
+            }
+        } else {
+            TimeDelta::nat()
         }
     }
 }
@@ -379,10 +451,14 @@ impl Div<i32> for TimeDelta {
     type Output = TimeDelta;
 
     fn div(self, rhs: i32) -> TimeDelta {
-        // may not as expected
-        Self {
-            months: self.months / rhs,
-            inner: self.inner / rhs,
+        if self.is_not_nat() {
+            // may not as expected
+            Self {
+                months: self.months / rhs,
+                inner: self.inner / rhs,
+            }
+        } else {
+            TimeDelta::nat()
         }
     }
 }
@@ -399,11 +475,15 @@ impl Div<i32> for TimeDelta {
 
 impl PartialOrd for TimeDelta {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // may not as expected
-        if self.months != other.months {
-            self.months.partial_cmp(&other.months)
+        if self.is_not_nat() {
+            // may not as expected
+            if self.months != other.months {
+                self.months.partial_cmp(&other.months)
+            } else {
+                self.inner.partial_cmp(&other.inner)
+            }
         } else {
-            self.inner.partial_cmp(&other.inner)
+            None
         }
     }
 }
@@ -421,7 +501,6 @@ impl From<&str> for TimeDelta {
 pub struct PyTimeDelta(TimeDelta);
 
 #[pymethods]
-// #[allow(clippy::borrow_deref_ref)]
 impl PyTimeDelta {
     #[staticmethod]
     pub fn parse(rule: &str) -> Self {

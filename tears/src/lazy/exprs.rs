@@ -1,5 +1,7 @@
 use pyo3::Python;
 
+#[cfg(feature = "option_dtype")]
+use crate::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
 use crate::{DateTime, PyValue, TimeDelta, TimeUnit};
 
 use super::super::{match_datatype_arm, DataType, GetDataType};
@@ -20,6 +22,16 @@ pub enum Exprs<'a> {
     DateTime(Expr<'a, DateTime>),
     TimeDelta(Expr<'a, TimeDelta>),
     OpUsize(Expr<'a, Option<usize>>),
+    #[cfg(feature = "option_dtype")]
+    OptF32(Expr<'a, OptF32>),
+    #[cfg(feature = "option_dtype")]
+    OptF64(Expr<'a, OptF64>),
+    #[cfg(feature = "option_dtype")]
+    OptI32(Expr<'a, OptI32>),
+    #[cfg(feature = "option_dtype")]
+    OptI64(Expr<'a, OptI64>),
+    #[cfg(feature = "option_dtype")]
+    OptUsize(Expr<'a, OptUsize>),
 }
 
 #[macro_export]
@@ -33,7 +45,23 @@ macro_rules! match_ {
     };
 
     ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
-        match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize)
+        {
+            #[cfg(feature="option_dtype")]
+            macro_rules! inner_macro {
+                () => {
+                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
+                };
+            }
+
+            #[cfg(not(feature="option_dtype"))]
+            macro_rules! inner_macro {
+                () => {
+                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize)
+                };
+            }
+            inner_macro!()
+        }
+
     };
 
     ($enum: ident, ($exprs1: expr, $e1: ident, $($arm1: ident),*), ($exprs2: expr, $e2: ident, $($arm2: ident),*), $body: tt) => {
@@ -67,7 +95,16 @@ impl<'a, T: ExprElement + 'a> From<Expr<'a, T>> for Exprs<'a> {
                 DataType::Object => Exprs::Object(expr.into_dtype::<PyValue>()),
                 DataType::DateTime => Exprs::DateTime(expr.into_dtype::<DateTime>()),
                 DataType::TimeDelta => Exprs::TimeDelta(expr.into_dtype::<TimeDelta>()),
-                // _ => {unimplemented!("create Expr of this dtype is not implemented")}
+                #[cfg(feature = "option_dtype")]
+                DataType::OptF64 => Exprs::OptF64(expr.into_dtype::<OptF64>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptF32 => Exprs::OptF32(expr.into_dtype::<OptF32>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptI32 => Exprs::OptI32(expr.into_dtype::<OptI32>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptI64 => Exprs::OptI64(expr.into_dtype::<OptI64>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptUsize => Exprs::OptUsize(expr.into_dtype::<OptUsize>()),
             }
         }
     }
@@ -145,6 +182,46 @@ impl<'a> Exprs<'a> {
         }
     }
 
+    #[cfg(feature = "option_dtype")]
+    pub fn cast_optf64(self) -> Result<Expr<'a, OptF64>, &'static str> {
+        match self {
+            Exprs::F64(e) => Ok(e.cast::<OptF64>()),
+            _ => Err("Cast to Option<f64> for this dtype is unimplemented"),
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    pub fn cast_optf32(self) -> Result<Expr<'a, OptF32>, &'static str> {
+        match self {
+            Exprs::F32(e) => Ok(e.cast::<OptF32>()),
+            _ => Err("Cast to Option<f32> for this dtype is unimplemented"),
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    pub fn cast_opti32(self) -> Result<Expr<'a, OptI32>, &'static str> {
+        match self {
+            Exprs::I32(e) => Ok(e.cast::<OptI32>()),
+            _ => Err("Cast to Option<i32> for this dtype is unimplemented"),
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    pub fn cast_opti64(self) -> Result<Expr<'a, OptI64>, &'static str> {
+        match self {
+            Exprs::I64(e) => Ok(e.cast::<OptI64>()),
+            _ => Err("Cast to Option<i64> for this dtype is unimplemented"),
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    pub fn cast_optusize(self) -> Result<Expr<'a, OptUsize>, &'static str> {
+        match self {
+            Exprs::Usize(e) => Ok(e.cast::<OptUsize>()),
+            _ => Err("Cast to Option<usize> for this dtype is unimplemented"),
+        }
+    }
+
     pub fn cast_f32(self) -> Result<Expr<'a, f32>, &'static str> {
         match self {
             Exprs::F32(e) => Ok(e),
@@ -178,6 +255,7 @@ impl<'a> Exprs<'a> {
             Exprs::I64(e) => Ok(e),
             Exprs::Bool(e) => Ok(e.cast::<i64>()),
             Exprs::Usize(e) => Ok(e.cast::<i64>()),
+            Exprs::DateTime(e) => Ok(e.cast::<i64>()),
             _ => Err("Cast to i64 for this dtype is unimplemented"),
         }
     }
@@ -254,7 +332,6 @@ impl<'a> Exprs<'a> {
             _ => Err("Cast lazily to datetime for this dtype is unimplemented"),
         }
     }
-
     pub fn cast_datetime_default(self) -> Result<Expr<'a, DateTime>, &'static str> {
         self.cast_datetime(Some(Default::default()))
     }
@@ -282,6 +359,16 @@ pub(super) enum ExprsInner<'a> {
     TimeDelta(ExprInner<'a, TimeDelta>),
     Object(ExprInner<'a, PyValue>),
     OpUsize(ExprInner<'a, Option<usize>>),
+    #[cfg(feature = "option_dtype")]
+    OptF64(ExprInner<'a, OptF64>),
+    #[cfg(feature = "option_dtype")]
+    OptF32(ExprInner<'a, OptF32>),
+    #[cfg(feature = "option_dtype")]
+    OptI32(ExprInner<'a, OptI32>),
+    #[cfg(feature = "option_dtype")]
+    OptI64(ExprInner<'a, OptI64>),
+    #[cfg(feature = "option_dtype")]
+    OptUsize(ExprInner<'a, OptUsize>),
 }
 
 impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
@@ -300,7 +387,16 @@ impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
                 DataType::Object => ExprsInner::Object(expr.into_dtype::<PyValue>()),
                 DataType::DateTime => ExprsInner::DateTime(expr.into_dtype::<DateTime>()),
                 DataType::TimeDelta => ExprsInner::TimeDelta(expr.into_dtype::<TimeDelta>()),
-                // _ => {unimplemented!("create Expr of this dtype is not implemented")}
+                #[cfg(feature = "option_dtype")]
+                DataType::OptF64 => ExprsInner::OptF64(expr.into_dtype::<OptF64>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptF32 => ExprsInner::OptF32(expr.into_dtype::<OptF32>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptI32 => ExprsInner::OptI32(expr.into_dtype::<OptI32>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptI64 => ExprsInner::OptI64(expr.into_dtype::<OptI64>()),
+                #[cfg(feature = "option_dtype")]
+                DataType::OptUsize => ExprsInner::OptUsize(expr.into_dtype::<OptUsize>()),
             }
         }
     }
@@ -320,14 +416,7 @@ impl<'a> ExprsInner<'a> {
     /// `T::dtype()` must match the arm of `Exprs`
     #[allow(unreachable_patterns)]
     pub(super) unsafe fn downcast<T: ExprElement>(self) -> ExprInner<'a, T> {
-        match_datatype_arm!(
-            self,
-            e,
-            ExprsInner,
-            T,
-            (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
-            { e.into_dtype::<T>() }
-        )
+        match_datatype_arm!(all self, e, ExprsInner, T, { e.into_dtype::<T>() })
     }
 
     /// Match an arm when we have known the dtype.
@@ -338,11 +427,11 @@ impl<'a> ExprsInner<'a> {
     #[allow(unreachable_patterns)]
     pub(super) unsafe fn get<T: ExprElement>(&self) -> &ExprInner<'a, T> {
         match_datatype_arm!(
+            all
             self,
             e,
             ExprsInner,
             T,
-            (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
             { std::mem::transmute(e) }
         )
     }
@@ -355,11 +444,12 @@ impl<'a> ExprsInner<'a> {
     #[allow(unreachable_patterns)]
     pub(super) unsafe fn get_mut<T: ExprElement>(&mut self) -> &mut ExprInner<'a, T> {
         match_datatype_arm!(
+            all
             self,
             e,
             ExprsInner,
             T,
-            (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
+            // (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize, OpF64),
             { std::mem::transmute(e) }
         )
     }
@@ -397,11 +487,11 @@ impl<'a> ExprsInner<'a> {
     pub(super) fn view<T: GetDataType>(&self) -> Result<ExprOutView<'_, T>, &'static str> {
         // we have known the datatype of the enum ,so only one arm will be executed
         match_datatype_arm!(
+            all
             self,
             e,
             ExprsInner,
             T,
-            (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize),
             { e.try_view().map(|view| unsafe { view.into_dtype::<T>() }) }
         )
     }

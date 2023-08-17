@@ -1,9 +1,5 @@
 #![feature(hash_raw_entry)]
-#![feature(arc_unwrap_or_clone)]
 #![feature(arbitrary_self_types)]
-#![feature(get_mut_unchecked)]
-#![feature(fn_traits)]
-#![feature(min_specialization)]
 #![feature(drain_filter)]
 
 // #[macro_use]

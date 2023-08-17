@@ -10,6 +10,7 @@ description = "Fash DataDict Library in Python"
 
 [features]
 default = ["lazy", "window_func", "blas"]
+option_dtype = ["tears/option_dtype"]
 lazy = ["tears/lazy"]
 window_func = ["tears/window_func"]
 blas = ["tears/blas", "lazy", "stat"]
@@ -27,3 +28,4 @@ rayon = { workspace=true }
 regex = { workspace=true }
 once_cell = { workspace=true }
 ndarray = { workspace=true }
+chrono = { workspace=true }

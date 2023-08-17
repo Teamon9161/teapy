@@ -1,5 +1,5 @@
-use super::super::super::{ArrBase, Data, DataMut, DataOwned, Dimension, WrapNdarray};
-use ndarray::ArrayBase;
+use crate::{ArrBase, WrapNdarray};
+use ndarray::{ArrayBase, Data, DataMut, DataOwned, Dimension};
 
 pub fn replicate<A, Sv, So, D>(a: &ArrBase<Sv, D>) -> ArrBase<So, D>
 where

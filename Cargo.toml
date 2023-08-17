@@ -6,7 +6,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
@@ -25,7 +25,9 @@ name = "teapy"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["lazy", "window_func", "blas"]
+# default = ["lazy", "window_func", "blas"]
+default = ["lazy", "window_func", "blas", "option_dtype"]
+option_dtype = ["py_teapy/option_dtype"]
 lazy = ["py_teapy/lazy"]
 window_func = ["py_teapy/window_func"]
 blas = ["py_teapy/blas"]

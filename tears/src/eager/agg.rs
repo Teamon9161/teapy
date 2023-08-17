@@ -1,5 +1,5 @@
-use super::export::*;
-use super::BoolType;
+use super::super::export::*;
+use crate::BoolType;
 
 #[derive(Copy, Clone)]
 pub enum QuantileMethod {

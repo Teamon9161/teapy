@@ -1,6 +1,8 @@
 // use crate::arr::ArbArray;
 
-use crate::{PyValue, TimeDelta};
+#[cfg(feature = "option_dtype")]
+use crate::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
+use crate::{DateTime, PyValue, TimeDelta};
 
 use super::super::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
@@ -67,13 +69,15 @@ impl Default for ArrOk<'_> {
 }
 
 macro_rules! impl_from {
-    ($(($arm: ident, $ty: ty)),*) => {
+    ($($(#[$meta:meta])? ($arm: ident, $ty: ty)),*) => {
         impl<'a, T: GetDataType> From<ArbArray<'a, T>> for ArrOk<'a> {
             #[allow(unreachable_patterns)]
             fn from(arr: ArbArray<'a, T>) -> Self {
                 unsafe {
                     match T::dtype() {
-                        $(DataType::$arm => ArrOk::$arm(arr.into_dtype::<$ty>()),)*
+                        $(
+                            $(#[$meta])? DataType::$arm => ArrOk::$arm(arr.into_dtype::<$ty>()),
+                        )*
                         DataType::Str => ArrOk::Str(arr.into_dtype::<&'a str>()),
                         _ => unimplemented!("Create ArrOk from this type of ArbArray is not implemented")
                     }
@@ -103,7 +107,7 @@ macro_rules! impl_from {
 
     };
 }
-
+#[cfg(feature = "option_dtype")]
 impl_from!(
     (Bool, bool),
     (F32, f32),
@@ -115,6 +119,25 @@ impl_from!(
     (String, String),
     (DateTime, DateTime),
     (TimeDelta, TimeDelta), //, (Str, &str)
+    (OpUsize, Option<usize>),
+    (OptF64, OptF64),
+    (OptF32, OptF32),
+    (OptI32, OptI32),
+    (OptI64, OptI64),
+    (OptUsize, OptUsize)
+);
+#[cfg(not(feature = "option_dtype"))]
+impl_from!(
+    (Bool, bool),
+    (F32, f32),
+    (F64, f64),
+    (I32, i32),
+    (I64, i64),
+    (Usize, usize),
+    (Object, PyValue),
+    (String, String),
+    (DateTime, DateTime),
+    (TimeDelta, TimeDelta),
     (OpUsize, Option<usize>)
 );
 

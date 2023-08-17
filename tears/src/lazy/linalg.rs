@@ -1,8 +1,7 @@
 use super::super::impls::{conjugate, LeastSquaresResult};
 use super::{ArbArray, Expr, ExprElement, ExprInner, RefType};
-use crate::{Arr1, Arr2, ArrD, ArrViewD, Axis, WrapNdarray};
-use ndarray::Ix2;
-use ndarray::LinalgScalar;
+use crate::{Arr1, Arr2, ArrD, ArrViewD, WrapNdarray};
+use ndarray::{Axis, Ix2, LinalgScalar};
 use num::traits::AsPrimitive;
 use std::sync::Arc;
 

@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use ahash::RandomState;
 
-use super::{export::*, ArrView1, GetNone};
+use super::super::{export::*, ArrView1, GetNone};
 // use super::groupby::CollectTrustedToVec;
 
 /// the method to use when fillna

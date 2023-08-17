@@ -3,15 +3,16 @@ use super::pyfunc::{parse_expr, parse_expr_list, parse_expr_nocopy, where_};
 use crate::from_py::NoDim0;
 use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
-use tears::PyValue;
-use tears::{
-    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, RefType, TimeDelta, WinsorizeMethod,
-};
-// use num::PrimInt;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use pyo3::{exceptions::PyAttributeError, pyclass::CompareOp, PyTraverseError, PyVisit};
 use std::iter::repeat;
+use tears::{
+    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, PyValue, RefType, TimeDelta,
+    WinsorizeMethod,
+};
+#[cfg(feature = "option_dtype")]
+use tears::{OptF32, OptF64, OptI32, OptI64, OptUsize};
 
 static PYEXPR_ATTRIBUTE: Lazy<Mutex<HashMap<String, PyObject>>> =
     Lazy::new(|| Mutex::new(HashMap::<String, PyObject>::with_capacity(10)));
@@ -121,7 +122,17 @@ impl PyExpr {
             Object(_) => "Object",
             DateTime(_) => "DateTime",
             TimeDelta(_) => "TimeDelta",
-            OpUsize(_) => "OptionUsize",
+            OpUsize(_) => "Option<Usize>",
+            #[cfg(feature = "option_dtype")]
+            OptF64(_) => "Option<F64>",
+            #[cfg(feature = "option_dtype")]
+            OptF32(_) => "Option<F32>",
+            #[cfg(feature = "option_dtype")]
+            OptI32(_) => "Option<I32>",
+            #[cfg(feature = "option_dtype")]
+            OptI64(_) => "Option<I64>",
+            #[cfg(feature = "option_dtype")]
+            OptUsize(_) => "Option<Usize>",
         }
     }
 
@@ -249,7 +260,7 @@ impl PyExpr {
                 .clone()
                 .eval()
                 .view_arr()
-                .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
+                .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
         }
         match_exprs!(
@@ -302,7 +313,7 @@ impl PyExpr {
                 .clone()
                 .eval()
                 .view_arr()
-                .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
+                .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
         }
         match_exprs!(
@@ -335,7 +346,6 @@ impl PyExpr {
             Object
         )
     }
-
 
     #[getter]
     #[allow(unreachable_patterns)]
@@ -1218,6 +1228,66 @@ impl PyExpr {
                     par,
                 )
                 .to_py(self.obj()),
+            #[cfg(feature = "option_dtype")]
+            Exprs::OptF32(e) => e
+                .clone()
+                .cast::<OptF32>()
+                .shift(
+                    n,
+                    fill.map(|f| f.cast_optf32().unwrap())
+                        .unwrap_or_else(|| OptF32(None).into()),
+                    axis,
+                    par,
+                )
+                .to_py(self.obj()),
+            #[cfg(feature = "option_dtype")]
+            Exprs::OptF64(e) => e
+                .clone()
+                .cast::<OptF64>()
+                .shift(
+                    n,
+                    fill.map(|f| f.cast_optf64().unwrap())
+                        .unwrap_or_else(|| OptF64(None).into()),
+                    axis,
+                    par,
+                )
+                .to_py(self.obj()),
+            #[cfg(feature = "option_dtype")]
+            Exprs::OptI64(e) => e
+                .clone()
+                .cast::<OptI64>()
+                .shift(
+                    n,
+                    fill.map(|f| f.cast_opti64().unwrap())
+                        .unwrap_or_else(|| OptI64(None).into()),
+                    axis,
+                    par,
+                )
+                .to_py(self.obj()),
+            #[cfg(feature = "option_dtype")]
+            Exprs::OptI32(e) => e
+                .clone()
+                .cast::<OptI32>()
+                .shift(
+                    n,
+                    fill.map(|f| f.cast_opti32().unwrap())
+                        .unwrap_or_else(|| OptI32(None).into()),
+                    axis,
+                    par,
+                )
+                .to_py(self.obj()),
+            #[cfg(feature = "option_dtype")]
+            Exprs::OptUsize(e) => e
+                .clone()
+                .cast::<OptUsize>()
+                .shift(
+                    n,
+                    fill.map(|f| f.cast_optusize().unwrap())
+                        .unwrap_or_else(|| OptUsize(None).into()),
+                    axis,
+                    par,
+                )
+                .to_py(self.obj()),
         };
         if let Some(obj) = obj {
             Ok(out.add_obj(obj))
@@ -1873,11 +1943,20 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_sma(window, min_periods, stable, axis, par)
-                .to_py(self.obj())
-        })
+        match_exprs!(
+            numeric & self.inner,
+            expr,
+            {
+                expr.clone()
+                    .ts_sma(window, min_periods, stable, axis, par)
+                    .to_py(self.obj())
+            },
+            F64,
+            F32,
+            I32,
+            I64,
+            Usize
+        )
     }
 
     #[cfg(feature = "window_func")]

@@ -1,5 +1,5 @@
 use super::super::export::*;
-use super::super::{Ix1, RawData};
+use ndarray::{Ix1, RawData};
 use std::cmp::Ordering;
 use std::ops::Add;
 

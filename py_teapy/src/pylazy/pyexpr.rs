@@ -5,6 +5,8 @@ use ndarray::{Slice, SliceInfoElem};
 
 use super::export::*;
 use tears::{ArbArray, DateTime, ExprElement, Number, PyValue, RefType, TimeDelta, TimeUnit};
+#[cfg(feature = "option_dtype")]
+use tears::{OptF32, OptF64, OptI32, OptI64, OptUsize};
 
 #[pyclass(subclass)]
 #[derive(Clone, Default)]
@@ -91,27 +93,6 @@ impl ExprToPy for Exprs<'static> {
     }
 }
 
-// impl<T: ExprElement + 'static> Expr<'static, T> {
-//     pub fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
-//         let exprs: Exprs<'static> = self.into();
-//         PyExpr { inner: exprs, obj }
-//     }
-
-//     pub fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
-//         let exprs: Exprs<'static> = self.into();
-//         PyExpr {
-//             inner: exprs,
-//             obj: Some(vec![obj.into_py(py)]),
-//         }
-//     }
-// }
-
-// impl Exprs<'static> {
-//     pub fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
-//         PyExpr { inner: self, obj }
-//     }
-// }
-
 impl PyExpr {
     #[inline]
     pub fn obj(&self) -> Option<Vec<PyObject>> {
@@ -147,6 +128,66 @@ impl PyExpr {
             Ok(v)
         } else {
             Err(PyValueError::new_err("Can not cast the output to f64"))
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    // Cast the output of the expression to Option<f32> ndarray
+    pub fn cast_optf32(self) -> PyResult<Expr<'static, OptF32>> {
+        if let Ok(v) = self.inner.cast_optf32() {
+            Ok(v)
+        } else {
+            Err(PyValueError::new_err(
+                "Can not cast the output to Option<f32>",
+            ))
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    // Cast the output of the expression to Option<f64> ndarray
+    pub fn cast_optf64(self) -> PyResult<Expr<'static, OptF64>> {
+        if let Ok(v) = self.inner.cast_optf64() {
+            Ok(v)
+        } else {
+            Err(PyValueError::new_err(
+                "Can not cast the output to Option<f64>",
+            ))
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    // Cast the output of the expression to Option<i32> ndarray
+    pub fn cast_opti32(self) -> PyResult<Expr<'static, OptI32>> {
+        if let Ok(v) = self.inner.cast_opti32() {
+            Ok(v)
+        } else {
+            Err(PyValueError::new_err(
+                "Can not cast the output to Option<i32>",
+            ))
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    // Cast the output of the expression to Option<i64> ndarray
+    pub fn cast_opti64(self) -> PyResult<Expr<'static, OptI64>> {
+        if let Ok(v) = self.inner.cast_opti64() {
+            Ok(v)
+        } else {
+            Err(PyValueError::new_err(
+                "Can not cast the output to Option<i64>",
+            ))
+        }
+    }
+
+    #[cfg(feature = "option_dtype")]
+    // Cast the output of the expression to Option<usize> ndarray
+    pub fn cast_optusize(self) -> PyResult<Expr<'static, OptUsize>> {
+        if let Ok(v) = self.inner.cast_optusize() {
+            Ok(v)
+        } else {
+            Err(PyValueError::new_err(
+                "Can not cast the output to Option<usize>",
+            ))
         }
     }
 
@@ -446,7 +487,25 @@ impl PyExpr {
                 }
             }
             "datetime" => Ok(self.clone().cast_datetime_default()?.to_py(self.obj())),
+            "datetime(ns)" => Ok(self
+                .clone()
+                .cast_datetime(Some(TimeUnit::Nanosecond))?
+                .to_py(self.obj())),
+            "datetime(us)" => Ok(self
+                .clone()
+                .cast_datetime(Some(TimeUnit::Microsecond))?
+                .to_py(self.obj())),
+            "datetime(ms)" => Ok(self
+                .clone()
+                .cast_datetime(Some(TimeUnit::Millisecond))?
+                .to_py(self.obj())),
+            "datetime(s)" => Ok(self
+                .clone()
+                .cast_datetime(Some(TimeUnit::Second))?
+                .to_py(self.obj())),
             "timedelta" => Ok(self.clone().cast_timedelta()?.to_py(self.obj())),
+            #[cfg(feature = "option_dtype")]
+            "option<f64>" => Ok(self.clone().cast_optf64()?.to_py(self.obj())),
             _ => Err(PyValueError::new_err(format!(
                 "cast to type: {ty_name} is not implemented"
             ))),
