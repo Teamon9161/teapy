@@ -69,10 +69,16 @@ impl ExprElement for OptI64 {}
 #[cfg(feature = "option_dtype")]
 impl ExprElement for OptUsize {}
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone)]
 pub struct Expr<'a, T: ExprElement> {
     e: Arc<Mutex<ExprsInner<'a>>>,
     _type: PhantomData<T>,
+}
+
+impl<'a, T: ExprElement> Debug for Expr<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", &self.e.lock())
+    }
 }
 
 impl<'a, T: ExprElement> From<ExprInner<'a, T>> for Expr<'a, T> {
@@ -675,12 +681,28 @@ pub(self) struct ExprInner<'a, T: ExprElement> {
 
 impl<'a, T: ExprElement> Debug for ExprInner<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.step == 0 {
+            writeln!(f, "{:?}", self.base)?;
+        }
         f.debug_struct("Expr")
             .field("name", &self.name)
+            .field("dtype", &T::dtype())
             .field("step", &self.step)
-            .field("owned", &self.owned)
-            .field("base", &self.base)
             .finish()
+
+        // f.write_str("\nExpr\n")?;
+        // write!(f, "\nname: {:?}", &self.name)?;
+        // write!(f, "\ndtype: {:?}", T::dtype())?;
+        // write!(f, "\nstep: {:?}", &self.step)
+
+        // let mut out = f.debug_struct("Expr");
+        // out.field("name", &self.name)
+        //     .field("step", &self.step)
+        //     .field("owned", &self.owned);
+        // if self.step == 0 {
+        //     out.field("value", &self.base);
+        // }
+        // out.finish()
     }
 }
 
@@ -701,7 +723,7 @@ where
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+// #[derive(Debug)]
 pub(self) enum ExprBase<'a> {
     Expr(Arc<Mutex<ExprsInner<'a>>>), // an expression based on another expression
     ExprVec(Vec<Arc<Mutex<ExprsInner<'a>>>>), // an expression based on expressions
@@ -710,6 +732,32 @@ pub(self) enum ExprBase<'a> {
     ArcArr(Arc<ArrOk<'a>>),           // multi expressions share the same array
     #[cfg(feature = "blas")]
     OlsRes(Arc<OlsResult<'a>>), // only for least squares
+}
+
+impl<'a> Debug for ExprBase<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExprBase::Expr(expr) => write!(f, "{:?}", expr.lock()),
+            ExprBase::ExprVec(expr_vec) => {
+                let mut out = f.debug_list();
+                for expr in expr_vec {
+                    out.entry(&expr.lock());
+                }
+                out.finish()
+            }
+            ExprBase::Arr(arr) => write!(f, "{arr:?}"),
+            ExprBase::ArrVec(arr_vec) => {
+                let mut out = f.debug_list();
+                for arr in arr_vec {
+                    out.entry(arr);
+                }
+                out.finish()
+            }
+            ExprBase::ArcArr(arr) => write!(f, "{arr:?}"),
+            #[cfg(feature = "blas")]
+            ExprBase::OlsRes(res) => write!(f, "{res:?}"),
+        }
+    }
 }
 
 impl Default for ExprBase<'_> {

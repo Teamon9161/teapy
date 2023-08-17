@@ -39,8 +39,18 @@ macro_rules! define_option_dtype {
         define_option_dtype!(impl_numeric $typ, $real);
     };
     ($typ: ident, $real: ty) => {
-        #[derive(Copy, Clone, Debug, Default)]
+        #[derive(Copy, Clone, Default)]
+        #[repr(transparent)]
         pub struct $typ(pub Option<$real>);
+
+        impl std::fmt::Debug for $typ {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self.0 {
+                    Some(v) => write!(f, "{}", v),
+                    None => write!(f, "None"),
+                }
+            }
+        }
 
         impl From<Option<$real>> for $typ {
             fn from(value: Option<$real>) -> Self {
@@ -269,6 +279,24 @@ macro_rules! define_option_dtype {
             #[inline(always)]
             fn max_() -> Self {
                 <$real>::MAX.into()
+            }
+
+            #[inline]
+            fn isnan(self) -> bool {
+                if let Some(v) = self.0 {
+                    v.isnan()
+                } else {
+                    true
+                }
+            }
+
+            #[inline]
+            fn notnan(self) -> bool {
+                if let Some(v) = self.0 {
+                    v.notnan()
+                } else {
+                    false
+                }
             }
 
             #[inline(always)]

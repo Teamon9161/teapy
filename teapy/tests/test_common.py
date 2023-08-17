@@ -1,10 +1,11 @@
-from time import time
+# from time import time
 
 import numpy as np
-import pandas as pd
 
 import teapy as tp
 from teapy.testing import assert_allclose
+
+# import pandas as pd
 
 
 def test_continuity():

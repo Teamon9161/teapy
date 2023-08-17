@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use pyo3::Python;
 
 #[cfg(feature = "option_dtype")]
@@ -113,6 +115,13 @@ impl<'a, T: ExprElement + 'a> From<Expr<'a, T>> for Exprs<'a> {
 impl<'a> Default for Exprs<'a> {
     fn default() -> Self {
         Exprs::I32(Expr::<'a, i32>::default())
+    }
+}
+
+impl Debug for Exprs<'_> {
+    #[allow(unreachable_patterns)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match_exprs!(self, e, { e.fmt(f) })
     }
 }
 
@@ -345,7 +354,7 @@ impl<'a> Exprs<'a> {
     }
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub(super) enum ExprsInner<'a> {
     F32(ExprInner<'a, f32>),
     F64(ExprInner<'a, f64>),
@@ -369,6 +378,13 @@ pub(super) enum ExprsInner<'a> {
     OptI64(ExprInner<'a, OptI64>),
     #[cfg(feature = "option_dtype")]
     OptUsize(ExprInner<'a, OptUsize>),
+}
+
+impl<'a> Debug for ExprsInner<'a> {
+    #[allow(unreachable_patterns)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match_exprs_inner!(self, e, { e.fmt(f) })
+    }
 }
 
 impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {

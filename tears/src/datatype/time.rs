@@ -32,8 +32,18 @@ const SECS_PER_DAY: i64 = 86400;
 /// The number of (non-leap) seconds in a week.
 const SECS_PER_WEEK: i64 = 604800;
 
-#[derive(Clone, Copy, Default, Debug, Hash, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Hash, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct DateTime(pub Option<NaiveDateTime>);
+
+impl std::fmt::Debug for DateTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(dt) = self.0 {
+            write!(f, "{dt}")
+        } else {
+            write!(f, "None")
+        }
+    }
+}
 
 impl From<Option<NaiveDateTime>> for DateTime {
     fn from(dt: Option<NaiveDateTime>) -> Self {
@@ -208,7 +218,7 @@ impl DateTime {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TimeUnit {
     Year,
     Month,
@@ -222,11 +232,21 @@ pub enum TimeUnit {
     Nanosecond,
 }
 
-// impl Default for TimeUnit {
-//     fn default() -> Self {
-//         TimeUnit::Millisecond
-//     }
-// }
+impl std::fmt::Debug for TimeUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TimeUnit::Year => write!(f, "Year"),
+            TimeUnit::Month => write!(f, "Month"),
+            TimeUnit::Day => write!(f, "Day"),
+            TimeUnit::Hour => write!(f, "Hour"),
+            TimeUnit::Minute => write!(f, "Minute"),
+            TimeUnit::Second => write!(f, "Second"),
+            TimeUnit::Millisecond => write!(f, "Millisecond"),
+            TimeUnit::Microsecond => write!(f, "Microsecond"),
+            TimeUnit::Nanosecond => write!(f, "Nanosecond"),
+        }
+    }
+}
 
 #[serde_with::serde_as]
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]

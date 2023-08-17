@@ -1,5 +1,5 @@
-use std::cmp::Ordering;
 use std::ops::Deref;
+use std::{cmp::Ordering, fmt::Debug};
 
 use ndarray::{Slice, SliceInfoElem};
 
@@ -21,6 +21,12 @@ impl From<Exprs<'static>> for PyExpr {
             inner: e,
             obj: None,
         }
+    }
+}
+
+impl Debug for PyExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match_exprs!(&self.inner, expr, { write!(f, "{:?}", expr) })
     }
 }
 

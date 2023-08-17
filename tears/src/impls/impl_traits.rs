@@ -29,7 +29,10 @@ where
     T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
+        let string = format!("{:?}", self.0);
+        let data = string.split(", shape=").next().unwrap_or("");
+        f.write_str(data)
+        // self.0.fmt(f)
     }
 }
 

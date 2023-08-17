@@ -164,6 +164,10 @@ impl PyExpr {
         self.obj = None;
     }
 
+    fn __repr__(&self) -> String {
+        match_exprs!(&self.inner, e, { format!("{:?}", e) })
+    }
+
     #[allow(unreachable_patterns)]
     pub unsafe fn __getitem__(&self, obj: &PyAny, py: Python) -> PyResult<Self> {
         use pyo3::types::{PyList, PySlice, PyTuple};

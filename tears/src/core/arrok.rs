@@ -1,12 +1,14 @@
+use std::fmt::Debug;
+
 use super::arbarray::{match_arbarray, ArbArray};
 use super::view::ArrViewD;
+// use crate::core::arbarray;
 use crate::{match_datatype_arm, DataType, DateTime, GetDataType, PyValue, TimeDelta};
 use ndarray::IxDyn;
 
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
 
-#[derive(Debug)]
 pub enum ArrOk<'a> {
     Bool(ArbArray<'a, bool>),
     Usize(ArbArray<'a, usize>),
@@ -30,6 +32,12 @@ pub enum ArrOk<'a> {
     OptI64(ArbArray<'a, OptI64>),
     #[cfg(feature = "option_dtype")]
     OptUsize(ArbArray<'a, OptUsize>),
+}
+
+impl<'a> Debug for ArrOk<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match_arr!(self, arbarray, { arbarray.fmt(f) })
+    }
 }
 
 macro_rules! match_arr {
