@@ -308,17 +308,33 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn value<'py>(&'py self, py: Python<'py>) -> PyResult<PyObject> {
+    #[pyo3(signature=(unit=None))]
+    pub fn value<'py>(&'py self, unit: Option<&'py str>, py: Python<'py>) -> PyResult<PyObject> {
         if self.is_string() || self.is_str() || self.is_timedelta() {
             let arr = self.clone().cast_object_eager(py)?.into_arr().to_owned().0;
             return PyArray::from_owned_array(py, arr).no_dim0(py);
         } else if let Exprs::DateTime(e) = &self.inner {
-            let arr = e
-                .clone()
-                .eval()
-                .view_arr()
-                .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
-            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+            match unit.unwrap_or("us").to_lowercase().as_str() {
+                "ms" => {
+                    let arr = e.clone().eval().view_arr().map(|v| {
+                        v.into_np_datetime::<numpy::datetime::units::Milliseconds>()
+                    });
+                    return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+                },
+                "us" => {
+                    let arr = e.clone().eval().view_arr().map(|v| {
+                        v.into_np_datetime::<numpy::datetime::units::Microseconds>()
+                    });
+                    return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+                },
+                "ns" => {
+                    let arr = e.clone().eval().view_arr().map(|v| {
+                        v.into_np_datetime::<numpy::datetime::units::Nanoseconds>()
+                    });
+                    return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+                },
+                _ => unimplemented!("not support datetime unit"),
+            }
         }
         match_exprs!(
             &self.inner,
@@ -1488,7 +1504,7 @@ impl PyExpr {
         let obj = axes.obj();
         let out = match_exprs!(&self.inner, expr, {
             expr.clone()
-                .permuted_axes(axes.cast_usize()?)
+                .permuted_axes(axes.cast_i32()?)
                 .to_py(self.obj())
                 .add_obj(obj)
         });

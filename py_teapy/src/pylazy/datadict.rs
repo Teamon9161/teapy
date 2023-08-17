@@ -418,7 +418,7 @@ impl PyDataDict {
         self.eval_all()?;
         let dict = PyDict::new(py);
         for expr in &self.data {
-            dict.set_item(expr.get_name(), expr.value(py)?)?;
+            dict.set_item(expr.get_name(), expr.value(None, py)?)?;
         }
         Ok(dict)
     }
