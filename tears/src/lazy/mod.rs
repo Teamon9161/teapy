@@ -689,20 +689,6 @@ impl<'a, T: ExprElement> Debug for ExprInner<'a, T> {
             .field("dtype", &T::dtype())
             .field("step", &self.step)
             .finish()
-
-        // f.write_str("\nExpr\n")?;
-        // write!(f, "\nname: {:?}", &self.name)?;
-        // write!(f, "\ndtype: {:?}", T::dtype())?;
-        // write!(f, "\nstep: {:?}", &self.step)
-
-        // let mut out = f.debug_struct("Expr");
-        // out.field("name", &self.name)
-        //     .field("step", &self.step)
-        //     .field("owned", &self.owned);
-        // if self.step == 0 {
-        //     out.field("value", &self.base);
-        // }
-        // out.finish()
     }
 }
 
