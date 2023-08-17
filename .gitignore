@@ -2,6 +2,7 @@
 *.pyd
 .DS_Store
 .hypothesis/
+.vscode/
 .pytest_cache/
 **/__pycache__
 target/

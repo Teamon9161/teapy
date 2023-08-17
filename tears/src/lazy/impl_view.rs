@@ -227,7 +227,11 @@ where
             move |arr| {
                 let axes = axes.eval();
                 // let axes_view = axes.view_arr().to_dim1().expect("axes should be dim 1");
-                let axes = axes.view_arr().map(|axis| arr.norm_axis(*axis).0).to_dim1().expect("axes should be dim 1");
+                let axes = axes
+                    .view_arr()
+                    .map(|axis| arr.norm_axis(*axis).0)
+                    .to_dim1()
+                    .expect("axes should be dim 1");
                 let out: ArbArray<'_, T> = arr
                     .0
                     .permuted_axes(axes.view().to_slice().unwrap())

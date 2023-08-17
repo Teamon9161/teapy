@@ -316,23 +316,29 @@ impl PyExpr {
         } else if let Exprs::DateTime(e) = &self.inner {
             match unit.unwrap_or("us").to_lowercase().as_str() {
                 "ms" => {
-                    let arr = e.clone().eval().view_arr().map(|v| {
-                        v.into_np_datetime::<numpy::datetime::units::Milliseconds>()
-                    });
+                    let arr = e
+                        .clone()
+                        .eval()
+                        .view_arr()
+                        .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
-                },
+                }
                 "us" => {
-                    let arr = e.clone().eval().view_arr().map(|v| {
-                        v.into_np_datetime::<numpy::datetime::units::Microseconds>()
-                    });
+                    let arr = e
+                        .clone()
+                        .eval()
+                        .view_arr()
+                        .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
-                },
+                }
                 "ns" => {
-                    let arr = e.clone().eval().view_arr().map(|v| {
-                        v.into_np_datetime::<numpy::datetime::units::Nanoseconds>()
-                    });
+                    let arr = e
+                        .clone()
+                        .eval()
+                        .view_arr()
+                        .map(|v| v.into_np_datetime::<numpy::datetime::units::Nanoseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
-                },
+                }
                 _ => unimplemented!("not support datetime unit"),
             }
         }
