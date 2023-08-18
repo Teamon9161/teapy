@@ -55,6 +55,27 @@ def test_drop():
     assert dd.columns == ["a"]
 
 
+def test_dropna():
+    dd = DataDict(
+        {
+            "a": [1, 2, np.nan, 3, 2, np.nan],
+            "b": [np.nan, 3, np.nan, 4, np.nan, 5],
+        }
+    )
+
+    # dropna and return a new datadict
+    new_dd = dd.dropna(how="all").eval(inplace=False)
+    assert_allclose(new_dd["b"].view, np.array([np.nan, 3, 4, np.nan, 5]))
+    new_dd = dd.dropna(how="any").eval(inplace=False)
+    assert_allclose(new_dd["a"].view, [2, 3])
+    new_dd = dd.dropna(subset=1, how="any").eval(inplace=False)
+    assert_allclose(new_dd["b"].view, [3, 4, 5])
+
+    # dropna inplace
+    dd.dropna(how="any", inplace=True)
+    assert_allclose(dd["a"].eview(), [2, 3])
+
+
 def test_mean():
     dd = DataDict(a=[1, 2, 3, 4], b=[3, 4, 5, 6])
     assert_allclose(dd.mean(axis=-1).eview(), np.array([2, 3, 4, 5]))

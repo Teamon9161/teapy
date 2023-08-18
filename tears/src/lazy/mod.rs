@@ -662,9 +662,11 @@ impl<'a, T: ExprElement> Debug for ExprInner<'a, T> {
         if self.step == 0 {
             writeln!(f, "{:?}", self.base)?;
         }
-        f.debug_struct("Expr")
-            .field("name", &self.name)
-            .field("dtype", &T::dtype())
+        let mut f = f.debug_struct("Expr");
+        if let Some(name) = &self.name {
+            f.field("name", name);
+        }
+        f.field("dtype", &T::dtype())
             .field("step", &self.step)
             .finish()
     }
@@ -687,7 +689,6 @@ where
 }
 
 #[allow(dead_code)]
-// #[derive(Debug)]
 pub(self) enum ExprBase<'a> {
     Expr(Arc<Mutex<ExprsInner<'a>>>), // an expression based on another expression
     ExprVec(Vec<Arc<Mutex<ExprsInner<'a>>>>), // an expression based on expressions
@@ -709,7 +710,7 @@ impl<'a> Debug for ExprBase<'a> {
                 }
                 out.finish()
             }
-            ExprBase::Arr(arr) => write!(f, "{arr:?}"),
+            ExprBase::Arr(arr) => write!(f, "{arr:#?}"),
             ExprBase::ArrVec(arr_vec) => {
                 let mut out = f.debug_list();
                 for arr in arr_vec {
@@ -717,9 +718,9 @@ impl<'a> Debug for ExprBase<'a> {
                 }
                 out.finish()
             }
-            ExprBase::ArcArr(arr) => write!(f, "{arr:?}"),
+            ExprBase::ArcArr(arr) => write!(f, "{arr:#?}"),
             #[cfg(feature = "blas")]
-            ExprBase::OlsRes(res) => write!(f, "{res:?}"),
+            ExprBase::OlsRes(res) => write!(f, "{res:#?}"),
         }
     }
 }

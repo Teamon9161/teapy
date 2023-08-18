@@ -58,6 +58,13 @@ class DataDict:
     def __getattr__(self, attr):
         return getattr(self._dd, attr)
 
+    def __repr__(self):
+        return self._dd.__repr__()
+
+    @construct
+    def copy(self):
+        return self._dd.copy()
+
     @construct
     def eval(self, cols=None, inplace=True):
         return self._dd.eval(cols, inplace=inplace)
@@ -65,6 +72,28 @@ class DataDict:
     @construct
     def select(self, exprs):
         return self._dd.select(exprs)
+
+    def dropna(self, subset=None, how="all", inplace=False):
+        if subset is None:
+            subset = self._dd.columns
+        elif isinstance(subset, (str, int)):
+            subset = [subset]
+        if len(subset) == 0:
+            return None if inplace else self
+        else:
+            nan_mask = self[subset[0]].is_nan()
+            if how == "any":
+                for c in subset[1:]:
+                    nan_mask |= self[c].is_nan()
+            elif how == "all":
+                for c in subset[1:]:
+                    nan_mask &= self[c].is_nan()
+            else:
+                raise ValueError("how should be either 'any' or 'all'")
+            df = self if inplace else self.copy()
+            for c in subset:
+                df[c] = df[c].filter(~nan_mask)
+            return None if inplace else df
 
     def mean(self, axis=-1, stable=False, par=False):
         if axis == -1:

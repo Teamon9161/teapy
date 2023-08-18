@@ -28,7 +28,7 @@ impl From<Exprs<'static>> for PyExpr {
 
 impl Debug for PyExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match_exprs!(&self.inner, expr, { write!(f, "{:?}", expr) })
+        match_exprs!(&self.inner, expr, { write!(f, "{:#?}", expr) })
     }
 }
 
@@ -70,7 +70,7 @@ where
 
 pub trait ExprToPy {
     fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr;
-    fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr;
+    // fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr;
 }
 
 impl<T: ExprElement + 'static> ExprToPy for Expr<'static, T> {
@@ -79,13 +79,13 @@ impl<T: ExprElement + 'static> ExprToPy for Expr<'static, T> {
         PyExpr { inner: exprs, obj }
     }
 
-    fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
-        let exprs: Exprs<'static> = self.into();
-        PyExpr {
-            inner: exprs,
-            obj: Some(vec![obj.into_py(py)]),
-        }
-    }
+    // fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
+    //     let exprs: Exprs<'static> = self.into();
+    //     PyExpr {
+    //         inner: exprs,
+    //         obj: Some(vec![obj.into_py(py)]),
+    //     }
+    // }
 }
 
 impl ExprToPy for Exprs<'static> {
@@ -93,12 +93,12 @@ impl ExprToPy for Exprs<'static> {
         PyExpr { inner: self, obj }
     }
 
-    fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
-        PyExpr {
-            inner: self,
-            obj: Some(vec![obj.into_py(py)]),
-        }
-    }
+    // fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr {
+    //     PyExpr {
+    //         inner: self,
+    //         obj: Some(vec![obj.into_py(py)]),
+    //     }
+    // }
 }
 
 impl PyExpr {

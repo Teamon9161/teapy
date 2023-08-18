@@ -14,9 +14,9 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // match_arbarray!(self, a, { a.fmt(f) })
         match &self {
-            ArbArray::View(a) => write!(f, "ArrayView({a:?})"),
-            ArbArray::ViewMut(a) => write!(f, "ArrayViewMut({a:?})"),
-            ArbArray::Owned(a) => write!(f, "ArrayOwned({a:?})"),
+            ArbArray::View(a) => write!(f, "ArrayView({a:#?})"),
+            ArbArray::ViewMut(a) => write!(f, "ArrayViewMut({a:#?})"),
+            ArbArray::Owned(a) => write!(f, "ArrayOwned({a:#?})"),
         }
     }
 }

@@ -1,7 +1,9 @@
 use pyo3::exceptions::{PyRuntimeError, PyTypeError};
 use regex::Regex;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::hash_map::RawEntryMut;
+use std::fmt::Debug;
 use std::iter::repeat;
 use std::sync::{Arc, Mutex};
 
@@ -18,6 +20,14 @@ use ahash::{HashMap, HashMapExt};
 pub struct PyDataDict {
     data: Vec<PyExpr>,
     column_map: Arc<Mutex<HashMap<String, usize>>>,
+}
+
+impl Debug for PyDataDict {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map()
+            .entries(self.data.iter().map(|e| (e.get_name().unwrap(), e)))
+            .finish()
+    }
 }
 
 #[allow(clippy::missing_safety_doc)]
@@ -418,7 +428,6 @@ impl PyDataDict {
         })
     }
 
-    // #[args(inplace = false)]
     #[pyo3(signature=(columns, inplace=false))]
     pub fn drop(&mut self, columns: &PyAny, inplace: bool) -> PyResult<Option<Self>> {
         if let Ok(columns) = columns.extract::<&str>() {
@@ -430,6 +439,10 @@ impl PyDataDict {
                 "The type of parameter columns is invalid!",
             ))
         }
+    }
+
+    pub fn __repr__(&self) -> Cow<'_, str> {
+        Cow::from(format!("{self:#?}"))
     }
 
     #[getter]

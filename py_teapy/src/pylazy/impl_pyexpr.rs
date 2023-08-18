@@ -2395,7 +2395,7 @@ impl PyExpr {
 
     #[pyo3(signature=(mask, value, axis=0, par=false))]
     pub unsafe fn put_mask(
-        self: PyRef<Self>,
+        &self,
         mask: &PyAny,
         value: &PyAny,
         axis: i32,
@@ -2404,52 +2404,52 @@ impl PyExpr {
     ) -> PyResult<Self> {
         let (mask, value) = (parse_expr_nocopy(mask)?, parse_expr_nocopy(value)?);
         let (obj1, obj2) = (mask.obj(), value.obj());
-        let mask = mask.cast_bool().expect("Can not cast mask to bool.");
+        let mask = mask.cast_bool()?;
         let rtn = match self.inner() {
             Exprs::F64(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_f64()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::F32(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_f32()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::I64(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_i64()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::I32(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_i32()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::Bool(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_bool()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::Usize(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_usize()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::Str(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_str()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::String(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_string()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::DateTime(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_datetime(None)?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::TimeDelta(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_timedelta()?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             Exprs::Object(expr) => expr
                 .clone()
                 .put_mask(mask, value.cast_object_eager(py)?, axis, par)
-                .to_py_ref(self, py),
+                .to_py(self.obj()),
             _ => unimplemented!("put_mask is not implemented for this type."),
         };
         Ok(rtn.add_obj(obj1).add_obj(obj2))
@@ -2466,6 +2466,8 @@ impl PyExpr {
     pub unsafe fn if_then(&self, con: &PyAny, then: &PyAny, py: Python) -> PyResult<PyExpr> {
         let con = parse_expr_nocopy(con)?;
         let then = parse_expr_nocopy(then)?;
+        let con_obj = con.obj();
+        let then_obj = then.obj();
         let con = con.cast_bool()?;
         let out: PyExpr = match self.inner() {
             Exprs::F64(e) => e.clone().if_then(con, then.cast_f64()?).to_py(self.obj()),
@@ -2493,7 +2495,7 @@ impl PyExpr {
                 .to_py(self.obj()),
             _ => unimplemented!("if_then is not implemented for this type."),
         };
-        Ok(out)
+        Ok(out.add_obj(con_obj).add_obj(then_obj))
     }
 
     #[cfg(feature = "blas")]
@@ -2544,7 +2546,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    #[allow(unreachable_patterns)]
     #[pyo3(signature=(full=true, calc_uvt=true, split=true))]
     pub fn svd(&self, full: bool, calc_uvt: bool, split: bool, py: Python) -> PyResult<PyObject> {
         if split {
@@ -2570,7 +2571,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    #[allow(unreachable_patterns)]
     #[pyo3(signature=(return_s=false, r_cond=None, split=true))]
     pub fn pinv(
         &self,
@@ -2654,51 +2654,33 @@ impl PyExpr {
     }
 
     pub fn round(&self, precision: u32) -> PyResult<Self> {
-        let out = match_exprs!(
-            &self.inner,
-            e,
-            {
-                e.clone()
-                    .chain_view_f::<_, f64>(
-                        move |arr| {
-                            Ok(arr
-                                .mapv(|v| {
-                                    let scale = 10_i32.pow(precision) as f64;
-                                    (v.f64() * scale).round() / scale
-                                })
-                                .into())
-                        },
-                        RefType::False,
-                    )
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64,
-            Usize
-        );
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .chain_view_f::<_, f64>(
+                    move |arr| {
+                        Ok(arr
+                            .mapv(|v| {
+                                let scale = 10_i32.pow(precision) as f64;
+                                (v.f64() * scale).round() / scale
+                            })
+                            .into())
+                    },
+                    RefType::False,
+                )
+                .to_py(self.obj())
+        });
         Ok(out)
     }
 
     pub fn round_string(&self, precision: usize) -> PyResult<Self> {
-        let out = match_exprs!(
-            &self.inner,
-            e,
-            {
-                e.clone()
-                    .chain_view_f::<_, String>(
-                        move |arr| Ok(arr.map(|v| format!("{v:.precision$}")).into()),
-                        RefType::False,
-                    )
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64,
-            Usize
-        );
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .chain_view_f::<_, String>(
+                    move |arr| Ok(arr.map(|v| format!("{v:.precision$}")).into()),
+                    RefType::False,
+                )
+                .to_py(self.obj())
+        });
         Ok(out)
     }
 
