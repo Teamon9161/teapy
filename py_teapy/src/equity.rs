@@ -56,13 +56,13 @@ pub unsafe fn calc_ret_single(
     };
     let out_expr: Expr<f64> = pos.cast_f64()?.chain_view_f(
         move |pos_arr| {
-            let pos_arr = pos_arr.to_dim1().unwrap(); // 当期仓位的1d array
-            let opening_cost_expr = opening_cost.eval(); // 开仓成本的1d array
-            let closing_cost_expr = closing_cost.eval(); // 平仓价格的1d array
-            let opening_cost_arr = opening_cost_expr.view_arr().to_dim1().unwrap();
-            let closing_cost_arr = closing_cost_expr.view_arr().to_dim1().unwrap();
+            let pos_arr = pos_arr.to_dim1()?; // 当期仓位的1d array
+            let opening_cost_expr = opening_cost.eval()?; // 开仓成本的1d array
+            let closing_cost_expr = closing_cost.eval()?; // 平仓价格的1d array
+            let opening_cost_arr = opening_cost_expr.view_arr().to_dim1()?;
+            let closing_cost_arr = closing_cost_expr.view_arr().to_dim1()?;
             if pos_arr.is_empty() {
-                return Arr1::from_vec(vec![]).to_dimd().unwrap().into();
+                return Ok(Arr1::from_vec(vec![]).to_dimd().into());
             }
             // 账户变动信息
             let mut cash = init_cash.f64();
@@ -70,9 +70,9 @@ pub unsafe fn calc_ret_single(
             let mut last_lot_num = 0.;
             let mut last_close = closing_cost_arr[0];
             if let Some(contract_signal) = contract_signal {
-                let contract_signal_expr = contract_signal.eval();
-                let contract_signal_arr = contract_signal_expr.view_arr().to_dim1().unwrap();
-                Zip::from(&pos_arr.0)
+                let contract_signal_expr = contract_signal.eval()?;
+                let contract_signal_arr = contract_signal_expr.view_arr().to_dim1()?;
+                Ok(Zip::from(&pos_arr.0)
                     .and(&opening_cost_arr.0)
                     .and(&closing_cost_arr.0)
                     .and(&contract_signal_arr.0)
@@ -128,11 +128,10 @@ pub unsafe fn calc_ret_single(
                     })
                     .wrap()
                     .to_dimd()
-                    .unwrap()
-                    .into()
+                    .into())
             } else {
                 // 不考虑合约换月信号的情况
-                Zip::from(&pos_arr.0)
+                Ok(Zip::from(&pos_arr.0)
                     .and(&opening_cost_arr.0)
                     .and(&closing_cost_arr.0)
                     .map_collect(|&pos, &opening_cost, &closing_cost| {
@@ -181,8 +180,7 @@ pub unsafe fn calc_ret_single(
                     })
                     .wrap()
                     .to_dimd()
-                    .unwrap()
-                    .into()
+                    .into())
             }
         },
         RefType::False,
@@ -227,9 +225,9 @@ pub fn calc_digital_ret(
     let factor = factor.cast_f64()?;
     let out_expr: Expr<f64> = price.cast_f64()?.chain_view_f(
         move |price_arr| {
-            let price = price_arr.to_dim2().unwrap();
-            let factor_expr = factor.eval();
-            let factor = factor_expr.view_arr().to_dim2().unwrap();
+            let price = price_arr.to_dim2()?;
+            let factor_expr = factor.eval()?;
+            let factor = factor_expr.view_arr().to_dim2()?;
             let time_n = factor.shape()[1];
             let mut cash_vec = Vec::with_capacity(time_n);
             // symbol_index => (hold_num, hold_cost)
@@ -309,8 +307,8 @@ pub fn calc_digital_ret(
                 cash_vec.push(cash);
                 hold_amt = target_amt;
             }
-            let out = Arr1::from_vec(cash_vec).to_dimd().unwrap();
-            out.into()
+            let out = Arr1::from_vec(cash_vec).to_dimd();
+            Ok(out.into())
         },
         RefType::False,
     );

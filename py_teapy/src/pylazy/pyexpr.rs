@@ -4,7 +4,9 @@ use std::{cmp::Ordering, fmt::Debug};
 use ndarray::{Slice, SliceInfoElem};
 
 use super::export::*;
-use tears::{ArbArray, DateTime, ExprElement, Number, PyValue, RefType, TimeDelta, TimeUnit};
+use tears::{
+    ArbArray, DateTime, ExprElement, Number, PyValue, RefType, StrError, TimeDelta, TimeUnit,
+};
 #[cfg(feature = "option_dtype")]
 use tears::{OptF32, OptF64, OptI32, OptI64, OptUsize};
 
@@ -130,147 +132,77 @@ impl PyExpr {
 
     // Cast the output of the expression to f64 ndarray
     pub fn cast_f64(self) -> PyResult<Expr<'static, f64>> {
-        if let Ok(v) = self.inner.cast_f64() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to f64"))
-        }
+        self.inner.cast_f64().map_err(StrError::to_py)
     }
 
     #[cfg(feature = "option_dtype")]
     // Cast the output of the expression to Option<f32> ndarray
     pub fn cast_optf32(self) -> PyResult<Expr<'static, OptF32>> {
-        if let Ok(v) = self.inner.cast_optf32() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err(
-                "Can not cast the output to Option<f32>",
-            ))
-        }
+        self.inner.cast_optf32().map_err(StrError::to_py)
     }
 
     #[cfg(feature = "option_dtype")]
     // Cast the output of the expression to Option<f64> ndarray
     pub fn cast_optf64(self) -> PyResult<Expr<'static, OptF64>> {
-        if let Ok(v) = self.inner.cast_optf64() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err(
-                "Can not cast the output to Option<f64>",
-            ))
-        }
+        self.inner.cast_optf64().map_err(StrError::to_py)
     }
 
     #[cfg(feature = "option_dtype")]
     // Cast the output of the expression to Option<i32> ndarray
     pub fn cast_opti32(self) -> PyResult<Expr<'static, OptI32>> {
-        if let Ok(v) = self.inner.cast_opti32() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err(
-                "Can not cast the output to Option<i32>",
-            ))
-        }
+        self.inner.cast_opti32().map_err(StrError::to_py)
     }
 
     #[cfg(feature = "option_dtype")]
     // Cast the output of the expression to Option<i64> ndarray
     pub fn cast_opti64(self) -> PyResult<Expr<'static, OptI64>> {
-        if let Ok(v) = self.inner.cast_opti64() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err(
-                "Can not cast the output to Option<i64>",
-            ))
-        }
+        self.inner.cast_opti64().map_err(StrError::to_py)
     }
 
     #[cfg(feature = "option_dtype")]
     // Cast the output of the expression to Option<usize> ndarray
     pub fn cast_optusize(self) -> PyResult<Expr<'static, OptUsize>> {
-        if let Ok(v) = self.inner.cast_optusize() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err(
-                "Can not cast the output to Option<usize>",
-            ))
-        }
+        self.inner.cast_optusize().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to f32 ndarray
     pub fn cast_f32(self) -> PyResult<Expr<'static, f32>> {
-        if let Ok(v) = self.inner.cast_f32() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to f32"))
-        }
+        self.inner.cast_f32().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to i64 ndarray
     pub fn cast_i64(self) -> PyResult<Expr<'static, i64>> {
-        if let Ok(v) = self.inner.cast_i64() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to i64"))
-        }
+        self.inner.cast_i64().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to i32 ndarray
     pub fn cast_i32(self) -> PyResult<Expr<'static, i32>> {
-        if let Ok(v) = self.inner.cast_i32() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to i32"))
-        }
+        self.inner.cast_i32().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to usize ndarray
     pub fn cast_usize(self) -> PyResult<Expr<'static, usize>> {
-        if let Ok(v) = self.inner.cast_usize() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to usize"))
-        }
+        self.inner.cast_usize().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to object ndarray lazily
     pub fn cast_object(self) -> PyResult<Expr<'static, PyValue>> {
-        if let Ok(v) = self.inner.cast_object() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err(
-                "Can not cast the output to object lazily",
-            ))
-        }
+        self.inner.cast_object().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to object ndarray
     pub fn cast_object_eager(self, py: Python) -> PyResult<Expr<'static, PyValue>> {
-        if let Ok(v) = self.inner.cast_object_eager(py) {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to object"))
-        }
+        self.inner.cast_object_eager(py).map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to datetime ndarray
     pub fn cast_datetime(self, unit: Option<TimeUnit>) -> PyResult<Expr<'static, DateTime>> {
-        if let Ok(v) = self.inner.cast_datetime(unit) {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to datetime"))
-        }
+        self.inner.cast_datetime(unit).map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to timedelta ndarray
     pub fn cast_timedelta(self) -> PyResult<Expr<'static, TimeDelta>> {
-        if let Ok(v) = self.inner.cast_timedelta() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err(
-                "Can not cast the output to timedelta",
-            ))
-        }
+        self.inner.cast_timedelta().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to datetime ndarray
@@ -280,60 +212,36 @@ impl PyExpr {
 
     // Cast the output of the expression to str ndarray
     pub fn cast_str(self) -> PyResult<Expr<'static, &'static str>> {
-        if let Ok(v) = self.inner.cast_str() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to str"))
-        }
+        self.inner.cast_str().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to string ndarray
     pub fn cast_string(self) -> PyResult<Expr<'static, String>> {
-        if let Ok(v) = self.inner.cast_string() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to string"))
-        }
+        self.inner.cast_string().map_err(StrError::to_py)
     }
 
     // Cast the output of the expression to bool ndarray
     pub fn cast_bool(self) -> PyResult<Expr<'static, bool>> {
-        if let Ok(v) = self.inner.cast_bool() {
-            Ok(v)
-        } else {
-            Err(PyValueError::new_err("Can not cast the output to bool"))
-        }
+        self.inner.cast_bool().map_err(StrError::to_py)
     }
 
     #[allow(unreachable_patterns, dead_code)]
-    pub fn eval(mut self) -> Self {
-        self.eval_inplace();
-        self
-        // match_exprs!(self.inner, expr, {
-        //     let expr = expr.eval();
-        //     if let Some(owned) = expr.owned() {
-        //         if owned {
-        //             // we don't need to reference
-        //             expr.into()
-        //         } else {
-        //             expr.to_py(self.obj)
-        //         }
-        //     } else {
-        //         expr.to_py(self.obj)
-        //     }
-        // })
+    pub fn eval(mut self) -> PyResult<Self> {
+        self.eval_inplace()?;
+        Ok(self)
     }
 
     #[allow(unreachable_patterns)]
-    pub fn eval_inplace(&mut self) {
+    pub fn eval_inplace(&mut self) -> PyResult<()> {
         match_exprs!(&mut self.inner, expr, {
-            expr.eval_inplace();
+            expr.eval_inplace().map_err(StrError::to_py)?;
             if let Some(owned) = expr.owned() {
                 if owned {
                     self.obj = None
                 } // we don't need to reference
             }
-        })
+        });
+        Ok(())
     }
 
     #[allow(unreachable_patterns)]
@@ -486,7 +394,7 @@ impl PyExpr {
                     Ok(self
                         .clone()
                         .cast_object()?
-                        .object_to_string(py)
+                        .object_to_string(py)?
                         .to_py(self.obj()))
                 } else {
                     Ok(self.clone().cast_string()?.to_py(self.obj()))
@@ -603,11 +511,16 @@ impl<T: ExprElement + Clone + 'static> SortExpr for Expr<'static, T> {
     fn sort_by_expr_idx(self, mut by: Vec<PyExpr>, rev: bool) -> Expr<'static, usize> {
         self.chain_view_f(
             move |arr| {
-                assert_eq!(arr.ndim(), 1, "Currently only 1 dim Expr can be sorted");
+                if arr.ndim() != 1 {
+                    return Err("Currently only 1 dim Expr can be sorted".into());
+                }
                 let arr = arr.to_dim1().unwrap();
                 let len = arr.len();
                 // evaluate the key expressions first
-                by.par_iter_mut().for_each(|e| e.eval_inplace());
+                let eval_res: Vec<_> = by.par_iter_mut().map(|e| e.eval_inplace()).collect();
+                if eval_res.iter().any(|e| e.is_err()) {
+                    return Err("Some of the expressions can't be evaluated".into());
+                }
                 let mut idx = Vec::from_iter(0..len);
                 idx.sort_by(move |a, b| {
                     let mut order = Ordering::Equal;
@@ -674,7 +587,7 @@ impl<T: ExprElement + Clone + 'static> SortExpr for Expr<'static, T> {
                     }
                     order
                 });
-                Arr1::from_vec(idx).to_dimd().unwrap().into()
+                Ok(Arr1::from_vec(idx).to_dimd().into())
             },
             RefType::False,
         )

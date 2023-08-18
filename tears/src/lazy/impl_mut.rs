@@ -6,7 +6,12 @@ where
 {
     pub fn put_mask(self, mask: Expr<'a, bool>, value: Expr<'a, T>, axis: i32, par: bool) -> Self {
         self.chain_view_mut_f(move |arr| {
-            arr.put_mask(&mask.eval().view_arr(), &value.eval().view_arr(), axis, par);
+            arr.put_mask(
+                &mask.eval()?.view_arr(),
+                &value.eval()?.view_arr(),
+                axis,
+                par,
+            )
         })
     }
 }

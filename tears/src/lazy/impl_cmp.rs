@@ -12,7 +12,7 @@ where
         T2: ExprElement + 'a,
     {
         self.chain_view_f(
-            move |arr| arr.gt(rhs.eval().view().as_arr(), par).into(),
+            move |arr| Ok(arr.gt(rhs.eval()?.view().try_as_arr()?, par).into()),
             RefType::False,
         )
     }
@@ -23,7 +23,7 @@ where
         T2: ExprElement + 'a,
     {
         self.chain_view_f(
-            move |arr| arr.ge(rhs.eval().view().as_arr(), par).into(),
+            move |arr| Ok(arr.ge(rhs.eval()?.view().try_as_arr()?, par).into()),
             RefType::False,
         )
     }
@@ -34,7 +34,7 @@ where
         T2: ExprElement + 'a,
     {
         self.chain_view_f(
-            move |arr| arr.lt(rhs.eval().view().as_arr(), par).into(),
+            move |arr| Ok(arr.lt(rhs.eval()?.view().try_as_arr()?, par).into()),
             RefType::False,
         )
     }
@@ -45,7 +45,7 @@ where
         T2: ExprElement + 'a,
     {
         self.chain_view_f(
-            move |arr| arr.le(rhs.eval().view().as_arr(), par).into(),
+            move |arr| Ok(arr.le(rhs.eval()?.view().try_as_arr()?, par).into()),
             RefType::False,
         )
     }
@@ -56,7 +56,7 @@ where
         T2: ExprElement + 'a,
     {
         self.chain_view_f(
-            move |arr| arr.eq(rhs.eval().view().as_arr(), par).into(),
+            move |arr| Ok(arr.eq(rhs.eval()?.view().try_as_arr()?, par).into()),
             RefType::False,
         )
     }
@@ -67,7 +67,7 @@ where
         T2: ExprElement + 'a,
     {
         self.chain_view_f(
-            move |arr| arr.ne(rhs.eval().view().as_arr(), par).into(),
+            move |arr| Ok(arr.ne(rhs.eval()?.view().try_as_arr()?, par).into()),
             RefType::False,
         )
     }

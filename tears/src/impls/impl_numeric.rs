@@ -1,3 +1,5 @@
+use crate::TpResult;
+
 use super::super::{Arr, ArrBase, ArrD, WrapNdarray};
 use ndarray::{Data, DataMut, DimMax, Dimension, Zip};
 use ndarray::{Ix2, IxDyn, LinalgScalar};
@@ -54,46 +56,39 @@ where
     T: LinalgScalar,
 {
     // #[allow(clippy::useless_conversion)]
-    pub fn dot<S2>(&self, other: &ArrBase<S2, IxDyn>) -> ArrD<T>
+    pub fn dot<S2>(&self, other: &ArrBase<S2, IxDyn>) -> TpResult<ArrD<T>>
     where
         S2: Data<Elem = T>,
     {
         match (self.ndim(), other.ndim()) {
-            (1, 1) => self
+            (1, 1) => Ok(self
                 .view()
-                .to_dim1()
-                .unwrap()
+                .to_dim1()?
                 .0
                 .dot(&other.view().to_dim1().unwrap().0)
-                .into(),
-            (1, 2) => self
+                .into()),
+            (1, 2) => Ok(self
                 .view()
-                .to_dim1()
-                .unwrap()
+                .to_dim1()?
                 .0
                 .dot(&other.view().to_dim::<Ix2>().unwrap().0)
                 .wrap()
-                .to_dimd()
-                .unwrap(),
-            (2, 1) => self
+                .to_dimd()),
+            (2, 1) => Ok(self
                 .view()
-                .to_dim::<Ix2>()
-                .unwrap()
+                .to_dim2()?
                 .0
                 .dot(&other.view().to_dim1().unwrap().0)
                 .wrap()
-                .to_dimd()
-                .unwrap(),
-            (2, 2) => self
+                .to_dimd()),
+            (2, 2) => Ok(self
                 .view()
-                .to_dim::<Ix2>()
-                .unwrap()
+                .to_dim2()?
                 .0
                 .dot(&other.view().to_dim::<Ix2>().unwrap().0)
                 .wrap()
-                .to_dimd()
-                .unwrap(),
-            _ => panic!("dot for this dim is not suppported"),
+                .to_dimd()),
+            _ => Err(crate::StrError::from("dot for this dim is not suppported")),
         }
         // .into()
     }

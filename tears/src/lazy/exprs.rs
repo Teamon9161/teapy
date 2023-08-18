@@ -4,7 +4,7 @@ use pyo3::Python;
 
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
-use crate::{DateTime, PyValue, TimeDelta, TimeUnit};
+use crate::{DateTime, PyValue, TimeDelta, TimeUnit, TpResult};
 
 use super::super::{match_datatype_arm, DataType, GetDataType};
 use super::expr_view::ExprOutView;
@@ -127,7 +127,7 @@ impl Debug for Exprs<'_> {
 
 impl<'a> Exprs<'a> {
     #[allow(unreachable_patterns)]
-    pub fn eval_inplace(&mut self) {
+    pub fn eval_inplace(&mut self) -> TpResult<()> {
         match_exprs!(self, e, { e.eval_inplace() })
     }
 
@@ -179,7 +179,7 @@ impl<'a> Exprs<'a> {
         matches!(self, Exprs::Object(_))
     }
 
-    pub fn cast_f64(self) -> Result<Expr<'a, f64>, &'static str> {
+    pub fn cast_f64(self) -> TpResult<Expr<'a, f64>> {
         match self {
             Exprs::F32(e) => Ok(e.cast::<f64>()),
             Exprs::F64(e) => Ok(e),
@@ -187,51 +187,51 @@ impl<'a> Exprs<'a> {
             Exprs::I64(e) => Ok(e.cast::<f64>()),
             Exprs::Bool(e) => Ok(e.cast::<i32>().cast::<f64>()),
             Exprs::Usize(e) => Ok(e.cast::<f64>()),
-            _ => Err("Cast to f64 for this dtype is unimplemented"),
+            _ => Err("Cast to f64 for this dtype is unimplemented".into()),
         }
     }
 
     #[cfg(feature = "option_dtype")]
-    pub fn cast_optf64(self) -> Result<Expr<'a, OptF64>, &'static str> {
+    pub fn cast_optf64(self) -> TpResult<Expr<'a, OptF64>> {
         match self {
             Exprs::F64(e) => Ok(e.cast::<OptF64>()),
-            _ => Err("Cast to Option<f64> for this dtype is unimplemented"),
+            _ => Err("Cast to Option<f64> for this dtype is unimplemented".into()),
         }
     }
 
     #[cfg(feature = "option_dtype")]
-    pub fn cast_optf32(self) -> Result<Expr<'a, OptF32>, &'static str> {
+    pub fn cast_optf32(self) -> TpResult<Expr<'a, OptF32>> {
         match self {
             Exprs::F32(e) => Ok(e.cast::<OptF32>()),
-            _ => Err("Cast to Option<f32> for this dtype is unimplemented"),
+            _ => Err("Cast to Option<f32> for this dtype is unimplemented".into()),
         }
     }
 
     #[cfg(feature = "option_dtype")]
-    pub fn cast_opti32(self) -> Result<Expr<'a, OptI32>, &'static str> {
+    pub fn cast_opti32(self) -> TpResult<Expr<'a, OptI32>> {
         match self {
             Exprs::I32(e) => Ok(e.cast::<OptI32>()),
-            _ => Err("Cast to Option<i32> for this dtype is unimplemented"),
+            _ => Err("Cast to Option<i32> for this dtype is unimplemented".into()),
         }
     }
 
     #[cfg(feature = "option_dtype")]
-    pub fn cast_opti64(self) -> Result<Expr<'a, OptI64>, &'static str> {
+    pub fn cast_opti64(self) -> TpResult<Expr<'a, OptI64>> {
         match self {
             Exprs::I64(e) => Ok(e.cast::<OptI64>()),
-            _ => Err("Cast to Option<i64> for this dtype is unimplemented"),
+            _ => Err("Cast to Option<i64> for this dtype is unimplemented".into()),
         }
     }
 
     #[cfg(feature = "option_dtype")]
-    pub fn cast_optusize(self) -> Result<Expr<'a, OptUsize>, &'static str> {
+    pub fn cast_optusize(self) -> TpResult<Expr<'a, OptUsize>> {
         match self {
             Exprs::Usize(e) => Ok(e.cast::<OptUsize>()),
-            _ => Err("Cast to Option<usize> for this dtype is unimplemented"),
+            _ => Err("Cast to Option<usize> for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_f32(self) -> Result<Expr<'a, f32>, &'static str> {
+    pub fn cast_f32(self) -> TpResult<Expr<'a, f32>> {
         match self {
             Exprs::F32(e) => Ok(e),
             Exprs::F64(e) => Ok(e.cast::<f32>()),
@@ -239,11 +239,11 @@ impl<'a> Exprs<'a> {
             Exprs::I64(e) => Ok(e.cast::<f32>()),
             Exprs::Bool(e) => Ok(e.cast::<i32>().cast::<f32>()),
             Exprs::Usize(e) => Ok(e.cast::<f32>()),
-            _ => Err("Cast to f32 for this dtype is unimplemented"),
+            _ => Err("Cast to f32 for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_i32(self) -> Result<Expr<'a, i32>, &'static str> {
+    pub fn cast_i32(self) -> TpResult<Expr<'a, i32>> {
         match self {
             Exprs::F32(e) => Ok(e.cast::<i32>()),
             Exprs::F64(e) => Ok(e.cast::<i32>()),
@@ -252,11 +252,11 @@ impl<'a> Exprs<'a> {
             Exprs::Bool(e) => Ok(e.cast::<i32>()),
             Exprs::Usize(e) => Ok(e.cast::<i32>()),
             // Exprs::DateTime(e) => {Ok(e.cast::<i32>())}
-            _ => Err("Cast to i32 for this dtype is unimplemented"),
+            _ => Err("Cast to i32 for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_i64(self) -> Result<Expr<'a, i64>, &'static str> {
+    pub fn cast_i64(self) -> TpResult<Expr<'a, i64>> {
         match self {
             Exprs::F32(e) => Ok(e.cast::<i64>()),
             Exprs::F64(e) => Ok(e.cast::<i64>()),
@@ -265,11 +265,11 @@ impl<'a> Exprs<'a> {
             Exprs::Bool(e) => Ok(e.cast::<i64>()),
             Exprs::Usize(e) => Ok(e.cast::<i64>()),
             Exprs::DateTime(e) => Ok(e.cast::<i64>()),
-            _ => Err("Cast to i64 for this dtype is unimplemented"),
+            _ => Err("Cast to i64 for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_usize(self) -> Result<Expr<'a, usize>, &'static str> {
+    pub fn cast_usize(self) -> TpResult<Expr<'a, usize>> {
         match self {
             Exprs::F32(e) => Ok(e.cast::<usize>()),
             Exprs::F64(e) => Ok(e.cast::<usize>()),
@@ -277,36 +277,33 @@ impl<'a> Exprs<'a> {
             Exprs::I64(e) => Ok(e.cast::<usize>()),
             Exprs::Bool(e) => Ok(e.cast::<usize>()),
             Exprs::Usize(e) => Ok(e),
-            _ => Err("Cast to usize for this dtype is unimplemented"),
+            _ => Err("Cast to usize for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_object(self) -> Result<Expr<'a, PyValue>, &'static str> {
+    pub fn cast_object(self) -> TpResult<Expr<'a, PyValue>> {
         match self {
             Exprs::Object(e) => Ok(e),
-            _ => Err("Cast lazily to object for this dtype is unimplemented"),
+            _ => Err("Cast lazily to object for this dtype is unimplemented".into()),
         }
     }
 
     #[allow(unreachable_patterns)]
-    pub fn cast_object_eager<'py>(
-        self,
-        py: Python<'py>,
-    ) -> Result<Expr<'a, PyValue>, &'static str> {
+    pub fn cast_object_eager<'py>(self, py: Python<'py>) -> TpResult<Expr<'a, PyValue>> {
         if self.is_object() {
             return self.cast_object();
         }
-        match_exprs!(self, e, { Ok(e.cast_object_eager(py)) })
+        match_exprs!(self, e, { e.cast_object_eager(py) })
     }
 
-    pub fn cast_str(self) -> Result<Expr<'a, &'a str>, &'static str> {
+    pub fn cast_str(self) -> TpResult<Expr<'a, &'a str>> {
         match self {
             Exprs::Str(e) => Ok(e),
-            _ => Err("Cast to str for this dtype is unimplemented"),
+            _ => Err("Cast to str for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_string(self) -> Result<Expr<'a, String>, &'static str> {
+    pub fn cast_string(self) -> TpResult<Expr<'a, String>> {
         match self {
             Exprs::String(e) => Ok(e),
             Exprs::Str(e) => Ok(e.cast_string()),
@@ -315,22 +312,22 @@ impl<'a> Exprs<'a> {
             Exprs::I32(e) => Ok(e.cast_string()),
             Exprs::I64(e) => Ok(e.cast_string()),
             Exprs::DateTime(e) => Ok(e.strftime(None)),
-            _ => Err("Cast to string for this dtype is unimplemented"),
+            _ => Err("Cast to string for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_bool(self) -> Result<Expr<'a, bool>, &'static str> {
+    pub fn cast_bool(self) -> TpResult<Expr<'a, bool>> {
         match self {
             Exprs::Bool(e) => Ok(e),
             Exprs::F32(e) => Ok(e.cast_bool()),
             Exprs::F64(e) => Ok(e.cast_bool()),
             Exprs::I32(e) => Ok(e.cast_bool()),
             Exprs::I64(e) => Ok(e.cast_bool()),
-            _ => Err("Cast to bool for this dtype is unimplemented"),
+            _ => Err("Cast to bool for this dtype is unimplemented".into()),
         }
     }
 
-    pub fn cast_datetime(self, unit: Option<TimeUnit>) -> Result<Expr<'a, DateTime>, &'static str> {
+    pub fn cast_datetime(self, unit: Option<TimeUnit>) -> TpResult<Expr<'a, DateTime>> {
         match self {
             Exprs::DateTime(e) => Ok(e),
             Exprs::I32(e) => Ok(e.cast_datetime(unit)),
@@ -338,18 +335,18 @@ impl<'a> Exprs<'a> {
             Exprs::F64(e) => Ok(e.cast_datetime(unit)),
             Exprs::F32(e) => Ok(e.cast_datetime(unit)),
             Exprs::Usize(e) => Ok(e.cast_datetime(unit)),
-            _ => Err("Cast lazily to datetime for this dtype is unimplemented"),
+            _ => Err("Cast lazily to datetime for this dtype is unimplemented".into()),
         }
     }
-    pub fn cast_datetime_default(self) -> Result<Expr<'a, DateTime>, &'static str> {
+    pub fn cast_datetime_default(self) -> TpResult<Expr<'a, DateTime>> {
         self.cast_datetime(Some(Default::default()))
     }
 
-    pub fn cast_timedelta(self) -> Result<Expr<'a, TimeDelta>, &'static str> {
+    pub fn cast_timedelta(self) -> TpResult<Expr<'a, TimeDelta>> {
         match self {
             Exprs::TimeDelta(e) => Ok(e),
             Exprs::String(e) => Ok(e.cast_timedelta()),
-            _ => Err("Cast to timedelta for this dtype is unimplemented"),
+            _ => Err("Cast to timedelta for this dtype is unimplemented".into()),
         }
     }
 }
@@ -500,7 +497,7 @@ impl<'a> ExprsInner<'a> {
     // }
 
     #[allow(unreachable_patterns)]
-    pub(super) fn view<T: GetDataType>(&self) -> Result<ExprOutView<'_, T>, &'static str> {
+    pub(super) fn view<T: GetDataType>(&self) -> TpResult<ExprOutView<'_, T>> {
         // we have known the datatype of the enum ,so only one arm will be executed
         match_datatype_arm!(
             all
@@ -513,7 +510,7 @@ impl<'a> ExprsInner<'a> {
     }
 
     #[allow(unreachable_patterns)]
-    pub(super) fn eval_inplace(&mut self) {
+    pub(super) fn eval_inplace(&mut self) -> TpResult<()> {
         match_exprs_inner!(self, e, { e.eval_inplace() })
     }
 }

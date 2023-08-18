@@ -1,3 +1,4 @@
+use pyo3::exceptions::PyRuntimeError;
 use tears::{groupby, groupby_par};
 
 use super::export::*;
@@ -46,15 +47,21 @@ pub(super) fn groupby_apply(
         let expr_list = unsafe { parse_expr_list(expr_list, false) }?;
         exprs.push(expr_list);
     }
-    Ok(groupby_eval(exprs, axis))
+    groupby_eval(exprs, axis)
 }
 
-fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyDataDict {
+fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyResult<PyDataDict> {
     let column_num = exprs[0].len(); // each group should have the same column num
-    exprs
+    let eval_res: Vec<_> = exprs
         .par_iter_mut()
         .flatten()
-        .for_each(|e| e.eval_inplace());
+        .map(|e| e.eval_inplace())
+        .collect();
+    if eval_res.iter().any(|e| e.is_err()) {
+        return Err(PyRuntimeError::new_err(
+            "Some of the expressions can't be evaluated",
+        ));
+    }
 
     let out_data = (0..column_num)
         .into_par_iter()
@@ -66,7 +73,7 @@ fn groupby_eval(mut exprs: Vec<Vec<PyExpr>>, axis: i32) -> PyDataDict {
             concat_expr(group_vec, axis).expect("concat expr error")
         })
         .collect();
-    PyDataDict::new(out_data, None)
+    Ok(PyDataDict::new(out_data, None))
 }
 
 #[pyclass]

@@ -3,13 +3,18 @@ use super::super::super::{
     Arr1, ArrD,
 };
 use super::{into_matrix, MatrixLayout};
+use crate::TpResult;
 use lapack_sys::dgesvd_;
 use libc::c_char;
 
 impl ArrD<f64> {
-    pub fn svd_into(self, full: bool, calc_uvt: bool) -> (Option<Self>, Self, Option<Self>) {
-        let mut arr = self.to_dim2().expect("Array should be dim2 when svd");
-        let layout = arr.layout().expect("Array should be contiguous when svd");
+    pub fn svd_into(
+        self,
+        full: bool,
+        calc_uvt: bool,
+    ) -> TpResult<(Option<Self>, Self, Option<Self>)> {
+        let mut arr = self.to_dim2()?;
+        let layout = arr.layout()?;
         let mut_arr = arr
             .as_slice_memory_order_mut()
             .expect("Array should be contiguous when svd");
@@ -104,9 +109,9 @@ impl ArrD<f64> {
             panic!("SVD error: info = {info}");
         }
         let s = unsafe { s.assume_init() };
-        let s = Arr1::from_vec(s).to_dimd().unwrap();
+        let s = Arr1::from_vec(s).to_dimd();
         if !calc_uvt {
-            (None, s, None)
+            Ok((None, s, None))
         } else {
             // let mut res_vec = Vec::<ArbArray<'a, f64>>::with_capacity(3);
             let (u, vt) = if !full {
@@ -133,17 +138,9 @@ impl ArrD<f64> {
             };
             let (m, n) = layout.size();
             let (u_col, vt_row) = if full { (m, n) } else { (k, k) };
-            let u: Self = into_matrix(layout.resized(m, u_col), u.unwrap())
-                .unwrap()
-                // .wrap()
-                .to_dimd()
-                .unwrap();
-            let vt: Self = into_matrix(layout.resized(vt_row, n), vt.unwrap())
-                .unwrap()
-                // .wrap()
-                .to_dimd()
-                .unwrap();
-            (Some(u), s, Some(vt))
+            let u: Self = into_matrix(layout.resized(m, u_col), u.unwrap())?.to_dimd();
+            let vt: Self = into_matrix(layout.resized(vt_row, n), vt.unwrap())?.to_dimd();
+            Ok((Some(u), s, Some(vt)))
         }
     }
 }

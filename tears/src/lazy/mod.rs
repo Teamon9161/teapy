@@ -20,7 +20,7 @@ use super::{
     ArbArray, Arr1, ArrD, ArrOk, ArrViewD, ArrViewMutD, CollectTrustedToVec, DataType, DateTime,
     DefaultNew, EmptyNew, GetDataType, TimeDelta, TimeUnit,
 };
-use crate::PyValue;
+use crate::{PyValue, TpResult};
 pub use expr_view::ExprOutView;
 use exprs::ExprsInner;
 use num::traits::AsPrimitive;
@@ -125,7 +125,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         unsafe { self.e.lock().get::<T>().get_base_type() }
     }
 
-    pub fn get_base_strong_count(&self) -> Result<usize, &'static str> {
+    pub fn get_base_strong_count(&self) -> TpResult<usize> {
         unsafe { self.e.lock().get::<T>().get_base_expr_strong_count() }
     }
 
@@ -167,7 +167,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         let mut out = Vec::with_capacity(len);
         for i in 0..len {
             out.push(self.clone().chain_f(
-                move |base| base.into_arr_vec().remove(i).into(),
+                move |base| Ok(base.into_arr_vec().remove(i).into()),
                 RefType::False,
             ));
         }
@@ -179,7 +179,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     #[inline]
     pub fn chain_f<F, T2>(self, f: F, ref_type: RefType) -> Expr<'a, T2>
     where
-        F: FnOnce(ExprOut<'a, T>) -> ExprOut<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ExprOut<'a, T>) -> TpResult<ExprOut<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement + 'a,
     {
         self.downcast().chain_f(f, ref_type).into()
@@ -190,7 +190,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     #[inline]
     pub fn chain_arr_f<F, T2>(self, f: F, ref_type: RefType) -> Expr<'a, T2>
     where
-        F: FnOnce(ArbArray<'a, T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ArbArray<'a, T>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement + 'a,
     {
         self.downcast().chain_arr_f(f, ref_type).into()
@@ -201,33 +201,11 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     #[inline]
     pub fn chain_view_f<F, T2>(self, f: F, ref_type: RefType) -> Expr<'a, T2>
     where
-        F: FnOnce(ArrViewD<'_, T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ArrViewD<'_, T>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement + 'a,
     {
         self.downcast().chain_view_f(f, ref_type).into()
     }
-
-    // /// chain a new function to current function chain, the function accept
-    // /// an array of type `ArbArray<'a, T>` and return `ArbArray<'a, T2>`
-    // #[inline]
-    // pub fn chain_view_out_arr_f<F, T2>(self, f: F) -> Expr<'a, T2>
-    // where
-    //     F: FnOnce(ArbArray<'a, T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
-    //     T2: ExprElement + 'a,
-    // {
-    //     self.downcast().chain_view_out_arr_f(f).into()
-    // }
-
-    // /// chain a new function to current function chain, the function accept
-    // /// an array of type ArrViewD<'a, T> and return ArrViewD<'a, T2>
-    // #[inline]
-    // pub fn chain_view_out_f<F, T2>(self, f: F) -> Expr<'a, T2>
-    // where
-    //     F: FnOnce(ArrViewD<'_, T>) -> ArrViewD<'a, T2> + Send + Sync + 'a,
-    //     T2: ExprElement + 'a,
-    // {
-    //     self.downcast().chain_view_out_f(f).into()
-    // }
 
     /// chain a new function to current function chain, the function accept
     /// an array of type `ArrViewMutD<'a, T>` and modify inplace
@@ -235,7 +213,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     pub fn chain_view_mut_f<F>(self, f: F) -> Expr<'a, T>
     where
         T: Clone,
-        F: FnOnce(&mut ArrViewMutD<'_, T>) + Send + Sync + 'a,
+        F: FnOnce(&mut ArrViewMutD<'_, T>) -> TpResult<()> + Send + Sync + 'a,
     {
         self.downcast().chain_view_mut_f(f).into()
     }
@@ -246,27 +224,27 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     pub fn chain_owned_f<F, T2>(self, f: F) -> Expr<'a, T2>
     where
         T: Clone,
-        F: FnOnce(ArrD<T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ArrD<T>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement + 'a,
     {
         self.downcast().chain_owned_f(f).into()
     }
 
     #[inline]
-    pub fn eval(mut self) -> Expr<'a, T> {
-        self.eval_inplace();
-        self
+    pub fn eval(mut self) -> TpResult<Expr<'a, T>> {
+        self.eval_inplace()?;
+        Ok(self)
         // self.downcast().eval().into()
     }
 
     #[inline]
-    pub fn eval_inplace(&mut self) {
+    pub fn eval_inplace(&mut self) -> TpResult<()> {
         unsafe { self.e.lock().get_mut::<T>().eval_inplace() }
     }
 
     /// create a view of the output array
     #[inline]
-    pub fn try_view_arr(&self) -> Result<ArrViewD<'_, T>, &'static str> {
+    pub fn try_view_arr(&self) -> TpResult<ArrViewD<'_, T>> {
         self.try_view()?.try_into_arr()
     }
 
@@ -282,7 +260,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     }
 
     #[inline]
-    pub fn try_view(&self) -> Result<ExprOutView<'_, T>, &'static str> {
+    pub fn try_view(&self) -> TpResult<ExprOutView<'_, T>> {
         let e = self.e.lock();
         let view = unsafe { e.get::<T>().try_view()? };
         Ok(unsafe { mem::transmute(view) })
@@ -290,7 +268,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     /// execute the expression and copy the output
     #[inline]
-    pub fn value(&mut self) -> ArrD<T>
+    pub fn value(&mut self) -> TpResult<ArrD<T>>
     where
         T: Clone,
     {
@@ -298,12 +276,12 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     }
 
     #[inline]
-    pub fn into_arr(self) -> ArbArray<'a, T> {
+    pub fn into_arr(self) -> TpResult<ArbArray<'a, T>> {
         self.downcast().into_arr()
     }
 
     #[inline]
-    pub fn into_out(self) -> ExprOut<'a, T> {
+    pub fn into_out(self) -> TpResult<ExprOut<'a, T>> {
         self.downcast().into_out()
     }
 
@@ -361,11 +339,11 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     /// Try casting to object type
     #[inline]
-    pub fn cast_object_eager<'py>(self, py: Python<'py>) -> Expr<'a, PyValue>
+    pub fn cast_object_eager<'py>(self, py: Python<'py>) -> TpResult<Expr<'a, PyValue>>
     where
         T: Clone + ToPyObject,
     {
-        self.downcast().cast_object_eager(py).into()
+        Ok(self.downcast().cast_object_eager(py)?.into())
     }
 }
 
@@ -423,7 +401,7 @@ impl<'a, T: ExprElement> ExprOut<'a, T> {
 }
 
 pub(self) type FuncChainType<'a, T> =
-    Box<dyn FnOnce(ExprBase<'a>) -> ExprOut<'a, T> + Send + Sync + 'a>;
+    Box<dyn FnOnce(ExprBase<'a>) -> TpResult<ExprOut<'a, T>> + Send + Sync + 'a>;
 
 impl<'a, T: ExprElement> From<ArbArray<'a, T>> for ExprOut<'a, T> {
     fn from(arr: ArbArray<'a, T>) -> Self {
@@ -490,76 +468,76 @@ where
             match T::dtype() {
                 DataType::Bool => Box::new(move |_| {
                     let arr: ArrD<bool> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::F64 => Box::new(move |_| {
                     let arr: ArrD<f64> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::F32 => Box::new(move |_| {
                     let arr: ArrD<f32> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::I32 => Box::new(move |_| {
                     let arr: ArrD<i32> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::I64 => Box::new(move |_| {
                     let arr: ArrD<i64> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::Usize => Box::new(move |_| {
                     let arr: ArrD<usize> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::String => Box::new(move |_| {
                     let arr: ArrD<String> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::Str => Box::new(move |_| {
                     let arr: ArrD<&str> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::Object => Box::new(move |_| {
                     let arr: ArrD<PyValue> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::DateTime => Box::new(move |_| {
                     let arr: ArrD<DateTime> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::TimeDelta => Box::new(move |_| {
                     let arr: ArrD<TimeDelta> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 DataType::OpUsize => Box::new(move |_| {
                     let arr: ArrD<Option<usize>> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptF64 => Box::new(move |_| {
                     let arr: ArrD<OptF64> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptF32 => Box::new(move |_| {
                     let arr: ArrD<OptF32> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptI32 => Box::new(move |_| {
                     let arr: ArrD<OptI32> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptI64 => Box::new(move |_| {
                     let arr: ArrD<OptI64> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptUsize => Box::new(move |_| {
                     let arr: ArrD<OptUsize> = Default::default();
-                    arr.into_dtype::<T>().into()
+                    Ok(arr.into_dtype::<T>().into())
                 }),
             }
         }
@@ -576,7 +554,7 @@ macro_rules! impl_funcchain_new {
                         match base {
                             ExprBase::Arr(arr_dyn) => {
                                 if let ArrOk::$arm(arr) = arr_dyn {
-                                    arr.into_dtype::<T>().into()
+                                    Ok(arr.into_dtype::<T>().into())
                                 } else {
                                     unreachable!()
                                 }
@@ -589,19 +567,19 @@ macro_rules! impl_funcchain_new {
                                         panic!("Create expression base with a vector of array only support one dtype.")
                                     }
                                 }).collect_trusted();
-                                out.into()
+                                Ok(out.into())
                             },
                             ExprBase::ArcArr(arc_arr) => {
                                 // we should not modify the base expression,
                                 // so just create a view of the array
                                 let out: ExprOut<'_, T> = arc_arr.view::<T>().into();
-                                return mem::transmute(out)
+                                return Ok(mem::transmute(out))
                             },
                             ExprBase::Expr(exprs) => {
                                 let ref_count = Arc::strong_count(&exprs);
                                 let mut exprs_lock = exprs.lock();
                                 // if exprs_lock.step() != 0 {
-                                exprs_lock.eval_inplace();
+                                exprs_lock.eval_inplace()?;
                                 // }
                                 // we should not modify the base expression
                                 // safety: the data of the base expression must exist
@@ -618,15 +596,15 @@ macro_rules! impl_funcchain_new {
                                 expr_vec.iter_mut().for_each(|e| {
                                     let mut expr_lock = e.lock();
                                     // if expr_lock.step() != 0 {
-                                    expr_lock.eval_inplace();
+                                    _ = expr_lock.eval_inplace();
                                     // }
                                 });
                                 let expr_vec = expr_vec.into_iter().map(|e| {
                                     Expr {e, _type: PhantomData}
                                 }).collect_trusted();
-                                ExprOut::ExprVec(expr_vec)
+                                Ok(ExprOut::ExprVec(expr_vec))
                             },
-                            #[cfg(feature="blas")] ExprBase::OlsRes(res) => res.into()
+                            #[cfg(feature="blas")] ExprBase::OlsRes(res) => Ok(res.into())
                         }
                     })
                 },)*
@@ -925,11 +903,11 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
-    pub fn get_base_expr_strong_count(&self) -> Result<usize, &'static str> {
+    pub fn get_base_expr_strong_count(&self) -> TpResult<usize> {
         if let ExprBase::Expr(expr) = &self.base {
             Ok(Arc::strong_count(expr))
         } else {
-            Err("The base of the expression is not Expr")
+            Err("The base of the expression is not Expr".into())
         }
     }
 
@@ -990,34 +968,35 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
 
     /// Execute the expression and get a new Expr with step 0
     #[inline]
-    pub fn eval(mut self) -> Self {
-        self.eval_inplace();
-        self
+    pub fn eval(mut self) -> TpResult<Self> {
+        self.eval_inplace()?;
+        Ok(self)
     }
 
-    pub fn update_ref_expr(&mut self) {
+    pub fn update_ref_expr(&mut self) -> TpResult<()> {
         if let ExprBase::Expr(base_expr) = &mut self.base {
-            base_expr.lock().eval_inplace();
+            base_expr.lock().eval_inplace()?;
             if let Some(is_owned) = self.owned {
                 if !is_owned {
                     self.ref_expr = Some(vec![base_expr.clone()])
                 }
             }
         }
+        Ok(())
     }
 
     /// Execute the expression inplace
     #[inline]
-    pub fn eval_inplace(&mut self) {
+    pub fn eval_inplace(&mut self) -> TpResult<()> {
         if self.step() != 0 {
             let default_func: FuncChainType<'a, T> = DefaultNew::default_new();
             let func = mem::replace(&mut self.func, default_func);
             // if let ExprBase::Expr(base_expr) = &mut self.base {
             //     base_expr.lock().unwrap().eval_inplace();
             // }
-            self.update_ref_expr();
+            self.update_ref_expr()?;
             let base = mem::take(&mut self.base);
-            let out = func(base);
+            let out = func(base)?;
             self.set_owned(out.is_owned());
             if self.get_owned().unwrap() {
                 self.ref_expr = None;
@@ -1036,21 +1015,22 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         } else {
             // step is zero but we should check the step of the expression base
             match &self.base {
-                ExprBase::Expr(_) => self.update_ref_expr(),
+                ExprBase::Expr(_) => self.update_ref_expr()?,
                 // we assume that the result are not based on the expressions
-                ExprBase::ExprVec(ebs) => {
-                    ebs.into_par_iter().for_each(|eb| eb.lock().eval_inplace())
-                }
+                ExprBase::ExprVec(ebs) => ebs.into_par_iter().for_each(|eb| {
+                    _ = eb.lock().eval_inplace();
+                }),
                 _ => {}
             }
         }
         self.reset();
+        Ok(())
     }
 
     /// Get a view of the output, raise error when the expression wasn't executed.
-    pub fn try_view(&self) -> Result<ExprOutView<'_, T>, &'static str> {
+    pub fn try_view(&self) -> TpResult<ExprOutView<'_, T>> {
         if self.step > 0 {
-            return Err("Expression has not been executed.");
+            return Err("Expression has not been executed.".into());
         }
         match &self.base {
             ExprBase::Arr(arr_base) => unsafe { Ok(arr_base.view::<T>().into()) },
@@ -1067,7 +1047,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
                 if expr_lock.step() == 0 {
                     unsafe { Ok(mem::transmute(expr_lock.view::<T>()?)) }
                 } else {
-                    Err("Base Expression has not been executed.")
+                    Err("Base Expression has not been executed.".into())
                 }
             }
             ExprBase::ExprVec(_) => {
@@ -1092,7 +1072,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     ///
     /// The data of the array view must exists.
     #[inline]
-    pub fn try_view_arr(&self) -> Result<ArrViewD<'_, T>, &'static str> {
+    pub fn try_view_arr(&self) -> TpResult<ArrViewD<'_, T>> {
         self.try_view()?.try_into_arr()
     }
 
@@ -1103,7 +1083,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     /// The data of the array view must exists.
     #[inline]
     #[allow(dead_code)]
-    pub fn try_view_arr_vec(&self) -> Result<Vec<ArrViewD<'_, T>>, &'static str> {
+    pub fn try_view_arr_vec(&self) -> TpResult<Vec<ArrViewD<'_, T>>> {
         self.try_view()?.try_into_arr_vec()
     }
     /// Execute the expression and get a view of array output
@@ -1118,21 +1098,21 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
 
     /// execute the expression and copy the output
     #[inline]
-    pub fn value(&mut self) -> ArrD<T>
+    pub fn value(&mut self) -> TpResult<ArrD<T>>
     where
         T: Clone,
     {
-        self.eval_inplace();
-        self.view_arr().to_owned()
+        self.eval_inplace()?;
+        Ok(self.view_arr().to_owned())
     }
 
     #[inline]
-    pub fn into_arr(self) -> ArbArray<'a, T> {
-        self.into_out().into_arr()
+    pub fn into_arr(self) -> TpResult<ArbArray<'a, T>> {
+        Ok(self.into_out()?.into_arr())
     }
 
     #[inline]
-    pub fn into_out(self) -> ExprOut<'a, T> {
+    pub fn into_out(self) -> TpResult<ExprOut<'a, T>> {
         (self.func)(self.base)
     }
 
@@ -1140,7 +1120,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     /// an array of type `ExprOut<'a, T>` and return `ExprOut<'a, T>`
     pub fn chain_f<F, T2>(mut self, f: F, ref_type: RefType) -> ExprInner<'a, T2>
     where
-        F: FnOnce(ExprOut<'a, T>) -> ExprOut<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ExprOut<'a, T>) -> TpResult<ExprOut<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement,
     {
         if let ExprBase::Expr(base_expr) = &self.base {
@@ -1159,7 +1139,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         let default_func: FuncChainType<'a, T> = DefaultNew::default_new();
         let ori_func = mem::replace(&mut self.func, default_func);
         let mut out: ExprInner<'a, T2> = unsafe { mem::transmute(self) };
-        out.set_func(Box::new(|base: ExprBase<'a>| f(ori_func(base))));
+        out.set_func(Box::new(|base: ExprBase<'a>| f(ori_func(base)?)));
         out
     }
 
@@ -1167,17 +1147,20 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     /// an array of type `ArbArray<'a, T>` and return `ArbArray<'a, T>`
     pub fn chain_arr_f<F, T2>(self, f: F, ref_type: RefType) -> ExprInner<'a, T2>
     where
-        F: FnOnce(ArbArray<'a, T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ArbArray<'a, T>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement,
     {
-        self.chain_f(|expr_out| f(expr_out.into_arr()).into(), ref_type)
+        self.chain_f(
+            |expr_out| f(expr_out.into_arr()).map(|o| o.into()),
+            ref_type,
+        )
     }
 
     /// chain a new function to current function chain, the function accept
     /// an array of type `ArrViewD<'a, T>` and return `ArbArray<'a, T>`
     pub fn chain_view_f<F, T2>(self, f: F, ref_type: RefType) -> ExprInner<'a, T2>
     where
-        F: FnOnce(ArrViewD<'_, T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ArrViewD<'_, T>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement,
     {
         self.chain_arr_f(
@@ -1195,22 +1178,22 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     pub fn chain_view_mut_f<F>(self, f: F) -> ExprInner<'a, T>
     where
         T: Clone,
-        F: FnOnce(&mut ArrViewMutD<'_, T>) + Send + Sync + 'a,
+        F: FnOnce(&mut ArrViewMutD<'_, T>) -> TpResult<()> + Send + Sync + 'a,
     {
         self.chain_arr_f(
             |arb_arr| match arb_arr {
                 ArbArray::View(arr) => {
                     let mut arr = arr.to_owned();
-                    f(&mut arr.view_mut());
-                    arr.into()
+                    f(&mut arr.view_mut())?;
+                    Ok(arr.into())
                 }
                 ArbArray::ViewMut(mut arr) => {
-                    f(&mut arr);
-                    arr.into()
+                    f(&mut arr)?;
+                    Ok(arr.into())
                 }
                 ArbArray::Owned(mut arr) => {
-                    f(&mut arr.view_mut());
-                    arr.into()
+                    f(&mut arr.view_mut())?;
+                    Ok(arr.into())
                 }
             },
             RefType::False,
@@ -1222,7 +1205,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     pub fn chain_owned_f<F, T2>(self, f: F) -> ExprInner<'a, T2>
     where
         T: Clone,
-        F: FnOnce(ArrD<T>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(ArrD<T>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement,
     {
         self.chain_arr_f(
@@ -1245,7 +1228,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             // safety: T and T2 are the same type
             unsafe { mem::transmute(self) }
         } else {
-            self.chain_view_f(move |arr| arr.cast::<T2>().into(), RefType::False)
+            self.chain_view_f(move |arr| Ok(arr.cast::<T2>().into()), RefType::False)
         }
     }
 
@@ -1258,7 +1241,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             // safety: T and T2 are the same type
             unsafe { mem::transmute(self) }
         } else {
-            self.chain_view_f(move |arr| arr.to_bool().into(), RefType::False)
+            self.chain_view_f(move |arr| Ok(arr.to_bool().into()), RefType::False)
         }
     }
 
@@ -1273,7 +1256,10 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             unsafe { mem::transmute(self) }
         } else {
             let unit = unit.unwrap_or_default();
-            self.chain_view_f(move |arr| arr.to_datetime(unit).into(), RefType::False)
+            self.chain_view_f(
+                move |arr| arr.to_datetime(unit).map(|o| o.into()),
+                RefType::False,
+            )
         }
     }
 
@@ -1283,7 +1269,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         } else if T::dtype() == DataType::String {
             unsafe {
                 self.into_dtype::<String>().chain_view_f(
-                    move |arr| arr.map(|s| TimeDelta::parse(s.as_str())).into(),
+                    move |arr| Ok(arr.map(|s| TimeDelta::parse(s.as_str())).into()),
                     RefType::False,
                 )
             }
@@ -1301,12 +1287,12 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             // safety: T and T2 are the same type
             unsafe { mem::transmute(self) }
         } else {
-            self.chain_view_f(move |arr| arr.to_string().into(), RefType::False)
+            self.chain_view_f(move |arr| Ok(arr.to_string().into()), RefType::False)
         }
     }
 
     /// Try casting to bool type
-    pub fn cast_object_eager(self, py: Python) -> ExprInner<'a, PyValue>
+    pub fn cast_object_eager(self, py: Python) -> TpResult<ExprInner<'a, PyValue>>
     where
         T: ToPyObject + Clone,
     {
@@ -1314,9 +1300,12 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             // safety: T and T2 are the same type
             unsafe { mem::transmute(self) }
         } else {
-            let e = self.eval();
+            let e = self.eval()?;
             let name = e.name();
-            ExprInner::new_with_arr(e.view_arr().to_object(py).into(), name)
+            Ok(ExprInner::new_with_arr(
+                e.view_arr().to_object(py).into(),
+                name,
+            ))
         }
     }
 }
@@ -1336,7 +1325,7 @@ impl<'a, T: ExprElement + 'a> From<Vec<T>> for Expr<'a, T> {
 
 impl<'a, T: ExprElement + 'a> From<Vec<T>> for ExprInner<'a, T> {
     fn from(vec: Vec<T>) -> Self {
-        let arr = Arr1::from_vec(vec).to_dimd().unwrap();
+        let arr = Arr1::from_vec(vec).to_dimd();
         ExprInner::new_with_arr(arr.into(), None)
     }
 }

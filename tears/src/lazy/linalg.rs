@@ -1,6 +1,6 @@
 use super::super::impls::{conjugate, LeastSquaresResult};
 use super::{ArbArray, Expr, ExprElement, ExprInner, RefType};
-use crate::{Arr1, Arr2, ArrD, ArrViewD, WrapNdarray};
+use crate::{Arr1, Arr2, ArrD, ArrViewD, TpResult, WrapNdarray};
 use ndarray::{Axis, Ix2, LinalgScalar};
 use num::traits::AsPrimitive;
 use std::sync::Arc;
@@ -45,7 +45,7 @@ impl<'a> OlsResult<'a> {
     }
 
     pub fn singular_values(&self) -> ArrViewD<'_, f64> {
-        self.singular_values.view().to_dimd().unwrap()
+        self.singular_values.view().to_dimd()
     }
 
     pub fn solution(&self) -> ArrViewD<'_, f64> {
@@ -64,11 +64,11 @@ impl<'a> OlsResult<'a> {
 impl<'a, T: ExprElement> ExprInner<'a, T> {
     pub fn chain_ols_f<T2, F>(self, f: F) -> ExprInner<'a, T2>
     where
-        F: FnOnce(Arc<OlsResult<'_>>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(Arc<OlsResult<'_>>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement,
     {
         self.chain_f(
-            |expr_out| f(expr_out.into_ols_result()).into(),
+            |expr_out| f(expr_out.into_ols_result()).map(|o| o.into()),
             RefType::False,
         )
     }
@@ -77,7 +77,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
 impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     pub fn chain_ols_f<T2, F>(self, f: F) -> Expr<'a, T2>
     where
-        F: FnOnce(Arc<OlsResult<'_>>) -> ArbArray<'a, T2> + Send + Sync + 'a,
+        F: FnOnce(Arc<OlsResult<'_>>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
         T2: ExprElement + 'a,
     {
         self.downcast().chain_ols_f(f).into()
@@ -90,14 +90,14 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         self.cast::<f64>().chain_f(
             move |x| {
                 let x = x.into_arr();
-                let y = y.cast::<f64>().eval();
+                let y = y.cast::<f64>().eval()?;
                 let y_arr = y.view_arr();
                 let x_view = match x.ndim() {
                     1 => x.view().to_dim1().unwrap().insert_axis(Axis(1)).wrap(),
                     2 => x.view().to_dim::<Ix2>().unwrap(),
                     _ => panic!("Too much dimension in lstsq"),
                 };
-                OlsResult::new(
+                Ok(OlsResult::new(
                     x_view
                         .to_owned()
                         .least_squares(&mut y_arr.to_owned())
@@ -105,49 +105,44 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
                     x,
                     y,
                 )
-                .into()
+                .into())
             },
             RefType::False,
         )
     }
 
     pub fn ols_rank(self) -> Expr<'a, i32> {
-        self.chain_ols_f(|res| res.rank().into())
+        self.chain_ols_f(|res| Ok(res.rank().into()))
     }
 
     pub fn singular_values(self) -> Expr<'a, f64> {
         self.chain_ols_f(|res| match Arc::try_unwrap(res) {
-            Ok(res) => res.singular_values.to_dimd().unwrap().into(),
-            Err(res) => res.singular_values().to_owned().into(),
+            Ok(res) => Ok(res.singular_values.to_dimd().into()),
+            Err(res) => Ok(res.singular_values().to_owned().into()),
         })
     }
 
     pub fn params(self) -> Expr<'a, f64> {
         self.chain_ols_f(|res| match Arc::try_unwrap(res) {
-            Ok(res) => res.solution.to_dimd().unwrap().into(),
-            Err(res) => res.solution().to_owned().into(),
+            Ok(res) => Ok(res.solution.to_dimd().into()),
+            Err(res) => Ok(res.solution().to_owned().into()),
         })
     }
 
     pub fn sse(self) -> Expr<'a, f64> {
         self.chain_ols_f(|res| match Arc::try_unwrap(res) {
-            Ok(res) => res
-                .residual_sum_of_squares
-                .unwrap()
-                .to_dimd()
-                .unwrap()
-                .into(),
-            Err(res) => res.residual_sum_of_squares().to_owned().into(),
+            Ok(res) => Ok(res.residual_sum_of_squares.unwrap().to_dimd().into()),
+            Err(res) => Ok(res.residual_sum_of_squares().to_owned().into()),
         })
     }
 
     pub fn fitted_values(self) -> Expr<'a, f64> {
         self.chain_ols_f(|res| match Arc::try_unwrap(res) {
-            Ok(res) => res.x.view().dot(&res.solution).into(),
+            Ok(res) => Ok(res.x.view().dot(&res.solution)?.into()),
             Err(res) => {
                 let x = res.x();
                 let params = res.solution();
-                x.dot(&params).into()
+                Ok(x.dot(&params)?.into())
             }
         })
     }
@@ -158,8 +153,8 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     {
         self.chain_view_f(
             move |arr| {
-                let other = other.eval();
-                arr.dot(&other.view_arr()).into()
+                let other = other.eval()?;
+                Ok(arr.dot(&other.view_arr())?.into())
             },
             RefType::False,
         )
@@ -171,9 +166,9 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     {
         self.cast::<f64>().chain_view_f(
             move |arr| {
-                let arr = arr.to_dim2().expect("Array should be dim2 when conjugate");
+                let arr = arr.to_dim2()?;
                 let out: Arr2<f64> = conjugate(&arr);
-                out.to_dimd().unwrap().into()
+                Ok(out.to_dimd().into())
             },
             RefType::False,
         )
@@ -186,13 +181,13 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         self.cast::<f64>().chain_f(
             move |arr| {
                 let arr = arr.into_arr().try_to_owned_f();
-                let (u, s, vt) = arr.svd_into(full, calc_uvt);
+                let (u, s, vt) = arr.svd_into(full, calc_uvt)?;
                 if !calc_uvt {
-                    s.into()
+                    Ok(s.into())
                 } else {
                     let res_vec: Vec<ArbArray<'a, f64>> =
                         vec![u.unwrap().into(), s.into(), vt.unwrap().into()];
-                    res_vec.into()
+                    Ok(res_vec.into())
                 }
             },
             RefType::False,
@@ -210,7 +205,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
                 let shape = arr.shape();
                 let m = shape[0];
                 let n = shape[1];
-                let (u, s, vt) = arr.svd_into(false, true);
+                let (u, s, vt) = arr.svd_into(false, true)?;
                 let u = u.unwrap().to_dim2().unwrap();
                 let vt = vt.unwrap().to_dim2().unwrap();
                 let s = s.to_dim1().unwrap();
@@ -222,12 +217,11 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
                     .dot(&(s.to_owned().0.insert_axis(Axis(1)) * u.t()))
                     .wrap()
                     .to_dimd()
-                    .unwrap()
                     .into();
                 if return_s {
-                    vec![out, s.to_dimd().unwrap().into()].into()
+                    Ok(vec![out, s.to_dimd().into()].into())
                 } else {
-                    out.into()
+                    Ok(out.into())
                 }
             },
             RefType::False,

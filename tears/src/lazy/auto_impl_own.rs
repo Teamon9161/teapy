@@ -6,7 +6,7 @@ use super::{ArbArray, Expr, ExprElement, RefType};
 macro_rules! impl_view_lazy {
     (in1, $func:ident -> $otype:ident, ($($p:ident: $p_ty:ty),* $(,)?)) => {
         pub fn $func (self $(, $p: $p_ty)*) -> Expr<'a, $otype> {
-            self.chain_view_f(move |arr| arr.$func($($p),*).into(), RefType::False)
+            self.chain_view_f(move |arr| Ok(arr.$func($($p),*).into()), RefType::False)
         }
     };
     (in1, [$($func: ident -> $otype:ident),* $(,)?], $other: tt) => {
@@ -17,14 +17,14 @@ macro_rules! impl_view_lazy {
             self.chain_arr_f(move |arb_arr| {
                 use ArbArray::*;
                 match arb_arr {
-                    View(arr) => arr.$func($($p),*).into(),
+                    View(arr) => Ok(arr.$func($($p),*).into()),
                     ViewMut(mut arr) => {
                         arr.$func_inplace($($p),*);
-                        ViewMut(arr)
+                        Ok(ViewMut(arr))
                     },
                     Owned(mut arr) => {
                         arr.view_mut().$func_inplace($($p),*);
-                        Owned(arr)
+                        Ok(Owned(arr))
                     },
                 }
             }, RefType::Keep)
@@ -39,7 +39,7 @@ macro_rules! impl_view_lazy {
         where
             T2: Number + ExprElement,
         {
-            self.chain_view_f(move |arr| arr.$func(&other.eval().view_arr(), $($p),*).into(), RefType::False)
+            self.chain_view_f(move |arr| Ok(arr.$func(&other.eval()?.view_arr(), $($p),*).into()), RefType::False)
         }
     };
     (in2, [$($func: ident -> $otype:ident),* $(,)?], $other: tt) => {

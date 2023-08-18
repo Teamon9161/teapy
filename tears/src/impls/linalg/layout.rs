@@ -1,8 +1,8 @@
 use crate::{
     utils::{vec_uninit, VecAssumeInit},
-    Arr2, ArrBase, WrapNdarray,
+    Arr2, ArrBase, StrError, TpResult, WrapNdarray,
 };
-use ndarray::{ArrayBase, Data, Dimension, ShapeError};
+use ndarray::{ArrayBase, Data, Dimension};
 use std::mem::MaybeUninit;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -204,15 +204,20 @@ pub fn transpose_over<T: Copy>(layout: MatrixLayout, from: &[T], to: &mut [T]) -
     transposed
 }
 
-pub fn into_matrix<T>(l: MatrixLayout, a: Vec<T>) -> Result<Arr2<T>, ShapeError> {
+pub fn into_matrix<T>(l: MatrixLayout, a: Vec<T>) -> TpResult<Arr2<T>> {
     use ndarray::ShapeBuilder;
     match l {
         MatrixLayout::C { row, lda } => {
-            Ok(ArrayBase::from_shape_vec((row as usize, lda as usize), a)?.wrap())
+            Ok(ArrayBase::from_shape_vec((row as usize, lda as usize), a)
+                .map_err(|e| StrError::from(format!("{e:?}")))?
+                .wrap())
         }
-        MatrixLayout::F { col, lda } => {
-            Ok(ArrayBase::from_shape_vec((lda as usize, col as usize).f(), a)?.wrap())
-        }
+        MatrixLayout::F { col, lda } => Ok(ArrayBase::from_shape_vec(
+            (lda as usize, col as usize).f(),
+            a,
+        )
+        .map_err(|e| StrError::from(format!("{e:?}")))?
+        .wrap()),
     }
 }
 
@@ -221,7 +226,7 @@ where
     S: Data<Elem = T>,
     D: Dimension,
 {
-    pub fn layout(&self) -> Result<MatrixLayout, &'static str> {
+    pub fn layout(&self) -> TpResult<MatrixLayout> {
         let shape = self.shape();
         let strides = self.strides();
         match self.ndim() {
@@ -232,7 +237,7 @@ where
                         lda: 1,
                     });
                 }
-                Err("Invalid stride")
+                Err("Invalid stride".into())
             }
             2 => {
                 let arr2d: &Arr2<T> = unsafe { std::mem::transmute(self) };
@@ -248,9 +253,9 @@ where
                         lda: arr2d.ncols() as i32,
                     });
                 }
-                Err("Invalid stride")
+                Err("Invalid stride".into())
             }
-            _ => Err("Invalid dimension"),
+            _ => Err("Invalid dimension".into()),
         }
     }
 }

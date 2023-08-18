@@ -28,7 +28,7 @@ import teapy as tp
 
 e1 = tp.Expr([1, 2, 3])  # Create from a list
 e2 = tp.Expr((1, 2, 3))  # Create from a tuple
-e3 = tp.Expr(np.array([1, 2, 3]))  # Create from a numpy.ndarray
+e3 = tp.Expr(np.array([1, 2, 3]), 'e3')  # Create from a numpy.ndarray, name is e3
 e4 = tp.Expr(pd.Series([1, 2, 3]))  # Create from a pandas.Series
 e5 = tp.Expr(pl.Series([1, 2, 3]))  # Create from a polars.Series
 ```
@@ -45,6 +45,7 @@ dd3 = tp.DataDict(a=[1, 2], b=[2, 3], c=np.array([3, 6, 2]))  # Create by specif
 # Evaluating Expressions
 e = tp.Expr([1, 2, 3]).mean()
 e.eval()  # Execute the expression
+e.view  # View the memory of the array
 e.eview()  # Execute the expression and view the memory of the array
 e.value()  # Execute the expression and copy the memory of the array to a new numpy.ndarray
 

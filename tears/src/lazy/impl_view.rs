@@ -3,6 +3,8 @@
 //! view should not be dropped.
 //! the memory should be managed on python heap if using in python.
 
+use crate::error::StrError;
+
 use super::super::WrapNdarray;
 use super::{ArbArray, Expr, ExprElement, RefType};
 use ndarray::{s, IxDyn, NewAxis, SliceInfo, SliceInfoElem};
@@ -19,7 +21,7 @@ where
     pub unsafe fn reshape(self, shape: Expr<'a, usize>) -> Self {
         self.chain_view_f(
             |arr| {
-                let shape = shape.eval();
+                let shape = shape.eval()?;
                 let sh = shape.view_arr();
                 let ndim = sh.ndim();
                 if ndim == 0 {
@@ -30,23 +32,21 @@ where
                         .expect("Shape Error")
                         .wrap()
                         .to_dimd()
-                        .unwrap()
                         .into();
                     // safe because the view exist in lifetime 'a
-                    mem::transmute(out)
+                    Ok(mem::transmute(out))
                 } else if ndim == 1 {
                     let shape = sh.to_dim1().unwrap();
                     let out: ArbArray<'_, T> = arr
                         .0
                         .into_shape(shape.to_slice().unwrap())
-                        .expect("Shape Error")
+                        .map_err(|e| StrError::from(format!("{e:?}")))?
                         .wrap()
                         .to_dimd()
-                        .unwrap()
                         .into();
-                    mem::transmute(out)
+                    Ok(mem::transmute(out))
                 } else {
-                    panic!("the dim of shape should not be greater than 1")
+                    Err("the dim of shape should not be greater than 1".into())
                 }
             },
             RefType::True,
@@ -61,15 +61,15 @@ where
         self.chain_arr_f(
             move |arr| {
                 if arr.ndim() == 0 {
-                    arr.to_owned()
+                    Ok(arr
+                        .to_owned()
                         .0
                         .slice_move(s!(NewAxis))
                         .wrap()
                         .to_dimd()
-                        .unwrap()
-                        .into()
+                        .into())
                 } else {
-                    arr
+                    Ok(arr)
                 }
             },
             RefType::Keep,
@@ -85,8 +85,7 @@ where
         self.chain_view_f(
             move |arr| {
                 let out: ArbArray<'_, T> = arr.0.t().wrap().into();
-                mem::transmute(out)
-                // arr.0.t().wrap().into()
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -103,8 +102,8 @@ where
     pub unsafe fn diag(self) -> Self {
         self.chain_view_f(
             move |arr| {
-                let out: ArbArray<'_, T> = arr.0.diag().wrap().to_dimd().unwrap().into();
-                mem::transmute(out)
+                let out: ArbArray<'_, T> = arr.0.diag().wrap().to_dimd().into();
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -185,8 +184,7 @@ where
                     )
                 };
                 let out: ArbArray<'_, T> = arr.0.slice_move(slc_info).wrap().into();
-                mem::transmute(out)
-                // arr.0.slice_move(slc_info).wrap().into()
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -207,7 +205,7 @@ where
                 let mut arr = arr.0;
                 arr.swap_axes(ax.index(), bx.index());
                 let out: ArbArray<'_, T> = arr.wrap().into();
-                mem::transmute(out)
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -225,7 +223,7 @@ where
     pub unsafe fn permuted_axes(self, axes: Expr<'a, i32>) -> Self {
         self.chain_view_f(
             move |arr| {
-                let axes = axes.eval();
+                let axes = axes.eval()?;
                 // let axes_view = axes.view_arr().to_dim1().expect("axes should be dim 1");
                 let axes = axes
                     .view_arr()
@@ -237,7 +235,7 @@ where
                     .permuted_axes(axes.view().to_slice().unwrap())
                     .wrap()
                     .into();
-                mem::transmute(out)
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -253,7 +251,7 @@ where
             move |arr| {
                 let axis = arr.norm_axis(axis);
                 let out: ArbArray<'_, T> = arr.0.insert_axis(axis).wrap().into();
-                mem::transmute(out)
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -269,7 +267,7 @@ where
             move |arr| {
                 let axis = arr.norm_axis(axis);
                 let out: ArbArray<'_, T> = arr.0.remove_axis(axis).wrap().into();
-                mem::transmute(out)
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -281,27 +279,29 @@ where
     pub unsafe fn broadcast(self, shape: Expr<'a, usize>) -> Self {
         self.chain_view_f(
             move |arr| {
-                let shape = shape.eval();
+                let shape = shape.eval()?;
                 let sh = shape.view_arr();
                 let ndim = sh.ndim();
                 let out: ArbArray<'_, T> = if ndim == 0 {
                     let shape = sh.to_dim0().unwrap().into_scalar();
                     arr.broadcast(*shape)
-                        .expect("broadcast error")
+                        .ok_or(StrError::from(format!(
+                            "Can not broadcast to shape: {shape:?}"
+                        )))?
                         .to_dimd()
-                        .unwrap()
                         .into()
                 } else if ndim == 1 {
                     let shape = sh.to_dim1().unwrap();
                     arr.broadcast(shape.to_slice().unwrap())
-                        .expect("broadcast error")
+                        .ok_or(StrError::from(format!(
+                            "Can not broadcast to shape: {shape:?}"
+                        )))?
                         .to_dimd()
-                        .unwrap()
                         .into()
                 } else {
-                    panic!("the dim of shape should not be greater than 1")
+                    return Err("the dim of shape should not be greater than 1".into());
                 };
-                mem::transmute(out)
+                Ok(mem::transmute(out))
             },
             RefType::True,
         )
@@ -321,15 +321,12 @@ where
     {
         self.chain_arr_f(
             move |arr| {
-                let con = con.eval();
-                let flag = con
-                    .view_arr()
-                    .to_dim0()
-                    .expect("condition should be a bool");
+                let con = con.eval()?;
+                let flag = con.view_arr().to_dim0()?;
                 if *flag.into_scalar() {
-                    then.eval().into_arr().to_owned().into()
+                    Ok(then.eval()?.into_arr()?.to_owned().into())
                 } else {
-                    arr
+                    Ok(arr)
                 }
             },
             RefType::Keep,

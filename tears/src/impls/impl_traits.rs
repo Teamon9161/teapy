@@ -53,13 +53,13 @@ impl<S: RawData, D> DerefMut for ArrBase<S, D> {
 
 impl<T> From<T> for ArrD<T> {
     fn from(v: T) -> Self {
-        arr0(v).wrap().to_dimd().unwrap()
+        arr0(v).wrap().to_dimd()
     }
 }
 
 impl<T> From<T> for ArbArray<'_, T> {
     fn from(v: T) -> Self {
-        let arr = arr0(v).wrap().to_dimd().unwrap();
+        let arr = arr0(v).wrap().to_dimd();
         arr.into()
     }
 }

@@ -1,3 +1,5 @@
+use crate::{StrError, TpResult};
+
 use super::super::super::{
     utils::{vec_uninit, VecAssumeInit},
     Arr, Arr1, Arr2, ArrD, WrapNdarray,
@@ -23,12 +25,9 @@ pub struct LeastSquaresResult {
 }
 
 impl Arr2<f64> {
-    pub fn least_squares(
-        &mut self,
-        rhs: &mut ArrD<f64>,
-    ) -> Result<LeastSquaresResult, &'static str> {
+    pub fn least_squares(&mut self, rhs: &mut ArrD<f64>) -> TpResult<LeastSquaresResult> {
         if self.shape()[0] != rhs.shape()[0] {
-            return Err("Invalid shape in least squares");
+            return Err("Invalid shape in least squares".into());
         }
         match rhs.ndim() {
             1 => {
@@ -38,7 +37,7 @@ impl Arr2<f64> {
                     // for which we need `n` entries
                     let mut new_rhs = Arr1::<f64>::zeros((n,));
                     new_rhs.slice_mut(s![0..m]).assign(rhs);
-                    let mut new_rhs = new_rhs.to_dimd().unwrap();
+                    let mut new_rhs = new_rhs.to_dimd();
                     let a_layout = self.layout()?;
                     let b_layout = new_rhs.layout()?;
                     least_squares_impl(self, a_layout, &mut new_rhs, b_layout)?
@@ -47,10 +46,10 @@ impl Arr2<f64> {
                     let b_layout = rhs.layout()?;
                     least_squares_impl(self, a_layout, rhs, b_layout)?
                 };
-                res.solution = Some(rhs.slice(s![0..n]).to_owned().wrap().to_dimd().unwrap());
+                res.solution = Some(rhs.slice(s![0..n]).to_owned().wrap().to_dimd());
                 res.residual_sum_of_squares =
                     compute_residual_scalar(m, n, res.rank, unsafe { transmute(rhs) })
-                        .map(|r| r.to_dimd().unwrap());
+                        .map(|r| r.to_dimd());
                 Ok(res)
             }
             2 => {
@@ -64,7 +63,7 @@ impl Arr2<f64> {
                         MatrixLayout::F { .. } => Arr2::<f64>::zeros((n, k).f()),
                     };
                     new_rhs.slice_mut(s![0..m, ..]).assign(rhs);
-                    let mut new_rhs = new_rhs.to_dimd().unwrap();
+                    let mut new_rhs = new_rhs.to_dimd();
                     let a_layout = self.layout()?;
                     let b_layout = new_rhs.layout()?;
                     least_squares_impl(self, a_layout, &mut new_rhs, b_layout)?
@@ -73,13 +72,13 @@ impl Arr2<f64> {
                     let b_layout = rhs.layout()?;
                     least_squares_impl(self, a_layout, rhs, b_layout)?
                 };
-                res.solution = Some(rhs.slice(s![0..n]).to_owned().wrap().to_dimd().unwrap());
+                res.solution = Some(rhs.slice(s![0..n]).to_owned().wrap().to_dimd());
                 res.residual_sum_of_squares =
                     compute_residual_array1(m, n, res.rank, unsafe { transmute(rhs) })
-                        .map(|r| r.to_dimd().unwrap());
+                        .map(|r| r.to_dimd());
                 Ok(res)
             }
-            _ => Err("Invalid dimension in least squares"),
+            _ => Err("Invalid dimension in least squares".into()),
         }
     }
 }
@@ -110,13 +109,13 @@ pub fn least_squares_impl(
     a_layout: MatrixLayout,
     b: &mut ArrD<f64>,
     b_layout: MatrixLayout,
-) -> Result<LeastSquaresResult, &'static str> {
+) -> TpResult<LeastSquaresResult> {
     let mut_a = a
         .as_slice_memory_order_mut()
-        .expect("Array should be contiguous when lstsq");
+        .ok_or_else(|| StrError::from("Array should be contiguous when lstsq"))?;
     let mut_b = b
         .as_slice_memory_order_mut()
-        .expect("Array should be contiguous when lstsq");
+        .ok_or_else(|| StrError::from("Array should be contiguous when lstsq"))?;
     let (m, n) = a_layout.size();
     let (m_, nrhs) = b_layout.size();
     let k = m.min(n);

@@ -9,6 +9,7 @@ extern crate openblas_src as _src;
 
 mod core;
 mod eager;
+mod error;
 mod export;
 mod iterators;
 #[cfg(feature = "lazy")]
@@ -37,6 +38,7 @@ pub use datatype::{
     BoolType, DataType, DateTime, GetDataType, GetNone, Number, PyValue, TimeDelta, TimeUnit,
 };
 pub use eager::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
+pub use error::{StrError, TpResult};
 #[cfg(feature = "lazy")]
 pub use groupby::{flatten, groupby, groupby_par};
 pub use iterators::{Iter, IterMut};

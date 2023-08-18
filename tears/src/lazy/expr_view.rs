@@ -1,3 +1,5 @@
+use crate::TpResult;
+
 use super::super::ArrViewD;
 #[cfg(feature = "blas")]
 use super::OlsResult;
@@ -59,53 +61,54 @@ impl<'a, T> ExprOutView<'a, T> {
         }
     }
 
-    pub fn try_into_arr(self) -> Result<ArrViewD<'a, T>, &'static str> {
+    pub fn try_into_arr(self) -> TpResult<ArrViewD<'a, T>> {
         match self {
             ExprOutView::Arr(arr) => Ok(arr),
-            _ => Err("The output of the expression is not an array"),
+            _ => Err("The output of the expression is not an array".into()),
         }
     }
 
-    pub fn try_into_arr_vec(self) -> Result<Vec<ArrViewD<'a, T>>, &'static str> {
+    pub fn try_into_arr_vec(self) -> TpResult<Vec<ArrViewD<'a, T>>> {
         match self {
             ExprOutView::ArrVec(arr_vec) => Ok(arr_vec),
-            _ => Err("The output of the expression is not a vector of array"),
+            _ => Err("The output of the expression is not a vector of array".into()),
         }
     }
 
     #[inline]
     pub fn into_arr(self) -> ArrViewD<'a, T> {
-        self.try_into_arr().unwrap_or_else(|e| panic!("{}", e))
+        self.try_into_arr().unwrap_or_else(|e| panic!("{e:?}"))
     }
 
-    #[inline]
-    pub fn into_arr_vec(self) -> Vec<ArrViewD<'a, T>> {
-        self.try_into_arr_vec().unwrap_or_else(|e| panic!("{}", e))
-    }
+    // #[inline]
+    // pub fn into_arr_vec(self) -> Vec<ArrViewD<'a, T>> {
+    //     self.try_into_arr_vec()
+    //         .unwrap_or_else(|e| panic!("{e:?}"))
+    // }
 
-    pub fn try_as_arr<'b>(&'b self) -> Result<&'b ArrViewD<'a, T>, &'static str> {
+    pub fn try_as_arr<'b>(&'b self) -> TpResult<&'b ArrViewD<'a, T>> {
         if let ExprOutView::Arr(arr) = self {
             Ok(arr)
         } else {
-            Err("The output of the expression is not an array")
+            Err("The output of the expression is not an array".into())
         }
     }
 
-    pub fn try_as_arr_vec<'b>(&'b self) -> Result<&'b Vec<ArrViewD<'a, T>>, &'static str> {
+    pub fn try_as_arr_vec<'b>(&'b self) -> TpResult<&'b Vec<ArrViewD<'a, T>>> {
         if let ExprOutView::ArrVec(arr_vec) = self {
             Ok(arr_vec)
         } else {
-            Err("The output of the expression is not a vector of array")
+            Err("The output of the expression is not a vector of array".into())
         }
     }
 
-    #[inline]
-    pub fn as_arr<'b>(&'b self) -> &'b ArrViewD<'a, T> {
-        self.try_as_arr().unwrap_or_else(|e| panic!("{}", e))
-    }
+    // #[inline]
+    // pub fn as_arr<'b>(&'b self) -> &'b ArrViewD<'a, T> {
+    //     self.try_as_arr().unwrap_or_else(|e| panic!("{e:?}"))
+    // }
 
-    #[inline]
-    pub fn as_arr_vec<'b>(&'b self) -> &'b Vec<ArrViewD<'a, T>> {
-        self.try_as_arr_vec().unwrap_or_else(|e| panic!("{}", e))
-    }
+    // #[inline]
+    // pub fn as_arr_vec<'b>(&'b self) -> &'b Vec<ArrViewD<'a, T>> {
+    //     self.try_as_arr_vec().unwrap_or_else(|e| panic!("{e:?}"))
+    // }
 }

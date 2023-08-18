@@ -5,10 +5,14 @@ use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use pyo3::{exceptions::PyAttributeError, pyclass::CompareOp, PyTraverseError, PyVisit};
+use pyo3::{
+    exceptions::{PyAttributeError, PyRuntimeError},
+    pyclass::CompareOp,
+    PyTraverseError, PyVisit,
+};
 use std::iter::repeat;
 use tears::{
-    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, PyValue, RefType, TimeDelta,
+    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, PyValue, RefType, StrError, TimeDelta,
     WinsorizeMethod,
 };
 #[cfg(feature = "option_dtype")]
@@ -82,8 +86,8 @@ macro_rules! impl_py_cmp {
                         (e1.cast::<i32>().$func(e2.cast::<i32>(), false)).to_py(obj).add_obj(obj2)
                     })
                 },
-                (Object(e1), String(e2)) => e1.clone().object_to_string($py).$func(e2.clone(), false).to_py(obj).add_obj(obj2),
-                (String(e1), Object(e2)) => e1.clone().$func(e2.clone().object_to_string($py), false).to_py(obj).add_obj(obj2),
+                (Object(e1), String(e2)) => e1.clone().object_to_string($py).map_err(StrError::to_py)?.$func(e2.clone(), false).to_py(obj).add_obj(obj2),
+                (String(e1), Object(e2)) => e1.clone().$func(e2.clone().object_to_string($py).map_err(StrError::to_py)?, false).to_py(obj).add_obj(obj2),
                 $(
                     ($dtype(e1), $dtype(e2)) => e1.clone().$func(e2.clone(), false).to_py(obj).add_obj(obj2),
                 )*
@@ -146,7 +150,7 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     pub fn get_base_strong_count(&self) -> PyResult<usize> {
         match_exprs!(&self.inner, e, {
-            e.get_base_strong_count().map_err(PyValueError::new_err)
+            e.get_base_strong_count().map_err(StrError::to_py)
         })
     }
 
@@ -243,13 +247,12 @@ impl PyExpr {
 
     #[pyo3(name="eval", signature=(inplace=false))]
     #[allow(unreachable_patterns)]
-    pub fn eval_py(&mut self, inplace: bool) -> Option<Self> {
-        self.eval_inplace();
+    pub fn eval_py(&mut self, inplace: bool) -> PyResult<Option<Self>> {
+        self.eval_inplace()?;
         if !inplace {
-            Some(self.clone())
+            Ok(Some(self.clone()))
         } else {
-            // self.eval_inplace();
-            None
+            Ok(None)
         }
     }
 
@@ -257,12 +260,19 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     pub fn get_view(self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
         if self.is_string() || self.is_str() {
-            let arr = self.clone().cast_object_eager(py)?.into_arr().to_owned().0;
+            let arr = self
+                .clone()
+                .cast_object_eager(py)?
+                .into_arr()
+                .map_err(StrError::to_py)?
+                .to_owned()
+                .0;
             return PyArray::from_owned_array(py, arr).no_dim0(py);
         } else if let Exprs::DateTime(e) = &self.inner {
             let arr = e
                 .clone()
                 .eval()
+                .map_err(StrError::to_py)?
                 .view_arr()
                 .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -273,10 +283,11 @@ impl PyExpr {
             {
                 unsafe {
                     let container = PyAny::from_borrowed_ptr(py, self.as_ptr());
-                    let out_view = expr.try_view().map_err(PyValueError::new_err)?;
+                    let out_view = expr.try_view().map_err(StrError::to_py)?;
                     if matches!(out_view, ExprOutView::ArrVec(_)) {
                         let out = out_view
-                            .as_arr_vec()
+                            .try_as_arr_vec()
+                            .map_err(StrError::to_py)?
                             .iter()
                             .map(|arr| {
                                 PyArray::borrow_from_array(arr, container)
@@ -286,7 +297,11 @@ impl PyExpr {
                             .collect_trusted();
                         Ok(out.into_py(py))
                     } else {
-                        Ok(PyArray::borrow_from_array(out_view.as_arr(), container).no_dim0(py)?)
+                        Ok(PyArray::borrow_from_array(
+                            out_view.try_as_arr().map_err(StrError::to_py)?,
+                            container,
+                        )
+                        .no_dim0(py)?)
                     }
                 }
             },
@@ -303,7 +318,7 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     /// eval and view, used for fast test
     pub fn eview(mut self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
-        self.eval_inplace();
+        self.eval_inplace()?;
         self.get_view(py)
     }
 
@@ -311,7 +326,13 @@ impl PyExpr {
     #[pyo3(signature=(unit=None))]
     pub fn value<'py>(&'py self, unit: Option<&'py str>, py: Python<'py>) -> PyResult<PyObject> {
         if self.is_string() || self.is_str() || self.is_timedelta() {
-            let arr = self.clone().cast_object_eager(py)?.into_arr().to_owned().0;
+            let arr = self
+                .clone()
+                .cast_object_eager(py)?
+                .into_arr()
+                .map_err(StrError::to_py)?
+                .to_owned()
+                .0;
             return PyArray::from_owned_array(py, arr).no_dim0(py);
         } else if let Exprs::DateTime(e) = &self.inner {
             match unit.unwrap_or("us").to_lowercase().as_str() {
@@ -319,6 +340,7 @@ impl PyExpr {
                     let arr = e
                         .clone()
                         .eval()
+                        .map_err(StrError::to_py)?
                         .view_arr()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -327,6 +349,7 @@ impl PyExpr {
                     let arr = e
                         .clone()
                         .eval()
+                        .map_err(StrError::to_py)?
                         .view_arr()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -335,6 +358,7 @@ impl PyExpr {
                     let arr = e
                         .clone()
                         .eval()
+                        .map_err(StrError::to_py)?
                         .view_arr()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Nanoseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -346,7 +370,7 @@ impl PyExpr {
             &self.inner,
             expr,
             {
-                let out = expr.clone().into_out();
+                let out = expr.clone().into_out().map_err(StrError::to_py)?;
                 if matches!(out, ExprOut::ArrVec(_)) {
                     let out = out
                         .into_arr_vec()
@@ -2637,11 +2661,12 @@ impl PyExpr {
                 e.clone()
                     .chain_view_f::<_, f64>(
                         move |arr| {
-                            arr.mapv(|v| {
-                                let scale = 10_i32.pow(precision) as f64;
-                                (v.f64() * scale).round() / scale
-                            })
-                            .into()
+                            Ok(arr
+                                .mapv(|v| {
+                                    let scale = 10_i32.pow(precision) as f64;
+                                    (v.f64() * scale).round() / scale
+                                })
+                                .into())
                         },
                         RefType::False,
                     )
@@ -2663,7 +2688,7 @@ impl PyExpr {
             {
                 e.clone()
                     .chain_view_f::<_, String>(
-                        move |arr| arr.map(|v| format!("{v:.precision$}")).into(),
+                        move |arr| Ok(arr.map(|v| format!("{v:.precision$}")).into()),
                         RefType::False,
                     )
                     .to_py(self.obj())
@@ -2689,7 +2714,7 @@ impl PyExpr {
     ) -> PyResult<PyObject> {
         let index_expr = parse_expr_nocopy(index)?;
         let mut rolling_idx = index_expr.cast_datetime(None)?.time_rolling(duration);
-        rolling_idx.eval_inplace();
+        rolling_idx.eval_inplace()?;
         let mut column_num = 0;
         let mut output = rolling_idx
             .view_arr()
@@ -2709,9 +2734,16 @@ impl PyExpr {
                 res
             })
             .collect_trusted();
-        output
+        let eval_res: Vec<_> = output
             .par_iter_mut()
-            .for_each(|vec_e| vec_e.par_iter_mut().for_each(|e| e.eval_inplace()));
+            .flatten()
+            .map(|e| e.eval_inplace())
+            .collect();
+        if eval_res.iter().any(|e| e.is_err()) {
+            return Err(PyRuntimeError::new_err(
+                "Some of the expressions can't be evaluated",
+            ));
+        }
         // we don't need to add object for `out_data` because we no longer need a reference of `index`.
         let mut out_data: Vec<PyExpr> = (0..column_num)
             .into_par_iter()
@@ -2744,7 +2776,7 @@ impl PyExpr {
             return Err(PyValueError::new_err("Window should be greater than 0"));
         }
         let mut column_num = 0;
-        self.eval_inplace();
+        self.eval_inplace()?;
         let axis_n = match_exprs!(&self.inner, expr, { expr.view_arr().norm_axis(axis) });
         let length = match_exprs!(&self.inner, expr, {
             expr.view_arr().shape()[axis_n.index()]
@@ -2763,9 +2795,16 @@ impl PyExpr {
                 res
             })
             .collect_trusted();
-        output
+        let eval_res: Vec<_> = output
             .par_iter_mut()
-            .for_each(|vec_e| vec_e.par_iter_mut().for_each(|e| e.eval_inplace()));
+            .flatten()
+            .map(|e| e.eval_inplace())
+            .collect();
+        if eval_res.iter().any(|e| e.is_err()) {
+            return Err(PyRuntimeError::new_err(
+                "Some of the expressions can't be evaluated",
+            ));
+        }
         // we don't need to add object for `out_data` because we no longer need a reference of `index`.
         let mut out_data: Vec<PyExpr> = (0..column_num)
             .into_par_iter()

@@ -1,4 +1,5 @@
 use ndarray::{Array1, Axis, Slice};
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyList as PyList3, PyTuple};
 
 use tears::{ArbArray, DateTime, TimeDelta};
@@ -167,7 +168,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         }
     } else if let Ok(pylist) = obj.extract::<PyList>() {
         match_pylist!(pylist, l, {
-            Ok(Expr::new_from_owned(Arr1::from_vec(l).to_dimd().unwrap(), None).into())
+            Ok(Expr::new_from_owned(Arr1::from_vec(l).to_dimd(), None).into())
         })
     } else if let Ok(val) = obj.extract::<i32>() {
         Ok(Expr::new(val.into(), None).into())
@@ -276,19 +277,24 @@ pub fn stack_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
 pub unsafe fn stack_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
     let exprs = exprs
         .into_iter()
-        .map(|e| parse_expr_nocopy(e))
-        .collect::<PyResult<Vec<PyExpr>>>()?;
+        .map(|e| parse_expr_nocopy(e).expect("can not parse thid type into Expr"))
+        .collect::<Vec<PyExpr>>();
     stack_expr(exprs, axis)
 }
 
 #[pyfunction]
 #[pyo3(signature=(exprs, inplace=false))]
-pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> Option<Vec<PyExpr>> {
-    exprs.par_iter_mut().for_each(|e| e.eval_inplace());
+pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<PyExpr>>> {
+    let eval_res: Vec<_> = exprs.par_iter_mut().map(|e| e.eval_inplace()).collect();
+    if eval_res.iter().any(|e| e.is_err()) {
+        return Err(PyRuntimeError::new_err(
+            "Some of the exprs can't be evaluated",
+        ));
+    }
     if inplace {
-        None
+        Ok(None)
     } else {
-        Some(exprs)
+        Ok(Some(exprs))
     }
 }
 
@@ -398,15 +404,15 @@ pub fn get_newey_west_adjust_s(x: PyExpr, resid: PyExpr, lag: PyExpr) -> PyResul
     let mut out: PyExpr = x
         .cast_f64()?
         .chain_owned_f(move |x| {
-            let lag = *lag.eval().view_arr().to_dim0().unwrap().0.into_scalar();
+            let lag = *lag.eval()?.view_arr().to_dim0()?.into_scalar();
             let lag_f64 = lag as f64;
-            let resid = resid.eval();
-            let resid_view = resid.view_arr().to_dim1().unwrap().0;
+            let resid = resid.eval()?;
+            let resid_view = resid.view_arr().to_dim1()?.0;
             let weights = Array1::range(0., lag_f64 + 1., 1.)
                 .mapv(|v| 1. - v / (lag_f64 + 1.))
                 .wrap();
             let score = x.0 * resid_view.insert_axis(Axis(1));
-            let mut s = score.t().wrap().dot(&score.view().wrap()).0;
+            let mut s = score.t().wrap().dot(&score.view().wrap())?.0;
             for lag in 1..=lag {
                 let temp = score
                     .slice_axis(Axis(0), Slice::new(lag as isize, None, 1))
@@ -416,11 +422,11 @@ pub fn get_newey_west_adjust_s(x: PyExpr, resid: PyExpr, lag: PyExpr) -> PyResul
                         &score
                             .slice_axis(Axis(0), Slice::new(0, Some(-(lag as isize)), 1))
                             .wrap(),
-                    )
+                    )?
                     .0;
                 s = s + *weights.get(lag).unwrap() * (temp.to_owned() + temp.t());
             }
-            ArbArray::Owned(s.wrap())
+            Ok(ArbArray::Owned(s.wrap()))
         })
         .into();
     for obj in obj_vec {

@@ -1,7 +1,7 @@
+use crate::{StrError, TpResult};
+
 use super::super::{Arr, ArrBase, ArrView, WrapNdarray};
-use ndarray::{
-    Data, DataMut, DimMax, Dimension, ErrorKind, IntoDimension, RawData, ShapeError, Zip,
-};
+use ndarray::{Data, DataMut, DimMax, Dimension, IntoDimension, RawData, Zip};
 // use std::fmt::Debug;
 
 type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
@@ -90,7 +90,7 @@ macro_rules! izip {
 /// Uses the [NumPy broadcasting rules]
 //  (https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html#general-broadcasting-rules).
 #[allow(unused_mut)]
-pub fn co_broadcast<D1, D2, Output>(shape1: &D1, shape2: &D2) -> Result<Output, ShapeError>
+pub fn co_broadcast<D1, D2, Output>(shape1: &D1, shape2: &D2) -> TpResult<Output>
 where
     D1: Dimension,
     D2: Dimension,
@@ -111,7 +111,7 @@ where
             if *out == 1 {
                 *out = *s2
             } else if *s2 != 1 {
-                return Err(ShapeError::from_kind(ErrorKind::IncompatibleShape));
+                return Err("IncompatibleShape in co_broadcast".into());
             }
         }
     }
@@ -163,13 +163,10 @@ impl<A, S: RawData<Elem = A>, D: Dimension> ArrBase<S, D> {
     pub fn broadcast_with<'a, 'b, B, S2, E>(
         &'a self,
         other: &'b ArrBase<S2, E>,
-    ) -> Result<
-        (
-            ArrView<'a, A, DimMaxOf<D, E>>,
-            ArrView<'b, B, DimMaxOf<D, E>>,
-        ),
-        ShapeError,
-    >
+    ) -> TpResult<(
+        ArrView<'a, A, DimMaxOf<D, E>>,
+        ArrView<'b, B, DimMaxOf<D, E>>,
+    )>
     where
         S: Data<Elem = A>,
         S2: Data<Elem = B>,
@@ -183,14 +180,14 @@ impl<A, S: RawData<Elem = A>, D: Dimension> ArrBase<S, D> {
         } else if let Some(view1) = self.broadcast(shape.clone()) {
             view1
         } else {
-            return Err(ShapeError::from_kind(ErrorKind::IncompatibleShape));
+            return Err("IncompatibleShape in broadcast_with".into());
         };
         let view2 = if shape.slice() == other.raw_dim().slice() {
             other.view().to_dim::<<D as DimMax<E>>::Output>().unwrap()
         } else if let Some(view2) = other.broadcast(shape) {
             view2
         } else {
-            return Err(ShapeError::from_kind(ErrorKind::IncompatibleShape));
+            return Err("IncompatibleShape in broadcast_with".into());
         };
         Ok((view1, view2))
     }
@@ -206,7 +203,8 @@ where
         value: &ArrBase<S3, D3>,
         axis: i32,
         par: bool,
-    ) where
+    ) -> TpResult<()>
+    where
         A: Clone + Send + Sync,
         D2: Dimension,
         D3: Dimension,
@@ -224,25 +222,28 @@ where
             let mask = mask
                 .view()
                 .to_dim1()
-                .expect("mask should be dim1 when set value to masked data");
+                .map_err(|e| StrError::from(format!("{e}")))?;
+            // .expect("mask should be dim1 when set value to masked data");
             let value = value
                 .view()
                 .to_dim1()
-                .expect("value should be dim1 when set value to masked data");
+                .map_err(|e| StrError::from(format!("{e}")))?;
+            // .expect("value should be dim1 when set value to masked data");
             let true_num = mask.count_v_1d(true) as usize;
-            assert_eq!(
-                true_num,
-                value.len_of(axis),
-                "number of value are not equal to number of true mask"
-            );
+            if true_num != value.len_of(axis) {
+                return Err(StrError::from(
+                    "number of value are not equal to number of true mask",
+                ));
+            }
             let ndim = self.ndim();
-            return if par && (ndim > 1) {
+            if par && (ndim > 1) {
                 Zip::from(self.lanes_mut(axis))
                     .par_for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
             } else {
                 Zip::from(self.lanes_mut(axis))
                     .for_each(|x_1d| x_1d.wrap().put_mask_1d(&mask, &value));
             };
+            return Ok(());
         };
         let mask = if self.ndim() == mask.ndim() && self.shape() == mask.shape() {
             mask.view().to_dim::<D>().unwrap()
@@ -257,7 +258,7 @@ where
                     if *m {
                         *a = v.clone()
                     }
-                })
+                });
         } else {
             Zip::from(&mut self.0)
                 .and(&mask.0)
@@ -266,8 +267,9 @@ where
                     if *m {
                         *a = v.clone()
                     }
-                })
+                });
         }
+        Ok(())
     }
 
     pub fn where_<S2, S3, D2, D3>(

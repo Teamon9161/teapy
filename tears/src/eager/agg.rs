@@ -14,7 +14,7 @@ where
     S: Data<Elem = T>,
     D: Dimension,
 {
-    pub fn take_1_on_axis(&self, index: usize, axis: i32, par: bool) -> Arr<T, D::Smaller>
+    pub fn take_one_on_axis(&self, index: usize, axis: i32, par: bool) -> Arr<T, D::Smaller>
     where
         T: Send + Sync + Clone,
         D: RemoveAxis,

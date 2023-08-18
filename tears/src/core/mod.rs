@@ -12,11 +12,11 @@ pub use traits::WrapNdarray;
 pub use view::{ArrView, ArrView1, ArrViewD};
 pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMutD};
 
-use crate::{export::*, DateTime, GetDataType, Iter, IterMut, TimeUnit};
+use crate::{export::*, DateTime, GetDataType, Iter, IterMut, TimeUnit, TpResult};
 
 use ndarray::{
     Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn, RawData,
-    RemoveAxis, ShapeBuilder, ShapeError, Zip,
+    RemoveAxis, ShapeBuilder, Zip,
 };
 
 use num::{traits::AsPrimitive, Zero};
@@ -74,13 +74,13 @@ where
     }
 
     #[cfg(feature = "npy")]
-    pub fn write_npy<P>(self, path: P) -> Result<(), WriteNpyError>
+    pub fn write_npy<P>(self, path: P) -> TpResult<()>
     where
         P: AsRef<std::path::Path>,
         T: WritableElement,
         S: Data,
     {
-        write_npy(path, &self.0)
+        write_npy(path, &self.0).map_err(|e| format!("{e}").as_str())?
     }
     /// Create a one-dimensional array from a vector (no copying needed).
     #[inline]
@@ -133,37 +133,38 @@ where
     ///
     /// Note that the original array must be dim0.
     #[inline]
-    pub fn to_dim0(self) -> Result<ArrBase<S, Ix0>, ShapeError> {
-        self.to_dim::<Ix0>()
+    pub fn to_dim0(self) -> TpResult<ArrBase<S, Ix0>> {
+        self.to_dim::<Ix0>().map_err(|e| format!("{e}").into())
     }
 
     /// Change the array to dim1.
     ///
     /// Note that the original array must be dim1.
     #[inline]
-    pub fn to_dim1(self) -> Result<ArrBase<S, Ix1>, ShapeError> {
-        self.to_dim::<Ix1>()
+    pub fn to_dim1(self) -> TpResult<ArrBase<S, Ix1>> {
+        self.to_dim::<Ix1>().map_err(|e| format!("{e}").into())
     }
 
     /// Change the array to dim2.
     ///
     /// Note that the original array must be dim2.
     #[inline]
-    pub fn to_dim2(self) -> Result<ArrBase<S, Ix2>, ShapeError> {
-        self.to_dim::<Ix2>()
+    pub fn to_dim2(self) -> TpResult<ArrBase<S, Ix2>> {
+        self.to_dim::<Ix2>().map_err(|e| format!("{e}").into())
     }
 
     /// Change the array to dimD.
     #[inline]
-    pub fn to_dimd(self) -> Result<ArrBase<S, IxDyn>, ShapeError> {
-        self.to_dim::<IxDyn>()
+    pub fn to_dimd(self) -> ArrBase<S, IxDyn> {
+        self.to_dim::<IxDyn>().unwrap() // this should never fail
     }
 
     /// Change the array to another dim.
     #[inline]
-    pub fn to_dim<D2: Dimension>(self) -> Result<ArrBase<S, D2>, ShapeError> {
+    pub fn to_dim<D2: Dimension>(self) -> TpResult<ArrBase<S, D2>> {
         let res = self.0.into_dimensionality::<D2>();
         res.map(|arr| ArrBase(arr))
+            .map_err(|e| format!("{e}").into())
     }
 }
 
@@ -313,23 +314,29 @@ where
     where
         T: Debug + Clone + ToPyObject,
     {
-        self.map(|v| PyValue(v.clone().to_object(py)))
+        self.map(|v| PyValue(v.to_object(py)))
     }
 
     /// Try to cast to datetime
-    pub fn to_datetime(&self, unit: TimeUnit) -> Arr<DateTime, D>
+    pub fn to_datetime(&self, unit: TimeUnit) -> TpResult<Arr<DateTime, D>>
     where
         T: AsPrimitive<i64> + GetDataType,
     {
         match T::dtype() {
-            DataType::DateTime => unsafe { self.to_owned().into_dtype::<DateTime>() },
-            _ => self.map(|v| match unit {
-                TimeUnit::Nanosecond => DateTime::from_timestamp_ns(v.as_()).unwrap_or_default(),
-                TimeUnit::Microsecond => DateTime::from_timestamp_us(v.as_()).unwrap_or_default(),
-                TimeUnit::Millisecond => DateTime::from_timestamp_ms(v.as_()).unwrap_or_default(),
-                TimeUnit::Second => DateTime::from_timestamp_opt(v.as_(), 0),
-                _ => unimplemented!("not support datetime unit"),
-            }), // _ => todo!(),
+            DataType::DateTime => unsafe { Ok(self.to_owned().into_dtype::<DateTime>()) },
+            _ => match unit {
+                TimeUnit::Nanosecond => {
+                    Ok(self.map(|v| DateTime::from_timestamp_ns(v.as_()).unwrap_or_default()))
+                }
+                TimeUnit::Microsecond => {
+                    Ok(self.map(|v| DateTime::from_timestamp_us(v.as_()).unwrap_or_default()))
+                }
+                TimeUnit::Millisecond => {
+                    Ok(self.map(|v| DateTime::from_timestamp_ms(v.as_()).unwrap_or_default()))
+                }
+                TimeUnit::Second => Ok(self.map(|v| DateTime::from_timestamp_opt(v.as_(), 0))),
+                _ => Err("not support datetime unit".into()),
+            },
         }
     }
 

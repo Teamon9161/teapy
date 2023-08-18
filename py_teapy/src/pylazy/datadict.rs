@@ -1,4 +1,4 @@
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyRuntimeError, PyTypeError};
 use regex::Regex;
 use std::cmp::Ordering;
 use std::collections::hash_map::RawEntryMut;
@@ -168,7 +168,7 @@ impl PyDataDict {
         let expr = self.get_mut_by_str(col_name);
         let mut expr_own = mem::take(expr);
         let ori_name = expr_own.get_name();
-        expr_own.eval_py(true);
+        expr_own.eval_py(true)?;
         let new_name = expr_own.get_name();
         *expr = expr_own;
         self.update_column_map(ori_name, new_name)?;
@@ -179,7 +179,7 @@ impl PyDataDict {
         let expr = self.get_mut_by_idx(col_idx);
         let mut expr_own = mem::take(expr);
         let ori_name = expr_own.get_name();
-        expr_own.eval_py(true);
+        expr_own.eval_py(true)?;
         let new_name = expr_own.get_name();
         *expr = expr_own;
         self.update_column_map(ori_name, new_name)?;
@@ -335,17 +335,33 @@ impl PyDataDict {
 
     /// Evaluate some columns of the datadict in parallel
     pub fn eval_multi(&mut self, cols: &[&str]) -> PyResult<()> {
-        self.data.par_iter_mut().for_each(|e| {
-            if cols.contains(&e.get_name().unwrap().as_str()) {
-                e.eval_inplace()
-            }
-        });
+        let eval_res: Vec<_> = self
+            .data
+            .par_iter_mut()
+            .map(|e| {
+                if cols.contains(&e.get_name().unwrap().as_str()) {
+                    e.eval_inplace()
+                } else {
+                    Ok(())
+                }
+            })
+            .collect();
+        if eval_res.iter().any(|e| e.is_err()) {
+            return Err(PyRuntimeError::new_err(
+                "Some of the expressions can't be evaluated",
+            ));
+        }
         Ok(())
     }
 
     /// Evaluate the whole datadict
     pub fn eval_all(&mut self) -> PyResult<()> {
-        self.data.par_iter_mut().for_each(|e| e.eval_inplace());
+        let eval_res: Vec<_> = self.data.par_iter_mut().map(|e| e.eval_inplace()).collect();
+        if eval_res.iter().any(|e| e.is_err()) {
+            return Err(PyRuntimeError::new_err(
+                "Some of the expressions can't be evaluated",
+            ));
+        }
         Ok(())
     }
 
@@ -362,11 +378,23 @@ impl PyDataDict {
                 }
             })
             .collect_trusted();
-        self.data.par_iter_mut().enumerate().for_each(|(i, e)| {
-            if cols.contains(&i) {
-                e.eval_inplace()
-            }
-        });
+        let eval_res: Vec<_> = self
+            .data
+            .par_iter_mut()
+            .enumerate()
+            .map(|(i, e)| {
+                if cols.contains(&i) {
+                    e.eval_inplace()
+                } else {
+                    Ok(())
+                }
+            })
+            .collect();
+        if eval_res.iter().any(|e| e.is_err()) {
+            return Err(PyRuntimeError::new_err(
+                "Some of the expressions can't be evaluated",
+            ));
+        }
         Ok(())
     }
 }
@@ -696,9 +724,16 @@ impl PyDataDict {
                 res
             })
             .collect_trusted();
-        output
+        let eval_res: Vec<_> = output
             .par_iter_mut()
-            .for_each(|vec_e| vec_e.par_iter_mut().for_each(|e| e.eval_inplace()));
+            .flatten()
+            .map(|e| e.eval_inplace())
+            .collect();
+        if eval_res.iter().any(|e| e.is_err()) {
+            return Err(PyRuntimeError::new_err(
+                "Some of the expressions can't be evaluated",
+            ));
+        }
 
         let out_data = (0..column_num)
             .into_par_iter()
@@ -765,7 +800,7 @@ impl PyDataDict {
             }
         }
         let mut rolling_idx = index.clone().cast_datetime(None)?.time_rolling(duration);
-        rolling_idx.eval_inplace();
+        rolling_idx.eval_inplace()?;
         let mut column_num = 0;
         let mut output = rolling_idx
             .view_arr()
@@ -792,9 +827,16 @@ impl PyDataDict {
                 res
             })
             .collect_trusted();
-        output
+        let eval_res: Vec<_> = output
             .par_iter_mut()
-            .for_each(|vec_e| vec_e.par_iter_mut().for_each(|e| e.eval_inplace()));
+            .flatten()
+            .map(|e| e.eval_inplace())
+            .collect();
+        if eval_res.iter().any(|e| e.is_err()) {
+            return Err(PyRuntimeError::new_err(
+                "Some of the expressions can't be evaluated",
+            ));
+        }
         let out_data = (0..column_num)
             .into_par_iter()
             .map(|i| {

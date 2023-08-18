@@ -15,7 +15,7 @@ macro_rules! impl_binary_op {
         {
             type Output = Expr<'a, T>;
             fn $func(self, other: Expr<'a, T2>) -> Self {
-                self.chain_owned_f(move |arr| (arr.0 $operator other.eval().view_arr().0).wrap().into())
+                self.chain_owned_f(move |arr| Ok((arr.0 $operator other.eval()?.view_arr().0).wrap().into()))
             }
         }
 
@@ -47,7 +47,7 @@ where
 {
     type Output = Self;
     fn neg(self) -> Self {
-        self.chain_owned_f(move |arr| (-arr.0).wrap().into())
+        self.chain_owned_f(move |arr| Ok((-arr.0).wrap().into()))
     }
 }
 
@@ -57,7 +57,7 @@ where
 {
     type Output = Self;
     fn not(self) -> Self {
-        self.chain_owned_f(move |arr| (!arr.0).wrap().into())
+        self.chain_owned_f(move |arr| Ok((!arr.0).wrap().into()))
     }
 }
 
@@ -66,17 +66,17 @@ impl<'a> Expr<'a, DateTime> {
         self.chain_view_f(
             move |arr| {
                 if !par {
-                    Zip::from(arr.0)
-                        .and(other.eval().view_arr().0)
+                    Ok(Zip::from(arr.0)
+                        .and(other.eval()?.view_arr().0)
                         .map_collect(|v1, v2| *v1 - *v2)
                         .wrap()
-                        .into()
+                        .into())
                 } else {
-                    Zip::from(arr.0)
-                        .and(other.eval().view_arr().0)
+                    Ok(Zip::from(arr.0)
+                        .and(other.eval()?.view_arr().0)
                         .par_map_collect(|v1, v2| *v1 - *v2)
                         .wrap()
-                        .into()
+                        .into())
                 }
             },
             RefType::False,
