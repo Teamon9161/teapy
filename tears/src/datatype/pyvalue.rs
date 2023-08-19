@@ -1,12 +1,20 @@
+use std::fmt::Debug;
+
 #[cfg(feature = "lazy")]
 use crate::ExprElement;
 use crate::{DataType, GetDataType};
 use numpy::{Element, PyArrayDescr};
 use pyo3::{FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[repr(transparent)]
 pub struct PyValue(pub PyObject);
+
+impl Debug for PyValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", &self.0)
+    }
+}
 
 // impl Serialize for PyValue {
 //     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>

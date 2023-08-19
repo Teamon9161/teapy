@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::{fmt::Debug, hash::Hash};
 
 use ahash::RandomState;
 
@@ -183,7 +183,7 @@ where
         mut out: ArrBase<S2, Ix1>,
         slc: ArrBase<S3, Ix1>,
     ) where
-        T: Clone,
+        T: Clone + Debug,
         S2: DataMut<Elem = T>,
         S3: Data<Elem = usize> + Send + Sync,
     {
@@ -311,7 +311,7 @@ where
         par: bool,
     ) -> Arr<T, D>
     where
-        T: Clone + Default + Send + Sync,
+        T: Clone + Default + Debug + Send + Sync,
         D: Dimension,
         S2: Data<Elem = usize> + Send + Sync,
     {
@@ -366,7 +366,7 @@ where
     /// This function is safe because the slice are checked.
     pub fn take_clone<S2>(&self, slc: ArrBase<S2, Ix1>, axis: i32, par: bool) -> Arr<T, D>
     where
-        T: Clone + Default + Send + Sync,
+        T: Clone + Default + Debug + Send + Sync,
         D: Dimension,
         S2: Data<Elem = usize> + Send + Sync,
     {

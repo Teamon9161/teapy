@@ -41,9 +41,9 @@ pub enum Exprs<'a> {
 #[macro_export]
 macro_rules! match_ {
     // select the match arm
-    ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($arm: ident),*) => {
+    ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($(#[$meta: meta])? $arm: ident),*) => {
         match $exprs {
-            $($enum::$arm($e) => $body,)*
+            $($(#[$meta])? $enum::$arm($e) => $body,)*
             _ => unimplemented!("Not supported dtype in match_exprs")
         }
     };

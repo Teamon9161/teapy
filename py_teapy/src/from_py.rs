@@ -4,6 +4,8 @@ use numpy::{
 };
 use pyo3::{exceptions::PyValueError, FromPyObject, PyObject, PyResult, Python, ToPyObject};
 use tears::PyValue;
+#[cfg(feature = "option_dtype")]
+use tears::{OptF64, OptI64};
 
 #[derive(FromPyObject)]
 pub enum Scalar {
@@ -87,13 +89,18 @@ impl<'py> PyArrayOk<'py> {
     }
 }
 
+// do not change the order of the variants
 #[derive(FromPyObject)]
 pub enum PyList {
     Bool(Vec<bool>),
-    F64(Vec<f64>),
-    F32(Vec<f32>),
+    // #[cfg(feature = "option_dtype")]
+    // Boll(Vec<OptBool>)
     I64(Vec<i64>),
-    I32(Vec<i32>),
+    #[cfg(feature = "option_dtype")]
+    OptI64(Vec<OptI64>),
+    F64(Vec<f64>),
+    #[cfg(feature = "option_dtype")]
+    OptF64(Vec<OptF64>),
     String(Vec<String>),
     Object(Vec<PyValue>),
 }
@@ -102,24 +109,17 @@ macro_rules! match_pylist {
     ($list: expr, $l: ident, $body: tt) => {
         match $list {
             PyList::Bool($l) => $body,
-            PyList::I32($l) => $body,
             PyList::I64($l) => $body,
-            PyList::F32($l) => $body,
+            #[cfg(feature = "option_dtype")]
+            PyList::OptI64($l) => $body,
             PyList::F64($l) => $body,
+            #[cfg(feature = "option_dtype")]
+            PyList::OptF64($l) => $body,
             PyList::String($l) => $body,
             PyList::Object($l) => $body,
         }
     };
 }
-// pub(crate) use match_pylist;
-
-// #[derive(FromPyObject)]
-// pub enum GroupByKey<'py> {
-//     // Str(&'py PyArray1<PyObject>),
-//     I32(&'py PyArray1<i32>),
-//     I64(&'py PyArray1<i64>),
-//     Usize(&'py PyArray1<usize>),
-// }
 
 pub trait NoDim0 {
     fn no_dim0(self, py: Python) -> PyResult<PyObject>;

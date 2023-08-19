@@ -15,11 +15,11 @@ pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMutD};
 use crate::{export::*, DateTime, GetDataType, Iter, IterMut, TimeUnit, TpResult};
 
 use ndarray::{
-    Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn, RawData,
-    RemoveAxis, ShapeBuilder, Zip,
+    Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
+    RawData, RemoveAxis, ShapeBuilder, Zip,
 };
 
-use num::{traits::AsPrimitive, Zero};
+use num::Zero;
 use pyo3::{Python, ToPyObject};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::fmt::Debug;
@@ -254,8 +254,13 @@ where
         S2: DataMut<Elem = T2>,
         F: Fn(ArrView1<T>, ArrViewMut1<T2>) + Send + Sync,
     {
-        let arr_zip = Zip::from(self.lanes(axis)).and(out.lanes_mut(axis));
         let ndim = self.ndim();
+        if ndim == 1 {
+            let view = self.view().to_dim1().unwrap();
+            f(view, out.view_mut().to_dim1().unwrap());
+            return;
+        }
+        let arr_zip = Zip::from(self.lanes(axis)).and(out.lanes_mut(axis));
         if !par || (ndim == 1) {
             // 非并行
             arr_zip.for_each(|a, b| f(a.wrap(), b.wrap()));
@@ -280,16 +285,55 @@ where
         S3: DataMut<Elem = T3>,
         F: Fn(ArrView1<T>, ArrView1<T2>, ArrViewMut1<T3>) + Send + Sync,
     {
+        let ndim = self.ndim();
+        if ndim == 1 {
+            let view1 = self.view().to_dim1().unwrap();
+            let view2 = other.view().to_dim1().unwrap();
+            f(view1, view2, out.view_mut().to_dim1().unwrap());
+            return;
+        }
         let arr_zip = Zip::from(self.lanes(axis))
             .and(other.lanes(axis))
             .and(out.lanes_mut(axis));
-        let ndim = self.ndim();
+
         if !par || (ndim == 1) {
             // 非并行
             arr_zip.for_each(|a, b, c| f(a.wrap(), b.wrap(), c.wrap()));
         } else {
             // 并行
             arr_zip.par_for_each(|a, b, c| f(a.wrap(), b.wrap(), c.wrap()));
+        }
+    }
+
+    pub fn select_unchecked(&self, axis: Axis, indices: &[ndarray::Ix]) -> Arr<T, D>
+    where
+        T: Clone,
+        S: Data,
+        D: RemoveAxis,
+    {
+        if self.ndim() == 1 {
+            // using .len_of(axis) means that we check if `axis` is in bounds too.
+            let _ = self.len_of(axis);
+            let view = self.view().to_dim1().unwrap();
+            Array1::from_iter(indices.iter().map(move |&index| {
+                // Safety: bounds checked indexes
+                unsafe { view.uget(index).clone() }
+            }))
+            .into_dimensionality::<D>()
+            .unwrap()
+            .wrap()
+        } else {
+            let mut subs = vec![self.0.view(); indices.len()];
+            for (&i, sub) in zip(indices, &mut subs[..]) {
+                sub.collapse_axis(axis, i);
+            }
+            if subs.is_empty() {
+                let mut dim = self.raw_dim();
+                dim[axis.index()] = 0;
+                unsafe { Array::from_shape_vec_unchecked(dim, vec![]).wrap() }
+            } else {
+                ndarray::concatenate(axis, &subs).unwrap().wrap()
+            }
         }
     }
 
@@ -320,23 +364,27 @@ where
     /// Try to cast to datetime
     pub fn to_datetime(&self, unit: TimeUnit) -> TpResult<Arr<DateTime, D>>
     where
-        T: AsPrimitive<i64> + GetDataType,
+        T: Cast<i64> + GetDataType + Clone,
     {
         match T::dtype() {
             DataType::DateTime => unsafe { Ok(self.to_owned().into_dtype::<DateTime>()) },
-            _ => match unit {
-                TimeUnit::Nanosecond => {
-                    Ok(self.map(|v| DateTime::from_timestamp_ns(v.as_()).unwrap_or_default()))
+            _ => {
+                match unit {
+                    TimeUnit::Nanosecond => Ok(self.map(|v| {
+                        DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()
+                    })),
+                    TimeUnit::Microsecond => Ok(self.map(|v| {
+                        DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()
+                    })),
+                    TimeUnit::Millisecond => Ok(self.map(|v| {
+                        DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()
+                    })),
+                    TimeUnit::Second => {
+                        Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0)))
+                    }
+                    _ => Err("not support datetime unit".into()),
                 }
-                TimeUnit::Microsecond => {
-                    Ok(self.map(|v| DateTime::from_timestamp_us(v.as_()).unwrap_or_default()))
-                }
-                TimeUnit::Millisecond => {
-                    Ok(self.map(|v| DateTime::from_timestamp_ms(v.as_()).unwrap_or_default()))
-                }
-                TimeUnit::Second => Ok(self.map(|v| DateTime::from_timestamp_opt(v.as_(), 0))),
-                _ => Err("not support datetime unit".into()),
-            },
+            }
         }
     }
 

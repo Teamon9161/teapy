@@ -14,24 +14,25 @@ where
     S: Data<Elem = T>,
     D: Dimension,
 {
-    pub fn take_one_on_axis(&self, index: usize, axis: i32, par: bool) -> Arr<T, D::Smaller>
-    where
-        T: Send + Sync + Clone,
-        D: RemoveAxis,
-    {
-        let axis = self.norm_axis(axis);
-        assert!(index < self.shape()[axis.index()], "Index out of bound.");
-        // Safety: we have checked that 0 <= index <= the length of axis - 1
-        if !par {
-            Zip::from(self.lanes(axis))
-                .map_collect(|lane| unsafe { lane.uget(index).clone() })
-                .into()
-        } else {
-            Zip::from(self.lanes(axis))
-                .par_map_collect(|lane| unsafe { lane.uget(index).clone() })
-                .into()
-        }
-    }
+    // pub fn take_one_on_axis(&self, index: usize, axis: i32, par: bool) -> Arr<T, D::Smaller>
+    // where
+    //     T: Send + Sync + Clone,
+    //     D: RemoveAxis,
+    // {
+    //     let axis = self.norm_axis(axis);
+    //     self.index_axis(axis, index).to_owned().wrap()
+    //     // assert!(index < self.shape()[axis.index()], "Index out of bound.");
+    //     // // Safety: we have checked that 0 <= index <= the length of axis - 1
+    //     // if !par {
+    //     //     Zip::from(self.lanes(axis))
+    //     //         .map_collect(|lane| unsafe { lane.uget(index).clone() })
+    //     //         .into()
+    //     // } else {
+    //     //     Zip::from(self.lanes(axis))
+    //     //         .par_map_collect(|lane| unsafe { lane.uget(index).clone() })
+    //     //         .into()
+    //     // }
+    // }
 }
 
 impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {

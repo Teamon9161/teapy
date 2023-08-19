@@ -2,7 +2,7 @@ use super::{kh_sum, GetNone, MulAdd, Number};
 use crate::{Arr, ArrView, ArrViewMut};
 use ndarray::Dimension;
 use num::{traits::AsPrimitive, Num, One, Zero};
-use pyo3::{Python, ToPyObject};
+use pyo3::{FromPyObject, PyAny, PyResult, Python, ToPyObject};
 use std::cmp::{Ordering, PartialOrd};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
 
@@ -83,6 +83,18 @@ macro_rules! define_option_dtype {
             #[inline]
             fn to_object(&self, py: Python) -> pyo3::PyObject {
                 self.0.to_object(py)
+            }
+        }
+
+
+        impl<'source> FromPyObject<'source> for $typ {
+            fn extract(ob: &'source PyAny) -> PyResult<Self> {
+                if ob.is_none() {
+                    return Ok(None.into());
+                } else {
+                    let v = <$real>::extract(ob)?;
+                    Ok(v.into())
+                }
             }
         }
 
@@ -302,13 +314,6 @@ macro_rules! define_option_dtype {
                 <$real>::from_str_radix(s, radix).map(|v| v.into())
             }
         }
-
-        // impl AsPrimitive<$typ> for $real {
-        //     #[inline]
-        //     fn as_(self) -> $typ {
-        //         self.into()
-        //     }
-        // }
 
         impl Number for $typ {
             #[inline(always)]

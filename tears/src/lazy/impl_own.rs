@@ -1,7 +1,7 @@
 //! impl methods that return an array.
 
 use crate::datatype::Cast;
-use crate::{ArbArray, GetNone, OptUsize, PyValue, StrError, TimeDelta, TpResult};
+use crate::{ArbArray, Exprs, GetNone, OptUsize, PyValue, StrError, TimeDelta, TpResult};
 
 use super::super::{Arr, Arr1, CollectTrustedToVec, DateTime, FillMethod, Number, WrapNdarray};
 use super::{Expr, ExprElement, RefType};
@@ -12,6 +12,7 @@ use pyo3::Python;
 use rayon::prelude::*;
 #[cfg(feature = "stat")]
 use statrs::distribution::ContinuousCDF;
+use std::cmp::Ordering;
 use std::mem;
 
 pub enum DropNaMethod {
@@ -158,21 +159,6 @@ where
                 }
             },
             RefType::Keep,
-        )
-    }
-
-    pub fn last(self, axis: i32, par: bool) -> Self
-    where
-        T: Clone,
-    {
-        self.no_dim0().chain_view_f(
-            move |arr| {
-                let axis_n = arr.norm_axis(axis);
-                Ok(arr
-                    .take_one_on_axis(arr.shape()[axis_n.index()] - 1, axis, par)
-                    .into())
-            },
-            RefType::False,
         )
     }
 
@@ -456,16 +442,6 @@ where
         )
     }
 
-    pub fn first(self, axis: i32, par: bool) -> Self
-    where
-        T: Clone,
-    {
-        self.no_dim0().chain_view_f(
-            move |arr| Ok(arr.take_one_on_axis(0, axis, par).into()),
-            RefType::False,
-        )
-    }
-
     pub fn valid_first(self, axis: i32, par: bool) -> Self
     where
         T: Number,
@@ -626,7 +602,7 @@ where
     }
 
     /// select on a given axis by a slice expression
-    pub fn select_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: Expr<'a, i32>) -> Self
+    pub fn select_by_expr(self, slc: Expr<'a, usize>, axis: Expr<'a, i32>) -> Self
     where
         T: Clone,
     {
@@ -660,7 +636,47 @@ where
     }
 
     /// select on a given axis by a slice expression
-    pub fn select_on_axis_by_i32_expr(self, slc: Expr<'a, i32>, axis: Expr<'a, i32>) -> Self
+    ///
+    /// # Safety
+    ///
+    /// The slice should be valid.
+    pub unsafe fn select_by_expr_unchecked(self, slc: Expr<'a, usize>, axis: Expr<'a, i32>) -> Self
+    where
+        T: Clone,
+    {
+        self.chain_view_f(
+            move |arr| {
+                let slc = slc.no_dim0().eval()?;
+                let slc_eval = slc.view_arr();
+                let axis = *axis
+                    .eval()?
+                    .view_arr()
+                    .to_dim0()?
+                    // .expect("axis should be dim 0")
+                    .into_scalar();
+                if slc_eval.ndim() > 1 {
+                    return Err("The slice must be dim 0 or dim 1 when select on axis".into());
+                }
+                let axis = arr.norm_axis(axis);
+
+                if slc_eval.len() == 1 {
+                    Ok(arr
+                        .index_axis(axis, slc_eval.to_dim1()?[0])
+                        .to_owned()
+                        .wrap()
+                        .into())
+                } else {
+                    Ok(arr
+                        .select_unchecked(axis, slc_eval.as_slice().unwrap())
+                        .into())
+                }
+            },
+            RefType::False,
+        )
+    }
+
+    /// select on a given axis by a slice expression
+    pub fn select_by_i32_expr(self, slc: Expr<'a, i32>, axis: Expr<'a, i32>) -> Self
     where
         T: Clone,
     {
@@ -698,64 +714,66 @@ where
         )
     }
 
-    /// take values on a given axis
-    pub fn take_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: i32, par: bool) -> Self
-    where
-        T: Clone,
-    {
-        self.chain_view_f(
-            move |arr| {
-                let slc = slc.no_dim0().eval()?;
-                let slc_eval = slc.view_arr();
-                if slc_eval.ndim() > 1 {
-                    return Err("The slice must be dim 0 or dim 1 when take on axis".into());
-                }
-                if slc_eval.len() == 1 {
-                    Ok(arr
-                        .take_one_on_axis(*slc_eval.to_dim0()?.into_scalar(), axis, par)
-                        .into())
-                } else {
-                    Ok(arr.take_clone(slc_eval.to_dim1()?, axis, par).into())
-                }
-            },
-            RefType::False,
-        )
-    }
+    // /// take values on a given axis
+    // pub fn take_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: i32, par: bool) -> Self
+    // where
+    //     T: Clone,
+    // {
+    //     self.chain_view_f(
+    //         move |arr| {
+    //             let slc = slc.no_dim0().eval()?;
+    //             let slc_eval = slc.view_arr();
+    //             if slc_eval.ndim() > 1 {
+    //                 return Err("The slice must be dim 0 or dim 1 when take on axis".into());
+    //             }
+    //             if slc_eval.len() == 1 {
+    //                 Ok(arr
+    //                     .take_one_on_axis(*slc_eval.to_dim0()?.into_scalar(), axis, par)
+    //                     .into())
+    //             } else {
+    //                 Ok(arr.take_clone(slc_eval.to_dim1()?, axis, par).into())
+    //             }
+    //         },
+    //         RefType::False,
+    //     )
+    // }
 
-    /// take values on a given axis
-    ///
-    /// # Safety
-    ///
-    /// The slice should be valid.
-    pub unsafe fn take_on_axis_by_expr_unchecked(
-        self,
-        slc: Expr<'a, usize>,
-        axis: i32,
-        par: bool,
-    ) -> Self
-    where
-        T: Clone,
-    {
-        self.chain_view_f(
-            move |arr| {
-                let slc = slc.no_dim0().eval()?;
-                let slc_eval = slc.view_arr();
-                if slc_eval.ndim() > 1 {
-                    return Err("The slice must be dim 0 or dim 1 when take on axis".into());
-                }
-                if slc_eval.len() == 1 {
-                    Ok(arr
-                        .take_one_on_axis(slc_eval.to_dim1()?[0], axis, par)
-                        .into())
-                } else {
-                    Ok(arr
-                        .take_clone_unchecked(slc_eval.to_dim1()?, axis, par)
-                        .into())
-                }
-            },
-            RefType::False,
-        )
-    }
+    // /// take values on a given axis
+    // ///
+    // /// # Safety
+    // ///
+    // /// The slice should be valid.
+    // pub unsafe fn take_on_axis_by_expr_unchecked(
+    //     self,
+    //     slc: Expr<'a, usize>,
+    //     axis: i32,
+    //     par: bool,
+    // ) -> Self
+    // where
+    //     T: Clone,
+    // {
+    //     self.chain_view_f(
+    //         move |arr| {
+    //             let slc = slc.no_dim0().eval()?;
+    //             let slc_eval = slc.view_arr();
+    //             if slc_eval.ndim() > 1 {
+    //                 return Err("The slice must be dim 0 or dim 1 when take on axis".into());
+    //             }
+    //             if slc_eval.len() == 1 {
+    //                 Ok(arr
+    //                     .index_axis(arr.norm_axis(axis), slc_eval.to_dim1()?[0])
+    //                     .to_owned()
+    //                     .wrap()
+    //                     .into())
+    //             } else {
+    //                 Ok(arr
+    //                     .take_clone_unchecked(slc_eval.to_dim1()?, axis, par)
+    //                     .into())
+    //             }
+    //         },
+    //         RefType::False,
+    //     )
+    // }
 
     /// take values on a given axis
     ///
@@ -779,8 +797,13 @@ where
                     return Err("The slice must be dim 0 or dim 1 when take on axis".into());
                 }
                 if slc_eval.len() == 1 {
+                    // Ok(arr
+                    //     .take_one_on_axis(slc_eval.to_dim1()?[0].unwrap(), axis, par)
+                    //     .into())
                     Ok(arr
-                        .take_one_on_axis(slc_eval.to_dim1()?[0].unwrap(), axis, par)
+                        .index_axis(arr.norm_axis(axis), slc_eval.to_dim1()?[0].unwrap())
+                        .to_owned()
+                        .wrap()
                         .into())
                 } else {
                     Ok(arr
@@ -889,6 +912,101 @@ where
             },
             RefType::False,
         )
+    }
+
+    pub fn get_sort_idx(self, mut by: Vec<Exprs<'a>>, rev: bool) -> Expr<'a, usize> {
+        self.chain_view_f(
+            move |arr| {
+                if arr.ndim() != 1 {
+                    return Err("Currently only 1 dim Expr can be sorted".into());
+                }
+                let arr = arr.to_dim1()?;
+                let len = arr.len();
+                // evaluate the key expressions first
+                let eval_res: Vec<_> = by.par_iter_mut().map(|e| e.eval_inplace()).collect();
+                if eval_res.iter().any(|e| e.is_err()) {
+                    return Err("Some of the expressions can't be evaluated".into());
+                }
+                let mut idx = Vec::from_iter(0..len);
+                idx.sort_by(move |a, b| {
+                    let mut order = Ordering::Equal;
+                    for e in by.iter() {
+                        let rtn =
+                            match &e {
+                                Exprs::String(_) | Exprs::DateTime(_) | Exprs::TimeDelta(_) => {
+                                    match_exprs!(
+                                        e,
+                                        e,
+                                        {
+                                            let key_view = e.view();
+                                            let key_arr = key_view.into_arr().to_dim1().expect(
+                                                "Currently only 1 dim Expr can be sort key",
+                                            );
+                                            let (va, vb) =
+                                                unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
+                                            if !rev {
+                                                va.cmp(vb)
+                                            } else {
+                                                va.cmp(vb).reverse()
+                                            }
+                                        },
+                                        String,
+                                        DateTime
+                                    )
+                                }
+                                _ => {
+                                    match_exprs!(
+                                        e,
+                                        e,
+                                        {
+                                            let key_view = e.view();
+                                            let key_arr = key_view.into_arr().to_dim1().expect(
+                                                "Currently only 1 dim Expr can be sort key",
+                                            );
+                                            let (va, vb) =
+                                                unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
+                                            if !rev {
+                                                va.nan_sort_cmp_stable(vb)
+                                            } else {
+                                                va.nan_sort_cmp_rev_stable(vb)
+                                            }
+                                        },
+                                        F64,
+                                        F32,
+                                        I64,
+                                        I32,
+                                        Usize,
+                                        #[cfg(feature = "option_dtype")]
+                                        OptF64,
+                                        #[cfg(feature = "option_dtype")]
+                                        OptF32,
+                                        #[cfg(feature = "option_dtype")]
+                                        OptI64,
+                                        #[cfg(feature = "option_dtype")]
+                                        OptI32
+                                    )
+                                }
+                            };
+                        if rtn != Ordering::Equal {
+                            order = rtn;
+                            break;
+                        }
+                    }
+                    order
+                });
+                Ok(Arr1::from_vec(idx).to_dimd().into())
+            },
+            RefType::False,
+        )
+    }
+
+    pub fn sort_by_expr(self, by: Vec<Exprs<'a>>, rev: bool) -> Self
+    where
+        T: Clone,
+    {
+        let idx = self.clone().get_sort_idx(by, rev);
+        // safety: the idx is valid
+        unsafe { self.select_by_expr_unchecked(idx, 0.into()) }
     }
 
     // pub fn apply_on_vec_arr<F>(self, func: F, axis: i32) -> Expr<'a, T>

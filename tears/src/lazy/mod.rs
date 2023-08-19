@@ -23,7 +23,6 @@ use super::{
 use crate::{Cast, OptUsize, PyValue, TpResult};
 pub use expr_view::ExprOutView;
 use exprs::ExprsInner;
-use num::traits::AsPrimitive;
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use std::{
@@ -326,7 +325,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     #[inline]
     pub fn cast_datetime(self, unit: Option<TimeUnit>) -> Expr<'a, DateTime>
     where
-        T: AsPrimitive<i64>,
+        T: Cast<i64> + Clone,
     {
         self.downcast().cast_datetime(unit).into()
     }
@@ -578,9 +577,7 @@ macro_rules! impl_funcchain_new {
                             ExprBase::Expr(exprs) => {
                                 let ref_count = Arc::strong_count(&exprs);
                                 let mut exprs_lock = exprs.lock();
-                                // if exprs_lock.step() != 0 {
                                 exprs_lock.eval_inplace()?;
-                                // }
                                 // we should not modify the base expression
                                 // safety: the data of the base expression must exist
                                 if ref_count > 1 {
@@ -595,9 +592,7 @@ macro_rules! impl_funcchain_new {
                             ExprBase::ExprVec(mut expr_vec) => {
                                 expr_vec.iter_mut().for_each(|e| {
                                     let mut expr_lock = e.lock();
-                                    // if expr_lock.step() != 0 {
                                     _ = expr_lock.eval_inplace();
-                                    // }
                                 });
                                 let expr_vec = expr_vec.into_iter().map(|e| {
                                     Expr {e, _type: PhantomData}
@@ -730,62 +725,7 @@ impl Default for ExprBase<'_> {
     }
 }
 
-// impl<'a> ExprBase<'a> {
-//     pub fn into_out<T: ExprElement>(self) -> ExprOut<'a, T> {
-//         match self {
-//             ExprBase::Arr(arrok) => unsafe { arrok.downcast::<T>().into() },
-//             ExprBase::ArrVec(arr_vec) => arr_vec
-//                 .into_iter()
-//                 .map(|arrok| unsafe { arrok.downcast::<T>() })
-//                 .collect_trusted()
-//                 .into(),
-//             ExprBase::Expr(e) => Expr::<'a, T> {
-//                 e,
-//                 _type: PhantomData,
-//             }
-//             .into_out(),
-//             #[cfg(feature = "blas")]
-//             ExprBase::OlsRes(arc_olsres) => arc_olsres.into(),
-//             ExprBase::ExprVec(_) | ExprBase::ArcArr(_) => unimplemented!(),
-//         }
-//     }
-// }
-
 impl<'a, T: ExprElement> ExprInner<'a, T> {
-    // #[allow(dead_code)]
-    // pub fn new(arr: ExprOut<'a, T>, name: Option<String>) -> Self {
-    //     match arr {
-    //         ExprOut::Arr(arr) => Self::new_with_arr(arr, name),
-    //         #[cfg(feature = "blas")]
-    //         ExprOut::OlsRes(res) => ExprInner::<T> {
-    //             base: ExprBase::OlsRes(res),
-    //             func: EmptyNew::empty_new(),
-    //             step: 0,
-    //             owned: None,
-    //             name,
-    //             ref_expr: None,
-    //         },
-    //         ExprOut::ArrVec(_) => {
-    //             unimplemented!("Create an expression with a vector of array is not implemented")
-    //         }
-    //         ExprOut::ExprVec(expr_vec) => {
-    //             let expr_vec = expr_vec.into_iter().map(|e| e.e).collect_trusted();
-    //             Self::new_with_expr_vec(expr_vec, name)
-    //         }
-    //     }
-    // }
-
-    // pub fn new_with_base(arr: ExprBase<'a>, name: Option<String>) -> Self {
-    //     ExprInner::<T> {
-    //         base: arr,
-    //         func: EmptyNew::empty_new(),
-    //         step: 0,
-    //         owned: None,
-    //         name,
-    //         ref_expr: None,
-    //     }
-    // }
-
     pub fn new_with_arr(arr: ArbArray<'a, T>, name: Option<String>) -> Self {
         let owned = arr.is_owned();
         ExprInner::<T> {
@@ -798,18 +738,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
-    // #[allow(dead_code)]
-    // pub fn new_with_arc_arr(arr: Arc<ArrOk<'a>>, name: Option<String>) -> Self {
-    //     ExprInner::<T> {
-    //         base: ExprBase::ArcArr(arr),
-    //         func: EmptyNew::empty_new(),
-    //         step: 0,
-    //         owned: None,
-    //         name,
-    //         ref_expr: None,
-    //     }
-    // }
-
     // Create a new expression which is based on a current expression
     pub fn new_with_expr(expr: Arc<Mutex<ExprsInner<'a>>>, name: Option<String>) -> Self {
         // let step: usize;
@@ -818,7 +746,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
             let e = expr.lock();
             let e_ = unsafe { e.get::<T>() };
             // (step, owned) = (e_.step, e_.owned);
-            owned = e_.owned;
+            owned = e_.get_owned();
             if name.is_none() {
                 e_.name()
             } else {
@@ -837,20 +765,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
-    // #[allow(dead_code)]
-    // pub fn new_with_expr_vec(
-    //     expr_vec: Vec<Arc<Mutex<ExprsInner<'a>>>>,
-    //     name: Option<String>,
-    // ) -> Self {
-    //     ExprInner::<T> {
-    //         base: ExprBase::ExprVec(expr_vec),
-    //         func: EmptyNew::empty_new(),
-    //         owned: Some(false),
-    //         step: 0,
-    //         name,
-    //         ref_expr: None,
-    //     }
-    // }
     /// Reinterpret the expression.
     ///
     /// # Safety
@@ -944,7 +858,16 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
 
     #[inline(always)]
     pub fn get_owned(&self) -> Option<bool> {
-        self.owned
+        if let ExprBase::Expr(e) = &self.base {
+            let ref_count = Arc::strong_count(e);
+            if ref_count > 1 {
+                Some(false)
+            } else {
+                e.lock().get_owned()
+            }
+        } else {
+            self.owned
+        }
     }
 
     #[allow(dead_code)]
@@ -974,9 +897,10 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     }
 
     pub fn update_ref_expr(&mut self) -> TpResult<()> {
+        let owned = self.get_owned();
         if let ExprBase::Expr(base_expr) = &mut self.base {
             base_expr.lock().eval_inplace()?;
-            if let Some(is_owned) = self.owned {
+            if let Some(is_owned) = owned {
                 if !is_owned {
                     self.ref_expr = Some(vec![base_expr.clone()])
                 }
@@ -991,9 +915,6 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         if self.step() != 0 {
             let default_func: FuncChainType<'a, T> = DefaultNew::default_new();
             let func = mem::replace(&mut self.func, default_func);
-            // if let ExprBase::Expr(base_expr) = &mut self.base {
-            //     base_expr.lock().unwrap().eval_inplace();
-            // }
             self.update_ref_expr()?;
             let base = mem::take(&mut self.base);
             let out = func(base)?;
@@ -1116,6 +1037,16 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         (self.func)(self.base)
     }
 
+    #[inline]
+    pub fn add_ref_expr(&mut self, expr: Arc<Mutex<ExprsInner<'a>>>) {
+        if let Some(mut ref_expr) = self.ref_expr.take() {
+            ref_expr.push(expr);
+            self.ref_expr = Some(ref_expr);
+        } else {
+            self.ref_expr = Some(vec![expr]);
+        }
+    }
+
     /// chain a new function to current function chain, the function accept
     /// an array of type `ExprOut<'a, T>` and return `ExprOut<'a, T>`
     pub fn chain_f<F, T2>(mut self, f: F, ref_type: RefType) -> ExprInner<'a, T2>
@@ -1124,15 +1055,18 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         T2: ExprElement,
     {
         if let ExprBase::Expr(base_expr) = &self.base {
-            if matches!(ref_type, RefType::True) {
-                if let Some(mut ref_expr) = self.ref_expr {
-                    ref_expr.push(base_expr.clone());
-                    self.ref_expr = Some(ref_expr);
-                } else {
-                    self.ref_expr = Some(vec![base_expr.clone()]);
+            match ref_type {
+                RefType::True => {
+                    self.add_ref_expr(base_expr.clone());
                 }
-            } else {
-                self.ref_expr = None
+                RefType::Keep => {
+                    if let Some(owned) = self.get_owned() {
+                        if !owned {
+                            self.add_ref_expr(base_expr.clone());
+                        }
+                    }
+                }
+                _ => {}
             }
         }
         self.set_step(self.step + 1);
@@ -1249,7 +1183,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     #[allow(clippy::unnecessary_unwrap)]
     pub fn cast_datetime(self, unit: Option<TimeUnit>) -> ExprInner<'a, DateTime>
     where
-        T: AsPrimitive<i64>,
+        T: Cast<i64> + Clone,
     {
         if T::dtype() == DataType::DateTime {
             // || unit.is_none() {

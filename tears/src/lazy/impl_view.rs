@@ -76,6 +76,42 @@ where
         )
     }
 
+    pub fn index_axis(self, index: usize, axis: i32) -> Self
+    where
+        T: Clone,
+    {
+        self.no_dim0().chain_view_f(
+            move |arr| {
+                let axis_n = arr.norm_axis(axis);
+                let out: ArbArray<'_, T> = arr.0.index_axis(axis_n, index).wrap().into();
+                Ok(unsafe { mem::transmute(out) })
+            },
+            RefType::True,
+        )
+    }
+
+    pub fn first(self, axis: i32) -> Self
+    where
+        T: Clone,
+    {
+        self.index_axis(0, axis)
+    }
+
+    pub fn last(self, axis: i32) -> Self
+    where
+        T: Clone,
+    {
+        self.no_dim0().chain_view_f(
+            move |arr| {
+                let axis_n = arr.norm_axis(axis);
+                let index = arr.shape()[axis_n.index()] - 1;
+                let out: ArbArray<'_, T> = arr.0.index_axis(axis_n, index).wrap().into();
+                Ok(unsafe { mem::transmute(out) })
+            },
+            RefType::True,
+        )
+    }
+
     /// Return a transposed view of the array.
     ///
     /// # Safety

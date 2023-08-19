@@ -232,7 +232,7 @@ impl PyExpr {
                 } else {
                     match_exprs!(&out.inner, expr, {
                         expr.clone()
-                            .select_on_axis_by_i32_expr(slc.cast_i32()?, idx)
+                            .select_by_i32_expr(slc.cast_i32()?, idx)
                             .to_py(out.obj())
                             .add_obj(obj)
                     })
@@ -1117,19 +1117,19 @@ impl PyExpr {
         })
     }
 
-    #[pyo3(signature=(axis=0, par=false))]
+    #[pyo3(signature=(axis=0))]
     #[allow(unreachable_patterns)]
-    pub fn first(&self, axis: i32, par: bool) -> Self {
+    pub fn first(&self, axis: i32) -> Self {
         match_exprs!(&self.inner, expr, {
-            expr.clone().first(axis, par).to_py(self.obj())
+            expr.clone().first(axis).to_py(self.obj())
         })
     }
 
-    #[pyo3(signature=(axis=0, par=false))]
+    #[pyo3(signature=(axis=0))]
     #[allow(unreachable_patterns)]
-    pub fn last(&self, axis: i32, par: bool) -> Self {
+    pub fn last(&self, axis: i32) -> Self {
         match_exprs!(&self.inner, expr, {
-            expr.clone().last(axis, par).to_py(self.obj())
+            expr.clone().last(axis).to_py(self.obj())
         })
     }
 
@@ -2326,13 +2326,19 @@ impl PyExpr {
     #[pyo3(signature=(slc, axis=0))]
     pub unsafe fn select(&self, slc: &PyAny, axis: i32) -> PyResult<Self> {
         let slc = parse_expr_nocopy(slc)?;
-        self._select_on_axis_by_expr(slc, axis.into_pyexpr())
+        self._select_by_expr(slc, axis.into_pyexpr())
     }
 
-    #[pyo3(signature=(slc, axis=0, par=false))]
-    pub unsafe fn take(&self, slc: &PyAny, axis: i32, par: bool) -> PyResult<Self> {
+    #[pyo3(signature=(slc, axis=0))]
+    pub unsafe fn _select_unchecked(&self, slc: &PyAny, axis: i32) -> PyResult<Self> {
         let slc = parse_expr_nocopy(slc)?;
-        self._take_on_axis_by_expr(slc, axis, par)
+        self._select_by_expr_unchecked(slc, axis.into_pyexpr())
+    }
+
+    #[pyo3(signature=(slc, axis=0))]
+    pub unsafe fn _select_by_i32(&self, slc: &PyAny, axis: i32) -> PyResult<Self> {
+        let slc = parse_expr_nocopy(slc)?;
+        self._select_by_i32_expr(slc, axis.into_pyexpr())
     }
 
     #[cfg(feature = "stat")]
@@ -2375,11 +2381,12 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(by, rev=false, return_idx=false))]
-    pub fn sort_by(&self, by: Vec<Self>, rev: bool, return_idx: bool) -> Self {
+    pub fn sort(&self, by: &PyAny, rev: bool, return_idx: bool) -> PyResult<Self> {
+        let by = unsafe { parse_expr_list(by, false) }?;
         if !return_idx {
-            self.sort_by_expr(by, rev)
+            Ok(self.sort_by_expr(by, rev))
         } else {
-            self.sort_by_expr_idx(by, rev)
+            Ok(self.get_sort_idx(by, rev))
         }
     }
 
@@ -2705,7 +2712,7 @@ impl PyExpr {
             .into_iter()
             .enumerate()
             .map(|(end, start)| {
-                let pye = self.take_by_slice(Some(axis), start, end, None);
+                let pye = self.select_by_slice_eager(Some(axis), start, end, None);
                 let res = func
                     .call((pye,), py_kwargs)
                     .expect("Call python function error!");
@@ -2766,7 +2773,7 @@ impl PyExpr {
         let mut output = zip(repeat(0).take(window - 1), 0..window - 1)
             .chain((window - 1..length).enumerate())
             .map(|(end, start)| {
-                let pye = self.take_by_slice(Some(axis), start, end, None);
+                let pye = self.select_by_slice_eager(Some(axis), start, end, None);
                 let res = func
                     .call((pye,), py_kwargs)
                     .expect("Call python function error!");

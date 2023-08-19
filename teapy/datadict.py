@@ -61,12 +61,17 @@ class DataDict:
     def __repr__(self):
         return self._dd.__repr__()
 
+    def __len__(self):
+        return len(self._dd)
+
     @construct
     def copy(self):
         return self._dd.copy()
 
     @construct
     def eval(self, cols=None, inplace=True):
+        if isinstance(cols, bool):
+            return self._dd.eval(None, inplace=cols)
         return self._dd.eval(cols, inplace=inplace)
 
     @construct
@@ -90,10 +95,10 @@ class DataDict:
                     nan_mask &= self[c].is_nan()
             else:
                 raise ValueError("how should be either 'any' or 'all'")
-            df = self if inplace else self.copy()
+            dd = self if inplace else self.copy()
             for c in subset:
-                df[c] = df[c].filter(~nan_mask)
-            return None if inplace else df
+                dd[c] = dd[c].filter(~nan_mask)
+            return None if inplace else dd
 
     def mean(self, axis=-1, stable=False, par=False):
         if axis == -1:
@@ -148,15 +153,30 @@ class DataDict:
             return self._dd.join(right._dd, left_on, right_on, method=how)
 
     @construct
-    def apply(self, func, **kwargs):
-        return self._dd.apply(func, **kwargs)
+    def apply(self, func, inplace=False, **kwargs):
+        return self._dd.apply(func, inplace=inplace, **kwargs)
 
     def rolling(self, window, dd, index=None, check=True, axis=0):
         return Rolling(window, self._dd, index, check, axis)
 
-    @construct
-    def sort_by(self, by, rev=False, inplace=False):
-        return self._dd.sort_by(by=by, rev=rev, inplace=inplace)
+    def _select_on_axis(self, idx, axis=0, inplace=False):
+        return self.apply(lambda e: e.select(idx, axis=axis), inplace=inplace)
+
+    def _select_on_axis_unchecked(self, idx, axis=0, inplace=False):
+        return self.apply(
+            lambda e: e._select_unchecked(idx, axis=axis), inplace=inplace
+        )
+
+    def sort(self, by, rev=False, inplace=False):
+        if isinstance(by, (str, int)):
+            by = [by]
+        if self.is_empty():
+            return None if inplace else self
+        idx = self[0].sort(self[by], rev=rev, return_idx=True)
+        dd = self if inplace else self.copy()
+        dd._select_on_axis_unchecked(idx, axis=0, inplace=True)
+        # dd.apply(lambda e: e._select_unchecked(idx), inplace=True)
+        return None if inplace else dd
 
     def groupby(self, by, axis=0, sort=True, par=False, reuse=False):
         return GroupBy(self._dd, by, axis, sort, par, reuse=reuse)

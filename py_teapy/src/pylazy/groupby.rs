@@ -22,9 +22,9 @@ impl PyDataDict {
             groupby(keys, sort)
         };
         let mut output = Vec::<PyDataDict>::with_capacity(self.len());
-        group_idx_vec
-            .into_iter()
-            .for_each(|(_idx, idx_vec)| output.push(self.select_on_axis(idx_vec, Some(axis))));
+        group_idx_vec.into_iter().for_each(|(_idx, idx_vec)| {
+            output.push(self.select_on_axis_unchecked(idx_vec, Some(axis)))
+        });
         Ok(output)
     }
 }

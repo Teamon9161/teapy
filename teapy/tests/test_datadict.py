@@ -76,6 +76,31 @@ def test_dropna():
     assert_allclose(dd["a"].eview(), [2, 3])
 
 
+def test_copy():
+    dd = DataDict(a=[4, 2, 3, 1], b=[1, 2, 3, 4])
+    dd1 = dd.copy()
+    dd1.sort(["a"], inplace=True)
+    dd1.eval(inplace=True)
+    assert_allclose(dd1["b"].view, [4, 2, 3, 1])
+    assert_allclose(dd["b"].view, [1, 2, 3, 4])
+
+
+def test_sort():
+    dd = DataDict(a=[4, 2, 3, 1], b=[1, 2, 3, 4])
+    assert_allclose(dd["b"].sort(dd["a"]).eview(), [4, 2, 3, 1])
+
+    dd = dd.sort(["a"]).eval(inplace=False)
+    assert_allclose(dd["b"].view, [4, 2, 3, 1])
+
+    dd = dd.sort(["a"], rev=True).eval(inplace=False)
+    assert_allclose(dd["b"].view, [1, 3, 2, 4])
+
+    dd = DataDict(a=[4, 2, None, 1], b=[1, 2, 3, 4])
+    dd.sort(["a"], inplace=True)
+    dd.eval(inplace=True)
+    assert_allclose(dd["b"].view, [4, 2, 1, 3])
+
+
 def test_mean():
     dd = DataDict(a=[1, 2, 3, 4], b=[3, 4, 5, 6])
     assert_allclose(dd.mean(axis=-1).eview(), np.array([2, 3, 4, 5]))

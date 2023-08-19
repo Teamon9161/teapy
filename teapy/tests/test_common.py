@@ -22,6 +22,11 @@ def test_continuity():
     assert_allclose(res1, res2)
 
 
+def test_step():
+    a = tp.Expr([1, 2, 3]).ts_mean(1).mean()
+    assert a.step == 2
+
+
 def test_high_dimensional():
     arr = np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]])
     expected_axis0 = np.array([[[0, 1], [2, 3]], [[4, 6], [8, 10]]])

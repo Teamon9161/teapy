@@ -16,7 +16,7 @@ static PYDATADICT_INIT_SIZE: usize = 10;
 use ahash::{HashMap, HashMapExt};
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PyDataDict {
     data: Vec<PyExpr>,
     column_map: Arc<Mutex<HashMap<String, usize>>>,
@@ -333,8 +333,28 @@ impl PyDataDict {
         for expr in &self.data {
             out_data.push(match_exprs!(&expr.inner, e, {
                 e.clone()
-                    .select_on_axis_by_expr(slc_expr.clone(), axis.into())
+                    .select_by_expr(slc_expr.clone(), axis.into())
                     .to_py(expr.obj())
+            }))
+        }
+        PyDataDict {
+            data: out_data,
+            column_map: self.column_map.clone(),
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn select_on_axis_unchecked(&self, slc: Vec<usize>, axis: Option<i32>) -> PyDataDict {
+        let mut out_data = Vec::<PyExpr>::with_capacity(slc.len());
+        let axis = axis.unwrap_or(0);
+        let slc_expr: Expr<'static, usize> = slc.into();
+        for expr in &self.data {
+            out_data.push(match_exprs!(&expr.inner, e, {
+                unsafe {
+                    e.clone()
+                        .select_by_expr_unchecked(slc_expr.clone(), axis.into())
+                        .to_py(expr.obj())
+                }
             }))
         }
         PyDataDict {
@@ -417,6 +437,11 @@ impl PyDataDict {
     pub fn init(data: &PyAny, columns: Option<Vec<String>>, copy: bool) -> PyResult<Self> {
         let data = unsafe { parse_expr_list(data, copy)? };
         Ok(Self::new(data, columns))
+    }
+
+    #[pyo3(name = "is_empty")]
+    pub fn is_empty_py(&self) -> bool {
+        self.is_empty()
     }
 
     #[allow(clippy::wrong_self_convention)]
@@ -640,7 +665,8 @@ impl PyDataDict {
         value.into_iter().for_each(|e| self._insert(e));
     }
 
-    pub unsafe fn select(&mut self, exprs: &PyAny) -> PyResult<Self> {
+    #[pyo3(name = "select")]
+    pub unsafe fn select_py(&mut self, exprs: &PyAny) -> PyResult<Self> {
         let exprs = parse_expr_list(exprs, false)?;
         Ok(PyDataDict::new(exprs, None))
     }
@@ -661,10 +687,19 @@ impl PyDataDict {
         }
     }
 
-    #[pyo3(signature=(func, **py_kwargs))]
-    pub fn apply(&self, func: &PyAny, py_kwargs: Option<&PyDict>) -> PyResult<Self> {
+    #[pyo3(signature=(func, inplace=false, **py_kwargs))]
+    pub fn apply(
+        &mut self,
+        func: &PyAny,
+        inplace: bool,
+        py_kwargs: Option<&PyDict>,
+    ) -> PyResult<Option<Self>> {
         if self.is_empty() {
-            return Ok(self.clone());
+            if inplace {
+                return Ok(None);
+            } else {
+                return Ok(Some(self.clone()));
+            }
         }
         let out_data = unsafe {
             self.data
@@ -678,7 +713,12 @@ impl PyDataDict {
                 })
                 .collect_trusted()
         };
-        Ok(PyDataDict::new(out_data, None))
+        if inplace {
+            self.data = out_data;
+            Ok(None)
+        } else {
+            Ok(Some(PyDataDict::new(out_data, None)))
+        }
     }
 
     #[pyo3(signature=(window, func, axis=0, check=true, **py_kwargs))]
@@ -721,7 +761,7 @@ impl PyDataDict {
             .map(|(start, end)| {
                 let mut step_df = Vec::with_capacity(self.len());
                 self.data.iter().for_each(|pyexpr| unsafe {
-                    step_df.push(pyexpr.take_by_slice(Some(axis_i), start, end, None));
+                    step_df.push(pyexpr.select_by_slice_eager(Some(axis_i), start, end, None));
                 });
                 let step_df = PyDataDict {
                     data: step_df,
@@ -824,7 +864,7 @@ impl PyDataDict {
             .map(|(end, start)| {
                 let mut step_df = Vec::with_capacity(self.len());
                 self.data.iter().for_each(|pyexpr| unsafe {
-                    step_df.push(pyexpr.take_by_slice(Some(axis_i), start, end, None));
+                    step_df.push(pyexpr.select_by_slice_eager(Some(axis_i), start, end, None));
                 });
                 let step_df = PyDataDict {
                     data: step_df,
@@ -863,27 +903,38 @@ impl PyDataDict {
         Ok(PyDataDict::new(out_data, None))
     }
 
-    #[pyo3(signature=(by, rev=false, inplace=false))]
-    pub fn sort_by(&mut self, by: Vec<&str>, rev: bool, inplace: bool) -> Option<Self> {
-        let key: Vec<PyExpr> = by.into_iter().map(|n| self.get_by_str(n).clone()).collect();
-        if self.data.is_empty() {
-            return Some(self.clone());
-        }
-        let idx = self.data.get(0).unwrap().clone().sort_by_expr_idx(key, rev);
-        unsafe {
-            self.data.iter_mut().for_each(|e| {
-                *e = e
-                    .clone()
-                    ._take_on_axis_by_expr_unchecked(idx.clone(), 0, false)
-                    .unwrap()
-            });
-        }
-        if !inplace {
-            Some(self.clone())
-        } else {
-            None
-        }
-    }
+    // #[pyo3(signature=(by, rev=false, inplace=false))]
+    // pub fn sort_by(&mut self, by: Vec<&str>, rev: bool, inplace: bool) -> PyResult<Option<Self>> {
+    //     let key: Vec<PyExpr> = by.into_iter().map(|n| self.get_by_str(n).clone()).collect();
+    //     if self.data.is_empty() {
+    //         if !inplace {
+    //             return Ok(Some(self.clone()));
+    //         } else {
+    //             return Ok(None);
+    //         }
+    //     }
+    //     let idx = self.data.get(0).unwrap().get_sort_idx(key, rev).cast_usize()?;
+    //     if inplace {
+    //         unsafe {
+    //             self.data.iter_mut().for_each(|e| {
+    //                 match_exprs!(&e.inner, expr, {
+    //                     *e = expr.clone().take_on_axis_by_expr_unchecked(idx.clone(), 0, false).to_py(e.obj())
+    //                 })
+    //             });
+    //         }
+    //         Ok(None)
+    //     } else {
+    //         let mut out = self.clone();
+    //         unsafe {
+    //             out.data.iter_mut().for_each(|e| {
+    //                 match_exprs!(&e.inner, expr, {
+    //                     *e = expr.clone().take_on_axis_by_expr_unchecked(idx.clone(), 0, false).to_py(e.obj())
+    //                 })
+    //             });
+    //         }
+    //         Ok(Some(out))
+    //     }
+    // }
 
     #[pyo3(signature=(by, axis=0, sort=true, par=false))]
     pub fn groupby(&mut self, by: &PyAny, axis: i32, sort: bool, par: bool) -> PyResult<PyGroupBy> {
@@ -979,9 +1030,11 @@ impl PyDataDict {
                                     let idx: Expr<'static, usize> =
                                         std::mem::transmute(idx.clone());
                                     match_exprs!(&e.inner, expr, {
-                                        expr.clone()
-                                            .take_on_axis_by_expr_unchecked(idx, 0, false)
-                                            .to_py(e.obj())
+                                        unsafe {
+                                            expr.clone()
+                                                .select_by_expr_unchecked(idx, 0.into())
+                                                .to_py(e.obj())
+                                        }
                                     })
                                 }
                             }
@@ -1104,17 +1157,17 @@ impl PyDataDict {
         let new_len = out_idx.len();
         let idx: Expr<'static, usize> = out_idx.into();
         if inplace {
-            unsafe {
-                self.data.iter_mut().for_each(|s| {
-                    if new_len < len {
-                        *s = match_exprs!(&s.inner, expr, {
+            self.data.iter_mut().for_each(|s| {
+                if new_len < len {
+                    *s = match_exprs!(&s.inner, expr, {
+                        unsafe {
                             expr.clone()
-                                .take_on_axis_by_expr_unchecked(idx.clone(), axis, false)
+                                .select_by_expr_unchecked(idx.clone(), axis.into())
                                 .to_py(s.obj())
-                        })
-                    }
-                });
-            }
+                        }
+                    })
+                }
+            });
             Ok(None)
         } else {
             let data = self
@@ -1122,13 +1175,13 @@ impl PyDataDict {
                 .iter()
                 .map(|s| {
                     if new_len < len {
-                        unsafe {
-                            match_exprs!(&s.inner, expr, {
+                        match_exprs!(&s.inner, expr, {
+                            unsafe {
                                 expr.clone()
-                                    .take_on_axis_by_expr_unchecked(idx.clone(), axis, false)
+                                    .select_by_expr_unchecked(idx.clone(), axis.into())
                                     .to_py(s.obj())
-                            })
-                        }
+                            }
+                        })
                     } else {
                         // fast path for no duplicates
                         s.clone()

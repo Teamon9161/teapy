@@ -1,13 +1,10 @@
+use std::fmt::Debug;
 use std::ops::Deref;
-use std::{cmp::Ordering, fmt::Debug};
 
 use ndarray::{Slice, SliceInfoElem};
 
 use super::export::*;
-use tears::{
-    ArbArray, DateTime, ExprElement, Number, OptUsize, PyValue, RefType, StrError, TimeDelta,
-    TimeUnit,
-};
+use tears::{ArbArray, DateTime, ExprElement, OptUsize, PyValue, StrError, TimeDelta, TimeUnit};
 #[cfg(feature = "option_dtype")]
 use tears::{OptF32, OptF64, OptI32, OptI64};
 
@@ -245,22 +242,49 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn _select_on_axis_by_expr(&self, slc: Self, axis: Self) -> PyResult<Self> {
+    pub fn _select_by_expr(&self, slc: Self, axis: Self) -> PyResult<Self> {
         let obj = slc.obj();
         match_exprs!(&self.inner, expr, {
             Ok(expr
                 .clone()
-                .select_on_axis_by_expr(slc.cast_usize()?, axis.cast_i32()?)
+                .select_by_expr(slc.cast_usize()?, axis.cast_i32()?)
                 .to_py(self.obj())
                 .add_obj(obj))
         })
     }
 
-    pub fn _select_on_axis(&self, slc: Vec<usize>, axis: i32) -> Self {
-        let slc_expr: Expr<usize> = slc.into();
-        self._select_on_axis_by_expr(slc_expr.into(), axis.into_pyexpr())
-            .unwrap()
+    #[allow(unreachable_patterns)]
+    /// # Safety
+    ///
+    /// The data for the array view should exist
+    pub unsafe fn _select_by_expr_unchecked(&self, slc: Self, axis: Self) -> PyResult<Self> {
+        let obj = slc.obj();
+        match_exprs!(&self.inner, expr, {
+            Ok(expr
+                .clone()
+                .select_by_expr_unchecked(slc.cast_usize()?, axis.cast_i32()?)
+                .to_py(self.obj())
+                .add_obj(obj))
+        })
     }
+
+    #[allow(unreachable_patterns)]
+    pub fn _select_by_i32_expr(&self, slc: Self, axis: Self) -> PyResult<Self> {
+        let obj = slc.obj();
+        match_exprs!(&self.inner, expr, {
+            Ok(expr
+                .clone()
+                .select_by_i32_expr(slc.cast_i32()?, axis.cast_i32()?)
+                .to_py(self.obj())
+                .add_obj(obj))
+        })
+    }
+
+    // pub fn _select(&self, slc: Vec<usize>, axis: i32) -> Self {
+    //     let slc_expr: Expr<usize> = slc.into();
+    //     self._select_by_expr(slc_expr.into(), axis.into_pyexpr())
+    //         .unwrap()
+    // }
 
     /// take values using slice
     ///
@@ -278,65 +302,23 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn _take_on_axis_by_expr(&self, slc: Self, axis: i32, par: bool) -> PyResult<Self> {
-        let obj = slc.obj();
-        match_exprs!(&self.inner, expr, {
-            Ok(expr
-                .clone()
-                .take_on_axis_by_expr(slc.cast_usize()?, axis, par)
-                .to_py(self.obj())
-                .add_obj(obj))
-        })
-    }
-
-    #[allow(unreachable_patterns)]
-    /// # Safety
-    ///
-    /// The slice must be valid
-    pub unsafe fn _take_on_axis_by_expr_unchecked(
-        &self,
-        slc: Self,
-        axis: i32,
-        par: bool,
-    ) -> PyResult<Self> {
-        let obj = slc.obj();
-        match_exprs!(&self.inner, expr, {
-            Ok(expr
-                .clone()
-                .take_on_axis_by_expr_unchecked(slc.cast_usize()?, axis, par)
-                .to_py(self.obj())
-                .add_obj(obj))
-        })
-    }
-
-    pub fn _take_on_axis(&self, slc: Vec<usize>, axis: i32, par: bool) -> Self {
-        let slc_expr: Expr<usize> = slc.into();
-        self._take_on_axis_by_expr(slc_expr.into(), axis, par)
-            .unwrap()
-    }
-
-    #[allow(unreachable_patterns)]
-    pub fn sort_by_expr(&self, by: Vec<PyExpr>, rev: bool) -> Self {
+    pub fn sort_by_expr(&self, by: Vec<Self>, rev: bool) -> Self {
         let obj_vec: Vec<Option<Vec<PyObject>>> = by.iter().map(|e| e.obj()).collect();
-        let mut out = match_exprs!(&self.inner, expr, {
+        let by = by.into_iter().map(|e| e.inner).collect_trusted();
+        let out = match_exprs!(&self.inner, expr, {
             expr.clone().sort_by_expr(by, rev).to_py(self.obj())
         });
-        for obj in obj_vec {
-            out = out.add_obj(obj);
-        }
-        out
+        out.add_obj_vec(obj_vec)
     }
 
     #[allow(unreachable_patterns)]
-    pub fn sort_by_expr_idx(&self, by: Vec<PyExpr>, rev: bool) -> Self {
+    pub fn get_sort_idx(&self, by: Vec<Self>, rev: bool) -> Self {
         let obj_vec: Vec<Option<Vec<PyObject>>> = by.iter().map(|e| e.obj()).collect();
-        let mut out = match_exprs!(&self.inner, expr, {
-            expr.clone().sort_by_expr_idx(by, rev).to_py(self.obj())
+        let by = by.into_iter().map(|e| e.inner).collect_trusted();
+        let out = match_exprs!(&self.inner, expr, {
+            expr.clone().get_sort_idx(by, rev).to_py(self.obj())
         });
-        for obj in obj_vec {
-            out = out.add_obj(obj);
-        }
-        out
+        out.add_obj_vec(obj_vec)
     }
 
     #[allow(unreachable_patterns)]
@@ -474,7 +456,7 @@ impl PyExpr {
     ///
     /// Data of the base expression must exist.
     #[allow(unreachable_patterns)]
-    pub unsafe fn take_by_slice(
+    pub unsafe fn select_by_slice_eager(
         &self,
         axis: Option<i32>,
         start: usize,
@@ -499,103 +481,5 @@ impl PyExpr {
             let e: Exprs<'static> = std::mem::transmute(e);
             e.into()
         })
-    }
-}
-
-pub trait SortExpr {
-    fn sort_by_expr(self, by: Vec<PyExpr>, rev: bool) -> Self;
-    fn sort_by_expr_idx(self, by: Vec<PyExpr>, rev: bool) -> Expr<'static, usize>;
-}
-
-impl<T: ExprElement + Clone + 'static> SortExpr for Expr<'static, T> {
-    fn sort_by_expr_idx(self, mut by: Vec<PyExpr>, rev: bool) -> Expr<'static, usize> {
-        self.chain_view_f(
-            move |arr| {
-                if arr.ndim() != 1 {
-                    return Err("Currently only 1 dim Expr can be sorted".into());
-                }
-                let arr = arr.to_dim1().unwrap();
-                let len = arr.len();
-                // evaluate the key expressions first
-                let eval_res: Vec<_> = by.par_iter_mut().map(|e| e.eval_inplace()).collect();
-                if eval_res.iter().any(|e| e.is_err()) {
-                    return Err("Some of the expressions can't be evaluated".into());
-                }
-                let mut idx = Vec::from_iter(0..len);
-                idx.sort_by(move |a, b| {
-                    let mut order = Ordering::Equal;
-                    for e in by.iter() {
-                        let rtn = match &e.inner {
-                            Exprs::F64(e) => {
-                                let key_view = e.view();
-                                let key_arr = key_view
-                                    .into_arr()
-                                    .to_dim1()
-                                    .expect("Currently only 1 dim Expr can be sort key");
-                                let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
-                                if !rev {
-                                    va.nan_sort_cmp_stable(&vb)
-                                } else {
-                                    va.nan_sort_cmp_rev_stable(&vb)
-                                }
-                            }
-                            Exprs::I32(e) => {
-                                let key_view = e.view();
-                                let key_arr = key_view
-                                    .into_arr()
-                                    .to_dim1()
-                                    .expect("Currently only 1 dim Expr can be sort key");
-                                let (va, vb) = unsafe { (*key_arr.uget(*a), *key_arr.uget(*b)) };
-                                if !rev {
-                                    va.nan_sort_cmp_stable(&vb)
-                                } else {
-                                    va.nan_sort_cmp_rev_stable(&vb)
-                                }
-                            }
-                            Exprs::String(e) => {
-                                let key_view = e.view();
-                                let key_arr = key_view
-                                    .into_arr()
-                                    .to_dim1()
-                                    .expect("Currently only 1 dim Expr can be sort key");
-                                let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
-                                if !rev {
-                                    va.cmp(vb)
-                                } else {
-                                    va.cmp(vb).reverse()
-                                }
-                            }
-                            Exprs::DateTime(e) => {
-                                let key_view = e.view();
-                                let key_arr = key_view
-                                    .into_arr()
-                                    .to_dim1()
-                                    .expect("Currently only 1 dim Expr can be sort key");
-                                let (va, vb) = unsafe { (key_arr.uget(*a), key_arr.uget(*b)) };
-                                if !rev {
-                                    va.0.cmp(&vb.0)
-                                } else {
-                                    va.0.cmp(&vb.0).reverse()
-                                }
-                            }
-                            _ => unimplemented!("sort by Expr of this dtype is not implemented"),
-                        };
-                        if rtn != Ordering::Equal {
-                            order = rtn;
-                            break;
-                        }
-                    }
-                    order
-                });
-                Ok(Arr1::from_vec(idx).to_dimd().into())
-            },
-            RefType::False,
-        )
-    }
-
-    fn sort_by_expr(self, by: Vec<PyExpr>, rev: bool) -> Self {
-        let idx = self.clone().sort_by_expr_idx(by, rev);
-        // safety: the idx is valid
-        unsafe { self.take_on_axis_by_expr_unchecked(idx, 0, false) }
     }
 }

@@ -14,8 +14,6 @@ pub enum JoinType {
     Outer,
 }
 
-// static JOIN_DICT_INIT_SIZE: usize = 512;
-// static JOIN_VEC_INIT_SIZE: usize = 32;
 #[allow(clippy::useless_conversion)]
 pub fn join_left(left_keys: Vec<&Exprs>, right_keys: Vec<&Exprs>) -> Vec<OptUsize> {
     assert_eq!(
