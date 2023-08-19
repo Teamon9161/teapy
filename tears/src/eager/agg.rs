@@ -116,7 +116,7 @@ impl_reduce_nd!(
     /// first valid value
     #[inline]
     pub fn valid_first_1d(&self) -> T
-    {T: Number, f64: AsPrimitive<T>}
+    {T: Number, f64: Cast<T>}
     {
         let out = f64::NAN;
         for v in self.iter() {
@@ -124,7 +124,7 @@ impl_reduce_nd!(
                 return *v
             }
         }
-        out.as_()
+        out.cast()
     }
 );
 
@@ -133,7 +133,7 @@ impl_reduce_nd!(
     /// last valid value
     #[inline]
     pub fn valid_last_1d(&self) -> T
-    {T: Number, f64: AsPrimitive<T>}
+    {T: Number, f64: Cast<T>}
     {
         let out = f64::NAN;
         for v in self.iter().rev() {
@@ -141,7 +141,7 @@ impl_reduce_nd!(
                 return *v
             }
         }
-        out.as_()
+        out.cast()
     }
 );
 

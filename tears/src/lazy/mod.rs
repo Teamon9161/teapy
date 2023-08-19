@@ -20,7 +20,7 @@ use super::{
     ArbArray, Arr1, ArrD, ArrOk, ArrViewD, ArrViewMutD, CollectTrustedToVec, DataType, DateTime,
     DefaultNew, EmptyNew, GetDataType, TimeDelta, TimeUnit,
 };
-use crate::{PyValue, TpResult};
+use crate::{Cast, OptUsize, PyValue, TpResult};
 pub use expr_view::ExprOutView;
 use exprs::ExprsInner;
 use num::traits::AsPrimitive;
@@ -35,7 +35,7 @@ use std::{
 };
 
 #[cfg(feature = "option_dtype")]
-use super::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
+use super::datatype::{OptF32, OptF64, OptI32, OptI64};
 
 pub enum RefType {
     True,
@@ -56,7 +56,7 @@ impl<'a> ExprElement for &'a str {}
 impl ExprElement for DateTime {}
 impl ExprElement for TimeDelta {}
 
-impl ExprElement for Option<usize> {}
+impl ExprElement for OptUsize {}
 
 #[cfg(feature = "option_dtype")]
 impl ExprElement for OptF64 {}
@@ -66,8 +66,8 @@ impl ExprElement for OptF32 {}
 impl ExprElement for OptI32 {}
 #[cfg(feature = "option_dtype")]
 impl ExprElement for OptI64 {}
-#[cfg(feature = "option_dtype")]
-impl ExprElement for OptUsize {}
+// #[cfg(feature = "option_dtype")]
+// impl ExprElement for OptUsize {}
 
 #[derive(Default, Clone)]
 pub struct Expr<'a, T: ExprElement> {
@@ -298,8 +298,8 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     #[inline]
     pub fn cast<T2>(self) -> Expr<'a, T2>
     where
-        T: AsPrimitive<T2> + Copy + 'static,
-        T2: ExprElement + Copy + 'static,
+        T: Cast<T2> + Clone + 'static,
+        T2: ExprElement + Clone + 'static,
     {
         self.downcast().cast::<T2>().into()
     }
@@ -308,7 +308,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     #[inline]
     pub fn cast_bool(self) -> Expr<'a, bool>
     where
-        T: AsPrimitive<i32> + Clone,
+        T: Cast<i32> + Clone,
     {
         self.downcast().cast_bool().into()
     }
@@ -510,8 +510,8 @@ where
                     let arr: ArrD<TimeDelta> = Default::default();
                     Ok(arr.into_dtype::<T>().into())
                 }),
-                DataType::OpUsize => Box::new(move |_| {
-                    let arr: ArrD<Option<usize>> = Default::default();
+                DataType::OptUsize => Box::new(move |_| {
+                    let arr: ArrD<OptUsize> = Default::default();
                     Ok(arr.into_dtype::<T>().into())
                 }),
                 #[cfg(feature = "option_dtype")]
@@ -534,11 +534,11 @@ where
                     let arr: ArrD<OptI64> = Default::default();
                     Ok(arr.into_dtype::<T>().into())
                 }),
-                #[cfg(feature = "option_dtype")]
-                DataType::OptUsize => Box::new(move |_| {
-                    let arr: ArrD<OptUsize> = Default::default();
-                    Ok(arr.into_dtype::<T>().into())
-                }),
+                // #[cfg(feature = "option_dtype")]
+                // DataType::OptUsize => Box::new(move |_| {
+                //     let arr: ArrD<OptUsize> = Default::default();
+                //     Ok(arr.into_dtype::<T>().into())
+                // }),
             }
         }
     }
@@ -633,7 +633,7 @@ where
             Object,
             DateTime,
             TimeDelta,
-            OpUsize,
+            OptUsize,
             #[cfg(feature = "option_dtype")]
             OptF32,
             #[cfg(feature = "option_dtype")]
@@ -641,9 +641,8 @@ where
             #[cfg(feature = "option_dtype")]
             OptI32,
             #[cfg(feature = "option_dtype")]
-            OptI64,
-            #[cfg(feature = "option_dtype")]
-            OptUsize
+            OptI64 // #[cfg(feature = "option_dtype")]
+                   // OptUsize
         )
     }
 }
@@ -1222,8 +1221,8 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     /// Cast to another type
     pub fn cast<T2>(self) -> ExprInner<'a, T2>
     where
-        T: AsPrimitive<T2> + Copy + 'static,
-        T2: ExprElement + Copy + 'static,
+        T: Cast<T2> + Clone,
+        T2: ExprElement + Clone + 'static,
     {
         if T::dtype() == T2::dtype() {
             // safety: T and T2 are the same type
@@ -1236,7 +1235,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     /// Try casting to bool type
     pub fn cast_bool(self) -> ExprInner<'a, bool>
     where
-        T: AsPrimitive<i32>,
+        T: Cast<i32> + Clone,
     {
         if T::dtype() == DataType::Bool {
             // safety: T and T2 are the same type

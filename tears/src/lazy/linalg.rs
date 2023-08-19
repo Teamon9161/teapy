@@ -1,8 +1,7 @@
 use super::super::impls::{conjugate, LeastSquaresResult};
 use super::{ArbArray, Expr, ExprElement, ExprInner, RefType};
-use crate::{Arr1, Arr2, ArrD, ArrViewD, TpResult, WrapNdarray};
+use crate::{Arr1, Arr2, ArrD, ArrViewD, Cast, TpResult, WrapNdarray};
 use ndarray::{Axis, Ix2, LinalgScalar};
-use num::traits::AsPrimitive;
 use std::sync::Arc;
 
 // we created a new struct for linear square result as we need a result
@@ -83,9 +82,9 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         self.downcast().chain_ols_f(f).into()
     }
 
-    pub fn lstsq<T2: ExprElement + AsPrimitive<f64>>(self, y: Expr<'a, T2>) -> Self
+    pub fn lstsq<T2: ExprElement + Cast<f64> + Clone>(self, y: Expr<'a, T2>) -> Self
     where
-        T: AsPrimitive<f64>,
+        T: Cast<f64> + Clone,
     {
         self.cast::<f64>().chain_f(
             move |x| {
@@ -162,7 +161,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     pub fn conjugate(self) -> Expr<'a, f64>
     where
-        T: AsPrimitive<f64>,
+        T: Cast<f64> + Clone,
     {
         self.cast::<f64>().chain_view_f(
             move |arr| {
@@ -176,7 +175,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     pub fn svd(self, full: bool, calc_uvt: bool) -> Expr<'a, f64>
     where
-        T: AsPrimitive<f64>,
+        T: Cast<f64> + Clone,
     {
         self.cast::<f64>().chain_f(
             move |arr| {
@@ -196,7 +195,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
 
     pub fn pinv(self, rcond: Option<f64>, return_s: bool) -> Expr<'a, f64>
     where
-        T: AsPrimitive<f64>,
+        T: Cast<f64> + Clone,
     {
         self.cast::<f64>().chain_f(
             move |arr| {

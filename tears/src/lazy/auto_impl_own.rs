@@ -1,4 +1,4 @@
-use num::traits::AsPrimitive;
+use crate::datatype::Cast;
 
 use super::super::{CorrMethod, Number, QuantileMethod, WinsorizeMethod};
 use super::{ArbArray, Expr, ExprElement, RefType};
@@ -50,7 +50,7 @@ macro_rules! impl_view_lazy {
 impl<'a, T> Expr<'a, T>
 where
     T: Number + ExprElement,
-    f64: AsPrimitive<T>,
+    f64: Cast<T>,
 {
     // in1: lazy function with one input array,
     // mean -> f64: eager function name in Arr, and the dtype of output is f64

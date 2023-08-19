@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::iter::repeat;
 use std::sync::{Arc, Mutex};
 
-use tears::{join_left, JoinType};
+use tears::{join_left, JoinType, OptUsize};
 
 use super::export::*;
 
@@ -933,7 +933,7 @@ impl PyDataDict {
         match method {
             JoinType::Left => {
                 let idx = join_left(left_on_exprs, right_on_exprs);
-                let idx: Expr<'static, Option<usize>> = idx.into();
+                let idx: Expr<'static, OptUsize> = idx.into();
                 unsafe {
                     right.data = right
                         .data

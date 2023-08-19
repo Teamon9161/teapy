@@ -5,10 +5,11 @@ use ndarray::{Slice, SliceInfoElem};
 
 use super::export::*;
 use tears::{
-    ArbArray, DateTime, ExprElement, Number, PyValue, RefType, StrError, TimeDelta, TimeUnit,
+    ArbArray, DateTime, ExprElement, Number, OptUsize, PyValue, RefType, StrError, TimeDelta,
+    TimeUnit,
 };
 #[cfg(feature = "option_dtype")]
-use tears::{OptF32, OptF64, OptI32, OptI64, OptUsize};
+use tears::{OptF32, OptF64, OptI32, OptI64};
 
 #[pyclass(subclass)]
 #[derive(Clone, Default)]
@@ -159,7 +160,6 @@ impl PyExpr {
         self.inner.cast_opti64().map_err(StrError::to_py)
     }
 
-    #[cfg(feature = "option_dtype")]
     // Cast the output of the expression to Option<usize> ndarray
     pub fn cast_optusize(self) -> PyResult<Expr<'static, OptUsize>> {
         self.inner.cast_optusize().map_err(StrError::to_py)

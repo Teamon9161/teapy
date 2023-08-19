@@ -3,16 +3,16 @@ use std::fmt::Debug;
 use super::arbarray::{match_arbarray, ArbArray};
 use super::view::ArrViewD;
 // use crate::core::arbarray;
-use crate::{match_datatype_arm, DataType, DateTime, GetDataType, PyValue, TimeDelta};
+use crate::{match_datatype_arm, DataType, DateTime, GetDataType, OptUsize, PyValue, TimeDelta};
 use ndarray::IxDyn;
 
 #[cfg(feature = "option_dtype")]
-use crate::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
+use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
 
 pub enum ArrOk<'a> {
     Bool(ArbArray<'a, bool>),
     Usize(ArbArray<'a, usize>),
-    OpUsize(ArbArray<'a, Option<usize>>),
+    OptUsize(ArbArray<'a, OptUsize>),
     F32(ArbArray<'a, f32>),
     F64(ArbArray<'a, f64>),
     I32(ArbArray<'a, i32>),
@@ -30,8 +30,8 @@ pub enum ArrOk<'a> {
     OptI32(ArbArray<'a, OptI32>),
     #[cfg(feature = "option_dtype")]
     OptI64(ArbArray<'a, OptI64>),
-    #[cfg(feature = "option_dtype")]
-    OptUsize(ArbArray<'a, OptUsize>),
+    // #[cfg(feature = "option_dtype")]
+    // OptUsize(ArbArray<'a, OptUsize>),
 }
 
 impl<'a> Debug for ArrOk<'a> {
@@ -49,7 +49,7 @@ macro_rules! match_arr {
             ArrOk::I32($arr) => $body,
             ArrOk::I64($arr) => $body,
             ArrOk::Usize($arr) => $body,
-            ArrOk::OpUsize($arr) => $body,
+            ArrOk::OptUsize($arr) => $body,
             ArrOk::String($arr) => $body,
             ArrOk::Str($arr) => $body,
             ArrOk::Object($arr) => $body,
@@ -63,8 +63,8 @@ macro_rules! match_arr {
             ArrOk::OptI32($arr) => $body,
             #[cfg(feature = "option_dtype")]
             ArrOk::OptI64($arr) => $body,
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptUsize($arr) => $body,
+            // #[cfg(feature = "option_dtype")]
+            // ArrOk::OptUsize($arr) => $body,
         }
     };
 }

@@ -12,11 +12,11 @@ use pyo3::{
 };
 use std::iter::repeat;
 use tears::{
-    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, PyValue, RefType, StrError, TimeDelta,
-    WinsorizeMethod,
+    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, OptUsize, PyValue, RefType, StrError,
+    TimeDelta, WinsorizeMethod,
 };
 #[cfg(feature = "option_dtype")]
-use tears::{OptF32, OptF64, OptI32, OptI64, OptUsize};
+use tears::{OptF32, OptF64, OptI32, OptI64};
 
 static PYEXPR_ATTRIBUTE: Lazy<Mutex<HashMap<String, PyObject>>> =
     Lazy::new(|| Mutex::new(HashMap::<String, PyObject>::with_capacity(10)));
@@ -126,7 +126,7 @@ impl PyExpr {
             Object(_) => "Object",
             DateTime(_) => "DateTime",
             TimeDelta(_) => "TimeDelta",
-            OpUsize(_) => "Option<Usize>",
+            OptUsize(_) => "Option<Usize>",
             #[cfg(feature = "option_dtype")]
             OptF64(_) => "Option<F64>",
             #[cfg(feature = "option_dtype")]
@@ -135,8 +135,8 @@ impl PyExpr {
             OptI32(_) => "Option<I32>",
             #[cfg(feature = "option_dtype")]
             OptI64(_) => "Option<I64>",
-            #[cfg(feature = "option_dtype")]
-            OptUsize(_) => "Option<Usize>",
+            // #[cfg(feature = "option_dtype")]
+            // OptUsize(_) => "Option<Usize>",
         }
     }
 
@@ -1234,7 +1234,7 @@ impl PyExpr {
                         .to_py(self.obj())
                 }
             }
-            Exprs::OpUsize(_e) => todo!(),
+            // Exprs::OpUsize(_e) => todo!(),
             Exprs::String(e) => e
                 .clone()
                 .shift(
@@ -1326,14 +1326,14 @@ impl PyExpr {
                     par,
                 )
                 .to_py(self.obj()),
-            #[cfg(feature = "option_dtype")]
+            // #[cfg(feature = "option_dtype")]
             Exprs::OptUsize(e) => e
                 .clone()
                 .cast::<OptUsize>()
                 .shift(
                     n,
                     fill.map(|f| f.cast_optusize().unwrap())
-                        .unwrap_or_else(|| OptUsize(None).into()),
+                        .unwrap_or_else(|| Into::<OptUsize>::into(None).into()),
                     axis,
                     par,
                 )

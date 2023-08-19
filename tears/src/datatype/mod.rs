@@ -1,22 +1,20 @@
 pub mod time;
 
+mod cast;
 #[cfg(feature = "option_dtype")]
 mod option_datatype;
 mod pyvalue;
 
-use super::utils::kh_sum;
-use num::{cast::AsPrimitive, traits::MulAdd, Num};
-// use numpy::Element;
-use std::cmp::{Ordering, PartialOrd};
-// use std::fmt::Display;
-use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
-
-pub use pyvalue::PyValue;
-
-pub use time::{DateTime, TimeDelta, TimeUnit};
-
+pub use cast::Cast;
 #[cfg(feature = "option_dtype")]
 pub use option_datatype::{ArrToOpt, OptF32, OptF64, OptI32, OptI64, OptUsize};
+pub use pyvalue::PyValue;
+pub use time::{DateTime, TimeDelta, TimeUnit};
+
+use super::utils::kh_sum;
+use num::{traits::MulAdd, Num};
+use std::cmp::{Ordering, PartialOrd};
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
 #[cfg(not(feature = "option_dtype"))]
 pub struct OptF32;
@@ -27,7 +25,7 @@ pub struct OptI32;
 #[cfg(not(feature = "option_dtype"))]
 pub struct OptI64;
 #[cfg(not(feature = "option_dtype"))]
-pub struct OptUsize;
+pub type OptUsize = Option<usize>;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum DataType {
@@ -42,7 +40,7 @@ pub enum DataType {
     Object,
     DateTime,
     TimeDelta,
-    OpUsize,
+    // OpUsize,
     #[cfg(feature = "option_dtype")]
     OptF64,
     #[cfg(feature = "option_dtype")]
@@ -51,7 +49,7 @@ pub enum DataType {
     OptI32,
     #[cfg(feature = "option_dtype")]
     OptI64,
-    #[cfg(feature = "option_dtype")]
+    // #[cfg(feature = "option_dtype")]
     OptUsize,
 }
 
@@ -62,13 +60,13 @@ macro_rules! match_datatype_arm {
             #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize), $body)
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize), $body)
                 };
             }
             #[cfg(feature="option_dtype")]
             macro_rules! inner_macro {
                 () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize, OptF64, OptF32, OptI32, OptI64, OptUsize), $body)
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, OptF64, OptF32, OptI32, OptI64), $body)
                 };
             }
             inner_macro!()
@@ -115,7 +113,7 @@ impl_datatype!(String, String);
 impl_datatype!(DateTime, DateTime);
 impl_datatype!(TimeDelta, TimeDelta);
 
-impl_datatype!(OpUsize, Option<usize>);
+impl_datatype!(OptUsize, OptUsize);
 
 #[cfg(feature = "option_dtype")]
 impl_datatype!(OptF64, OptF64);
@@ -125,8 +123,8 @@ impl_datatype!(OptF32, OptF32);
 impl_datatype!(OptI32, OptI32);
 #[cfg(feature = "option_dtype")]
 impl_datatype!(OptI64, OptI64);
-#[cfg(feature = "option_dtype")]
-impl_datatype!(OptUsize, OptUsize);
+// #[cfg(feature = "option_dtype")]
+// impl_datatype!(OptUsize, OptUsize);
 
 pub trait GetNone {
     fn none() -> Self;
@@ -150,6 +148,24 @@ impl GetNone for String {
     }
 }
 
+impl GetNone for usize {
+    fn none() -> Self {
+        0
+    }
+}
+
+impl GetNone for i32 {
+    fn none() -> Self {
+        0
+    }
+}
+
+impl GetNone for i64 {
+    fn none() -> Self {
+        0
+    }
+}
+
 impl<'a> GetDataType for &'a str {
     type Physical = &'a str;
     fn dtype() -> DataType {
@@ -162,10 +178,7 @@ pub trait Number:
     + Clone
     + Sized
     + Default
-    // + Display
-    // + FromPrimitive
     + Num
-    // + NumCast
     + AddAssign
     + SubAssign
     + MulAssign
@@ -173,13 +186,16 @@ pub trait Number:
     + PartialOrd
     + MulAdd
     + GetDataType
-    // + Element
-    // + ToPrimitive
-    + AsPrimitive<f64>
-    + AsPrimitive<f32>
-    + AsPrimitive<usize>
-    + AsPrimitive<i32>
-    + AsPrimitive<i64>
+    + Cast<f64>
+    + Cast<f32>
+    + Cast<usize>
+    + Cast<i32>
+    + Cast<i64>
+// + AsPrimitive<f64>
+// + AsPrimitive<f32>
+// + AsPrimitive<usize>
+// + AsPrimitive<i32>
+// + AsPrimitive<i64>
 {
     // type Dtype;
     /// return the min value of the data type
@@ -219,34 +235,34 @@ pub trait Number:
 
     #[inline(always)]
     fn f32(self) -> f32 {
-        AsPrimitive::<f32>::as_(self)
+        Cast::<f32>::cast(self)
     }
 
     #[inline(always)]
     fn f64(self) -> f64 {
-        AsPrimitive::<f64>::as_(self)
+        Cast::<f64>::cast(self)
     }
 
     #[inline(always)]
     fn i32(self) -> i32 {
-        AsPrimitive::<i32>::as_(self)
+        Cast::<i32>::cast(self)
     }
 
     #[inline(always)]
     fn i64(self) -> i64 {
-        AsPrimitive::<i64>::as_(self)
+        Cast::<i64>::cast(self)
     }
 
     #[inline(always)]
     fn usize(self) -> usize {
-        AsPrimitive::<usize>::as_(self)
+        Cast::<usize>::cast(self)
     }
 
     /// create a value of type T using a value of type U using `AsPrimitive`
     #[inline(always)]
     fn fromas<U>(v: U) -> Self
     where
-        U: Number + AsPrimitive<Self>,
+        U: Number + Cast<Self>,
     {
         v.to::<Self>()
     }
@@ -255,9 +271,9 @@ pub trait Number:
     #[inline(always)]
     fn to<T: Number>(self) -> T
     where
-        Self: AsPrimitive<T>,
+        Self: Cast<T>,
     {
-        AsPrimitive::<T>::as_(self)
+        Cast::<T>::cast(self)
     }
 
     /// check whether self is nan

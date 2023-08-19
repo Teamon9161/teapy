@@ -33,9 +33,10 @@ pub mod utils;
 
 pub(crate) use datatype::match_datatype_arm;
 #[cfg(feature = "option_dtype")]
-pub use datatype::{ArrToOpt, OptF32, OptF64, OptI32, OptI64, OptUsize};
+pub use datatype::{ArrToOpt, OptF32, OptF64, OptI32, OptI64};
 pub use datatype::{
-    BoolType, DataType, DateTime, GetDataType, GetNone, Number, PyValue, TimeDelta, TimeUnit,
+    BoolType, Cast, DataType, DateTime, GetDataType, GetNone, Number, OptUsize, PyValue, TimeDelta,
+    TimeUnit,
 };
 pub use eager::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
 pub use error::{StrError, TpResult};

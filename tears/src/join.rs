@@ -1,3 +1,5 @@
+use crate::OptUsize;
+
 use super::{
     groupby::{collect_hashmap_keys, collect_hashmap_one_key, prepare_groupby},
     CollectTrustedToVec, Exprs,
@@ -14,8 +16,8 @@ pub enum JoinType {
 
 // static JOIN_DICT_INIT_SIZE: usize = 512;
 // static JOIN_VEC_INIT_SIZE: usize = 32;
-
-pub fn join_left(left_keys: Vec<&Exprs>, right_keys: Vec<&Exprs>) -> Vec<Option<usize>> {
+#[allow(clippy::useless_conversion)]
+pub fn join_left(left_keys: Vec<&Exprs>, right_keys: Vec<&Exprs>) -> Vec<OptUsize> {
     assert_eq!(
         left_keys.len(),
         right_keys.len(),
@@ -25,7 +27,7 @@ pub fn join_left(left_keys: Vec<&Exprs>, right_keys: Vec<&Exprs>) -> Vec<Option<
     let (len, hasher, hashed_left_keys) = prepare_groupby(&left_keys, Some(hasher));
     let (right_len, hasher, hashed_right_keys) = prepare_groupby(&right_keys, Some(hasher));
     let key_len = hashed_left_keys.len();
-    let mut output = Vec::with_capacity(len);
+    let mut output: Vec<OptUsize> = Vec::with_capacity(len);
     // fast path for only one key
     if key_len == 1 {
         let hashed_right_key = hashed_right_keys.get(0).unwrap();
@@ -38,14 +40,14 @@ pub fn join_left(left_keys: Vec<&Exprs>, right_keys: Vec<&Exprs>) -> Vec<Option<
                 .from_key_hashed_nocheck(hash, &hash);
             match entry {
                 RawEntryMut::Vacant(_entry) => {
-                    output.push(None);
+                    output.push(None.into());
                 }
                 RawEntryMut::Occupied(mut entry) => {
                     let v = entry.get_mut();
                     if v.1.len() > 1 {
-                        output.push(Some(v.1.pop().unwrap()));
+                        output.push(v.1.pop().unwrap().into());
                     } else {
-                        output.push(Some(v.1[0]));
+                        output.push(v.1[0].into());
                     }
                 }
             }
@@ -64,14 +66,14 @@ pub fn join_left(left_keys: Vec<&Exprs>, right_keys: Vec<&Exprs>) -> Vec<Option<
                 .from_key_hashed_nocheck(hash, &tuple_left_keys);
             match entry {
                 RawEntryMut::Vacant(_entry) => {
-                    output.push(None);
+                    output.push(None.into());
                 }
                 RawEntryMut::Occupied(mut entry) => {
                     let v = entry.get_mut();
                     if v.1.len() > 1 {
-                        output.push(Some(v.1.pop().unwrap()));
+                        output.push(v.1.pop().unwrap().into());
                     } else {
-                        output.push(Some(v.1[0]));
+                        output.push(v.1[0].into());
                     }
                 }
             }

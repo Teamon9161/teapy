@@ -241,10 +241,10 @@ where
 
     pub fn cast<T2>(self) -> Arr<T2, D>
     where
-        T: GetDataType + AsPrimitive<T2>,
-        T2: GetDataType + Copy + 'static,
+        T: GetDataType + Clone + Cast<T2>,
+        T2: GetDataType + Clone + 'static,
     {
-        self.mapv(|v| v.as_())
+        self.map(|v| v.clone().cast())
     }
 
     pub fn apply_along_axis<S2, T2, F>(&self, out: &mut ArrBase<S2, D>, axis: Axis, par: bool, f: F)
@@ -296,12 +296,12 @@ where
     /// Try to cast to bool
     pub fn to_bool(&self) -> Arr<bool, D>
     where
-        T: Debug + Clone + AsPrimitive<i32>,
+        T: Debug + Clone + Cast<i32>,
     {
-        self.mapv(|v| {
-            if v.as_() == 0 {
+        self.map(|v| {
+            if v.clone().cast() == 0 {
                 false
-            } else if v.as_() == 1 {
+            } else if v.clone().cast() == 1 {
                 true
             } else {
                 panic!("can not cast {v:?} to bool")

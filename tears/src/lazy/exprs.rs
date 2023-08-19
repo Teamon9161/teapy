@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use pyo3::Python;
 
 #[cfg(feature = "option_dtype")]
-use crate::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
-use crate::{DateTime, PyValue, TimeDelta, TimeUnit, TpResult};
+use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
+use crate::{DateTime, OptUsize, PyValue, TimeDelta, TimeUnit, TpResult};
 
 use super::super::{match_datatype_arm, DataType, GetDataType};
 use super::expr_view::ExprOutView;
@@ -23,7 +23,7 @@ pub enum Exprs<'a> {
     Object(Expr<'a, PyValue>),
     DateTime(Expr<'a, DateTime>),
     TimeDelta(Expr<'a, TimeDelta>),
-    OpUsize(Expr<'a, Option<usize>>),
+    // OpUsize(Expr<'a, Option<usize>>),
     #[cfg(feature = "option_dtype")]
     OptF32(Expr<'a, OptF32>),
     #[cfg(feature = "option_dtype")]
@@ -34,6 +34,8 @@ pub enum Exprs<'a> {
     OptI64(Expr<'a, OptI64>),
     #[cfg(feature = "option_dtype")]
     OptUsize(Expr<'a, OptUsize>),
+    #[cfg(not(feature = "option_dtype"))]
+    OptUsize(Expr<'a, Option<usize>>),
 }
 
 #[macro_export]
@@ -51,14 +53,14 @@ macro_rules! match_ {
             #[cfg(feature="option_dtype")]
             macro_rules! inner_macro {
                 () => {
-                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
+                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptF32, OptF64, OptI32, OptI64, OptUsize)
                 };
             }
 
             #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize)
+                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize)
                 };
             }
             inner_macro!()
@@ -87,7 +89,7 @@ impl<'a, T: ExprElement + 'a> From<Expr<'a, T>> for Exprs<'a> {
             match T::dtype() {
                 DataType::Bool => Exprs::Bool(expr.into_dtype::<bool>()),
                 DataType::Usize => Exprs::Usize(expr.into_dtype::<usize>()),
-                DataType::OpUsize => Exprs::OpUsize(expr.into_dtype::<Option<usize>>()),
+                // DataType::OpUsize => Exprs::OpUsize(expr.into_dtype::<Option<usize>>()),
                 DataType::F32 => Exprs::F32(expr.into_dtype::<f32>()),
                 DataType::F64 => Exprs::F64(expr.into_dtype::<f64>()),
                 DataType::I32 => Exprs::I32(expr.into_dtype::<i32>()),
@@ -105,8 +107,10 @@ impl<'a, T: ExprElement + 'a> From<Expr<'a, T>> for Exprs<'a> {
                 DataType::OptI32 => Exprs::OptI32(expr.into_dtype::<OptI32>()),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptI64 => Exprs::OptI64(expr.into_dtype::<OptI64>()),
-                #[cfg(feature = "option_dtype")]
+                // #[cfg(feature = "option_dtype")]
                 DataType::OptUsize => Exprs::OptUsize(expr.into_dtype::<OptUsize>()),
+                // #[cfg(not(feature = "option_dtype"))]
+                // DataType::OptUsize => Exprs::OpUsize(expr.into_dtype::<Option<usize>>()),
             }
         }
     }
@@ -223,7 +227,7 @@ impl<'a> Exprs<'a> {
         }
     }
 
-    #[cfg(feature = "option_dtype")]
+    // #[cfg(feature = "option_dtype")]
     pub fn cast_optusize(self) -> TpResult<Expr<'a, OptUsize>> {
         match self {
             Exprs::Usize(e) => Ok(e.cast::<OptUsize>()),
@@ -363,7 +367,7 @@ pub(super) enum ExprsInner<'a> {
     DateTime(ExprInner<'a, DateTime>),
     TimeDelta(ExprInner<'a, TimeDelta>),
     Object(ExprInner<'a, PyValue>),
-    OpUsize(ExprInner<'a, Option<usize>>),
+    OptUsize(ExprInner<'a, OptUsize>),
     #[cfg(feature = "option_dtype")]
     OptF64(ExprInner<'a, OptF64>),
     #[cfg(feature = "option_dtype")]
@@ -372,8 +376,8 @@ pub(super) enum ExprsInner<'a> {
     OptI32(ExprInner<'a, OptI32>),
     #[cfg(feature = "option_dtype")]
     OptI64(ExprInner<'a, OptI64>),
-    #[cfg(feature = "option_dtype")]
-    OptUsize(ExprInner<'a, OptUsize>),
+    // #[cfg(feature = "option_dtype")]
+    // OptUsize(ExprInner<'a, OptUsize>),
 }
 
 impl<'a> Debug for ExprsInner<'a> {
@@ -389,7 +393,7 @@ impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
             match T::dtype() {
                 DataType::Bool => ExprsInner::Bool(expr.into_dtype::<bool>()),
                 DataType::Usize => ExprsInner::Usize(expr.into_dtype::<usize>()),
-                DataType::OpUsize => ExprsInner::OpUsize(expr.into_dtype::<Option<usize>>()),
+                DataType::OptUsize => ExprsInner::OptUsize(expr.into_dtype::<OptUsize>()),
                 DataType::F32 => ExprsInner::F32(expr.into_dtype::<f32>()),
                 DataType::F64 => ExprsInner::F64(expr.into_dtype::<f64>()),
                 DataType::I32 => ExprsInner::I32(expr.into_dtype::<i32>()),
@@ -407,8 +411,8 @@ impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
                 DataType::OptI32 => ExprsInner::OptI32(expr.into_dtype::<OptI32>()),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptI64 => ExprsInner::OptI64(expr.into_dtype::<OptI64>()),
-                #[cfg(feature = "option_dtype")]
-                DataType::OptUsize => ExprsInner::OptUsize(expr.into_dtype::<OptUsize>()),
+                // #[cfg(feature = "option_dtype")]
+                // DataType::OptUsize => ExprsInner::OptUsize(expr.into_dtype::<OptUsize>()),
             }
         }
     }

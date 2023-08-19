@@ -1,8 +1,8 @@
 // use crate::arr::ArbArray;
 
 #[cfg(feature = "option_dtype")]
-use crate::datatype::{OptF32, OptF64, OptI32, OptI64, OptUsize};
-use crate::{DateTime, PyValue, TimeDelta};
+use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
+use crate::{DateTime, OptUsize, PyValue, TimeDelta};
 
 use super::super::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
@@ -122,12 +122,11 @@ impl_from!(
     (String, String),
     (DateTime, DateTime),
     (TimeDelta, TimeDelta), //, (Str, &str)
-    (OpUsize, Option<usize>),
+    (OptUsize, OptUsize),
     (OptF64, OptF64),
     (OptF32, OptF32),
     (OptI32, OptI32),
-    (OptI64, OptI64),
-    (OptUsize, OptUsize)
+    (OptI64, OptI64)
 );
 #[cfg(not(feature = "option_dtype"))]
 impl_from!(
@@ -141,7 +140,7 @@ impl_from!(
     (String, String),
     (DateTime, DateTime),
     (TimeDelta, TimeDelta),
-    (OpUsize, Option<usize>)
+    (OptUsize, OptUsize)
 );
 
 impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {

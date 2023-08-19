@@ -1,6 +1,5 @@
 use chrono::{Datelike, Duration, Months, NaiveDateTime};
 use ndarray::ScalarOperand;
-use num::traits::AsPrimitive;
 use numpy::{
     datetime::{Datetime as NPDatetime, Unit as NPUnit},
     npyffi::NPY_DATETIMEUNIT,
@@ -12,6 +11,8 @@ use std::{
     hash::Hash,
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
+
+use crate::Cast;
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -58,8 +59,8 @@ impl Deref for DateTime {
     }
 }
 
-impl AsPrimitive<i64> for DateTime {
-    fn as_(self) -> i64 {
+impl Cast<i64> for DateTime {
+    fn cast(self) -> i64 {
         self.map_or(i64::MIN, |dt| dt.timestamp())
     }
 }

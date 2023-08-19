@@ -1,11 +1,12 @@
 //! impl methods that return an array.
 
-use crate::{ArbArray, GetNone, PyValue, StrError, TimeDelta, TpResult};
+use crate::datatype::Cast;
+use crate::{ArbArray, GetNone, OptUsize, PyValue, StrError, TimeDelta, TpResult};
 
 use super::super::{Arr, Arr1, CollectTrustedToVec, DateTime, FillMethod, Number, WrapNdarray};
 use super::{Expr, ExprElement, RefType};
 use ndarray::{Array1, ArrayViewD, Axis, Zip};
-use num::traits::{real::Real, AsPrimitive};
+use num::traits::real::Real;
 use num::{Float, One, Signed, Zero};
 use pyo3::Python;
 use rayon::prelude::*;
@@ -112,8 +113,8 @@ where
     pub fn fillna<T2>(self, method: FillMethod, value: Option<T2>, axis: i32, par: bool) -> Self
     where
         T: Number,
-        T2: AsPrimitive<T> + Send + Sync,
-        f64: AsPrimitive<T>,
+        T2: Cast<T> + Clone + Send + Sync,
+        f64: Cast<T>,
     {
         self.chain_arr_f(
             move |arb_arr| {
@@ -137,8 +138,8 @@ where
     pub fn clip<T2, T3>(self, min: T2, max: T3, axis: i32, par: bool) -> Self
     where
         T: Number,
-        T2: Number + AsPrimitive<T>,
-        T3: Number + AsPrimitive<T>,
+        T2: Number + Cast<T>,
+        T3: Number + Cast<T>,
     {
         // self.chain_view_f(move |arr| arr.clip(min, max, axis, par).into())
         self.chain_arr_f(
@@ -447,7 +448,7 @@ where
     pub fn valid_last(self, axis: i32, par: bool) -> Self
     where
         T: Number,
-        f64: AsPrimitive<T>,
+        f64: Cast<T>,
     {
         self.chain_view_f(
             move |arr| Ok(arr.valid_last(axis, par).into()),
@@ -468,7 +469,7 @@ where
     pub fn valid_first(self, axis: i32, par: bool) -> Self
     where
         T: Number,
-        f64: AsPrimitive<T>,
+        f64: Cast<T>,
     {
         self.chain_view_f(
             move |arr| Ok(arr.valid_first(axis, par).into()),
@@ -763,7 +764,7 @@ where
     /// The index in slc must be correct.
     pub unsafe fn take_option_on_axis_by_expr_unchecked(
         self,
-        slc: Expr<'a, Option<usize>>,
+        slc: Expr<'a, OptUsize>,
         axis: i32,
         par: bool,
     ) -> Self

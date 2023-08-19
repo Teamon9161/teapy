@@ -14,7 +14,7 @@ pub trait ArrToOpt {
 macro_rules! impl_as_primitive_for_opt {
     ($ty: ty, $real: ty, $as_ty: ty) => {
         impl AsPrimitive<$as_ty> for $ty {
-            #[inline(always)]
+            #[inline]
             fn as_(self) -> $as_ty {
                 self.0.unwrap_or(<$real>::nan()) as $as_ty
             }
@@ -25,7 +25,7 @@ macro_rules! impl_as_primitive_for_opt {
 macro_rules! impl_as_primitive_opt_for_opt {
     ($ty: ty, [$($as_ty: ty: $as_real: ty),*]) => {
         $(impl AsPrimitive<$as_ty> for $ty {
-            #[inline(always)]
+            #[inline]
             fn as_(self) -> $as_ty {
                 self.0.map(|v| v as $as_real).into()
             }
@@ -36,12 +36,19 @@ macro_rules! impl_as_primitive_opt_for_opt {
 macro_rules! define_option_dtype {
     (numeric $typ: ident, $real: ty) => {
         define_option_dtype!($typ, $real);
-        define_option_dtype!(impl_numeric $typ, $real);
+        define_option_dtype(impl_numeric $typ, $real);
     };
     ($typ: ident, $real: ty) => {
         #[derive(Copy, Clone, Default)]
         #[repr(transparent)]
         pub struct $typ(pub Option<$real>);
+
+        impl From<$typ> for Option<$real> {
+            #[inline]
+            fn from(value: $typ) -> Self {
+                value.0
+            }
+        }
 
         impl std::fmt::Debug for $typ {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -53,31 +60,62 @@ macro_rules! define_option_dtype {
         }
 
         impl From<Option<$real>> for $typ {
+            #[inline]
             fn from(value: Option<$real>) -> Self {
                 $typ(value)
             }
         }
         impl From<$real> for $typ {
+            #[inline]
             fn from(value: $real) -> Self {
                 Some(value).into()
             }
         }
 
         impl GetNone for $typ {
+            #[inline]
             fn none() -> Self {
                 Self(None)
             }
         }
 
         impl ToPyObject for $typ {
+            #[inline]
             fn to_object(&self, py: Python) -> pyo3::PyObject {
                 self.0.to_object(py)
+            }
+        }
+
+        impl $typ {
+            #[inline]
+            pub fn unwrap(self) -> $real {
+                self.0.unwrap()
+            }
+
+            #[inline]
+            pub fn map<U, F>(self, f: F) -> Option<U>
+            where F: FnOnce($real) -> U
+            {
+                self.0.map(f)
+            }
+
+            #[inline]
+            pub fn unwrap_or_else<F>(self, f: F) -> $real
+            where F: FnOnce() -> $real
+            {
+                self.0.unwrap_or_else(f)
+            }
+
+            #[inline]
+            pub fn into_real(self) -> $real {
+                self.0.unwrap_or_else(|| <$real>::nan())
             }
         }
 
         impl<D: Dimension> ArrToOpt for Arr<$real, D>
         {
             type OutType = Arr<$typ, D>;
+            #[inline]
             fn to_opt(&self) -> Self::OutType
             {
                 self.map(|v| $typ(Some(*v)))
@@ -87,6 +125,7 @@ macro_rules! define_option_dtype {
         impl<'a, D: Dimension> ArrToOpt for ArrView<'a, $real, D>
         {
             type OutType = Arr<$typ, D>;
+            #[inline]
             fn to_opt(&self) -> Self::OutType
             {
                 self.map(|v| $typ(Some(*v)))
@@ -96,6 +135,7 @@ macro_rules! define_option_dtype {
         impl<'a, D: Dimension> ArrToOpt for ArrViewMut<'a, $real, D>
         {
             type OutType = Arr<$typ, D>;
+            #[inline]
             fn to_opt(&self) -> Self::OutType
             {
                 self.map(|v| $typ(Some(*v)))
@@ -107,7 +147,7 @@ macro_rules! define_option_dtype {
         impl Add<$typ> for $typ {
             type Output = Self;
 
-            #[inline(always)]
+            #[inline]
             fn add(self, rhs: Self) -> Self::Output {
                 match (self.0, rhs.0) {
                     (Some(a), Some(b)) => Self(Some(a + b)),
@@ -119,7 +159,7 @@ macro_rules! define_option_dtype {
         impl Sub<$typ> for $typ {
             type Output = Self;
 
-            #[inline(always)]
+            #[inline]
             fn sub(self, rhs: Self) -> Self::Output {
                 match (self.0, rhs.0) {
                     (Some(a), Some(b)) => Self(Some(a - b)),
@@ -131,7 +171,7 @@ macro_rules! define_option_dtype {
         impl Mul<$typ> for $typ {
             type Output = Self;
 
-            #[inline(always)]
+            #[inline]
             fn mul(self, rhs: Self) -> Self::Output {
                 match (self.0, rhs.0) {
                     (Some(a), Some(b)) => Self(Some(a * b)),
@@ -143,7 +183,7 @@ macro_rules! define_option_dtype {
         impl Div<$typ> for $typ {
             type Output = Self;
 
-            #[inline(always)]
+            #[inline]
             fn div(self, rhs: Self) -> Self::Output {
                 match (self.0, rhs.0) {
                     (Some(a), Some(b)) => Self(Some(a / b)),
@@ -155,7 +195,7 @@ macro_rules! define_option_dtype {
         impl Rem<$typ> for $typ {
             type Output = Self;
 
-            #[inline(always)]
+            #[inline]
             fn rem(self, rhs: Self) -> Self::Output {
                 match (self.0, rhs.0) {
                     (Some(a), Some(b)) => Self(Some(a % b)),
@@ -207,7 +247,7 @@ macro_rules! define_option_dtype {
         }
 
         impl SubAssign for $typ {
-            #[inline(always)]
+            #[inline]
             fn sub_assign(&mut self, rhs: Self) {
                 match (self.0, rhs.0) {
                     (Some(a), Some(b)) => *self = Self(Some(a - b)),
@@ -237,19 +277,19 @@ macro_rules! define_option_dtype {
         }
 
         impl Zero for $typ {
-            #[inline(always)]
+            #[inline]
             fn zero() -> Self {
                 Self(Some(<$real>::zero()))
             }
 
-            #[inline(always)]
+            #[inline]
             fn is_zero(&self) -> bool {
                 self.0.map(|v| v.is_zero()).unwrap_or(false)
             }
         }
 
         impl One for $typ {
-            #[inline(always)]
+            #[inline]
             fn one() -> Self {
                 Self(Some(<$real>::one()))
             }
@@ -263,12 +303,12 @@ macro_rules! define_option_dtype {
             }
         }
 
-        impl AsPrimitive<$typ> for $real {
-            #[inline(always)]
-            fn as_(self) -> $typ {
-                self.into()
-            }
-        }
+        // impl AsPrimitive<$typ> for $real {
+        //     #[inline]
+        //     fn as_(self) -> $typ {
+        //         self.into()
+        //     }
+        // }
 
         impl Number for $typ {
             #[inline(always)]
@@ -304,7 +344,7 @@ macro_rules! define_option_dtype {
                 None.into()
             }
 
-            #[inline(always)]
+            #[inline]
             fn kh_sum(&mut self, v: Self, c: &mut Self) {
                 *self = kh_sum(*self, v, c);
             }
@@ -317,11 +357,17 @@ macro_rules! define_option_dtype {
     };
 }
 
-define_option_dtype!(numeric OptF64, f64);
-define_option_dtype!(numeric OptF32, f32);
-define_option_dtype!(numeric OptI64, i64);
-define_option_dtype!(numeric OptI32, i32);
-define_option_dtype!(numeric OptUsize, usize);
+define_option_dtype!(OptF64, f64);
+define_option_dtype!(OptF32, f32);
+define_option_dtype!(OptI64, i64);
+define_option_dtype!(OptI32, i32);
+define_option_dtype!(OptUsize, usize);
+
+define_option_dtype!(impl_numeric OptF64, f64);
+define_option_dtype!(impl_numeric OptF32, f32);
+define_option_dtype!(impl_numeric OptI64, i64);
+define_option_dtype!(impl_numeric OptI32, i32);
+define_option_dtype!(impl_numeric OptUsize, usize);
 
 // define_option_dtype!(OptDateTime, DateTime);
 

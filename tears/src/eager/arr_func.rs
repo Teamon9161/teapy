@@ -2,6 +2,8 @@ use std::hash::Hash;
 
 use ahash::RandomState;
 
+use crate::{Cast, OptUsize};
+
 use super::super::{export::*, ArrView1, GetNone};
 // use super::groupby::CollectTrustedToVec;
 
@@ -206,13 +208,13 @@ where
     ) where
         T: Clone + GetNone,
         S2: DataMut<Elem = T>,
-        S3: Data<Elem = Option<usize>> + Send + Sync,
+        S3: Data<Elem = OptUsize> + Send + Sync,
     {
         let value = slc
             .iter()
             .map(|idx| {
-                if let Some(idx) = idx {
-                    self.uget(*idx).clone()
+                if let Some(idx) = Into::<Option<usize>>::into(*idx) {
+                    self.uget(idx).clone()
                 } else {
                     T::none()
                 }
@@ -340,7 +342,7 @@ where
     where
         T: Clone + Default + GetNone + Send + Sync,
         D: Dimension,
-        S2: Data<Elem = Option<usize>> + Send + Sync,
+        S2: Data<Elem = OptUsize> + Send + Sync,
     {
         let f_flag = !self.is_standard_layout();
         let axis = self.norm_axis(axis);
@@ -482,7 +484,7 @@ impl_map_nd!(
     zscore,
     /// Sandardize the array using zscore method on a given axis
     pub fn zscore_1d<S2>(&self, out: &mut ArrBase<S2, D>, stable: bool) -> T
-    {where T: Number, f64: AsPrimitive<T>}
+    {where T: Number, f64: Cast<T>}
     {
         let (mean, var) = self.meanvar_1d(stable);
         if var == 0. {
@@ -490,7 +492,7 @@ impl_map_nd!(
         } else if var.isnan() {
             out.apply_mut(|v| *v = T::nan());
         } else {
-            out.apply_mut_with(self, |vo, v| *vo = ((v.f64() - mean) / var.sqrt()).as_());
+            out.apply_mut_with(self, |vo, v| *vo = ((v.f64() - mean) / var.sqrt()).cast());
         }
     }
 );
@@ -587,7 +589,7 @@ impl_map_nd!(
     pub fn clip_1d<S2, T2, T3>(&self, out: &mut ArrBase<S2, D>, min: T2, max: T3) -> T
     {
         where
-        T: Number, T2: Number; AsPrimitive<T>, T3: Number; AsPrimitive<T>
+        T: Number, T2: Number; Cast<T>, T3: Number; Cast<T>
     }
     {
         let (min, max) = (T::fromas(min), T::fromas(max));
@@ -615,8 +617,8 @@ impl_map_nd!(
     {
         where
         T: Number,
-        f64: AsPrimitive<T>,
-        T2: AsPrimitive<T>; Send; Sync
+        f64: Cast<T>,
+        T2: Cast<T>; Clone; Send; Sync
     }
     {
         use FillMethod::*;
@@ -633,7 +635,7 @@ impl_map_nd!(
                         if let Some(lv) = last_valid {
                             *vo = lv;
                         } else {
-                            *vo = f64::NAN.as_();
+                            *vo = f64::NAN.cast();
                         }
                     } else { // v is valid, update last_valid
                         *vo = *v;
@@ -650,7 +652,7 @@ impl_map_nd!(
             }
             Vfill => {
                 let value = value.expect("Fill value must be pass when using value to fillna");
-                let value: T = value.as_();
+                let value: T = value.cast();
                 out.apply_mut_with(self, |vo, v| if v.isnan() {
                     *vo = value;
                 } else {
@@ -667,7 +669,7 @@ impl_map_nd!(
     {
         where
         T: Number,
-        f64: AsPrimitive<T>
+        f64: Cast<T>
     }
     {
         use WinsorizeMethod::*;
@@ -918,7 +920,7 @@ impl_map_inplace_nd!(
     {
         where
         T: Number,
-        T2: AsPrimitive<T>; Send; Sync
+        T2: Cast<T>; Clone; Send; Sync
     }
     {
         use FillMethod::*;
@@ -949,7 +951,7 @@ impl_map_inplace_nd!(
             }
             Vfill => {
                 let value = value.expect("Fill value must be pass when using value to fillna");
-                let value: T = value.as_();
+                let value: T = value.cast();
                 self.apply_mut(|v| if v.isnan() {
                     *v = value
                 });
@@ -964,8 +966,8 @@ impl_map_inplace_nd!(
     {
         where
         T: Number,
-        T2: Number; AsPrimitive<T>,
-        T3: Number; AsPrimitive<T>,
+        T2: Number; Cast<T>,
+        T3: Number; Cast<T>,
     }
     {
         let (min, max) = (T::fromas(min), T::fromas(max));
@@ -992,16 +994,16 @@ impl_map_inplace_nd!(
     pub fn zscore_inplace_1d(&mut self, stable: bool) {
     where
         T: Number,
-        f64: AsPrimitive<T>
+        f64: Cast<T>
     }
     {
         let (mean, var) = self.meanvar_1d(stable);
         if var == 0. {
-            self.apply_mut(|v| *v = 0.0.as_());
+            self.apply_mut(|v| *v = 0.0.cast());
         } else if var.isnan() {
-            self.apply_mut(|v| *v = f64::NAN.as_());
+            self.apply_mut(|v| *v = f64::NAN.cast());
         } else {
-            self.apply_mut(|v| *v = ((v.f64() - mean) / var.sqrt()).as_());
+            self.apply_mut(|v| *v = ((v.f64() - mean) / var.sqrt()).cast());
         }
     }
 );
@@ -1012,7 +1014,7 @@ impl_map_inplace_nd!(
     {
         where
         T: Number,
-        f64: AsPrimitive<T>
+        f64: Cast<T>
     }
     {
         use WinsorizeMethod::*;
