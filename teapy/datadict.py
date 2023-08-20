@@ -175,17 +175,22 @@ class DataDict:
         idx = self[0].sort(self[by], rev=rev, return_idx=True)
         dd = self if inplace else self.copy()
         dd._select_on_axis_unchecked(idx, axis=0, inplace=True)
-        # dd.apply(lambda e: e._select_unchecked(idx), inplace=True)
+        return None if inplace else dd
+
+    def unique(self, subset, keep="first", inplace=False):
+        if isinstance(subset, (str, int)):
+            subset = [subset]
+        if self.is_empty():
+            return None if inplace else self
+        first_key, subset = subset[0], subset[1:]
+        subset = None if len(subset) == 0 else self[subset]
+        idx = self[first_key]._get_unique_idx(subset, keep=keep)
+        dd = self if inplace else self.copy()
+        dd._select_on_axis_unchecked(idx, axis=0, inplace=True)
         return None if inplace else dd
 
     def groupby(self, by, axis=0, sort=True, par=False, reuse=False):
         return GroupBy(self._dd, by, axis, sort, par, reuse=reuse)
-
-    @construct
-    def unique(self, subset, keep="first", inplace=False, check=True, axis=0):
-        return self._dd.unique(
-            subset, keep=keep, inplace=inplace, check=check, axis=axis
-        )
 
 
 class Rolling:

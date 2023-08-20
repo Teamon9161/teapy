@@ -1,7 +1,5 @@
-use crate::datatype::Cast;
-
-use super::super::{CorrMethod, Number, QuantileMethod, WinsorizeMethod};
-use super::{ArbArray, Expr, ExprElement, RefType};
+use super::super::{ArbArray, Cast, CorrMethod, Number, QuantileMethod, WinsorizeMethod};
+use super::{Expr, ExprElement, RefType};
 
 macro_rules! impl_view_lazy {
     (in1, $func:ident -> $otype:ident, ($($p:ident: $p_ty:ty),* $(,)?)) => {

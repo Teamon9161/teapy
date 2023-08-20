@@ -1,6 +1,6 @@
 use super::super::impls::{conjugate, LeastSquaresResult};
-use super::{ArbArray, Expr, ExprElement, ExprInner, RefType};
-use crate::{Arr1, Arr2, ArrD, ArrViewD, Cast, TpResult, WrapNdarray};
+use super::expr::{Expr, ExprElement, RefType};
+use crate::{ArbArray, Arr1, Arr2, ArrD, ArrViewD, Cast, WrapNdarray};
 use ndarray::{Axis, Ix2, LinalgScalar};
 use std::sync::Arc;
 
@@ -60,28 +60,7 @@ impl<'a> OlsResult<'a> {
     }
 }
 
-impl<'a, T: ExprElement> ExprInner<'a, T> {
-    pub fn chain_ols_f<T2, F>(self, f: F) -> ExprInner<'a, T2>
-    where
-        F: FnOnce(Arc<OlsResult<'_>>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
-        T2: ExprElement,
-    {
-        self.chain_f(
-            |expr_out| f(expr_out.into_ols_result()).map(|o| o.into()),
-            RefType::False,
-        )
-    }
-}
-
 impl<'a, T: ExprElement + 'a> Expr<'a, T> {
-    pub fn chain_ols_f<T2, F>(self, f: F) -> Expr<'a, T2>
-    where
-        F: FnOnce(Arc<OlsResult<'_>>) -> TpResult<ArbArray<'a, T2>> + Send + Sync + 'a,
-        T2: ExprElement + 'a,
-    {
-        self.downcast().chain_ols_f(f).into()
-    }
-
     pub fn lstsq<T2: ExprElement + Cast<f64> + Clone>(self, y: Expr<'a, T2>) -> Self
     where
         T: Cast<f64> + Clone,

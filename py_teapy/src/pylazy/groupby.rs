@@ -17,9 +17,9 @@ impl PyDataDict {
             .map(|key| &self.get_by_str(key).inner)
             .collect_trusted();
         let group_idx_vec = if par {
-            groupby_par(keys, sort)
+            groupby_par(&keys, sort)
         } else {
-            groupby(keys, sort)
+            groupby(&keys, sort)
         };
         let mut output = Vec::<PyDataDict>::with_capacity(self.len());
         group_idx_vec.into_iter().for_each(|(_idx, idx_vec)| {

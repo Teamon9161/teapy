@@ -168,10 +168,20 @@ def test_groupby():
             "c": [6, 5, 4, 3, 2, 1],
         }
     )
-    # res = dd.groupby("a").apply(lambda df: df["c"].sum())
-    # assert_allclose(res["c"].eview(), np.array([10, 10, 1]))
 
     res = dd.groupby("a").apply(
         lambda df: [df["c"].sum().alias("c1"), df["c"].max().alias("c2")]
     )
     assert_allclose(res["c2"].eview(), np.array([6, 5, 1]))
+
+
+def test_unique():
+    dd = DataDict(
+        a=[1, 1, 3, 4, 5, 3], b=["a", "b", "b", "c", "d", "b"], v=[1, 2, 3, 4, 5, 6]
+    )
+
+    dd["a"]._get_unique_idx(dd["b"], keep="first").eview()
+    dd["b"]._get_unique_idx().eview()
+    assert_allclose(dd.unique("a")["v"].eview(), [1, 3, 4, 5])
+    assert_allclose(dd.unique(["a", "b"], keep="last")["v"].eview(), [1, 2, 4, 5, 6])
+    assert_allclose(dd.unique(["a", "b"], keep="first")["v"].eview(), [1, 2, 3, 4, 5])

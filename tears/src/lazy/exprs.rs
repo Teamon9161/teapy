@@ -7,8 +7,8 @@ use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
 use crate::{DateTime, OptUsize, PyValue, TimeDelta, TimeUnit, TpResult};
 
 use super::super::{match_datatype_arm, DataType, GetDataType};
+use super::expr::{Expr, ExprElement, ExprInner};
 use super::expr_view::ExprOutView;
-use super::{Expr, ExprElement, ExprInner};
 
 #[derive(Clone)]
 pub enum Exprs<'a> {
@@ -76,6 +76,7 @@ macro_rules! match_ {
 #[macro_export]
 macro_rules! match_exprs {
     (numeric $($tt: tt)*) => {match_!(Exprs, $($tt)*, F32, F64, I32, I64, Usize)};
+    (hash $($tt: tt)*) => {match_!(Exprs, $($tt)*, I32, I64, Usize, String, Str, DateTime)};
     ($($tt: tt)*) => {match_!(Exprs, $($tt)*)};
 }
 
@@ -107,10 +108,8 @@ impl<'a, T: ExprElement + 'a> From<Expr<'a, T>> for Exprs<'a> {
                 DataType::OptI32 => Exprs::OptI32(expr.into_dtype::<OptI32>()),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptI64 => Exprs::OptI64(expr.into_dtype::<OptI64>()),
-                // #[cfg(feature = "option_dtype")]
                 DataType::OptUsize => Exprs::OptUsize(expr.into_dtype::<OptUsize>()),
-                // #[cfg(not(feature = "option_dtype"))]
-                // DataType::OptUsize => Exprs::OpUsize(expr.into_dtype::<Option<usize>>()),
+                DataType::U64 => unreachable!("U64 is not supported"),
             }
         }
     }
@@ -411,8 +410,7 @@ impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
                 DataType::OptI32 => ExprsInner::OptI32(expr.into_dtype::<OptI32>()),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptI64 => ExprsInner::OptI64(expr.into_dtype::<OptI64>()),
-                // #[cfg(feature = "option_dtype")]
-                // DataType::OptUsize => ExprsInner::OptUsize(expr.into_dtype::<OptUsize>()),
+                DataType::U64 => unreachable!("U64 is not supported"),
             }
         }
     }

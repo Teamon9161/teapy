@@ -1,5 +1,6 @@
 #![feature(hash_raw_entry)]
 #![feature(let_chains)]
+// #![feature(build_hasher_simple_hash_one)]
 
 #[cfg(any(feature = "intel-mkl-system", feature = "intel-mkl-static"))]
 extern crate intel_mkl_src as _src;
@@ -11,9 +12,8 @@ mod core;
 mod eager;
 mod error;
 mod export;
+mod hash;
 mod iterators;
-#[cfg(feature = "lazy")]
-mod join;
 mod macros;
 #[macro_use]
 mod from_py;
@@ -22,8 +22,6 @@ mod from_py;
 mod window;
 
 pub mod datatype;
-#[cfg(feature = "lazy")]
-pub mod groupby;
 #[cfg(feature = "lazy")]
 #[macro_use]
 pub mod lazy;
@@ -40,16 +38,16 @@ pub use datatype::{
 };
 pub use eager::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
 pub use error::{StrError, TpResult};
-#[cfg(feature = "lazy")]
-pub use groupby::{flatten, groupby, groupby_par};
+
 pub use iterators::{Iter, IterMut};
-#[cfg(feature = "lazy")]
-pub use join::{join_left, JoinType};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
 pub use utils::{kh_sum, DefaultNew, EmptyNew};
 
 #[cfg(feature = "lazy")]
-pub use lazy::{DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, RefType};
+pub use lazy::{
+    flatten, get_partition_size, groupby, groupby_par, join_left, prepare_groupby, DropNaMethod,
+    Expr, ExprElement, ExprOut, ExprOutView, Exprs, JoinType, RefType,
+};
 
 #[cfg(feature = "blas")]
 pub use lazy::OlsResult;

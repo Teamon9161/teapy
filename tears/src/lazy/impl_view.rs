@@ -5,8 +5,8 @@
 
 use crate::error::StrError;
 
-use super::super::WrapNdarray;
-use super::{ArbArray, Expr, ExprElement, RefType};
+use super::super::{ArbArray, WrapNdarray};
+use super::{Expr, ExprElement, RefType};
 use ndarray::{s, IxDyn, NewAxis, SliceInfo, SliceInfoElem};
 use std::marker::PhantomData;
 use std::mem;

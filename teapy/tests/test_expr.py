@@ -22,3 +22,13 @@ def test_slice():
     assert e[-1].eview() == 8
     assert e[-3].eview() == 6
     assert_allclose(e[[-1, -2, -3, 1, 0]].eview(), a[[-1, -2, -3, 1, 0]])
+
+
+def test_unique():
+    assert_allclose(tp.Expr([1, 3, 2, 1, 2]).unique().eview(), [1, 3, 2])
+    assert tp.Expr(["b", "bb", "a", "ab", "ab", "bb"]).unique().eview().tolist() == [
+        "b",
+        "bb",
+        "a",
+        "ab",
+    ]

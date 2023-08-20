@@ -1811,6 +1811,25 @@ impl PyExpr {
         Ok(res)
     }
 
+    #[pyo3(signature=(others=None, keep="first".to_string()))]
+    pub fn _get_unique_idx(&self, others: Option<&PyAny>, keep: String) -> PyResult<Self> {
+        let (obj_vec, others) = if let Some(others) = others {
+            let others = unsafe { parse_expr_list(others, false)? };
+            let obj_vec = others.iter().map(|e| e.obj()).collect_trusted();
+            (obj_vec, Some(others))
+        } else {
+            (vec![], None)
+        };
+        let others = others.map(|v| v.into_iter().map(|e| e.inner).collect_trusted());
+        let res = match_exprs!(hash & self.inner, expr, {
+            expr.clone()
+                .get_unique_idx(others, keep)
+                .to_py(self.obj())
+                .add_obj_vec(obj_vec)
+        });
+        Ok(res)
+    }
+
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmin(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {

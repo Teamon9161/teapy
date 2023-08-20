@@ -2,7 +2,7 @@ use std::{fmt::Debug, hash::Hash};
 
 use ahash::RandomState;
 
-use crate::{Cast, OptUsize};
+use crate::{hash::TpHash, Cast, OptUsize};
 
 use super::super::{export::*, ArrView1, GetNone};
 // use super::groupby::CollectTrustedToVec;
@@ -153,6 +153,15 @@ where
         T: Hash,
     {
         self.map(|v| hasher.hash_one(v))
+    }
+
+    /// Hash each element of the array.
+    #[inline]
+    pub fn tphash_1d(self) -> Arr1<u64>
+    where
+        T: TpHash,
+    {
+        self.map(|v| v.hash())
     }
 
     /// Remove NaN values in two 1d arrays.

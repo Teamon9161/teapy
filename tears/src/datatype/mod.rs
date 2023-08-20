@@ -34,6 +34,7 @@ pub enum DataType {
     F64,
     I32,
     I64,
+    U64,
     Usize,
     Str,
     String,
@@ -108,6 +109,7 @@ impl_datatype!(F32, f32);
 impl_datatype!(F64, f64);
 impl_datatype!(I32, i32);
 impl_datatype!(I64, i64);
+impl_datatype!(U64, u64);
 impl_datatype!(Usize, usize);
 impl_datatype!(String, String);
 impl_datatype!(DateTime, DateTime);
