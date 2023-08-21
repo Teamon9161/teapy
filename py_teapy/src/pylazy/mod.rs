@@ -12,7 +12,7 @@ pub use impl_pyexpr::expr_register;
 pub use pyexpr::PyExpr;
 pub use pyexpr::{ExprToPy, IntoPyExpr};
 pub use pyfunc::{
-    arange, concat_expr, concat_expr_py, datetime, eval, from_pandas, full,
+    arange, concat_expr, concat_expr_py, datetime, eval_dicts, eval_exprs, from_pandas, full,
     get_newey_west_adjust_s, parse_expr, parse_expr_list, parse_expr_nocopy, stack_expr_py,
     timedelta, where_py,
 };
@@ -26,7 +26,8 @@ pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(expr_register, m)?)?;
     m.add_function(wrap_pyfunction!(concat_expr_py, m)?)?;
     m.add_function(wrap_pyfunction!(stack_expr_py, m)?)?;
-    m.add_function(wrap_pyfunction!(eval, m)?)?;
+    m.add_function(wrap_pyfunction!(eval_exprs, m)?)?;
+    m.add_function(wrap_pyfunction!(eval_dicts, m)?)?;
     m.add_function(wrap_pyfunction!(where_py, m)?)?;
     m.add_function(wrap_pyfunction!(full, m)?)?;
     m.add_function(wrap_pyfunction!(arange, m)?)?;

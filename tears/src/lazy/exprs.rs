@@ -76,7 +76,7 @@ macro_rules! match_ {
 #[macro_export]
 macro_rules! match_exprs {
     (numeric $($tt: tt)*) => {match_!(Exprs, $($tt)*, F32, F64, I32, I64, Usize)};
-    (hash $($tt: tt)*) => {match_!(Exprs, $($tt)*, I32, I64, Usize, String, Str, DateTime)};
+    (hash $($tt: tt)*) => {match_!(Exprs, $($tt)*, F32, F64, I32, I64, Usize, String, Str, DateTime)};
     ($($tt: tt)*) => {match_!(Exprs, $($tt)*)};
 }
 

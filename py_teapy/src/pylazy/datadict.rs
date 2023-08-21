@@ -1008,6 +1008,7 @@ impl PyDataDict {
                                     F64,
                                     String
                                 ),
+                                // cast int to float in order to support option index
                                 I32(_) | I64(_) | Usize(_) => match_exprs!(
                                     &e.inner,
                                     expr,
@@ -1066,135 +1067,6 @@ impl PyDataDict {
             _ => todo!(),
         }
     }
-
-    //     #[cfg(feature="lazy")]
-    //     #[pyo3(signature=(subset, keep="first", inplace=false, axis=0))]
-    //     #[allow(unreachable_patterns)]
-    //     pub fn unique(
-    //         &mut self,
-    //         subset: &PyAny,
-    //         keep: &str,
-    //         inplace: bool,
-    //         axis: i32,
-    //     ) -> PyResult<Option<Self>> {
-    //         let subset = parse_one_or_more_str(subset)?;
-    //         if subset.is_empty() {
-    //             return Err(PyValueError::new_err("subset cannot be empty"));
-    //         }
-    //         self.eval_multi(&subset)?;
-    //         let subset_exprs = subset
-    //             .into_iter()
-    //             .map(|key| &self.get_by_str(key).inner)
-    //             .collect_trusted();
-    //         let (len, hasher, hashed_keys) = tears::prepare_groupby(subset_exprs.as_slice(), None);
-    //         let mut out_idx = Vec::with_capacity(len);
-    //         if keep == "first" {
-    //             let mut map = HashMap::<u64, u8>::with_capacity_and_hasher(len, hasher.clone());
-    //             if subset_exprs.len() == 1 {
-    //                 let hashed_key = &hashed_keys[0];
-    //                 for i in 0..len {
-    //                     let hash = unsafe { *hashed_key.uget(i) };
-    //                     let entry = map.raw_entry_mut().from_key_hashed_nocheck(hash, &hash);
-    //                     if let RawEntryMut::Vacant(entry) = entry {
-    //                         entry.insert_hashed_nocheck(hash, hash, 1);
-    //                         out_idx.push(i);
-    //                     }
-    //                 }
-    //             } else {
-    //                 for i in 0..len {
-    //                     let tuple_keys = hashed_keys
-    //                         .iter()
-    //                         .map(|keys| unsafe { *keys.uget(i) })
-    //                         .collect_trusted();
-    //                     let hash = hasher.hash_one(&tuple_keys);
-    //                     let entry = map.raw_entry_mut().from_key_hashed_nocheck(hash, &hash);
-    //                     if let RawEntryMut::Vacant(entry) = entry {
-    //                         entry.insert_hashed_nocheck(hash, hash, 1);
-    //                         out_idx.push(i);
-    //                     }
-    //                 }
-    //             }
-    //         } else if keep == "last" {
-    //             let mut map = HashMap::<u64, usize>::with_capacity_and_hasher(len, hasher.clone());
-    //             if subset_exprs.len() == 1 {
-    //                 let hashed_key = &hashed_keys[0];
-    //                 for i in 0..len {
-    //                     let hash = unsafe { *hashed_key.uget(i) };
-    //                     let entry = map.raw_entry_mut().from_key_hashed_nocheck(hash, &hash);
-    //                     match entry {
-    //                         RawEntryMut::Vacant(entry) => {
-    //                             entry.insert_hashed_nocheck(hash, hash, i);
-    //                         }
-    //                         RawEntryMut::Occupied(mut entry) => {
-    //                             let v = entry.get_mut();
-    //                             *v = i;
-    //                         }
-    //                     }
-    //                 }
-    //             } else {
-    //                 for i in 0..len {
-    //                     let tuple_keys = hashed_keys
-    //                         .iter()
-    //                         .map(|keys| unsafe { *keys.uget(i) })
-    //                         .collect_trusted();
-    //                     let hash = hasher.hash_one(&tuple_keys);
-    //                     let entry = map.raw_entry_mut().from_key_hashed_nocheck(hash, &hash);
-    //                     match entry {
-    //                         RawEntryMut::Vacant(entry) => {
-    //                             entry.insert_hashed_nocheck(hash, hash, i);
-    //                         }
-    //                         RawEntryMut::Occupied(mut entry) => {
-    //                             let v = entry.get_mut();
-    //                             *v = i;
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //             out_idx = map.into_values().collect_trusted();
-    //             out_idx.sort_unstable()
-    //         } else {
-    //             return Err(PyValueError::new_err("keep must be either first or last"));
-    //         }
-    //         let new_len = out_idx.len();
-    //         let idx: Expr<'static, usize> = out_idx.into();
-    //         if inplace {
-    //             self.data.iter_mut().for_each(|s| {
-    //                 if new_len < len {
-    //                     *s = match_exprs!(&s.inner, expr, {
-    //                         unsafe {
-    //                             expr.clone()
-    //                                 .select_by_expr_unchecked(idx.clone(), axis.into())
-    //                                 .to_py(s.obj())
-    //                         }
-    //                     })
-    //                 }
-    //             });
-    //             Ok(None)
-    //         } else {
-    //             let data = self
-    //                 .data
-    //                 .iter()
-    //                 .map(|s| {
-    //                     if new_len < len {
-    //                         match_exprs!(&s.inner, expr, {
-    //                             unsafe {
-    //                                 expr.clone()
-    //                                     .select_by_expr_unchecked(idx.clone(), axis.into())
-    //                                     .to_py(s.obj())
-    //                             }
-    //                         })
-    //                     } else {
-    //                         // fast path for no duplicates
-    //                         s.clone()
-    //                     }
-    //                 })
-    //                 .collect_trusted();
-    //             Ok(Some(PyDataDict {
-    //                 data,
-    //                 column_map: self.column_map.clone(),
-    //             }))
-    //         }
-    //     }
 }
 
 fn parse_one_or_more_str(s: &PyAny) -> PyResult<Vec<&str>> {

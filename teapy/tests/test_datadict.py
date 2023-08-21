@@ -177,11 +177,12 @@ def test_groupby():
 
 def test_unique():
     dd = DataDict(
-        a=[1, 1, 3, 4, 5, 3], b=["a", "b", "b", "c", "d", "b"], v=[1, 2, 3, 4, 5, 6]
+        a=[1, 1, 3, 4, 5, 3],
+        b=["a", "b", "b", "c", "d", "b"],
+        c=[1.23, -4.234, 4.234, 2.13, -4.234, 1.23],
+        v=[1, 2, 3, 4, 5, 6],
     )
-
-    dd["a"]._get_unique_idx(dd["b"], keep="first").eview()
-    dd["b"]._get_unique_idx().eview()
+    assert_allclose(dd.unique("c")["v"].eview(), [1, 2, 3, 4])
     assert_allclose(dd.unique("a")["v"].eview(), [1, 3, 4, 5])
     assert_allclose(dd.unique(["a", "b"], keep="last")["v"].eview(), [1, 2, 4, 5, 6])
     assert_allclose(dd.unique(["a", "b"], keep="first")["v"].eview(), [1, 2, 3, 4, 5])

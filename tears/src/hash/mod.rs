@@ -55,7 +55,7 @@ pub trait TpHash {
     fn hash(&self) -> u64;
 }
 
-macro_rules! impl_cast_u64 {
+macro_rules! impl_tphash {
     (uint $($ty: ty),*) => {
         $(
             impl TpHash for $ty {
@@ -90,6 +90,22 @@ macro_rules! impl_cast_u64 {
     };
 }
 
-impl_cast_u64!(uint u8, u16, u32, u64, usize);
-impl_cast_u64!(int i8, i16, i32, i64, isize, DateTime);
-impl_cast_u64!(default String, &str, Vec<u64>, [u64]);
+impl_tphash!(uint u8, u16, u32, u64, usize);
+impl_tphash!(int i8, i16, i32, i64, isize, DateTime);
+impl_tphash!(default String, &str, Vec<u64>, [u64]);
+
+impl TpHash for f64 {
+    #[inline]
+    #[allow(clippy::transmute_float_to_int)]
+    fn hash(&self) -> u64 {
+        unsafe { std::mem::transmute::<f64, u64>((*self).cast()) }
+    }
+}
+
+impl TpHash for f32 {
+    #[inline]
+    #[allow(clippy::transmute_float_to_int)]
+    fn hash(&self) -> u64 {
+        unsafe { std::mem::transmute::<f32, u32>((*self).cast()) as u64 }
+    }
+}

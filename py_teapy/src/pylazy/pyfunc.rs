@@ -284,7 +284,7 @@ pub unsafe fn stack_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
 
 #[pyfunction]
 #[pyo3(signature=(exprs, inplace=false))]
-pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<PyExpr>>> {
+pub fn eval_exprs(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<PyExpr>>> {
     let eval_res: Vec<_> = exprs.par_iter_mut().map(|e| e.eval_inplace()).collect();
     if eval_res.iter().any(|e| e.is_err()) {
         return Err(PyRuntimeError::new_err(
@@ -295,6 +295,22 @@ pub fn eval(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<PyExpr
         Ok(None)
     } else {
         Ok(Some(exprs))
+    }
+}
+
+#[pyfunction]
+#[pyo3(signature=(dds, inplace=true))]
+pub fn eval_dicts(mut dds: Vec<PyDataDict>, inplace: bool) -> PyResult<Option<Vec<PyDataDict>>> {
+    let eval_res: Vec<_> = dds.par_iter_mut().map(|dd| dd.eval_all()).collect();
+    if eval_res.iter().any(|e| e.is_err()) {
+        return Err(PyRuntimeError::new_err(
+            "Some of the DataDict can't be evaluated",
+        ));
+    }
+    if inplace {
+        Ok(None)
+    } else {
+        Ok(Some(dds))
     }
 }
 

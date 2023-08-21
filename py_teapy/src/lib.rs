@@ -2,8 +2,6 @@
 #![feature(arbitrary_self_types)]
 #![feature(drain_filter)]
 
-// #[macro_use]
-// pub mod tears;
 #[macro_use]
 pub mod from_py;
 

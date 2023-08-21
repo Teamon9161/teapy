@@ -797,9 +797,6 @@ where
                     return Err("The slice must be dim 0 or dim 1 when take on axis".into());
                 }
                 if slc_eval.len() == 1 {
-                    // Ok(arr
-                    //     .take_one_on_axis(slc_eval.to_dim1()?[0].unwrap(), axis, par)
-                    //     .into())
                     Ok(arr
                         .index_axis(arr.norm_axis(axis), slc_eval.to_dim1()?[0].unwrap())
                         .to_owned()
