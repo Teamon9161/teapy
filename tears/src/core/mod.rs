@@ -254,6 +254,9 @@ where
         S2: DataMut<Elem = T2>,
         F: Fn(ArrView1<T>, ArrViewMut1<T2>) + Send + Sync,
     {
+        if self.is_empty() || self.len_of(axis) == 0 {
+            return;
+        }
         let ndim = self.ndim();
         if ndim == 1 {
             let view = self.view().to_dim1().unwrap();
@@ -285,6 +288,9 @@ where
         S3: DataMut<Elem = T3>,
         F: Fn(ArrView1<T>, ArrView1<T2>, ArrViewMut1<T3>) + Send + Sync,
     {
+        if self.is_empty() || self.len_of(axis) == 0 {
+            return;
+        }
         let ndim = self.ndim();
         if ndim == 1 {
             let view1 = self.view().to_dim1().unwrap();

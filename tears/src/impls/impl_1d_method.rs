@@ -339,7 +339,10 @@ where
     {
         let len = self.len();
         let window = window.min(len);
-        assert!(window > 0, "window must be greater than 0");
+        if window == 0 {
+            return;
+        }
+        // assert!(window > 0, "window must be greater than 0");
         assert!(
             out.len() == len,
             "length of output array must equal to length of the array"
@@ -374,7 +377,10 @@ where
     {
         let len = self.len();
         let window = window.min(len);
-        assert!(window > 0, "window must be greater than 0");
+        if window == 0 {
+            return;
+        }
+        // assert!(window > 0, "window must be greater than 0");
         assert!(
             out.len() == len,
             "length of output array must equal to length of the array"
@@ -405,7 +411,10 @@ where
     {
         let len = self.len();
         let window = window.min(len);
-        assert!(window > 0, "window must be greater than 0");
+        if window == 0 {
+            return;
+        }
+        // assert!(window > 0, "window must be greater than 0");
         assert!(
             out.len() == len,
             "length of output array must equal to length of the array"
@@ -443,7 +452,10 @@ where
     {
         let len = self.len();
         let window = window.min(len);
-        assert!(window > 0, "window must be greater than 0");
+        if window == 0 {
+            return;
+        }
+        // assert!(window > 0, "window must be greater than 0");
         assert!(
             out.len() == len,
             "length of output array must equal to length of the array"
@@ -481,7 +493,10 @@ where
     {
         let len = self.len();
         let window = window.min(len);
-        assert!(window > 0, "window must be greater than 0");
+        if window == 0 {
+            return;
+        }
+        // assert!(window > 0, "window must be greater than 0");
         assert!(
             out.len() == len,
             "length of output array must equal to length of the array"

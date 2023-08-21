@@ -14,7 +14,7 @@ license = "MIT"
 
 [package]
 name = "teapy"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"

@@ -511,9 +511,12 @@ impl_map_nd!(
     pub fn shift_1d<S2>(&self, out: &mut ArrBase<S2, D>, n: i32, fill: T) -> T
     {where T: Clone; Send; Sync}
     {
+        if self.is_empty() {
+            return;
+        }
         if n == 0 {
             out.apply_mut_with(self, |vo, v| *vo = v.clone());
-        } else if n.unsigned_abs() as usize > self.shape()[0] -1 {
+        } else if n.unsigned_abs() as usize > self.shape()[0] - 1 {
             out.apply_mut_with(self, |vo, _| *vo = fill.clone());
         } else if n > 0 {
             self.apply_window_to(out, n.unsigned_abs() as usize + 1, |_v, v_rm| {
@@ -540,6 +543,9 @@ impl_map_nd!(
     pub fn diff_1d<S2>(&self, out: &mut ArrBase<S2, D>, n: i32) -> f64
     {where T: Number}
     {
+        if self.is_empty() {
+            return;
+        }
         if n == 0 {
             out.apply_mut_with(self, |vo, _| *vo = 0.);
         } else if n.unsigned_abs() as usize > self.shape()[0] -1 {
@@ -569,6 +575,9 @@ impl_map_nd!(
     pub fn pct_change_1d<S2>(&self, out: &mut ArrBase<S2, D>, n: i32) -> f64
     {where T: Number}
     {
+        if self.is_empty() {
+            return;
+        }
         if n == 0 {
             out.apply_mut_with(self, |vo, _| *vo = 0.);
         } else if n.unsigned_abs() as usize > self.shape()[0] -1 {

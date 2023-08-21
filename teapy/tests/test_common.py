@@ -52,3 +52,18 @@ def test_register():
         return e.mean(axis=axis)
 
     assert tp.Expr([1, 2, 3]).mean_test(axis=0).eview() == 2
+
+
+def test_eval():
+    dd = tp.DataDict(a=[1, 2, 3, 4])
+    dd1 = dd.with_columns(dd["a"].ts_mean(2).alias("b"))
+    dd2 = dd.with_columns(dd["a"].ts_sum(3).alias("c"))
+
+    # eval exprs
+    tp.eval([dd1["b"], dd2["c"]])
+    assert_allclose(dd2["c"].view, [1, 3, 6, 9])
+    # eval datadicts
+    dd1 = dd.with_columns(dd["a"].ts_mean(2).alias("b"))
+    dd2 = dd.with_columns(dd["a"].ts_sum(3).alias("c"))
+    tp.eval([dd1, dd2])
+    assert_allclose(dd1["b"].view, [1, 1.5, 2.5, 3.5])
