@@ -259,13 +259,71 @@ impl PyExpr {
     /// The data for the array view should exist
     pub unsafe fn _select_by_expr_unchecked(&self, slc: Self, axis: Self) -> PyResult<Self> {
         let obj = slc.obj();
-        match_exprs!(&self.inner, expr, {
-            Ok(expr
-                .clone()
-                .select_by_expr_unchecked(slc.cast_usize()?, axis.cast_i32()?)
-                .to_py(self.obj())
-                .add_obj(obj))
-        })
+        if matches!(&slc.inner, &Exprs::OptUsize(_)) {
+            if matches!(
+                &self.inner,
+                &Exprs::I32(_) | &Exprs::I64(_) | &Exprs::Usize(_)
+            ) {
+                match_exprs!(
+                    &self.inner,
+                    expr,
+                    {
+                        Ok(expr
+                            .clone()
+                            .cast::<f64>()
+                            .take_option_on_axis_by_expr_unchecked(
+                                slc.cast_optusize()?,
+                                axis.cast_i32()?,
+                                false,
+                            )
+                            .to_py(self.obj())
+                            .add_obj(obj))
+                    },
+                    I32,
+                    I64,
+                    Usize
+                )
+            } else {
+                match_exprs!(
+                    &self.inner,
+                    expr,
+                    {
+                        Ok(expr
+                            .clone()
+                            .take_option_on_axis_by_expr_unchecked(
+                                slc.cast_optusize()?,
+                                axis.cast_i32()?,
+                                false,
+                            )
+                            .to_py(self.obj())
+                            .add_obj(obj))
+                    },
+                    F32,
+                    F64,
+                    Str,
+                    String,
+                    DateTime,
+                    Object,
+                    TimeDelta,
+                    #[cfg(feature = "option_dtype")]
+                    OptF32,
+                    #[cfg(feature = "option_dtype")]
+                    OptF64,
+                    #[cfg(feature = "option_dtype")]
+                    OptI32,
+                    #[cfg(feature = "option_dtype")]
+                    OptI64
+                )
+            }
+        } else {
+            match_exprs!(&self.inner, expr, {
+                Ok(expr
+                    .clone()
+                    .select_by_expr_unchecked(slc.cast_usize()?, axis.cast_i32()?)
+                    .to_py(self.obj())
+                    .add_obj(obj))
+            })
+        }
     }
 
     #[allow(unreachable_patterns)]

@@ -2,9 +2,9 @@ use super::{GetNone, OptUsize};
 #[cfg(feature = "option_dtype")]
 use super::{OptF32, OptF64, OptI32, OptI64};
 
-pub trait Cast<T>: 'static
-where
-    T: 'static,
+pub trait Cast<T> // 'static
+// where
+//     T: 'static,
 {
     fn cast(self) -> T;
 }
@@ -29,6 +29,9 @@ macro_rules! impl_numeric_cast {
         $(impl_numeric_cast!(@to_option $T => impl $U: $O);)?
     )*};
     ($T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {
+        impl Cast<String> for $T {
+            #[inline] fn cast(self) -> String { self.to_string() }
+        }
         #[cfg(feature="option_dtype")]
         impl_numeric_cast!(@ $T => { $( $U $(: $O)? ),* });
         #[cfg(not(feature = "option_dtype"))]
@@ -76,6 +79,9 @@ macro_rules! impl_option_numeric_cast {
         $(impl_option_numeric_cast!(@to_option $T: $Real => impl $U: $O);)?
     )*};
     ($T: ty: $Real: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {
+        impl Cast<String> for $T {
+            #[inline] fn cast(self) -> String { self.to_string() }
+        }
         #[cfg(feature="option_dtype")]
         impl_option_numeric_cast!(@ $T: $Real => { $( $U $(: $O)? ),* });
         #[cfg(not(feature = "option_dtype"))]

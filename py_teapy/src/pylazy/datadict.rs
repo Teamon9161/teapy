@@ -2,17 +2,13 @@ use pyo3::exceptions::{PyRuntimeError, PyTypeError};
 use regex::Regex;
 use std::borrow::Cow;
 use std::cmp::Ordering;
-// use std::collections::hash_map::RawEntryMut;
 use std::fmt::Debug;
 use std::iter::repeat;
 use std::sync::{Arc, Mutex};
 
-use tears::{join_left, JoinType, OptUsize};
-
 use super::export::*;
 
 static PYDATADICT_INIT_SIZE: usize = 10;
-// use std::collections::HashMap;
 use ahash::{HashMap, HashMapExt};
 
 #[pyclass]
@@ -903,39 +899,6 @@ impl PyDataDict {
         Ok(PyDataDict::new(out_data, None))
     }
 
-    // #[pyo3(signature=(by, rev=false, inplace=false))]
-    // pub fn sort_by(&mut self, by: Vec<&str>, rev: bool, inplace: bool) -> PyResult<Option<Self>> {
-    //     let key: Vec<PyExpr> = by.into_iter().map(|n| self.get_by_str(n).clone()).collect();
-    //     if self.data.is_empty() {
-    //         if !inplace {
-    //             return Ok(Some(self.clone()));
-    //         } else {
-    //             return Ok(None);
-    //         }
-    //     }
-    //     let idx = self.data.get(0).unwrap().get_sort_idx(key, rev).cast_usize()?;
-    //     if inplace {
-    //         unsafe {
-    //             self.data.iter_mut().for_each(|e| {
-    //                 match_exprs!(&e.inner, expr, {
-    //                     *e = expr.clone().take_on_axis_by_expr_unchecked(idx.clone(), 0, false).to_py(e.obj())
-    //                 })
-    //             });
-    //         }
-    //         Ok(None)
-    //     } else {
-    //         let mut out = self.clone();
-    //         unsafe {
-    //             out.data.iter_mut().for_each(|e| {
-    //                 match_exprs!(&e.inner, expr, {
-    //                     *e = expr.clone().take_on_axis_by_expr_unchecked(idx.clone(), 0, false).to_py(e.obj())
-    //                 })
-    //             });
-    //         }
-    //         Ok(Some(out))
-    //     }
-    // }
-
     #[pyo3(signature=(by, axis=0, sort=true, par=false))]
     pub fn groupby(&mut self, by: &PyAny, axis: i32, sort: bool, par: bool) -> PyResult<PyGroupBy> {
         let by = parse_one_or_more_str(by)?;
@@ -957,115 +920,6 @@ impl PyDataDict {
         let by = parse_one_or_more_str(by)?;
         let group_dfs = self._groupby(by, axis, sort, par)?;
         super::groupby::groupby_apply(group_dfs, py_func, axis, py_kwargs)
-    }
-
-    #[allow(unreachable_patterns)]
-    #[pyo3(signature=(right, left_on, right_on, method=JoinType::Left))]
-    pub fn join(
-        &mut self,
-        mut right: Self,
-        left_on: &PyAny,
-        right_on: &PyAny,
-        method: JoinType,
-    ) -> PyResult<Self> {
-        let left_on = parse_one_or_more_str(left_on)?;
-        let right_on = parse_one_or_more_str(right_on)?;
-        self.eval_multi(&left_on)?;
-        right.eval_multi(&right_on)?;
-        let left_on_exprs = left_on
-            .into_iter()
-            .map(|key| &self.get_by_str(key).inner)
-            .collect_trusted();
-        let right_on_exprs = right_on
-            .clone()
-            .into_iter()
-            .map(|key| &right.get_by_str(key).inner)
-            .collect_trusted();
-        match method {
-            JoinType::Left => {
-                let idx = join_left(&left_on_exprs, &right_on_exprs);
-                let idx: Expr<'static, OptUsize> = idx.into();
-                unsafe {
-                    right.data = right
-                        .data
-                        .into_iter()
-                        .map(|e| {
-                            use tears::Exprs::*;
-                            match &e.inner {
-                                F32(_) | F64(_) | String(_) => match_exprs!(
-                                    &e.inner,
-                                    expr,
-                                    {
-                                        expr.clone()
-                                            .take_option_on_axis_by_expr_unchecked(
-                                                idx.clone(),
-                                                0,
-                                                false,
-                                            )
-                                            .to_py(e.obj())
-                                    },
-                                    F32,
-                                    F64,
-                                    String
-                                ),
-                                // cast int to float in order to support option index
-                                I32(_) | I64(_) | Usize(_) => match_exprs!(
-                                    &e.inner,
-                                    expr,
-                                    {
-                                        expr.clone()
-                                            .cast::<f64>()
-                                            .take_option_on_axis_by_expr_unchecked(
-                                                idx.clone(),
-                                                0,
-                                                false,
-                                            )
-                                            .to_py(e.obj())
-                                    },
-                                    I32,
-                                    I64,
-                                    Usize
-                                ),
-                                _ => {
-                                    // other dtypes that doesn't support a option index, we assumed that the index are all Some
-                                    let idx: Expr<'static, usize> =
-                                        std::mem::transmute(idx.clone());
-                                    match_exprs!(&e.inner, expr, {
-                                        unsafe {
-                                            expr.clone()
-                                                .select_by_expr_unchecked(idx, 0.into())
-                                                .to_py(e.obj())
-                                        }
-                                    })
-                                }
-                            }
-                        })
-                        .collect_trusted();
-                }
-                let mut data = [self.data.clone(), right.data].concat();
-                let right_map = right.column_map.lock().unwrap();
-                let len = self.len();
-                let mut map = self.column_map.lock().unwrap().clone();
-                for (k, v) in right_map.iter() {
-                    if right_on.contains(&k.as_str()) {
-                        continue;
-                    }
-                    if map.get(k).is_none() {
-                        map.insert(k.clone(), *v + len);
-                    } else {
-                        // duplicate column name
-                        let new_name = k.clone() + "_right";
-                        map.insert(new_name.clone(), *v + len);
-                        data.get_mut(*v + len).unwrap().set_name(new_name);
-                    }
-                }
-                Ok(PyDataDict {
-                    data,
-                    column_map: Arc::new(Mutex::new(map)),
-                })
-            }
-            _ => todo!(),
-        }
     }
 }
 

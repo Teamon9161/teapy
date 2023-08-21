@@ -16,3 +16,12 @@ def unique(self, others=None, keep="first"):
         others = [others]
     idx = self._get_unique_idx(others, keep)
     return self._select_unchecked(idx)
+
+
+@register
+def left_join(self, right, left_other=None):
+    idx = self._get_left_join_idx(left_other=left_other, right=right)
+    if isinstance(right, (tuple, list)):
+        return [r._select_unchecked(idx) for r in right]
+    else:
+        return right._select_unchecked(idx)

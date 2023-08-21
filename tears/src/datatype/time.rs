@@ -12,7 +12,7 @@ use std::{
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
 
-use crate::Cast;
+use crate::{Cast, GetNone};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -62,6 +62,12 @@ impl Deref for DateTime {
 impl Cast<i64> for DateTime {
     fn cast(self) -> i64 {
         self.map_or(i64::MIN, |dt| dt.timestamp())
+    }
+}
+
+impl GetNone for DateTime {
+    fn none() -> Self {
+        Self(None)
     }
 }
 
@@ -515,6 +521,12 @@ impl ScalarOperand for DateTime {}
 impl From<&str> for TimeDelta {
     fn from(s: &str) -> Self {
         TimeDelta::parse(s)
+    }
+}
+
+impl GetNone for TimeDelta {
+    fn none() -> Self {
+        TimeDelta::nat()
     }
 }
 

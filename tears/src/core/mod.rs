@@ -239,10 +239,10 @@ where
         self.map(move |x| f(*x))
     }
 
-    pub fn cast<T2>(self) -> Arr<T2, D>
+    pub fn cast<'a, T2>(self) -> Arr<T2, D>
     where
         T: GetDataType + Clone + Cast<T2>,
-        T2: GetDataType + Clone + 'static,
+        T2: GetDataType + Clone + 'a,
     {
         self.map(|v| v.clone().cast())
     }

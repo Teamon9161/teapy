@@ -139,12 +139,20 @@ def test_join():
     rdd = DataDict({"right_on": ["b", "b", "c"], "vb": [10, 20, 30]})
     dd = ldd.join(rdd, left_on="left_on", right_on="right_on", how="left")
     dd2 = ldd.join(rdd, left_on="left_on", right_on="right_on", how="right")
+
     assert_allclose(dd["vb"].eview(), np.array([np.nan, 20, np.nan, 30]))
     assert_allclose(dd2["va"].eview(), np.array([2, 2, 4]))
     ldd = ldd.rename({"left_on": "on"})
     rdd = rdd.rename({"right_on": "on"})
     dd = ldd.join(rdd, on="on", how="left")
     assert_allclose(dd["vb"].eview(), np.array([np.nan, 20, np.nan, 30]))
+    # inplace join
+    ldd.join(rdd, on="on", how="left", inplace=True)
+    assert_allclose(ldd["vb"].eview(), np.array([np.nan, 20, np.nan, 30]))
+    ldd = DataDict({"left_on": ["a", "b", "a", "c"], "va": [1, 2, 3, 4]})
+    rdd = DataDict({"right_on": ["b", "b", "c"], "vb": [10, 20, 30]})
+    ldd.join(rdd, left_on="left_on", right_on="right_on", how="right", inplace=True)
+    assert_allclose(rdd["va"].eview(), np.array([2, 2, 4]))
 
 
 def test_groupby():

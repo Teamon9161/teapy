@@ -1830,6 +1830,32 @@ impl PyExpr {
         Ok(res)
     }
 
+    pub unsafe fn _get_left_join_idx(&self, left_other: &PyAny, right: &PyAny) -> PyResult<Self> {
+        let left_other = if left_other.is_none() {
+            None
+        } else {
+            Some(parse_expr_list(left_other, false)?)
+        };
+        let right = parse_expr_list(right, false)?;
+        let obj_vec1 = left_other
+            .as_ref()
+            .map(|lo| lo.iter().map(|e| e.obj()).collect_trusted());
+        let obj_vec2 = right.iter().map(|e| e.obj()).collect_trusted();
+        let left_other = left_other.map(|lo| lo.into_iter().map(|e| e.inner).collect_trusted());
+        let right = right.into_iter().map(|e| e.inner).collect_trusted();
+        let res = match_exprs!(hash & self.inner, expr, {
+            expr.clone()
+                .get_left_join_idx(left_other, right)
+                .to_py(self.obj())
+                .add_obj_vec(obj_vec2)
+        });
+        if let Some(obj_vec1) = obj_vec1 {
+            Ok(res.add_obj_vec(obj_vec1))
+        } else {
+            Ok(res)
+        }
+    }
+
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmin(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {

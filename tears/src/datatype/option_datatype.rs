@@ -59,6 +59,15 @@ macro_rules! define_option_dtype {
             }
         }
 
+        impl std::fmt::Display for $typ {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self.0 {
+                    Some(v) => write!(f, "{}", v),
+                    None => write!(f, "None"),
+                }
+            }
+        }
+
         impl From<Option<$real>> for $typ {
             #[inline]
             fn from(value: Option<$real>) -> Self {

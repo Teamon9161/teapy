@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 #[cfg(feature = "lazy")]
 use crate::ExprElement;
-use crate::{DataType, GetDataType};
+use crate::{DataType, GetDataType, GetNone};
 use numpy::{Element, PyArrayDescr};
 use pyo3::{FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 
@@ -13,6 +13,12 @@ pub struct PyValue(pub PyObject);
 impl Debug for PyValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", &self.0)
+    }
+}
+
+impl GetNone for PyValue {
+    fn none() -> Self {
+        PyValue(Python::with_gil(|py| py.None()))
     }
 }
 

@@ -114,7 +114,7 @@ where
     pub fn fillna<T2>(self, method: FillMethod, value: Option<T2>, axis: i32, par: bool) -> Self
     where
         T: Number,
-        T2: Cast<T> + Clone + Send + Sync,
+        T2: Cast<T> + Clone + Send + Sync + 'a,
         f64: Cast<T>,
     {
         self.chain_arr_f(
@@ -783,7 +783,7 @@ where
     pub unsafe fn take_option_on_axis_by_expr_unchecked(
         self,
         slc: Expr<'a, OptUsize>,
-        axis: i32,
+        axis: Expr<'a, i32>,
         par: bool,
     ) -> Self
     where
@@ -796,6 +796,7 @@ where
                 if slc_eval.ndim() > 1 {
                     return Err("The slice must be dim 0 or dim 1 when take on axis".into());
                 }
+                let axis = *axis.eval()?.view_arr().to_dim0()?.into_scalar();
                 if slc_eval.len() == 1 {
                     Ok(arr
                         .index_axis(arr.norm_axis(axis), slc_eval.to_dim1()?[0].unwrap())

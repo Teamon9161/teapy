@@ -150,6 +150,12 @@ impl GetNone for String {
     }
 }
 
+impl GetNone for &str {
+    fn none() -> Self {
+        "None"
+    }
+}
+
 impl GetNone for usize {
     fn none() -> Self {
         0
@@ -167,6 +173,12 @@ impl GetNone for i64 {
         0
     }
 }
+
+// impl GetNone for bool {
+//     fn none() -> Self {
+//         false
+//     }
+// }
 
 impl<'a> GetDataType for &'a str {
     type Physical = &'a str;
@@ -193,6 +205,7 @@ pub trait Number:
     + Cast<usize>
     + Cast<i32>
     + Cast<i64>
+    + 'static
 // + AsPrimitive<f64>
 // + AsPrimitive<f32>
 // + AsPrimitive<usize>
@@ -265,6 +278,7 @@ pub trait Number:
     fn fromas<U>(v: U) -> Self
     where
         U: Number + Cast<Self>,
+        Self: 'static,
     {
         v.to::<Self>()
     }

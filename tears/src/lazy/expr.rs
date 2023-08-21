@@ -284,8 +284,8 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     #[inline]
     pub fn cast<T2>(self) -> Expr<'a, T2>
     where
-        T: Cast<T2> + Clone + 'static,
-        T2: ExprElement + Clone + 'static,
+        T: Cast<T2> + Clone + 'a,
+        T2: ExprElement + Clone + 'a,
     {
         self.downcast().cast::<T2>().into()
     }
@@ -1193,7 +1193,7 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     pub fn cast<T2>(self) -> ExprInner<'a, T2>
     where
         T: Cast<T2> + Clone,
-        T2: ExprElement + Clone + 'static,
+        T2: ExprElement + Clone + 'a,
     {
         if T::dtype() == T2::dtype() {
             // safety: T and T2 are the same type

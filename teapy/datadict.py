@@ -141,16 +141,34 @@ class DataDict:
     def with_columns(self, exprs, inplace=False):
         return self._dd.with_columns(exprs, inplace=inplace)
 
-    @construct
-    def join(self, right, on=None, left_on=None, right_on=None, how="left"):
+    def join(
+        self, right, on=None, left_on=None, right_on=None, how="left", inplace=False
+    ):
         if on is not None:
             left_on = right_on = on
         if how == "right":
-            return right._dd.join(
-                self._dd, left_on=right_on, right_on=left_on, method="left"
+            return right.join(
+                self, left_on=right_on, right_on=left_on, how="left", inplace=inplace
             )
         else:
-            return self._dd.join(right._dd, left_on, right_on, method=how)
+            left_on = [left_on] if isinstance(left_on, (str, int)) else left_on
+            right_on = [right_on] if isinstance(right_on, (str, int)) else right_on
+            if how == "left":
+                left_on = self[left_on].raw_data
+                right_on = right[right_on].raw_data
+                left_other = left_on[1:] if len(left_on) > 1 else None
+                idx = left_on[0]._get_left_join_idx(
+                    left_other=left_other, right=right_on
+                )
+                dd = self if inplace else self.copy()
+                dd.with_columns(
+                    right._select_on_axis_unchecked(idx, 0).raw_data, inplace=True
+                )
+                return None if inplace else dd
+            else:
+                raise NotImplementedError(
+                    "Only left an right join is supported for now"
+                )
 
     @construct
     def apply(self, func, inplace=False, **kwargs):

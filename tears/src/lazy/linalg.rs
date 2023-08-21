@@ -61,9 +61,9 @@ impl<'a> OlsResult<'a> {
 }
 
 impl<'a, T: ExprElement + 'a> Expr<'a, T> {
-    pub fn lstsq<T2: ExprElement + Cast<f64> + Clone>(self, y: Expr<'a, T2>) -> Self
+    pub fn lstsq<T2: ExprElement + Cast<f64> + Clone + 'a>(self, y: Expr<'a, T2>) -> Self
     where
-        T: Cast<f64> + Clone,
+        T: Cast<f64> + Clone + 'a,
     {
         self.cast::<f64>().chain_f(
             move |x| {
