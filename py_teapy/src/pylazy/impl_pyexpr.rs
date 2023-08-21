@@ -825,7 +825,7 @@ impl PyExpr {
         let other = parse_expr_nocopy(other)?;
         match op {
             CompareOp::Eq => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, eq, py, DateTime, String, TimeDelta),
+                impl_py_cmp!(cast_to_same self.clone(), other, eq, py, DateTime, String, TimeDelta, Bool),
             ),
             CompareOp::Lt => Ok(
                 impl_py_cmp!(cast_to_same self.clone(), other, lt, py, DateTime, String, TimeDelta),
@@ -834,7 +834,7 @@ impl PyExpr {
                 impl_py_cmp!(cast_to_same self.clone(), other, le, py, DateTime, String, TimeDelta),
             ),
             CompareOp::Ne => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, ne, py, DateTime, String, TimeDelta),
+                impl_py_cmp!(cast_to_same self.clone(), other, ne, py, DateTime, String, TimeDelta, Bool),
             ),
             CompareOp::Gt => Ok(
                 impl_py_cmp!(cast_to_same self.clone(), other, gt, py, DateTime, String, TimeDelta),

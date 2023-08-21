@@ -1,3 +1,5 @@
+from numpy import nan
+
 from .array_func import *
 from .datadict import DataDict, from_pd
 from .expr import Expr, register
