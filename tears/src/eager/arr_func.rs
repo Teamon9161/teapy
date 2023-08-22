@@ -38,6 +38,78 @@ where
         Arr1::from_iter(self.into_iter().filter(|v| v.notnan()))
     }
 
+    #[allow(clippy::unnecessary_filter_map)]
+    pub fn get_sorted_unique_idx_1d(&self, keep: String) -> Arr1<usize>
+    where
+        T: PartialEq,
+    {
+        let len = self.len();
+        if len == 0 {
+            return Arr1::from_vec(vec![]);
+        }
+        let out = if &keep == "first" {
+            let mut value = unsafe { self.uget(0) };
+            vec![0]
+                .into_iter()
+                .chain((1..len).filter_map(|i| {
+                    let v = unsafe { self.uget(i) };
+                    if v != value {
+                        value = v;
+                        Some(i)
+                    } else {
+                        None
+                    }
+                }))
+                .collect::<Vec<_>>()
+        } else if &keep == "last" {
+            let mut value = unsafe { self.uget(0) };
+            let lst_idx = len - 1;
+            let mut out = (0..lst_idx)
+                .filter_map(|i| {
+                    let v = unsafe { self.uget(i + 1) };
+                    if v != value {
+                        value = v;
+                        Some(i)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            if unsafe { self.uget(lst_idx) } == value {
+                out.push(lst_idx)
+            }
+            out
+        } else {
+            panic!("keep must be either first or last")
+        };
+        Arr1::from_vec(out)
+    }
+
+    #[allow(clippy::unnecessary_filter_map)]
+    pub fn sorted_unique_1d(&self) -> Arr1<T>
+    where
+        T: PartialEq + Clone,
+    {
+        let len = self.len();
+        if len == 0 {
+            return Arr1::from_vec(vec![]);
+        }
+        let mut value = unsafe { self.uget(0) };
+        let out = vec![value.clone()]
+            .into_iter()
+            .chain((1..len).filter_map(|i| {
+                let v = unsafe { self.uget(i) };
+                if v != value {
+                    value = v;
+                    Some(v.clone())
+                } else {
+                    None
+                }
+            }))
+            .collect::<Vec<_>>();
+        Arr1::from_vec(out)
+    }
+
     /// return -1 if there are not enough valid elements
     /// sort: whether to sort the result by the size of the element
     pub fn arg_partition_1d<S2>(&self, mut out: ArrBase<S2, Ix1>, kth: usize, sort: bool, rev: bool)

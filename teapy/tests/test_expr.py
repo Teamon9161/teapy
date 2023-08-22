@@ -26,9 +26,14 @@ def test_slice():
 
 def test_unique():
     assert_allclose(tp.Expr([1, 3, 2, 1, 2]).unique().eview(), [1, 3, 2])
-    assert tp.Expr(["b", "bb", "a", "ab", "ab", "bb"]).unique().eview().tolist() == [
-        "b",
-        "bb",
-        "a",
-        "ab",
-    ]
+    e = tp.Expr(["b", "bb", "a", "ab", "ab", "bb"]).unique()
+    assert e.eview().tolist() == ["b", "bb", "a", "ab"]
+
+    # test sorted unique
+    a = tp.Expr([2, 2, 3, 3, 4, 5, 5])
+    e1 = a._get_sorted_unique_idx("first").eview()
+    assert_allclose(e1, [0, 2, 4, 5])
+    e2 = a._get_sorted_unique_idx("last").eview()
+    assert_allclose(e2, [1, 3, 4, 6])
+    e3 = a.sorted_unique().eview()
+    assert_allclose(e3, [2, 3, 4, 5])

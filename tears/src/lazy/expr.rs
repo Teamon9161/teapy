@@ -36,6 +36,7 @@ impl ExprElement for DateTime {}
 impl ExprElement for TimeDelta {}
 
 impl ExprElement for OptUsize {}
+impl ExprElement for Vec<usize> {}
 
 #[cfg(feature = "option_dtype")]
 impl ExprElement for OptF64 {}

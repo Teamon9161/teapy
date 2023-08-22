@@ -4,7 +4,7 @@
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
 use crate::{DateTime, OptUsize, PyValue, TimeDelta};
 
-use super::super::export::*;
+use crate::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
 use std::fmt;
 use std::ops::{Deref, DerefMut};

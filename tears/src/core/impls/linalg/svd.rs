@@ -1,9 +1,9 @@
-use super::super::super::{
+use super::{into_matrix, MatrixLayout};
+use crate::TpResult;
+use crate::{
     utils::{vec_uninit, VecAssumeInit},
     Arr1, ArrD,
 };
-use super::{into_matrix, MatrixLayout};
-use crate::TpResult;
 use lapack_sys::dgesvd_;
 use libc::c_char;
 

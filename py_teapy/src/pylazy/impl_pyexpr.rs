@@ -12,11 +12,10 @@ use pyo3::{
 };
 use std::iter::repeat;
 use tears::{
-    DateTime, DropNaMethod, ExprOut, ExprOutView, Number, OptUsize, PyValue, RefType, StrError,
-    TimeDelta, WinsorizeMethod,
+    Cast, DropNaMethod, ExprOut, ExprOutView, Number, RefType, StrError, TimeDelta, WinsorizeMethod,
 };
 #[cfg(feature = "option_dtype")]
-use tears::{OptF32, OptF64, OptI32, OptI64};
+// use tears::{OptF32, OptF64, OptI32, OptI64};
 
 static PYEXPR_ATTRIBUTE: Lazy<Mutex<HashMap<String, PyObject>>> =
     Lazy::new(|| Mutex::new(HashMap::<String, PyObject>::with_capacity(10)));
@@ -127,6 +126,7 @@ impl PyExpr {
             DateTime(_) => "DateTime",
             TimeDelta(_) => "TimeDelta",
             OptUsize(_) => "Option<Usize>",
+            VecUsize(_) => "Vec<Usize>",
             #[cfg(feature = "option_dtype")]
             OptF64(_) => "Option<F64>",
             #[cfg(feature = "option_dtype")]
@@ -1154,7 +1154,7 @@ impl PyExpr {
         fill: Option<&PyAny>,
         axis: i32,
         par: bool,
-        py: Python,
+        // py: Python,
     ) -> PyResult<Self> {
         let fill = if let Some(fill) = fill {
             if fill.is_none() {
@@ -1166,179 +1166,204 @@ impl PyExpr {
             None
         };
         let obj = fill.clone().map(|e| e.obj());
-        let out = match &self.inner {
-            Exprs::Bool(e) => e
-                .clone()
-                .shift(
-                    n,
-                    fill.expect("A fill value should be passed when shift a bool expression")
-                        .cast_bool()?,
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-            Exprs::F64(e) => e
-                .clone()
-                .shift(
-                    n,
-                    fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f64()?,
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-            Exprs::F32(e) => e
-                .clone()
-                .shift(
-                    n,
-                    fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f32()?,
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-            Exprs::I64(e) => {
-                if let Some(fill) = fill {
-                    e.clone()
-                        .shift(n, fill.cast_i64()?, axis, par)
-                        .to_py(self.obj())
-                } else {
-                    // default fill value is NaN
-                    e.clone()
-                        .cast::<f64>()
-                        .shift(n, f64::NAN.into(), axis, par)
-                        .to_py(self.obj())
-                }
-            }
-            Exprs::I32(e) => {
-                if let Some(fill) = fill {
-                    e.clone()
-                        .shift(n, fill.cast_i32()?, axis, par)
-                        .to_py(self.obj())
-                } else {
-                    // default fill value is NaN
-                    e.clone()
-                        .cast::<f64>()
-                        .shift(n, f64::NAN.into(), axis, par)
-                        .to_py(self.obj())
-                }
-            }
-            Exprs::Usize(e) => {
-                if let Some(fill) = fill {
-                    e.clone()
-                        .shift(n, fill.cast_usize()?, axis, par)
-                        .to_py(self.obj())
-                } else {
-                    // default fill value is NaN
-                    e.clone()
-                        .cast::<f64>()
-                        .shift(n, f64::NAN.into(), axis, par)
-                        .to_py(self.obj())
-                }
-            }
-            // Exprs::OpUsize(_e) => todo!(),
-            Exprs::String(e) => e
-                .clone()
-                .shift(
-                    n,
-                    fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
-                        .cast_string()?,
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-            Exprs::Str(_) => {
-                unimplemented!("shift is not supported for str expression, cast to string first")
-            }
-            Exprs::TimeDelta(e) => e
-                .clone()
-                .shift(
-                    n,
-                    fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
-                        .cast_timedelta()?,
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-            Exprs::DateTime(e) => e
-                .clone()
-                .shift(
-                    n,
-                    fill.unwrap_or_else(|| DateTime(Default::default()).into_pyexpr())
-                        .cast_datetime(None)?,
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-            Exprs::Object(e) => e
-                .clone()
-                .shift(
-                    n,
-                    fill.unwrap_or_else(|| PyValue(py.None()).into_pyexpr())
-                        .cast_object_eager(py)?,
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
+        let out = match_exprs!(
+            &self.inner,
+            e,
+            {
+                e.clone()
+                    .shift(n, fill.map(|v| v.inner.cast()), axis, par)
+                    .to_py(self.obj())
+            },
+            F32,
+            F64,
+            I32,
+            I64,
+            Usize,
+            String,
+            OptUsize,
             #[cfg(feature = "option_dtype")]
-            Exprs::OptF32(e) => e
-                .clone()
-                .cast::<OptF32>()
-                .shift(
-                    n,
-                    fill.map(|f| f.cast_optf32().unwrap())
-                        .unwrap_or_else(|| OptF32(None).into()),
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
+            OptF32,
             #[cfg(feature = "option_dtype")]
-            Exprs::OptF64(e) => e
-                .clone()
-                .cast::<OptF64>()
-                .shift(
-                    n,
-                    fill.map(|f| f.cast_optf64().unwrap())
-                        .unwrap_or_else(|| OptF64(None).into()),
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
+            OptF64,
             #[cfg(feature = "option_dtype")]
-            Exprs::OptI64(e) => e
-                .clone()
-                .cast::<OptI64>()
-                .shift(
-                    n,
-                    fill.map(|f| f.cast_opti64().unwrap())
-                        .unwrap_or_else(|| OptI64(None).into()),
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
+            OptI32,
             #[cfg(feature = "option_dtype")]
-            Exprs::OptI32(e) => e
-                .clone()
-                .cast::<OptI32>()
-                .shift(
-                    n,
-                    fill.map(|f| f.cast_opti32().unwrap())
-                        .unwrap_or_else(|| OptI32(None).into()),
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-            // #[cfg(feature = "option_dtype")]
-            Exprs::OptUsize(e) => e
-                .clone()
-                .cast::<OptUsize>()
-                .shift(
-                    n,
-                    fill.map(|f| f.cast_optusize().unwrap())
-                        .unwrap_or_else(|| Into::<OptUsize>::into(None).into()),
-                    axis,
-                    par,
-                )
-                .to_py(self.obj()),
-        };
+            OptI64
+        );
+
+        // let out = match &self.inner {
+        //     Exprs::Bool(e) => e
+        //         .clone()
+        //         .shift(
+        //             n,
+        //             fill.expect("A fill value should be passed when shift a bool expression")
+        //                 .cast_bool()?,
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     Exprs::F64(e) => e
+        //         .clone()
+        //         .shift(
+        //             n,
+        //             fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f64()?,
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     Exprs::F32(e) => e
+        //         .clone()
+        //         .shift(
+        //             n,
+        //             fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f32()?,
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     Exprs::I64(e) => {
+        //         if let Some(fill) = fill {
+        //             e.clone()
+        //                 .shift(n, fill.cast_i64()?, axis, par)
+        //                 .to_py(self.obj())
+        //         } else {
+        //             // default fill value is NaN
+        //             e.clone()
+        //                 .cast::<f64>()
+        //                 .shift(n, f64::NAN.into(), axis, par)
+        //                 .to_py(self.obj())
+        //         }
+        //     }
+        //     Exprs::I32(e) => {
+        //         if let Some(fill) = fill {
+        //             e.clone()
+        //                 .shift(n, fill.cast_i32()?, axis, par)
+        //                 .to_py(self.obj())
+        //         } else {
+        //             // default fill value is NaN
+        //             e.clone()
+        //                 .cast::<f64>()
+        //                 .shift(n, f64::NAN.into(), axis, par)
+        //                 .to_py(self.obj())
+        //         }
+        //     }
+        //     Exprs::Usize(e) => {
+        //         if let Some(fill) = fill {
+        //             e.clone()
+        //                 .shift(n, fill.cast_usize()?, axis, par)
+        //                 .to_py(self.obj())
+        //         } else {
+        //             // default fill value is NaN
+        //             e.clone()
+        //                 .cast::<f64>()
+        //                 .shift(n, f64::NAN.into(), axis, par)
+        //                 .to_py(self.obj())
+        //         }
+        //     }
+        //     // Exprs::OpUsize(_e) => todo!(),
+        //     Exprs::String(e) => e
+        //         .clone()
+        //         .shift(
+        //             n,
+        //             fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
+        //                 .cast_string()?,
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     Exprs::Str(_) => {
+        //         unimplemented!("shift is not supported for str expression, cast to string first")
+        //     }
+        //     Exprs::TimeDelta(e) => e
+        //         .clone()
+        //         .shift(
+        //             n,
+        //             fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
+        //                 .cast_timedelta()?,
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     Exprs::DateTime(e) => e
+        //         .clone()
+        //         .shift(
+        //             n,
+        //             fill.unwrap_or_else(|| DateTime(Default::default()).into_pyexpr())
+        //                 .cast_datetime(None)?,
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     Exprs::Object(e) => e
+        //         .clone()
+        //         .shift(
+        //             n,
+        //             fill.unwrap_or_else(|| PyValue(py.None()).into_pyexpr())
+        //                 .cast_object_eager(py)?,
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     #[cfg(feature = "option_dtype")]
+        //     Exprs::OptF32(e) => e
+        //         .clone()
+        //         .cast::<OptF32>()
+        //         .shift(
+        //             n,
+        //             fill.map(|f| f.cast_optf32().unwrap())
+        //                 .unwrap_or_else(|| OptF32(None).into()),
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     #[cfg(feature = "option_dtype")]
+        //     Exprs::OptF64(e) => e
+        //         .clone()
+        //         .cast::<OptF64>()
+        //         .shift(
+        //             n,
+        //             fill.map(|f| f.cast_optf64().unwrap())
+        //                 .unwrap_or_else(|| OptF64(None).into()),
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     #[cfg(feature = "option_dtype")]
+        //     Exprs::OptI64(e) => e
+        //         .clone()
+        //         .cast::<OptI64>()
+        //         .shift(
+        //             n,
+        //             fill.map(|f| f.cast_opti64().unwrap())
+        //                 .unwrap_or_else(|| OptI64(None).into()),
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     #[cfg(feature = "option_dtype")]
+        //     Exprs::OptI32(e) => e
+        //         .clone()
+        //         .cast::<OptI32>()
+        //         .shift(
+        //             n,
+        //             fill.map(|f| f.cast_opti32().unwrap())
+        //                 .unwrap_or_else(|| OptI32(None).into()),
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        //     // #[cfg(feature = "option_dtype")]
+        //     Exprs::OptUsize(e) => e
+        //         .clone()
+        //         .cast::<OptUsize>()
+        //         .shift(
+        //             n,
+        //             fill.map(|f| f.cast_optusize().unwrap())
+        //                 .unwrap_or_else(|| Into::<OptUsize>::into(None).into()),
+        //             axis,
+        //             par,
+        //         )
+        //         .to_py(self.obj()),
+        // };
         if let Some(obj) = obj {
             Ok(out.add_obj(obj))
         } else {
@@ -1809,6 +1834,19 @@ impl PyExpr {
             }
         );
         Ok(res)
+    }
+
+    #[pyo3(signature=(keep="first".to_string()))]
+    pub fn _get_sorted_unique_idx(&self, keep: String) -> Self {
+        match_exprs!(&self.inner, expr, {
+            expr.clone().get_sorted_unique_idx(keep).to_py(self.obj())
+        })
+    }
+
+    pub fn sorted_unique(&self) -> Self {
+        match_exprs!(&self.inner, expr, {
+            expr.clone().sorted_unique().to_py(self.obj())
+        })
     }
 
     #[pyo3(signature=(others=None, keep="first".to_string()))]
@@ -2666,7 +2704,7 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    pub unsafe fn broadcast_with(&self, other: &PyAny) -> PyResult<Self> {
+    pub unsafe fn broadcast_to(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let shape = other.shape();
         let obj = shape.obj();
@@ -2736,6 +2774,95 @@ impl PyExpr {
         Ok(out)
     }
 
+    pub unsafe fn _get_time_rolling_idx(&self, duration: &str) -> PyResult<Self> {
+        let obj = self.obj();
+        let out = self
+            .inner
+            .clone()
+            .cast_datetime(None)?
+            .get_time_rolling_idx(duration)
+            .to_py(obj);
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_mean(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_mean(roll_start.cast_usize()?)
+                .to_py(self.obj())
+                .add_obj(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_std(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_std(roll_start.cast_usize()?)
+                .to_py(self.obj())
+                .add_obj(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_max(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_max(roll_start.cast_usize()?)
+                .to_py(self.obj())
+                .add_obj(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_min(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_min(roll_start.cast_usize()?)
+                .to_py(self.obj())
+                .add_obj(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_umax(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_umax(roll_start.cast_usize()?)
+                .to_py(self.obj())
+                .add_obj(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_umin(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_umin(roll_start.cast_usize()?)
+                .to_py(self.obj())
+                .add_obj(obj)
+        });
+        Ok(out)
+    }
+
     #[pyo3(signature=(index, duration, func, axis=0, **py_kwargs))]
     pub unsafe fn rolling_apply_by_time(
         &self,
@@ -2747,7 +2874,9 @@ impl PyExpr {
         py: Python,
     ) -> PyResult<PyObject> {
         let index_expr = parse_expr_nocopy(index)?;
-        let mut rolling_idx = index_expr.cast_datetime(None)?.time_rolling(duration);
+        let mut rolling_idx = index_expr
+            .cast_datetime(None)?
+            .get_time_rolling_idx(duration);
         rolling_idx.eval_inplace()?;
         let mut column_num = 0;
         let mut output = rolling_idx

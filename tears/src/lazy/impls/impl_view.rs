@@ -1,12 +1,10 @@
 //! impl methods that may return an array view.
 //! these method are unsafe because the data of the array
 //! view should not be dropped.
-//! the memory should be managed on python heap if using in python.
 
 use crate::error::StrError;
-
-use super::super::{ArbArray, WrapNdarray};
-use super::{Expr, ExprElement, RefType};
+use crate::lazy::{Expr, ExprElement, RefType};
+use crate::{ArbArray, WrapNdarray};
 use ndarray::{s, IxDyn, NewAxis, SliceInfo, SliceInfoElem};
 use std::marker::PhantomData;
 use std::mem;

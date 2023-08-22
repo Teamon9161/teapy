@@ -52,6 +52,7 @@ pub enum DataType {
     OptI64,
     // #[cfg(feature = "option_dtype")]
     OptUsize,
+    VecUsize,
 }
 
 macro_rules! match_datatype_arm {
@@ -61,13 +62,13 @@ macro_rules! match_datatype_arm {
             #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize), $body)
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize), $body)
                 };
             }
             #[cfg(feature="option_dtype")]
             macro_rules! inner_macro {
                 () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, OptF64, OptF32, OptI32, OptI64), $body)
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize, OptF64, OptF32, OptI32, OptI64), $body)
                 };
             }
             inner_macro!()
@@ -116,6 +117,7 @@ impl_datatype!(DateTime, DateTime);
 impl_datatype!(TimeDelta, TimeDelta);
 
 impl_datatype!(OptUsize, OptUsize);
+impl_datatype!(VecUsize, Vec<usize>);
 
 #[cfg(feature = "option_dtype")]
 impl_datatype!(OptF64, OptF64);

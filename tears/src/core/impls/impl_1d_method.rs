@@ -1,4 +1,4 @@
-use super::super::export::*;
+use crate::export::*;
 use ndarray::{Ix1, RawData};
 use std::cmp::Ordering;
 use std::ops::Add;
@@ -338,15 +338,14 @@ where
         F: FnMut(&T, Option<&T>) -> U,
     {
         let len = self.len();
-        let window = window.min(len);
-        if window == 0 {
-            return;
-        }
-        // assert!(window > 0, "window must be greater than 0");
         assert!(
             out.len() == len,
             "length of output array must equal to length of the array"
         );
+        let window = window.min(len);
+        if window == 0 {
+            return;
+        }
         // within the first window
         for i in 0..window - 1 {
             let (v, vo) = unsafe { (self.uget(i), out.uget_mut(i)) };

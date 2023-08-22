@@ -1,6 +1,6 @@
-use crate::{StrError, TpResult};
+use crate::{Arr, ArrBase, ArrView, StrError, TpResult, WrapNdarray};
 
-use super::super::{Arr, ArrBase, ArrView, WrapNdarray};
+// use crate::{Arr, ArrBase, ArrView, WrapNdarray};
 use ndarray::{Data, DataMut, DimMax, Dimension, IntoDimension, RawData, Zip};
 // use std::fmt::Debug;
 

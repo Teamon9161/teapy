@@ -848,7 +848,10 @@ impl PyDataDict {
                 }
             }
         }
-        let mut rolling_idx = index.clone().cast_datetime(None)?.time_rolling(duration);
+        let mut rolling_idx = index
+            .clone()
+            .cast_datetime(None)?
+            .get_time_rolling_idx(duration);
         rolling_idx.eval_inplace()?;
         let mut column_num = 0;
         let mut output = rolling_idx

@@ -22,6 +22,7 @@ pub enum ArrOk<'a> {
     Object(ArbArray<'a, PyValue>),
     DateTime(ArbArray<'a, DateTime>),
     TimeDelta(ArbArray<'a, TimeDelta>),
+    VecUsize(ArbArray<'a, Vec<usize>>),
     #[cfg(feature = "option_dtype")]
     OptF64(ArbArray<'a, OptF64>),
     #[cfg(feature = "option_dtype")]
@@ -55,6 +56,7 @@ macro_rules! match_arr {
             ArrOk::Object($arr) => $body,
             ArrOk::DateTime($arr) => $body,
             ArrOk::TimeDelta($arr) => $body,
+            ArrOk::VecUsize($arr) => $body,
             #[cfg(feature = "option_dtype")]
             ArrOk::OptF64($arr) => $body,
             #[cfg(feature = "option_dtype")]

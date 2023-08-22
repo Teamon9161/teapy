@@ -1,5 +1,6 @@
 mod arbarray;
 mod arrok;
+mod impls;
 mod own;
 mod traits;
 mod view;
@@ -7,6 +8,8 @@ mod viewmut;
 
 pub use arbarray::ArbArray;
 pub use arrok::ArrOk;
+#[cfg(feature = "blas")]
+pub use impls::{conjugate, replicate, LeastSquaresResult};
 pub use own::{Arr, Arr1, Arr2, ArrD};
 pub use traits::WrapNdarray;
 pub use view::{ArrView, ArrView1, ArrViewD};

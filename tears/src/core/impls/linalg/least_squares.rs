@@ -1,10 +1,10 @@
 use crate::{StrError, TpResult};
 
-use super::super::super::{
+use super::{transpose, transpose_over, MatrixLayout};
+use crate::{
     utils::{vec_uninit, VecAssumeInit},
     Arr, Arr1, Arr2, ArrD, WrapNdarray,
 };
-use super::{transpose, transpose_over, MatrixLayout};
 use lapack_sys::dgelsd_;
 use ndarray::{s, Axis, Ix0, ShapeBuilder};
 use std::mem::transmute;

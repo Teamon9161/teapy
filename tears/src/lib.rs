@@ -25,7 +25,7 @@ pub mod datatype;
 #[cfg(feature = "lazy")]
 #[macro_use]
 pub mod lazy;
-mod impls;
+// mod impls;
 pub mod util_trait;
 pub mod utils;
 

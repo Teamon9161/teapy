@@ -1,4 +1,4 @@
-use super::{Expr, ExprElement, RefType};
+use crate::{Expr, ExprElement, RefType};
 use std::cmp::{PartialEq, PartialOrd};
 
 // Impl expressions

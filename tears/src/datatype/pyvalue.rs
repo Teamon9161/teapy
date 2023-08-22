@@ -22,6 +22,12 @@ impl GetNone for PyValue {
     }
 }
 
+impl PartialEq for PyValue {
+    fn eq(&self, other: &Self) -> bool {
+        Python::with_gil(|py| self.0.as_ref(py).eq(other.0.as_ref(py))).unwrap()
+    }
+}
+
 // impl Serialize for PyValue {
 //     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
 //     {

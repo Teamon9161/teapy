@@ -1,4 +1,4 @@
-use super::{Expr, ExprElement};
+use crate::lazy::{Expr, ExprElement};
 
 impl<'a, T> Expr<'a, T>
 where

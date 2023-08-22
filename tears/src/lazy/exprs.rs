@@ -1,6 +1,5 @@
-use std::fmt::Debug;
-
 use pyo3::Python;
+use std::fmt::Debug;
 
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
@@ -23,6 +22,7 @@ pub enum Exprs<'a> {
     Object(Expr<'a, PyValue>),
     DateTime(Expr<'a, DateTime>),
     TimeDelta(Expr<'a, TimeDelta>),
+    VecUsize(Expr<'a, Vec<usize>>),
     // OpUsize(Expr<'a, Option<usize>>),
     #[cfg(feature = "option_dtype")]
     OptF32(Expr<'a, OptF32>),
@@ -50,14 +50,14 @@ macro_rules! match_ {
             #[cfg(feature="option_dtype")]
             macro_rules! inner_macro {
                 () => {
-                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptF32, OptF64, OptI32, OptI64, OptUsize)
+                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
                 };
             }
 
             #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize)
+                    match_!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize, VecUsize)
                 };
             }
             inner_macro!()
@@ -97,6 +97,7 @@ impl<'a, T: ExprElement + 'a> From<Expr<'a, T>> for Exprs<'a> {
                 DataType::Object => Exprs::Object(expr.into_dtype::<PyValue>()),
                 DataType::DateTime => Exprs::DateTime(expr.into_dtype::<DateTime>()),
                 DataType::TimeDelta => Exprs::TimeDelta(expr.into_dtype::<TimeDelta>()),
+                DataType::VecUsize => Exprs::VecUsize(expr.into_dtype::<Vec<usize>>()),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptF64 => Exprs::OptF64(expr.into_dtype::<OptF64>()),
                 #[cfg(feature = "option_dtype")]
@@ -335,6 +336,7 @@ impl_expr_cast!(
     f32,
     f64,
     usize,
+    String,
     OptUsize,
     #[cfg(feature = "option_dtype")]
     OptF32,
@@ -359,6 +361,7 @@ pub(super) enum ExprsInner<'a> {
     TimeDelta(ExprInner<'a, TimeDelta>),
     Object(ExprInner<'a, PyValue>),
     OptUsize(ExprInner<'a, OptUsize>),
+    VecUsize(ExprInner<'a, Vec<usize>>),
     #[cfg(feature = "option_dtype")]
     OptF64(ExprInner<'a, OptF64>),
     #[cfg(feature = "option_dtype")]
@@ -394,6 +397,7 @@ impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
                 DataType::Object => ExprsInner::Object(expr.into_dtype::<PyValue>()),
                 DataType::DateTime => ExprsInner::DateTime(expr.into_dtype::<DateTime>()),
                 DataType::TimeDelta => ExprsInner::TimeDelta(expr.into_dtype::<TimeDelta>()),
+                DataType::VecUsize => ExprsInner::VecUsize(expr.into_dtype::<Vec<usize>>()),
                 #[cfg(feature = "option_dtype")]
                 DataType::OptF64 => ExprsInner::OptF64(expr.into_dtype::<OptF64>()),
                 #[cfg(feature = "option_dtype")]

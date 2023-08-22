@@ -1,5 +1,5 @@
-use super::super::{ArbArray, Cast, CorrMethod, Number, QuantileMethod, WinsorizeMethod};
-use super::{Expr, ExprElement, RefType};
+use crate::lazy::{Expr, ExprElement, RefType};
+use crate::{ArbArray, Cast, CorrMethod, Number, QuantileMethod, WinsorizeMethod};
 
 macro_rules! impl_view_lazy {
     (in1, $func:ident -> $otype:ident, ($($p:ident: $p_ty:ty),* $(,)?)) => {

@@ -1,4 +1,4 @@
-use super::{Expr, ExprElement, RefType};
+use crate::lazy::{Expr, ExprElement, RefType};
 use crate::{DateTime, TimeDelta, WrapNdarray};
 use ndarray::{ScalarOperand, Zip};
 use std::ops::{

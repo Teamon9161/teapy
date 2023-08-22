@@ -1,10 +1,10 @@
 //! impl methods that return an array.
 
-use crate::datatype::Cast;
-use crate::{ArbArray, Exprs, GetNone, OptUsize, PyValue, StrError, TimeDelta, TpResult};
-
-use super::super::{Arr, Arr1, CollectTrustedToVec, DateTime, FillMethod, Number, WrapNdarray};
-use super::{Expr, ExprElement, RefType};
+use crate::lazy::{Expr, ExprElement, RefType};
+use crate::{
+    ArbArray, Arr, Arr1, Cast, CollectTrustedToVec, DateTime, Exprs, FillMethod, GetNone, Number,
+    OptUsize, PyValue, StrError, TpResult, WrapNdarray,
+};
 use ndarray::{Array1, ArrayViewD, Axis, Zip};
 use num::traits::real::Real;
 use num::{Float, One, Signed, Zero};
@@ -162,16 +162,25 @@ where
         )
     }
 
-    pub fn shift(self, n: i32, fill: Expr<'a, T>, axis: i32, par: bool) -> Self
+    pub fn shift(self, n: i32, fill: Option<Expr<'a, T>>, axis: i32, par: bool) -> Self
     where
-        T: Clone,
+        T: Clone + GetNone,
     {
         self.chain_view_f(
             move |arr| {
                 Ok(arr
                     .shift(
                         n,
-                        fill.eval()?.view_arr().to_dim0()?.into_scalar().clone(),
+                        fill.map(|fill| {
+                            fill.eval()
+                                .unwrap()
+                                .view_arr()
+                                .to_dim0()
+                                .unwrap()
+                                .into_scalar()
+                                .clone()
+                        })
+                        .unwrap_or_else(|| T::none()),
                         axis,
                         par,
                     )
@@ -714,67 +723,6 @@ where
         )
     }
 
-    // /// take values on a given axis
-    // pub fn take_on_axis_by_expr(self, slc: Expr<'a, usize>, axis: i32, par: bool) -> Self
-    // where
-    //     T: Clone,
-    // {
-    //     self.chain_view_f(
-    //         move |arr| {
-    //             let slc = slc.no_dim0().eval()?;
-    //             let slc_eval = slc.view_arr();
-    //             if slc_eval.ndim() > 1 {
-    //                 return Err("The slice must be dim 0 or dim 1 when take on axis".into());
-    //             }
-    //             if slc_eval.len() == 1 {
-    //                 Ok(arr
-    //                     .take_one_on_axis(*slc_eval.to_dim0()?.into_scalar(), axis, par)
-    //                     .into())
-    //             } else {
-    //                 Ok(arr.take_clone(slc_eval.to_dim1()?, axis, par).into())
-    //             }
-    //         },
-    //         RefType::False,
-    //     )
-    // }
-
-    // /// take values on a given axis
-    // ///
-    // /// # Safety
-    // ///
-    // /// The slice should be valid.
-    // pub unsafe fn take_on_axis_by_expr_unchecked(
-    //     self,
-    //     slc: Expr<'a, usize>,
-    //     axis: i32,
-    //     par: bool,
-    // ) -> Self
-    // where
-    //     T: Clone,
-    // {
-    //     self.chain_view_f(
-    //         move |arr| {
-    //             let slc = slc.no_dim0().eval()?;
-    //             let slc_eval = slc.view_arr();
-    //             if slc_eval.ndim() > 1 {
-    //                 return Err("The slice must be dim 0 or dim 1 when take on axis".into());
-    //             }
-    //             if slc_eval.len() == 1 {
-    //                 Ok(arr
-    //                     .index_axis(arr.norm_axis(axis), slc_eval.to_dim1()?[0])
-    //                     .to_owned()
-    //                     .wrap()
-    //                     .into())
-    //             } else {
-    //                 Ok(arr
-    //                     .take_clone_unchecked(slc_eval.to_dim1()?, axis, par)
-    //                     .into())
-    //             }
-    //         },
-    //         RefType::False,
-    //     )
-    // }
-
     /// take values on a given axis
     ///
     /// # Safety
@@ -1093,46 +1041,6 @@ impl<'a> Expr<'a, DateTime> {
     pub fn strftime(self, fmt: Option<String>) -> Expr<'a, String> {
         self.chain_view_f(
             move |arr| Ok(arr.map(move |dt| dt.strftime(fmt.clone())).into()),
-            RefType::False,
-        )
-    }
-
-    /// Rolling with a timedelta, note that the time should be sorted before rolling.
-    ///
-    /// this function return start index of each window.
-    pub fn time_rolling<TD: Into<TimeDelta>>(self, duration: TD) -> Expr<'a, usize> {
-        let duration: TimeDelta = duration.into();
-        self.chain_view_f(
-            move |arr| {
-                if arr.len() == 0 {
-                    return Ok(Arr1::from_vec(vec![]).to_dimd().into());
-                }
-                let arr = arr.to_dim1()?;
-                // .expect("rolling only support array with dim 1");
-                let mut start_time = arr[0];
-                let mut start = 0;
-                let out = arr
-                    .iter()
-                    .enumerate()
-                    .map(|(i, dt)| {
-                        let dt = *dt;
-                        if dt < start_time + duration.clone() {
-                            start
-                        } else {
-                            for j in start + 1..=i {
-                                // safety: 0<=j<arr.len()
-                                start_time = unsafe { *arr.uget(j) };
-                                if dt < start_time + duration.clone() {
-                                    start = j;
-                                    break;
-                                }
-                            }
-                            start
-                        }
-                    })
-                    .collect_trusted();
-                Ok(Arr1::from_vec(out).to_dimd().into())
-            },
             RefType::False,
         )
     }

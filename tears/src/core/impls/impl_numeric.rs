@@ -1,6 +1,4 @@
-use crate::TpResult;
-
-use super::super::{Arr, ArrBase, ArrD, WrapNdarray};
+use crate::{Arr, ArrBase, ArrD, TpResult, WrapNdarray};
 use ndarray::{Data, DataMut, DimMax, Dimension, Zip};
 use ndarray::{Ix2, IxDyn, LinalgScalar};
 use num::traits::{abs, real::Real, Signed};

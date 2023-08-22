@@ -7,9 +7,40 @@ use std::collections::hash_map::Entry;
 
 impl<'a, T> Expr<'a, T>
 where
-    T: ExprElement + TpHash + 'a,
+    T: ExprElement + 'a,
 {
-    pub fn get_unique_idx(self, others: Option<Vec<Exprs<'a>>>, keep: String) -> Expr<'a, usize> {
+    pub fn sorted_unique(self) -> Self
+    where
+        T: PartialEq + Clone,
+    {
+        self.chain_view_f(
+            move |arr| {
+                let arr = arr.to_dim1()?;
+                let out = arr.sorted_unique_1d();
+                Ok(out.to_dimd().into())
+            },
+            RefType::False,
+        )
+    }
+
+    pub fn get_sorted_unique_idx(self, keep: String) -> Expr<'a, usize>
+    where
+        T: PartialEq,
+    {
+        self.chain_view_f(
+            move |arr| {
+                let arr = arr.to_dim1()?;
+                let out = arr.get_sorted_unique_idx_1d(keep);
+                Ok(out.to_dimd().into())
+            },
+            RefType::False,
+        )
+    }
+
+    pub fn get_unique_idx(self, others: Option<Vec<Exprs<'a>>>, keep: String) -> Expr<'a, usize>
+    where
+        T: TpHash,
+    {
         self.chain_view_f(
             move |arr| {
                 let others = others

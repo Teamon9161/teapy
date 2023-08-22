@@ -1,4 +1,4 @@
-use super::super::impls::{conjugate, LeastSquaresResult};
+use super::super::core::{conjugate, LeastSquaresResult};
 use super::expr::{Expr, ExprElement, RefType};
 use crate::{ArbArray, Arr1, Arr2, ArrD, ArrViewD, Cast, WrapNdarray};
 use ndarray::{Axis, Ix2, LinalgScalar};
