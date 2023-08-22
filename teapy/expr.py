@@ -44,16 +44,20 @@ class ExprRolling:
         self.by = by
         self.window = window
         self.idx = idx
-        if "DateTime" in by.dtype:
+        if by is not None and "DateTime" in by.dtype:
             self.is_time = True
 
     def get_idx(self):
         if self.idx is None:
+            # if self.is_time:
             return self.by._get_time_rolling_idx(self.window)
         else:
             return self.idx
 
     def __getattr__(self, name):
-        if self.is_time:
-            idx = self.get_idx()
+        idx = self.get_idx()
+
+        def wrap_func():
             return getattr(self.expr, f"_rolling_select_{name}")(idx)
+
+        return wrap_func

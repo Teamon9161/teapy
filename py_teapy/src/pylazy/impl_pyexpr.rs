@@ -1154,7 +1154,7 @@ impl PyExpr {
         fill: Option<&PyAny>,
         axis: i32,
         par: bool,
-        // py: Python,
+        py: Python,
     ) -> PyResult<Self> {
         let fill = if let Some(fill) = fill {
             if fill.is_none() {
@@ -1166,204 +1166,39 @@ impl PyExpr {
             None
         };
         let obj = fill.clone().map(|e| e.obj());
-        let out = match_exprs!(
-            &self.inner,
-            e,
-            {
-                e.clone()
-                    .shift(n, fill.map(|v| v.inner.cast()), axis, par)
-                    .to_py(self.obj())
-            },
-            F32,
-            F64,
-            I32,
-            I64,
-            Usize,
-            String,
-            OptUsize,
-            #[cfg(feature = "option_dtype")]
-            OptF32,
-            #[cfg(feature = "option_dtype")]
-            OptF64,
-            #[cfg(feature = "option_dtype")]
-            OptI32,
-            #[cfg(feature = "option_dtype")]
-            OptI64
-        );
-
-        // let out = match &self.inner {
-        //     Exprs::Bool(e) => e
-        //         .clone()
-        //         .shift(
-        //             n,
-        //             fill.expect("A fill value should be passed when shift a bool expression")
-        //                 .cast_bool()?,
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     Exprs::F64(e) => e
-        //         .clone()
-        //         .shift(
-        //             n,
-        //             fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f64()?,
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     Exprs::F32(e) => e
-        //         .clone()
-        //         .shift(
-        //             n,
-        //             fill.unwrap_or_else(|| f64::NAN.into_pyexpr()).cast_f32()?,
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     Exprs::I64(e) => {
-        //         if let Some(fill) = fill {
-        //             e.clone()
-        //                 .shift(n, fill.cast_i64()?, axis, par)
-        //                 .to_py(self.obj())
-        //         } else {
-        //             // default fill value is NaN
-        //             e.clone()
-        //                 .cast::<f64>()
-        //                 .shift(n, f64::NAN.into(), axis, par)
-        //                 .to_py(self.obj())
-        //         }
-        //     }
-        //     Exprs::I32(e) => {
-        //         if let Some(fill) = fill {
-        //             e.clone()
-        //                 .shift(n, fill.cast_i32()?, axis, par)
-        //                 .to_py(self.obj())
-        //         } else {
-        //             // default fill value is NaN
-        //             e.clone()
-        //                 .cast::<f64>()
-        //                 .shift(n, f64::NAN.into(), axis, par)
-        //                 .to_py(self.obj())
-        //         }
-        //     }
-        //     Exprs::Usize(e) => {
-        //         if let Some(fill) = fill {
-        //             e.clone()
-        //                 .shift(n, fill.cast_usize()?, axis, par)
-        //                 .to_py(self.obj())
-        //         } else {
-        //             // default fill value is NaN
-        //             e.clone()
-        //                 .cast::<f64>()
-        //                 .shift(n, f64::NAN.into(), axis, par)
-        //                 .to_py(self.obj())
-        //         }
-        //     }
-        //     // Exprs::OpUsize(_e) => todo!(),
-        //     Exprs::String(e) => e
-        //         .clone()
-        //         .shift(
-        //             n,
-        //             fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
-        //                 .cast_string()?,
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     Exprs::Str(_) => {
-        //         unimplemented!("shift is not supported for str expression, cast to string first")
-        //     }
-        //     Exprs::TimeDelta(e) => e
-        //         .clone()
-        //         .shift(
-        //             n,
-        //             fill.unwrap_or_else(|| "".to_owned().into_pyexpr())
-        //                 .cast_timedelta()?,
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     Exprs::DateTime(e) => e
-        //         .clone()
-        //         .shift(
-        //             n,
-        //             fill.unwrap_or_else(|| DateTime(Default::default()).into_pyexpr())
-        //                 .cast_datetime(None)?,
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     Exprs::Object(e) => e
-        //         .clone()
-        //         .shift(
-        //             n,
-        //             fill.unwrap_or_else(|| PyValue(py.None()).into_pyexpr())
-        //                 .cast_object_eager(py)?,
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     #[cfg(feature = "option_dtype")]
-        //     Exprs::OptF32(e) => e
-        //         .clone()
-        //         .cast::<OptF32>()
-        //         .shift(
-        //             n,
-        //             fill.map(|f| f.cast_optf32().unwrap())
-        //                 .unwrap_or_else(|| OptF32(None).into()),
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     #[cfg(feature = "option_dtype")]
-        //     Exprs::OptF64(e) => e
-        //         .clone()
-        //         .cast::<OptF64>()
-        //         .shift(
-        //             n,
-        //             fill.map(|f| f.cast_optf64().unwrap())
-        //                 .unwrap_or_else(|| OptF64(None).into()),
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     #[cfg(feature = "option_dtype")]
-        //     Exprs::OptI64(e) => e
-        //         .clone()
-        //         .cast::<OptI64>()
-        //         .shift(
-        //             n,
-        //             fill.map(|f| f.cast_opti64().unwrap())
-        //                 .unwrap_or_else(|| OptI64(None).into()),
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     #[cfg(feature = "option_dtype")]
-        //     Exprs::OptI32(e) => e
-        //         .clone()
-        //         .cast::<OptI32>()
-        //         .shift(
-        //             n,
-        //             fill.map(|f| f.cast_opti32().unwrap())
-        //                 .unwrap_or_else(|| OptI32(None).into()),
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        //     // #[cfg(feature = "option_dtype")]
-        //     Exprs::OptUsize(e) => e
-        //         .clone()
-        //         .cast::<OptUsize>()
-        //         .shift(
-        //             n,
-        //             fill.map(|f| f.cast_optusize().unwrap())
-        //                 .unwrap_or_else(|| Into::<OptUsize>::into(None).into()),
-        //             axis,
-        //             par,
-        //         )
-        //         .to_py(self.obj()),
-        // };
+        let out = if matches!(&self.inner, Exprs::Object(_)) {
+            self.inner
+                .clone()
+                .cast_object()?
+                .shift(n, fill.map(|e| e.cast_object_eager(py).unwrap()), axis, par)
+                .to_py(self.obj())
+        } else {
+            match_exprs!(
+                &self.inner,
+                e,
+                {
+                    e.clone()
+                        .shift(n, fill.map(|v| v.inner.cast()), axis, par)
+                        .to_py(self.obj())
+                },
+                F32,
+                F64,
+                I32,
+                I64,
+                Usize,
+                String,
+                OptUsize,
+                DateTime,
+                #[cfg(feature = "option_dtype")]
+                OptF32,
+                #[cfg(feature = "option_dtype")]
+                OptF64,
+                #[cfg(feature = "option_dtype")]
+                OptI32,
+                #[cfg(feature = "option_dtype")]
+                OptI64
+            )
+        };
         if let Some(obj) = obj {
             Ok(out.add_obj(obj))
         } else {

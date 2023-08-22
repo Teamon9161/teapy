@@ -12,7 +12,9 @@ use std::{
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
 
-use crate::{Cast, GetNone};
+use crate::{Cast, GetNone, OptUsize};
+#[cfg(feature = "option_dtype")]
+use crate::{OptF32, OptF64, OptI32, OptI64};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -224,6 +226,41 @@ impl DateTime {
         }
     }
 }
+
+impl Cast<DateTime> for i64 {
+    fn cast(self) -> DateTime {
+        if self == i64::MIN {
+            return DateTime(None);
+        }
+        DateTime::from_timestamp_us(self).unwrap_or(DateTime(None))
+    }
+}
+
+macro_rules! impl_cast_datetime {
+    ($($(#[$meta: meta])? $ty: ty),*) => {
+        $($(#[$meta])? impl Cast<DateTime> for $ty {
+            #[inline]
+            fn cast(self) -> DateTime {
+                Cast::<i64>::cast(self).cast()
+            }
+        })*
+    };
+}
+impl_cast_datetime!(
+    f32,
+    f64,
+    i32,
+    usize,
+    OptUsize,
+    #[cfg(feature = "option_dtype")]
+    OptF32,
+    #[cfg(feature = "option_dtype")]
+    OptF64,
+    #[cfg(feature = "option_dtype")]
+    OptI32,
+    #[cfg(feature = "option_dtype")]
+    OptI64
+);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TimeUnit {

@@ -337,6 +337,7 @@ impl_expr_cast!(
     f64,
     usize,
     String,
+    DateTime,
     OptUsize,
     #[cfg(feature = "option_dtype")]
     OptF32,
