@@ -2,10 +2,7 @@ use super::{GetNone, OptUsize};
 #[cfg(feature = "option_dtype")]
 use super::{OptF32, OptF64, OptI32, OptI64};
 
-pub trait Cast<T> // 'static
-// where
-//     T: 'static,
-{
+pub trait Cast<T> {
     fn cast(self) -> T;
 }
 

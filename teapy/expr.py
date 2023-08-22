@@ -30,44 +30,30 @@ def left_join(self, right, left_other=None):
 
 
 @register
-def rolling(self, window: str | int, by=None) -> ExprRolling:
-    return ExprRolling(self, window, by=by)
+def rolling(self, window: str | int = None, by=None, idx=None) -> ExprRolling:
+    if window is None and idx is None:
+        raise ValueError("window or idx must be specified")
+    elif window is not None and idx is not None:
+        raise ValueError("window and idx cannot be specified at the same time")
+    return ExprRolling(self, window=window, by=by, idx=idx)
 
 
 class ExprRolling:
-    def __init__(self, expr, window, by):
+    def __init__(self, expr, window, by, idx=None):
         self.expr = expr
         self.by = by
         self.window = window
+        self.idx = idx
         if "DateTime" in by.dtype:
             self.is_time = True
 
-    def max(self):
-        if self.is_time:
-            idx = self.by._get_time_rolling_idx(self.window)
-            return self.expr._rolling_select_max(idx)
+    def get_idx(self):
+        if self.idx is None:
+            return self.by._get_time_rolling_idx(self.window)
+        else:
+            return self.idx
 
-    def min(self):
+    def __getattr__(self, name):
         if self.is_time:
-            idx = self.by._get_time_rolling_idx(self.window)
-            return self.expr._rolling_select_min(idx)
-
-    def umax(self):
-        if self.is_time:
-            idx = self.by._get_time_rolling_idx(self.window)
-            return self.expr._rolling_select_umax(idx)
-
-    def umin(self):
-        if self.is_time:
-            idx = self.by._get_time_rolling_idx(self.window)
-            return self.expr._rolling_select_umin(idx)
-
-    def mean(self):
-        if self.is_time:
-            idx = self.by._get_time_rolling_idx(self.window)
-            return self.expr._rolling_select_mean(idx)
-
-    def std(self):
-        if self.is_time:
-            idx = self.by._get_time_rolling_idx(self.window)
-            return self.expr._rolling_select_std(idx)
+            idx = self.get_idx()
+            return getattr(self.expr, f"_rolling_select_{name}")(idx)
