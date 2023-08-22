@@ -99,11 +99,20 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     }
 }
 
+pub enum RollingTimeStartBy {
+    Full,
+    DurationStart,
+}
+
 impl<'a> Expr<'a, DateTime> {
     /// Rolling with a timedelta, note that the time should be sorted before rolling.
     ///
     /// this function return start index of each window.
-    pub fn get_time_rolling_idx<TD: Into<TimeDelta>>(self, duration: TD) -> Expr<'a, usize> {
+    pub fn get_time_rolling_idx<TD: Into<TimeDelta>>(
+        self,
+        duration: TD,
+        start_by: RollingTimeStartBy,
+    ) -> Expr<'a, usize> {
         let duration: TimeDelta = duration.into();
         self.chain_view_f(
             move |arr| {
@@ -111,29 +120,51 @@ impl<'a> Expr<'a, DateTime> {
                     return Ok(Arr1::from_vec(vec![]).to_dimd().into());
                 }
                 let arr = arr.to_dim1()?;
-                // .expect("rolling only support array with dim 1");
-                let mut start_time = arr[0];
-                let mut start = 0;
-                let out = arr
-                    .iter()
-                    .enumerate()
-                    .map(|(i, dt)| {
-                        let dt = *dt;
-                        if dt < start_time + duration.clone() {
-                            start
-                        } else {
-                            for j in start + 1..=i {
-                                // safety: 0<=j<arr.len()
-                                start_time = unsafe { *arr.uget(j) };
+                let out = match start_by {
+                    // rollling the full duration
+                    RollingTimeStartBy::Full => {
+                        let mut start_time = arr[0];
+                        let mut start = 0;
+                        arr.iter()
+                            .enumerate()
+                            .map(|(i, dt)| {
+                                let dt = *dt;
                                 if dt < start_time + duration.clone() {
-                                    start = j;
-                                    break;
+                                    start
+                                } else {
+                                    for j in start + 1..=i {
+                                        // safety: 0<=j<arr.len()
+                                        start_time = unsafe { *arr.uget(j) };
+                                        if dt < start_time + duration.clone() {
+                                            start = j;
+                                            break;
+                                        }
+                                    }
+                                    start
                                 }
-                            }
-                            start
-                        }
-                    })
-                    .collect_trusted();
+                            })
+                            .collect_trusted()
+                    }
+                    // rolling to the start of the duration
+                    RollingTimeStartBy::DurationStart => {
+                        let mut start = 0;
+                        let mut dt_truncate = arr[0].duration_trunc(duration.clone());
+                        arr.iter()
+                            .enumerate()
+                            .map(|(i, dt)| {
+                                let dt = *dt;
+                                if dt < dt_truncate + duration.clone() {
+                                    start
+                                } else {
+                                    dt_truncate = dt.duration_trunc(duration.clone());
+                                    start = i;
+                                    start
+                                }
+                            })
+                            .collect_trusted()
+                    }
+                };
+
                 Ok(Arr1::from_vec(out).to_dimd().into())
             },
             RefType::False,

@@ -7,3 +7,4 @@ mod impl_view;
 mod impl_window;
 
 pub use impl_own::DropNaMethod;
+pub use impl_window::RollingTimeStartBy;

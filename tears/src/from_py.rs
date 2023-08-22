@@ -1,7 +1,7 @@
 use crate::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
 #[cfg(feature = "lazy")]
-use crate::{DropNaMethod, JoinType};
-use pyo3::{FromPyObject, PyAny, PyResult};
+use crate::{DropNaMethod, JoinType, RollingTimeStartBy};
+use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyResult};
 
 impl<'source> FromPyObject<'source> for CorrMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
@@ -86,5 +86,20 @@ impl<'source> FromPyObject<'source> for DropNaMethod {
             _ => panic!("Not supported dropna method: {s}"),
         };
         Ok(out)
+    }
+}
+
+#[cfg(feature = "lazy")]
+impl<'source> FromPyObject<'source> for RollingTimeStartBy {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        let s: Option<&str> = ob.extract()?;
+        let s = s.unwrap_or("full").to_lowercase();
+        match s.as_str() {
+            "full" => Ok(RollingTimeStartBy::Full),
+            "duration_start" | "durationstart" | "ds" => Ok(RollingTimeStartBy::DurationStart),
+            _ => Err(PyValueError::new_err(
+                "Not supported rolling by time start_by method: {s}",
+            )),
+        }
     }
 }

@@ -1,4 +1,4 @@
-use chrono::{Datelike, Duration, Months, NaiveDateTime};
+use chrono::{Datelike, Duration, DurationRound, Months, NaiveDateTime};
 use ndarray::ScalarOperand;
 use numpy::{
     datetime::{Datetime as NPDatetime, Unit as NPUnit},
@@ -54,6 +54,12 @@ impl From<Option<NaiveDateTime>> for DateTime {
     }
 }
 
+impl From<NaiveDateTime> for DateTime {
+    fn from(dt: NaiveDateTime) -> Self {
+        Self(Some(dt))
+    }
+}
+
 impl Deref for DateTime {
     type Target = Option<NaiveDateTime>;
     fn deref(&self) -> &Self::Target {
@@ -73,18 +79,6 @@ impl GetNone for DateTime {
     }
 }
 
-// impl PartialEq for DateTime {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.0.eq(&other.0)
-//     }
-// }
-
-// impl PartialOrd for DateTime {
-//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//         self.0.partial_cmp(&other.0)
-//     }
-// }
-
 impl DateTime {
     #[inline]
     pub fn from_timestamp_opt(secs: i64, nsecs: u32) -> Self {
@@ -93,9 +87,6 @@ impl DateTime {
 
     #[inline]
     pub fn from_timestamp_ms(ms: i64) -> Option<Self> {
-        // if ms == i64::MIN {
-        //     return Self::from_timestamp_opt(ms, 0)
-        // }
         let mut secs = ms / MILLIS_PER_SEC;
         if ms < 0 {
             secs = secs.checked_sub(1)?;
@@ -117,9 +108,6 @@ impl DateTime {
 
     #[inline]
     pub fn from_timestamp_us(us: i64) -> Option<Self> {
-        // if us == i64::MIN {
-        //     return Self::from_timestamp_opt(us, 0)
-        // }
         let mut secs = us / MICROS_PER_SEC;
         if us < 0 {
             secs = secs.checked_sub(1)?;
@@ -141,9 +129,6 @@ impl DateTime {
 
     #[inline]
     pub fn from_timestamp_ns(ns: i64) -> Option<Self> {
-        // if ns == i64::MIN {
-        //     return Self::from_timestamp_opt(ns, 0)
-        // }
         let mut secs = ns / (NANOS_PER_SEC as i64);
         if ns < 0 {
             secs = secs.checked_sub(1)?;
@@ -177,12 +162,44 @@ impl DateTime {
             self.0.map_or("NaT".to_string(), |dt| dt.to_string())
         }
     }
+
+    pub fn duration_trunc(self, duration: TimeDelta) -> Self {
+        if self.is_none() {
+            return self;
+        }
+        let mut dt = self.0.unwrap();
+        let dm = duration.months;
+        if dm != 0 {
+            let (flag, dt_year) = dt.year_ce();
+            if dm < 0 {
+                unimplemented!("not support year before ce or negative month")
+            }
+            let dt_month = if flag {
+                (dt_year * 12 + dt.month()) as i32
+            } else {
+                dt_year as i32 * (-12) + dt.month() as i32
+            };
+            let delta_down = dt_month % dm;
+            dt = match delta_down.cmp(&0) {
+                Ordering::Equal => dt,
+                Ordering::Greater => dt - Months::new(delta_down as u32),
+                Ordering::Less => dt - Months::new((dm - delta_down.abs()) as u32),
+            };
+            if let Some(nd) = duration.inner.num_nanoseconds() {
+                if nd == 0 {
+                    return dt.into();
+                }
+            }
+        }
+        dt.duration_trunc(duration.inner)
+            .expect("Rounding Error")
+            .into()
+    }
 }
 
 impl ToString for DateTime {
     fn to_string(&self) -> String {
         self.strftime(None)
-        // self.0.to_string()
     }
 }
 

@@ -46,7 +46,7 @@ pub use utils::{kh_sum, DefaultNew, EmptyNew};
 #[cfg(feature = "lazy")]
 pub use lazy::{
     flatten, get_partition_size, groupby, groupby_par, join_left, prepare_groupby, DropNaMethod,
-    Expr, ExprElement, ExprOut, ExprOutView, Exprs, JoinType, RefType,
+    Expr, ExprElement, ExprOut, ExprOutView, Exprs, JoinType, RefType, RollingTimeStartBy,
 };
 
 #[cfg(feature = "blas")]

@@ -30,27 +30,30 @@ def left_join(self, right, left_other=None):
 
 
 @register
-def rolling(self, window: str | int = None, by=None, idx=None) -> ExprRolling:
+def rolling(
+    self, window: str | int = None, by=None, idx=None, start_by="full"
+) -> ExprRolling:
     if window is None and idx is None:
         raise ValueError("window or idx must be specified")
     elif window is not None and idx is not None:
         raise ValueError("window and idx cannot be specified at the same time")
-    return ExprRolling(self, window=window, by=by, idx=idx)
+    return ExprRolling(self, window=window, by=by, idx=idx, start_by=start_by)
 
 
 class ExprRolling:
-    def __init__(self, expr, window, by, idx=None):
+    def __init__(self, expr, window, by, idx=None, start_by="full"):
         self.expr = expr
         self.by = by
         self.window = window
         self.idx = idx
+        self.start_by = start_by
         if by is not None and "DateTime" in by.dtype:
             self.is_time = True
 
     def get_idx(self):
         if self.idx is None:
             # if self.is_time:
-            return self.by._get_time_rolling_idx(self.window)
+            return self.by._get_time_rolling_idx(self.window, start_by=self.start_by)
         else:
             return self.idx
 

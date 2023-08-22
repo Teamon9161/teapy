@@ -12,7 +12,8 @@ use pyo3::{
 };
 use std::iter::repeat;
 use tears::{
-    Cast, DropNaMethod, ExprOut, ExprOutView, Number, RefType, StrError, TimeDelta, WinsorizeMethod,
+    Cast, DropNaMethod, ExprOut, ExprOutView, Number, RefType, RollingTimeStartBy, StrError,
+    TimeDelta, WinsorizeMethod,
 };
 #[cfg(feature = "option_dtype")]
 // use tears::{OptF32, OptF64, OptI32, OptI64};
@@ -2609,13 +2610,18 @@ impl PyExpr {
         Ok(out)
     }
 
-    pub unsafe fn _get_time_rolling_idx(&self, duration: &str) -> PyResult<Self> {
+    #[pyo3(signature=(duration, start_by=RollingTimeStartBy::Full))]
+    pub unsafe fn _get_time_rolling_idx(
+        &self,
+        duration: &str,
+        start_by: RollingTimeStartBy,
+    ) -> PyResult<Self> {
         let obj = self.obj();
         let out = self
             .inner
             .clone()
             .cast_datetime(None)?
-            .get_time_rolling_idx(duration)
+            .get_time_rolling_idx(duration, start_by)
             .to_py(obj);
         Ok(out)
     }
@@ -2711,7 +2717,7 @@ impl PyExpr {
         let index_expr = parse_expr_nocopy(index)?;
         let mut rolling_idx = index_expr
             .cast_datetime(None)?
-            .get_time_rolling_idx(duration);
+            .get_time_rolling_idx(duration, RollingTimeStartBy::Full);
         rolling_idx.eval_inplace()?;
         let mut column_num = 0;
         let mut output = rolling_idx
