@@ -5,6 +5,7 @@ use num::{traits::AsPrimitive, Num, One, Zero};
 use pyo3::{FromPyObject, PyAny, PyResult, Python, ToPyObject};
 use std::cmp::{Ordering, PartialOrd};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
+use std::str::FromStr;
 
 pub trait ArrToOpt {
     type OutType;
@@ -81,6 +82,19 @@ macro_rules! define_option_dtype {
             }
         }
 
+
+        impl FromStr for $typ {
+            type Err = <$real as FromStr>::Err;
+            #[inline]
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                if s == "None" || &s.to_lowercase() == "nan" {
+                    return Ok(None.into());
+                }
+                <$real>::from_str(s).map(|v| v.into())
+            }
+        }
+
+
         impl GetNone for $typ {
             #[inline]
             fn none() -> Self {
@@ -129,7 +143,7 @@ macro_rules! define_option_dtype {
 
             #[inline]
             pub fn into_real(self) -> $real {
-                self.0.unwrap_or_else(|| <$real>::nan())
+                self.0.unwrap_or_else(|| <$real>::none())
             }
         }
 
@@ -376,14 +390,13 @@ define_option_dtype!(OptF32, f32);
 define_option_dtype!(OptI64, i64);
 define_option_dtype!(OptI32, i32);
 define_option_dtype!(OptUsize, usize);
+define_option_dtype!(OptBool, bool);
 
 define_option_dtype!(impl_numeric OptF64, f64);
 define_option_dtype!(impl_numeric OptF32, f32);
 define_option_dtype!(impl_numeric OptI64, i64);
 define_option_dtype!(impl_numeric OptI32, i32);
 define_option_dtype!(impl_numeric OptUsize, usize);
-
-// define_option_dtype!(OptDateTime, DateTime);
 
 impl_as_primitive_opt_for_opt!(
     OptF32,

@@ -248,27 +248,29 @@ impl<'a> Exprs<'a> {
     }
 
     pub fn cast_string(self) -> TpResult<Expr<'a, String>> {
-        match self {
-            Exprs::String(e) => Ok(e),
-            Exprs::Str(e) => Ok(e.cast_string()),
-            Exprs::F32(e) => Ok(e.cast()),
-            Exprs::F64(e) => Ok(e.cast()),
-            Exprs::I32(e) => Ok(e.cast()),
-            Exprs::I64(e) => Ok(e.cast()),
-            Exprs::DateTime(e) => Ok(e.strftime(None)),
-            _ => Err("Cast to string for this dtype is unimplemented".into()),
-        }
+        Ok(self.cast())
+        // match self {
+        //     Exprs::String(e) => Ok(e),
+        //     Exprs::Str(e) => Ok(e.cast_string()),
+        //     Exprs::F32(e) => Ok(e.cast()),
+        //     Exprs::F64(e) => Ok(e.cast()),
+        //     Exprs::I32(e) => Ok(e.cast()),
+        //     Exprs::I64(e) => Ok(e.cast()),
+        //     Exprs::DateTime(e) => Ok(e.strftime(None)),
+        //     _ => Err("Cast to string for this dtype is unimplemented".into()),
+        // }
     }
 
     pub fn cast_bool(self) -> TpResult<Expr<'a, bool>> {
-        match self {
-            Exprs::Bool(e) => Ok(e),
-            Exprs::F32(e) => Ok(e.cast_bool()),
-            Exprs::F64(e) => Ok(e.cast_bool()),
-            Exprs::I32(e) => Ok(e.cast_bool()),
-            Exprs::I64(e) => Ok(e.cast_bool()),
-            _ => Err("Cast to bool for this dtype is unimplemented".into()),
-        }
+        Ok(self.cast())
+        // match self {
+        //     Exprs::Bool(e) => Ok(e),
+        //     Exprs::F32(e) => Ok(e.cast_bool()),
+        //     Exprs::F64(e) => Ok(e.cast_bool()),
+        //     Exprs::I32(e) => Ok(e.cast_bool()),
+        //     Exprs::I64(e) => Ok(e.cast_bool()),
+        //     _ => Err("Cast to bool for this dtype is unimplemented".into()),
+        // }
     }
 
     pub fn cast_datetime(self, unit: Option<TimeUnit>) -> TpResult<Expr<'a, DateTime>> {
@@ -283,7 +285,8 @@ impl<'a> Exprs<'a> {
         }
     }
     pub fn cast_datetime_default(self) -> TpResult<Expr<'a, DateTime>> {
-        self.cast_datetime(Some(Default::default()))
+        Ok(self.cast())
+        // self.cast_datetime(Some(Default::default()))
     }
 
     pub fn cast_timedelta(self) -> TpResult<Expr<'a, TimeDelta>> {
@@ -307,13 +310,13 @@ macro_rules! impl_expr_cast {
                         Exprs::F64(e) => e.cast::<$T>(),
                         Exprs::I32(e) => e.cast::<$T>(),
                         Exprs::I64(e) => e.cast::<$T>(),
-                        // Exprs::Bool(e) => Ok(e.cast::<$T>()),
+                        Exprs::Bool(e) => e.cast::<i32>().cast::<$T>(),
                         Exprs::Usize(e) => e.cast::<$T>(),
-                        // Exprs::Str(e) => Ok(e.cast::<$T>()),
-                        // Exprs::String(e) => Ok(e.cast::<$T>()),
-                        // Exprs::Object(e) => Ok(e.cast::<$T>()),
-                        // Exprs::DateTime(e) => e.cast::<$T>(),
-                        // Exprs::TimeDelta(e) => e.cast::<$T>(),
+                        // Exprs::Str(e) => e.cast::<$T>(),
+                        Exprs::String(e) => e.cast::<$T>(),
+                        // Exprs::Object(e) => e.cast::<$T>(),
+                        Exprs::DateTime(e) => e.cast::<i64>().cast::<$T>(),
+                        Exprs::TimeDelta(e) => e.cast::<i64>().cast::<$T>(),
                         #[cfg(feature = "option_dtype")]
                         Exprs::OptF64(e) => e.cast::<$T>(),
                         #[cfg(feature = "option_dtype")]
@@ -336,9 +339,11 @@ impl_expr_cast!(
     f32,
     f64,
     usize,
+    bool,
     String,
     DateTime,
     OptUsize,
+    TimeDelta,
     #[cfg(feature = "option_dtype")]
     OptF32,
     #[cfg(feature = "option_dtype")]

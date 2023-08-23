@@ -784,7 +784,7 @@ impl PyExpr {
             (&self.inner, e1, F32, F64, I32, I64, Bool),
             (other.inner, e2, F64, F32, I32, I64, Bool),
             {
-                Ok((e1.clone().cast_bool() & e2.cast_bool())
+                Ok((e1.clone().cast::<bool>() & e2.cast::<bool>())
                     .to_py(self.obj())
                     .add_obj(obj))
             }
@@ -807,7 +807,7 @@ impl PyExpr {
             (&self.inner, e1, F64, F32, I64, I32, Bool),
             (other.inner, e2, F64, F32, I64, I32, Bool),
             {
-                Ok((e1.clone().cast_bool() | e2.cast_bool())
+                Ok((e1.clone().cast::<bool>() | e2.cast::<bool>())
                     .to_py(self.obj())
                     .add_obj(obj))
             }
@@ -1182,6 +1182,7 @@ impl PyExpr {
                         .shift(n, fill.map(|v| v.inner.cast()), axis, par)
                         .to_py(self.obj())
                 },
+                Bool,
                 F32,
                 F64,
                 I32,

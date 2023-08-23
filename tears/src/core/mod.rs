@@ -242,10 +242,9 @@ where
         self.map(move |x| f(*x))
     }
 
-    pub fn cast<'a, T2>(self) -> Arr<T2, D>
+    pub fn cast<T2>(self) -> Arr<T2, D>
     where
-        T: GetDataType + Clone + Cast<T2>,
-        T2: GetDataType + Clone + 'a,
+        T: Clone + Cast<T2>,
     {
         self.map(|v| v.clone().cast())
     }
@@ -346,21 +345,13 @@ where
         }
     }
 
-    /// Try to cast to bool
-    pub fn to_bool(&self) -> Arr<bool, D>
-    where
-        T: Debug + Clone + Cast<i32>,
-    {
-        self.map(|v| {
-            if v.clone().cast() == 0 {
-                false
-            } else if v.clone().cast() == 1 {
-                true
-            } else {
-                panic!("can not cast {v:?} to bool")
-            }
-        })
-    }
+    // /// Try to cast to bool
+    // pub fn to_bool(&self) -> Arr<bool, D>
+    // where
+    //     T: Debug + Cast<bool>,
+    // {
+    //     self.map(|v| {v.cast()})
+    // }
 
     /// Try to cast to pyobject
     pub fn to_object(&self, py: Python) -> Arr<PyValue, D>

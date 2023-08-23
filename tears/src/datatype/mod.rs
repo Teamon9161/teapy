@@ -26,6 +26,13 @@ pub struct OptI32;
 pub struct OptI64;
 #[cfg(not(feature = "option_dtype"))]
 pub type OptUsize = Option<usize>;
+#[cfg(not(feature = "option_dtype"))]
+
+impl GetNone for OptUsize {
+    fn none() -> Self {
+        None
+    }
+}
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum DataType {
@@ -176,11 +183,12 @@ impl GetNone for i64 {
     }
 }
 
-// impl GetNone for bool {
-//     fn none() -> Self {
-//         false
-//     }
-// }
+impl GetNone for bool {
+    #[inline]
+    fn none() -> Self {
+        panic!("Can not cast None to bool")
+    }
+}
 
 impl<'a> GetDataType for &'a str {
     type Physical = &'a str;

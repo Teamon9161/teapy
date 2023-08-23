@@ -291,23 +291,23 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         self.downcast().cast::<T2>().into()
     }
 
-    /// Try casting to bool type
-    #[inline]
-    pub fn cast_bool(self) -> Expr<'a, bool>
-    where
-        T: Cast<i32> + Clone,
-    {
-        self.downcast().cast_bool().into()
-    }
+    // /// Try casting to bool type
+    // #[inline]
+    // pub fn cast_bool(self) -> Expr<'a, bool>
+    // where
+    //     T: Cast<i32> + Clone,
+    // {
+    //     self.downcast().cast_bool().into()
+    // }
 
-    /// Try casting to string type
-    #[inline]
-    pub fn cast_string(self) -> Expr<'a, String>
-    where
-        T: ToString,
-    {
-        self.downcast().cast_string().into()
-    }
+    // /// Try casting to string type
+    // #[inline]
+    // pub fn cast_string(self) -> Expr<'a, String>
+    // where
+    //     T: ToString,
+    // {
+    //     self.downcast().cast_string().into()
+    // }
 
     /// Try casting to string type
     #[inline]
@@ -1204,18 +1204,18 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
-    /// Try casting to bool type
-    pub fn cast_bool(self) -> ExprInner<'a, bool>
-    where
-        T: Cast<i32> + Clone,
-    {
-        if T::dtype() == DataType::Bool {
-            // safety: T and T2 are the same type
-            unsafe { mem::transmute(self) }
-        } else {
-            self.chain_view_f(move |arr| Ok(arr.to_bool().into()), RefType::False)
-        }
-    }
+    // /// Try casting to bool type
+    // pub fn cast_bool(self) -> ExprInner<'a, bool>
+    // where
+    //     T: GetDataType + Cast<bool> + Clone,
+    // {
+    //     if T::dtype() == DataType::Bool {
+    //         // safety: T and T2 are the same type
+    //         unsafe { mem::transmute(self) }
+    //     } else {
+    //         self.chain_view_f(move |arr| Ok(arr.cast::<bool>.into()), RefType::False)
+    //     }
+    // }
 
     /// Try casting to datetime type
     #[allow(clippy::unnecessary_unwrap)]
@@ -1250,18 +1250,18 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
         }
     }
 
-    /// Try casting to string type
-    pub fn cast_string(self) -> ExprInner<'a, String>
-    where
-        T: ToString,
-    {
-        if T::dtype() == DataType::String {
-            // safety: T and T2 are the same type
-            unsafe { mem::transmute(self) }
-        } else {
-            self.chain_view_f(move |arr| Ok(arr.to_string().into()), RefType::False)
-        }
-    }
+    // /// Try casting to string type
+    // pub fn cast_string(self) -> ExprInner<'a, String>
+    // where
+    //     T: ToString,
+    // {
+    //     if T::dtype() == DataType::String {
+    //         // safety: T and T2 are the same type
+    //         unsafe { mem::transmute(self) }
+    //     } else {
+    //         self.chain_view_f(move |arr| Ok(arr.to_string().into()), RefType::False)
+    //     }
+    // }
 
     /// Try casting to bool type
     pub fn cast_object_eager(self, py: Python) -> TpResult<ExprInner<'a, PyValue>>

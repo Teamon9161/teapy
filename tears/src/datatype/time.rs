@@ -12,9 +12,9 @@ use std::{
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
 
-use crate::{Cast, GetNone, OptUsize};
-#[cfg(feature = "option_dtype")]
-use crate::{OptF32, OptF64, OptI32, OptI64};
+use crate::{Cast, GetNone};
+// #[cfg(feature = "option_dtype")]
+// use crate::{OptF32, OptF64, OptI32, OptI64};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -69,7 +69,44 @@ impl Deref for DateTime {
 
 impl Cast<i64> for DateTime {
     fn cast(self) -> i64 {
-        self.map_or(i64::MIN, |dt| dt.timestamp())
+        self.into_i64()
+    }
+}
+
+impl Cast<String> for DateTime {
+    fn cast(self) -> String {
+        self.to_string()
+    }
+}
+
+impl Cast<DateTime> for String {
+    fn cast(self) -> DateTime {
+        let rule_vec = vec![
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y%m%d %H%M%S",
+            "%d/%m/%Y",
+            "%d/%m/%Y H%M%S",
+            "%Y%m%d%H%M%S",
+            "%d/%m/%YH%M%S",
+        ];
+        for rule in rule_vec {
+            if let Ok(dt) = DateTime::parse(&self, rule) {
+                return dt;
+            }
+        }
+        panic!("can not parse datetime from string: {self}")
+    }
+}
+
+impl From<i64> for DateTime {
+    fn from(dt: i64) -> Self {
+        if dt == i64::MIN {
+            return DateTime(None);
+        }
+        DateTime::from_timestamp_us(dt).unwrap_or_default()
     }
 }
 
@@ -80,6 +117,11 @@ impl GetNone for DateTime {
 }
 
 impl DateTime {
+    #[inline]
+    pub fn into_i64(self) -> i64 {
+        self.map_or(i64::MIN, |dt| dt.timestamp_micros())
+    }
+
     #[inline]
     pub fn from_timestamp_opt(secs: i64, nsecs: u32) -> Self {
         Self(NaiveDateTime::from_timestamp_opt(secs, nsecs))
@@ -244,41 +286,6 @@ impl DateTime {
     }
 }
 
-impl Cast<DateTime> for i64 {
-    fn cast(self) -> DateTime {
-        if self == i64::MIN {
-            return DateTime(None);
-        }
-        DateTime::from_timestamp_us(self).unwrap_or(DateTime(None))
-    }
-}
-
-macro_rules! impl_cast_datetime {
-    ($($(#[$meta: meta])? $ty: ty),*) => {
-        $($(#[$meta])? impl Cast<DateTime> for $ty {
-            #[inline]
-            fn cast(self) -> DateTime {
-                Cast::<i64>::cast(self).cast()
-            }
-        })*
-    };
-}
-impl_cast_datetime!(
-    f32,
-    f64,
-    i32,
-    usize,
-    OptUsize,
-    #[cfg(feature = "option_dtype")]
-    OptF32,
-    #[cfg(feature = "option_dtype")]
-    OptF64,
-    #[cfg(feature = "option_dtype")]
-    OptI32,
-    #[cfg(feature = "option_dtype")]
-    OptI64
-);
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TimeUnit {
     Year,
@@ -320,6 +327,35 @@ pub struct TimeDelta {
 impl Default for TimeDelta {
     fn default() -> Self {
         TimeDelta::nat()
+    }
+}
+
+impl From<Duration> for TimeDelta {
+    fn from(duration: Duration) -> Self {
+        Self {
+            months: 0,
+            inner: duration,
+        }
+    }
+}
+
+impl From<i64> for TimeDelta {
+    fn from(dt: i64) -> Self {
+        if dt == i64::MIN {
+            return TimeDelta::nat();
+        }
+        Duration::microseconds(dt).into()
+    }
+}
+
+impl Cast<i64> for TimeDelta {
+    fn cast(self) -> i64 {
+        let months = self.months;
+        if months != 0 {
+            panic!("not support cast TimeDelta to i64 when months is not zero")
+        } else {
+            self.inner.num_microseconds().unwrap_or(i64::MIN)
+        }
     }
 }
 
@@ -450,7 +486,7 @@ impl TimeDelta {
         }
     }
 
-    fn nat() -> Self {
+    pub fn nat() -> Self {
         Self {
             months: i32::MIN,
             inner: Duration::seconds(0),
@@ -458,11 +494,11 @@ impl TimeDelta {
     }
 
     #[allow(dead_code)]
-    fn is_nat(&self) -> bool {
+    pub fn is_nat(&self) -> bool {
         self.months == i32::MIN
     }
 
-    fn is_not_nat(&self) -> bool {
+    pub fn is_not_nat(&self) -> bool {
         self.months != i32::MIN
     }
 }
@@ -581,6 +617,12 @@ impl From<&str> for TimeDelta {
 impl GetNone for TimeDelta {
     fn none() -> Self {
         TimeDelta::nat()
+    }
+}
+
+impl Cast<TimeDelta> for String {
+    fn cast(self) -> TimeDelta {
+        TimeDelta::parse(&self)
     }
 }
 

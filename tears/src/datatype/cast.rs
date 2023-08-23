@@ -1,4 +1,4 @@
-use super::{GetNone, OptUsize};
+use super::{DateTime, GetNone, OptUsize, TimeDelta};
 #[cfg(feature = "option_dtype")]
 use super::{OptF32, OptF64, OptI32, OptI64};
 
@@ -28,6 +28,24 @@ macro_rules! impl_numeric_cast {
     ($T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {
         impl Cast<String> for $T {
             #[inline] fn cast(self) -> String { self.to_string() }
+        }
+        impl Cast<bool> for $T {
+            #[inline] fn cast(self) -> bool {
+                let value = Cast::<i32>::cast(self);
+                if  value == 0_i32 {
+                    false
+                } else if value == 1 {
+                    true
+                } else {
+                    panic!("can not cast {value:?} to bool")
+                }
+            }
+        }
+        impl Cast<DateTime> for $T {
+            #[inline] fn cast(self) -> DateTime { Cast::<i64>::cast(self).into() }
+        }
+        impl Cast<TimeDelta> for $T {
+            #[inline] fn cast(self) -> TimeDelta { Cast::<i64>::cast(self).into() }
         }
         #[cfg(feature="option_dtype")]
         impl_numeric_cast!(@ $T => { $( $U $(: $O)? ),* });
@@ -79,6 +97,39 @@ macro_rules! impl_option_numeric_cast {
         impl Cast<String> for $T {
             #[inline] fn cast(self) -> String { self.to_string() }
         }
+        impl Cast<DateTime> for $T {
+            #[inline] fn cast(self) -> DateTime {
+                if Into::<Option<$Real>>::into(self).is_none() {
+                    DateTime(None)
+                } else {
+                    Cast::<i64>::cast(self).into()
+                }
+            }
+        }
+        impl Cast<TimeDelta> for $T {
+            #[inline] fn cast(self) -> TimeDelta {
+                if Into::<Option<$Real>>::into(self).is_none() {
+                    TimeDelta::nat()
+                } else {
+                    Cast::<i64>::cast(self).into()
+                }
+            }
+        }
+        impl Cast<bool> for $T {
+            #[inline] fn cast(self) -> bool {
+                if Into::<Option<$Real>>::into(self).is_none() {
+                    panic!("can not cast None to bool")
+                }
+                let value = Cast::<i32>::cast(self);
+                if  value == 0_i32 {
+                    false
+                } else if value == 1 {
+                    true
+                } else {
+                    panic!("can not cast {value:?} to bool")
+                }
+            }
+        }
         #[cfg(feature="option_dtype")]
         impl_option_numeric_cast!(@ $T: $Real => { $( $U $(: $O)? ),* });
         #[cfg(not(feature = "option_dtype"))]
@@ -100,3 +151,36 @@ impl_option_numeric_cast!(OptF64: f64 => { f32: OptF32, f64: OptF64 });
 impl_option_numeric_cast!(OptI32: i32 => { f32: OptF32, f64: OptF64 });
 #[cfg(feature = "option_dtype")]
 impl_option_numeric_cast!(OptI64: i64 => { f32: OptF32, f64: OptF64 });
+
+macro_rules! impl_cast_from_string {
+    ($($T: ty),*) => {
+        $(
+            impl Cast<$T> for String {
+                #[inline] fn cast(self) -> $T { self.parse().expect("Parse string error") }
+            }
+        )*
+    };
+}
+
+impl_cast_from_string!(u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64, char, bool);
+
+macro_rules! impl_option_cast_from_string {
+    ($($T: ty),*) => {
+        $(
+            impl Cast<$T> for String {
+                #[inline] fn cast(self) -> $T { self.parse().expect("Parse string error") }
+            }
+        )*
+    };
+}
+
+impl Cast<String> for String {
+    #[inline]
+    fn cast(self) -> String {
+        self
+    }
+}
+
+impl_option_cast_from_string!(OptUsize);
+#[cfg(feature = "option_dtype")]
+impl_option_cast_from_string!(OptF32, OptF64, OptI32, OptI64);
