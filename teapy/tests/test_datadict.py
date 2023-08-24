@@ -5,14 +5,28 @@ from teapy import DataDict, Expr
 from teapy.testing import assert_allclose, assert_allclose3
 
 
+def test_memory():
+    a = np.random.randn(1000, 1000)
+    b = a.copy()
+    dd = DataDict(a=a)
+    dd = dd.with_columns(dd["a"].t().t().insert_axis(1)[:, 0, :].alias("b"))
+    del a
+    assert_allclose(dd["a"].view, b)
+    e = dd["b"]
+    del dd
+    e = e.eval()
+    assert_allclose(e.view, b)
+
+
 def test_init():
+    name_auto_prefix = "column_"
     dd = DataDict()
     dd = DataDict({"a": [2], "b": [45]})
     assert dd.columns == ["a", "b"]
     dd = DataDict({"a": [2], "b": [45]}, columns=["c", "d"])
     assert dd.columns == ["c", "d"]  # override
     dd = DataDict([[5], [7]])
-    assert dd.columns == ["0", "1"]
+    assert dd.columns == [name_auto_prefix + "0", name_auto_prefix + "1"]
     dd = DataDict([[5], [7]], columns=["0", "1"], a=[34, 5], b=[3])
     assert dd.columns == ["0", "1", "a", "b"]
     dd = DataDict({"a": [2], "b": [45]}, c=[34, 5])
@@ -155,32 +169,32 @@ def test_join():
     assert_allclose(rdd["va"].eview(), np.array([2, 2, 4]))
 
 
-def test_groupby():
+# def test_groupby():
 
-    dd = DataDict(
-        {
-            "g": ["e", "e"] + ["a", "b", "a", "a", "c"] * 100 + ["d"],
-            "v": [-0.1, -5] + np.random.randn(500).tolist() + [1],
-        }
-    )
-    df = pd.DataFrame(dd.to_dict())
-    assert_allclose(
-        dd.groupby("g").apply(lambda df: df["v"].max())["v"].eview(),
-        df.groupby("g", sort=False).v.max(),
-    )
+#     dd = DataDict(
+#         {
+#             "g": ["e", "e"] + ["a", "b", "a", "a", "c"] * 100 + ["d"],
+#             "v": [-0.1, -5] + np.random.randn(500).tolist() + [1],
+#         }
+#     )
+#     df = pd.DataFrame(dd.to_dict())
+#     assert_allclose(
+#         dd.groupby("g").apply(lambda df: df["v"].max())["v"].eview(),
+#         df.groupby("g", sort=False).v.max(),
+#     )
 
-    dd = DataDict(
-        {
-            "a": ["a", "b", "a", "b", "b", "c"],
-            "b": [1, 2, 3, 4, 5, 6],
-            "c": [6, 5, 4, 3, 2, 1],
-        }
-    )
+#     dd = DataDict(
+#         {
+#             "a": ["a", "b", "a", "b", "b", "c"],
+#             "b": [1, 2, 3, 4, 5, 6],
+#             "c": [6, 5, 4, 3, 2, 1],
+#         }
+#     )
 
-    res = dd.groupby("a").apply(
-        lambda df: [df["c"].sum().alias("c1"), df["c"].max().alias("c2")]
-    )
-    assert_allclose(res["c2"].eview(), np.array([6, 5, 1]))
+#     res = dd.groupby("a").apply(
+#         lambda df: [df["c"].sum().alias("c1"), df["c"].max().alias("c2")]
+#     )
+#     assert_allclose(res["c2"].eview(), np.array([6, 5, 1]))
 
 
 def test_unique():

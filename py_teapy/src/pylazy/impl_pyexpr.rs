@@ -113,32 +113,7 @@ impl PyExpr {
 
     #[getter]
     pub fn dtype(&self) -> &str {
-        use Exprs::*;
-        match self.inner {
-            F32(_) => "Float32",
-            F64(_) => "Float64",
-            I32(_) => "Int32",
-            I64(_) => "Int64",
-            Usize(_) => "Usize",
-            Bool(_) => "Bool",
-            String(_) => "String",
-            Str(_) => "Str",
-            Object(_) => "Object",
-            DateTime(_) => "DateTime",
-            TimeDelta(_) => "TimeDelta",
-            OptUsize(_) => "Option<Usize>",
-            VecUsize(_) => "Vec<Usize>",
-            #[cfg(feature = "option_dtype")]
-            OptF64(_) => "Option<F64>",
-            #[cfg(feature = "option_dtype")]
-            OptF32(_) => "Option<F32>",
-            #[cfg(feature = "option_dtype")]
-            OptI32(_) => "Option<I32>",
-            #[cfg(feature = "option_dtype")]
-            OptI64(_) => "Option<I64>",
-            // #[cfg(feature = "option_dtype")]
-            // OptUsize(_) => "Option<Usize>",
-        }
+        self.inner.dtype()
     }
 
     #[getter]
@@ -432,7 +407,8 @@ impl PyExpr {
 
     #[allow(unreachable_patterns)]
     pub(crate) fn is_owned(&self) -> Option<bool> {
-        match_exprs!(&self.inner, expr, { expr.owned() })
+        self.inner.is_owned()
+        // match_exprs!(&self.inner, expr, { expr.owned() })
     }
 
     #[allow(unreachable_patterns)]

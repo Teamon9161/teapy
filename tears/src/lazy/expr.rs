@@ -94,6 +94,13 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         unsafe { self.e.lock().get::<T>().name() }
     }
 
+    /// # Safety
+    ///
+    /// The name should not be changed by another thread
+    pub unsafe fn ref_name(&self) -> Option<&str> {
+        mem::transmute(self.e.lock().get::<T>().ref_name())
+    }
+
     /// Change the name of the Expression immediately
     pub fn rename(&mut self, name: String) {
         unsafe { self.e.lock().get_mut::<T>().rename(name) }
@@ -133,7 +140,7 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     }
 
     #[inline]
-    pub fn owned(&self) -> Option<bool> {
+    pub fn is_owned(&self) -> Option<bool> {
         unsafe { self.e.lock().get::<T>().get_owned() }
     }
 
@@ -377,7 +384,8 @@ impl<'a, T: ExprElement> ExprOut<'a, T> {
                 let mut out = true;
                 for arr in arr_vec {
                     if !matches!(arr, ArbArray::Owned(_)) {
-                        out = false
+                        out = false;
+                        break;
                     }
                 }
                 out
@@ -490,83 +498,6 @@ where
                 OptI64: OptI64
             )
         }
-        //     unsafe {
-        //         match T::dtype() {
-        //             DataType::Bool => Box::new(move |_| {
-        //                 let arr: ArrD<bool> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::F64 => Box::new(move |_| {
-        //                 let arr: ArrD<f64> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::F32 => Box::new(move |_| {
-        //                 let arr: ArrD<f32> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::I32 => Box::new(move |_| {
-        //                 let arr: ArrD<i32> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::I64 => Box::new(move |_| {
-        //                 let arr: ArrD<i64> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::Usize => Box::new(move |_| {
-        //                 let arr: ArrD<usize> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::String => Box::new(move |_| {
-        //                 let arr: ArrD<String> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::Str => Box::new(move |_| {
-        //                 let arr: ArrD<&str> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::Object => Box::new(move |_| {
-        //                 let arr: ArrD<PyValue> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::DateTime => Box::new(move |_| {
-        //                 let arr: ArrD<DateTime> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::TimeDelta => Box::new(move |_| {
-        //                 let arr: ArrD<TimeDelta> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             DataType::OptUsize => Box::new(move |_| {
-        //                 let arr: ArrD<OptUsize> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             #[cfg(feature = "option_dtype")]
-        //             DataType::OptF64 => Box::new(move |_| {
-        //                 let arr: ArrD<OptF64> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             #[cfg(feature = "option_dtype")]
-        //             DataType::OptF32 => Box::new(move |_| {
-        //                 let arr: ArrD<OptF32> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             #[cfg(feature = "option_dtype")]
-        //             DataType::OptI32 => Box::new(move |_| {
-        //                 let arr: ArrD<OptI32> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             #[cfg(feature = "option_dtype")]
-        //             DataType::OptI64 => Box::new(move |_| {
-        //                 let arr: ArrD<OptI64> = Default::default();
-        //                 Ok(arr.into_dtype::<T>().into())
-        //             }),
-        //             // #[cfg(feature = "option_dtype")]
-        //             // DataType::OptUsize => Box::new(move |_| {
-        //             //     let arr: ArrD<OptUsize> = Default::default();
-        //             //     Ok(arr.into_dtype::<T>().into())
-        //             // }),
-        //         }
-        //     }
     }
 }
 
@@ -823,6 +754,16 @@ impl<'a, T: ExprElement> ExprInner<'a, T> {
     #[inline(always)]
     pub fn name(&self) -> Option<String> {
         self.name.clone()
+    }
+
+    /// get name of the expression
+    #[inline(always)]
+    pub fn ref_name(&self) -> Option<&str> {
+        if let Some(name) = &self.name {
+            Some(name.as_str())
+        } else {
+            None
+        }
     }
 
     /// rename inplace

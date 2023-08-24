@@ -7,7 +7,10 @@ def _new_with_dd(dd=None):
         # for inplace functions
         return None
     out = DataDict()
-    out._dd = dd
+    if isinstance(dd, _DataDict):
+        out._dd = dd
+    else:
+        raise ValueError("the return is not teapy DataDict")
     return out
 
 
@@ -47,7 +50,11 @@ class DataDict:
             self._dd = _DataDict([])
 
     def __getitem__(self, key):
-        return self._dd[key]
+        out = self._dd[key]
+        if isinstance(out, list):
+            return DataDict(data=out)
+        else:
+            return out
 
     def __setitem__(self, item, value):
         self._dd.__setitem__(item, value)
@@ -68,11 +75,17 @@ class DataDict:
     def copy(self):
         return self._dd.copy()
 
-    @construct
     def eval(self, cols=None, inplace=True):
+        dd = self if inplace else self.copy()
         if isinstance(cols, bool):
-            return self._dd.eval(None, inplace=cols)
-        return self._dd.eval(cols, inplace=inplace)
+            cols, inplace = None, cols
+        dd._dd.eval(cols)
+        return None if inplace else dd
+
+    def drop(self, cols, inplace=False):
+        dd = self if inplace else self.copy()
+        dd._dd.drop(cols)
+        return None if inplace else dd
 
     @construct
     def select(self, exprs):
@@ -128,18 +141,20 @@ class DataDict:
             axis = axis + 1 if axis < 0 else axis
             return self.apply(lambda e: e.max(axis=axis, par=par))
 
-    def rename(self, mapper):
+    def rename(self, mapper, inplace=False):
         return self.with_columns(
             [
                 self[key].alias(mapper[key])
                 for key in self.columns
                 if mapper.get(key) is not None
-            ]
+            ],
+            inplace=inplace,
         )
 
-    @construct
     def with_columns(self, exprs, inplace=False):
-        return self._dd.with_columns(exprs, inplace=inplace)
+        dd = self if inplace else self.copy()
+        dd._dd.with_columns(exprs)
+        return None if inplace else dd
 
     def join(
         self, right, on=None, left_on=None, right_on=None, how="left", inplace=False
@@ -170,9 +185,10 @@ class DataDict:
                     "Only left an right join is supported for now"
                 )
 
-    @construct
     def apply(self, func, inplace=False, **kwargs):
-        return self._dd.apply(func, inplace=inplace, **kwargs)
+        dd = self if inplace else self.copy()
+        dd._dd.apply(func, **kwargs)
+        return None if inplace else dd
 
     def rolling(self, window, dd, index=None, check=True, axis=0):
         return Rolling(window, self._dd, index, check, axis)

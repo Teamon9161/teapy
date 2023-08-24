@@ -8,11 +8,13 @@ use tears::{ArbArray, DateTime, ExprElement, OptUsize, PyValue, StrError, TimeDe
 #[cfg(feature = "option_dtype")]
 use tears::{OptF32, OptF64, OptI32, OptI64};
 
+pub type RefObj = Option<Vec<PyObject>>;
+
 #[pyclass(subclass)]
 #[derive(Clone, Default)]
 pub struct PyExpr {
     pub inner: Exprs<'static>,
-    pub obj: Option<Vec<PyObject>>,
+    pub obj: RefObj,
 }
 
 impl From<Exprs<'static>> for PyExpr {
@@ -67,12 +69,12 @@ where
 }
 
 pub trait ExprToPy {
-    fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr;
+    fn to_py(self, obj: RefObj) -> PyExpr;
     // fn to_py_ref(self, obj: PyRef<PyExpr>, py: Python) -> PyExpr;
 }
 
 impl<T: ExprElement + 'static> ExprToPy for Expr<'static, T> {
-    fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
+    fn to_py(self, obj: RefObj) -> PyExpr {
         let exprs: Exprs<'static> = self.into();
         PyExpr { inner: exprs, obj }
     }
@@ -87,7 +89,7 @@ impl<T: ExprElement + 'static> ExprToPy for Expr<'static, T> {
 }
 
 impl ExprToPy for Exprs<'static> {
-    fn to_py(self, obj: Option<Vec<PyObject>>) -> PyExpr {
+    fn to_py(self, obj: RefObj) -> PyExpr {
         PyExpr { inner: self, obj }
     }
 
@@ -101,7 +103,7 @@ impl ExprToPy for Exprs<'static> {
 
 impl PyExpr {
     #[inline]
-    pub fn obj(&self) -> Option<Vec<PyObject>> {
+    pub fn obj(&self) -> RefObj {
         self.obj.clone()
     }
 
@@ -110,7 +112,7 @@ impl PyExpr {
         &self.inner
     }
 
-    pub fn add_obj(mut self, mut another: Option<Vec<PyObject>>) -> Self {
+    pub fn add_obj(mut self, mut another: RefObj) -> Self {
         if let Some(obj) = &mut self.obj {
             if let Some(another) = &mut another {
                 obj.append(another);
@@ -121,7 +123,7 @@ impl PyExpr {
         self
     }
 
-    pub fn add_obj_vec(mut self, another: Vec<Option<Vec<PyObject>>>) -> Self {
+    pub fn add_obj_vec(mut self, another: Vec<RefObj>) -> Self {
         for obj in another {
             self = self.add_obj(obj)
         }
@@ -232,7 +234,7 @@ impl PyExpr {
     pub fn eval_inplace(&mut self) -> PyResult<()> {
         match_exprs!(&mut self.inner, expr, {
             expr.eval_inplace().map_err(StrError::to_py)?;
-            if let Some(owned) = expr.owned() {
+            if let Some(owned) = expr.is_owned() {
                 if owned {
                     self.obj = None
                 } // we don't need to reference
@@ -361,7 +363,7 @@ impl PyExpr {
 
     #[allow(unreachable_patterns)]
     pub fn sort_by_expr(&self, by: Vec<Self>, rev: bool) -> Self {
-        let obj_vec: Vec<Option<Vec<PyObject>>> = by.iter().map(|e| e.obj()).collect();
+        let obj_vec: Vec<RefObj> = by.iter().map(|e| e.obj()).collect();
         let by = by.into_iter().map(|e| e.inner).collect_trusted();
         let out = match_exprs!(&self.inner, expr, {
             expr.clone().sort_by_expr(by, rev).to_py(self.obj())
@@ -371,7 +373,7 @@ impl PyExpr {
 
     #[allow(unreachable_patterns)]
     pub fn get_sort_idx(&self, by: Vec<Self>, rev: bool) -> Self {
-        let obj_vec: Vec<Option<Vec<PyObject>>> = by.iter().map(|e| e.obj()).collect();
+        let obj_vec: Vec<RefObj> = by.iter().map(|e| e.obj()).collect();
         let by = by.into_iter().map(|e| e.inner).collect_trusted();
         let out = match_exprs!(&self.inner, expr, {
             expr.clone().get_sort_idx(by, rev).to_py(self.obj())

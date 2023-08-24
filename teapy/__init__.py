@@ -29,6 +29,6 @@ def eval(lazy_list):
         if isinstance(lazy_list[0], Expr):
             return eval_exprs(lazy_list, inplace=True)
         elif isinstance(lazy_list[0], DataDict):
-            return eval_dicts([dd._dd for dd in lazy_list], inplace=True)
+            return eval_dicts(lazy_list, inplace=True)
         else:
             raise ValueError("eval() only accept list of Expr or DataDict")

@@ -1,13 +1,13 @@
 mod datadict;
 mod export;
-mod groupby;
+// mod groupby;
 mod impl_pyexpr;
 mod pyexpr;
 mod pyfunc;
 // mod time;
 
 pub use datadict::PyDataDict;
-pub use groupby::PyGroupBy;
+// pub use groupby::PyGroupBy;
 pub use impl_pyexpr::expr_register;
 pub use pyexpr::PyExpr;
 pub use pyexpr::{ExprToPy, IntoPyExpr};
@@ -22,7 +22,7 @@ use pyo3::prelude::{wrap_pyfunction, PyModule, PyResult};
 pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
     m.add_class::<PyExpr>()?;
     m.add_class::<PyDataDict>()?;
-    m.add_class::<PyGroupBy>()?;
+    // m.add_class::<PyGroupBy>()?;
     m.add_function(wrap_pyfunction!(expr_register, m)?)?;
     m.add_function(wrap_pyfunction!(concat_expr_py, m)?)?;
     m.add_function(wrap_pyfunction!(stack_expr_py, m)?)?;

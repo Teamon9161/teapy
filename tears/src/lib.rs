@@ -1,5 +1,6 @@
-#![feature(hash_raw_entry)]
+// #![feature(hash_raw_entry)]
 #![feature(let_chains)]
+#![feature(drain_filter)]
 // #![feature(build_hasher_simple_hash_one)]
 
 #[cfg(any(feature = "intel-mkl-system", feature = "intel-mkl-static"))]

@@ -1,13 +1,14 @@
 use ndarray::{Array1, Axis, Slice};
-use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyList as PyList3, PyTuple};
 
+use tears::lazy::DataDict;
 use tears::{ArbArray, DateTime, TimeDelta};
 
 // #[cfg(feature="option_dtype")]
 // use tears::datatype::OptDateTime;
 
 use super::super::from_py::{PyArrayOk, PyList};
+use super::datadict::{IntoPyDataDict, PyVecExprToRs};
 use super::export::*;
 
 #[pyfunction]
@@ -198,7 +199,22 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
             unreachable!()
         }
     } else if let Ok(datadict) = obj.extract::<PyDataDict>() {
-        Ok(datadict.into_data())
+        // let data = datadict.dd.data;
+        let mut obj_map = datadict.obj_map;
+        Ok(datadict
+            .dd
+            .data
+            .into_iter()
+            .map(|e| {
+                if let Some(obj) = obj_map.remove(e.ref_name().unwrap()) {
+                    e.to_py(obj)
+                } else {
+                    e.to_py(None)
+                }
+            })
+            .collect())
+    } else if obj.hasattr("_dd")? {
+        parse_expr_list(obj.getattr("_dd")?, copy)
     } else if let Ok(pyexpr) = parse_expr(obj, copy) {
         Ok(vec![pyexpr])
     } else {
@@ -285,12 +301,7 @@ pub unsafe fn stack_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
 #[pyfunction]
 #[pyo3(signature=(exprs, inplace=false))]
 pub fn eval_exprs(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<PyExpr>>> {
-    let eval_res: Vec<_> = exprs.par_iter_mut().map(|e| e.eval_inplace()).collect();
-    if eval_res.iter().any(|e| e.is_err()) {
-        return Err(PyRuntimeError::new_err(
-            "Some of the exprs can't be evaluated",
-        ));
-    }
+    exprs.par_iter_mut().try_for_each(|e| e.eval_inplace())?;
     if inplace {
         Ok(None)
     } else {
@@ -300,13 +311,18 @@ pub fn eval_exprs(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<
 
 #[pyfunction]
 #[pyo3(signature=(dds, inplace=true))]
-pub fn eval_dicts(mut dds: Vec<PyDataDict>, inplace: bool) -> PyResult<Option<Vec<PyDataDict>>> {
-    let eval_res: Vec<_> = dds.par_iter_mut().map(|dd| dd.eval_all()).collect();
-    if eval_res.iter().any(|e| e.is_err()) {
-        return Err(PyRuntimeError::new_err(
-            "Some of the DataDict can't be evaluated",
-        ));
-    }
+pub fn eval_dicts(dds: Vec<&PyAny>, inplace: bool) -> PyResult<Option<Vec<PyDataDict>>> {
+    let mut dds = dds
+        .into_iter()
+        .map(|dd| {
+            if dd.hasattr("_dd").unwrap() {
+                dd.getattr("_dd").unwrap().extract::<PyDataDict>().unwrap()
+            } else {
+                dd.extract::<PyDataDict>().unwrap()
+            }
+        })
+        .collect_trusted();
+    dds.par_iter_mut().try_for_each(|dd| dd.eval_all())?;
     if inplace {
         Ok(None)
     } else {
@@ -458,5 +474,6 @@ pub fn from_pandas(df: &PyAny) -> PyResult<PyDataDict> {
     for col in &columns {
         data.push(unsafe { parse_expr_nocopy(df.get_item(col)?.getattr("values")?)? });
     }
-    Ok(PyDataDict::new(data, Some(columns)))
+    let (data, obj_map) = data.into_rs(Some(columns.clone()))?;
+    Ok(DataDict::new(data, Some(columns)).to_py(obj_map))
 }
