@@ -170,11 +170,6 @@ def ts_corr(arr1, arr2, window, min_periods=1, stable=False, axis=None, par=Fals
     pass
 
 
-# @wrap("ts_func", use=True)
 @impl_by_lazy()
 def ts_rank(arr, window, min_periods=1, pct=False, axis=None, par=False):
     pass
-    # if not pct:
-    #     return _tp.ts_rank(arr, window, min_periods=min_periods, axis=axis, par=par)
-    # else:
-    #     return _tp.ts_rank_pct(arr, window, min_periods=min_periods, axis=axis, par=par)
