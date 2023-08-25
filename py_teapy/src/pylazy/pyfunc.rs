@@ -213,7 +213,7 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
                 }
             })
             .collect())
-    } else if obj.hasattr("_dd")? {
+    } else if obj.hasattr("_dd")? && obj.get_type().name()? == "DataDict" {
         parse_expr_list(obj.getattr("_dd")?, copy)
     } else if let Ok(pyexpr) = parse_expr(obj, copy) {
         Ok(vec![pyexpr])
@@ -315,7 +315,7 @@ pub fn eval_dicts(dds: Vec<&PyAny>, inplace: bool) -> PyResult<Option<Vec<PyData
     let mut dds = dds
         .into_iter()
         .map(|dd| {
-            if dd.hasattr("_dd").unwrap() {
+            if dd.hasattr("_dd").unwrap() && dd.get_type().name().unwrap() == "DataDict" {
                 dd.getattr("_dd").unwrap().extract::<PyDataDict>().unwrap()
             } else {
                 dd.extract::<PyDataDict>().unwrap()
