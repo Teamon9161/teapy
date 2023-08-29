@@ -1,13 +1,17 @@
+// use parking_lot::Mutex;
 use pyo3::Python;
 use std::fmt::Debug;
+// use std::sync::Arc;
 
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
 use crate::{Cast, DateTime, OptUsize, PyValue, TimeDelta, TimeUnit, TpResult};
 
 use super::super::{match_datatype_arm, DataType, GetDataType};
+use super::context::Context;
 use super::expr::{Expr, ExprElement, ExprInner};
 use super::expr_view::ExprOutView;
+use super::ColumnSelector;
 
 #[derive(Clone)]
 pub enum Exprs<'a> {
@@ -87,7 +91,6 @@ impl<'a, T: ExprElement + 'a> From<Expr<'a, T>> for Exprs<'a> {
             match T::dtype() {
                 DataType::Bool => Exprs::Bool(expr.into_dtype::<bool>()),
                 DataType::Usize => Exprs::Usize(expr.into_dtype::<usize>()),
-                // DataType::OpUsize => Exprs::OpUsize(expr.into_dtype::<Option<usize>>()),
                 DataType::F32 => Exprs::F32(expr.into_dtype::<f32>()),
                 DataType::F64 => Exprs::F64(expr.into_dtype::<f64>()),
                 DataType::I32 => Exprs::I32(expr.into_dtype::<i32>()),
@@ -137,6 +140,23 @@ impl<'a> Exprs<'a> {
         match_exprs!(self, e, { e.is_owned() })
     }
 
+    #[allow(unreachable_patterns)]
+    pub fn is_context(&self) -> bool {
+        match_exprs!(self, e, { e.is_context() })
+    }
+
+    #[allow(unreachable_patterns)]
+    pub(super) fn into_inner(self) -> ExprsInner<'a> {
+        match_exprs!(self, e, { e.downcast().into() })
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn cast_by_context(&mut self, context: Option<Context<'a>>) -> TpResult<&mut Self> {
+        let exprs = std::mem::take(self);
+        *self = match_exprs!(exprs, e, { e.cast_by_context(context)?.into() });
+        Ok(self)
+    }
+
     /// # Safety
     ///
     /// the name should not be changed by another thread
@@ -169,8 +189,6 @@ impl<'a> Exprs<'a> {
             OptI32(_) => "Option<I32>",
             #[cfg(feature = "option_dtype")]
             OptI64(_) => "Option<I64>",
-            // #[cfg(feature = "option_dtype")]
-            // OptUsize(_) => "Option<Usize>",
         }
     }
 
@@ -180,8 +198,8 @@ impl<'a> Exprs<'a> {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn eval_inplace(&mut self) -> TpResult<()> {
-        match_exprs!(self, e, { e.eval_inplace() })
+    pub fn eval_inplace(&mut self, context: Option<Context<'a>>) -> TpResult<Option<Context<'a>>> {
+        match_exprs!(self, e, { e.eval_inplace(context) })
     }
 
     pub fn is_f32(&self) -> bool {
@@ -284,6 +302,13 @@ impl<'a> Exprs<'a> {
         }
     }
 
+    pub fn cast_vecusize(self) -> TpResult<Expr<'a, Vec<usize>>> {
+        match self {
+            Exprs::VecUsize(e) => Ok(e),
+            _ => Err("Cast lazily to object for this dtype is unimplemented".into()),
+        }
+    }
+
     #[allow(unreachable_patterns)]
     pub fn cast_object_eager<'py>(self, py: Python<'py>) -> TpResult<Expr<'a, PyValue>> {
         if self.is_object() {
@@ -301,28 +326,10 @@ impl<'a> Exprs<'a> {
 
     pub fn cast_string(self) -> TpResult<Expr<'a, String>> {
         Ok(self.cast())
-        // match self {
-        //     Exprs::String(e) => Ok(e),
-        //     Exprs::Str(e) => Ok(e.cast_string()),
-        //     Exprs::F32(e) => Ok(e.cast()),
-        //     Exprs::F64(e) => Ok(e.cast()),
-        //     Exprs::I32(e) => Ok(e.cast()),
-        //     Exprs::I64(e) => Ok(e.cast()),
-        //     Exprs::DateTime(e) => Ok(e.strftime(None)),
-        //     _ => Err("Cast to string for this dtype is unimplemented".into()),
-        // }
     }
 
     pub fn cast_bool(self) -> TpResult<Expr<'a, bool>> {
         Ok(self.cast())
-        // match self {
-        //     Exprs::Bool(e) => Ok(e),
-        //     Exprs::F32(e) => Ok(e.cast_bool()),
-        //     Exprs::F64(e) => Ok(e.cast_bool()),
-        //     Exprs::I32(e) => Ok(e.cast_bool()),
-        //     Exprs::I64(e) => Ok(e.cast_bool()),
-        //     _ => Err("Cast to bool for this dtype is unimplemented".into()),
-        // }
     }
 
     pub fn cast_datetime(self, unit: Option<TimeUnit>) -> TpResult<Expr<'a, DateTime>> {
@@ -338,7 +345,6 @@ impl<'a> Exprs<'a> {
     }
     pub fn cast_datetime_default(self) -> TpResult<Expr<'a, DateTime>> {
         Ok(self.cast())
-        // self.cast_datetime(Some(Default::default()))
     }
 
     pub fn cast_timedelta(self) -> TpResult<Expr<'a, TimeDelta>> {
@@ -439,36 +445,57 @@ impl<'a> Debug for ExprsInner<'a> {
     }
 }
 
-impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
-    fn from(expr: ExprInner<'a, T>) -> Self {
-        unsafe {
-            match T::dtype() {
-                DataType::Bool => ExprsInner::Bool(expr.into_dtype::<bool>()),
-                DataType::Usize => ExprsInner::Usize(expr.into_dtype::<usize>()),
-                DataType::OptUsize => ExprsInner::OptUsize(expr.into_dtype::<OptUsize>()),
-                DataType::F32 => ExprsInner::F32(expr.into_dtype::<f32>()),
-                DataType::F64 => ExprsInner::F64(expr.into_dtype::<f64>()),
-                DataType::I32 => ExprsInner::I32(expr.into_dtype::<i32>()),
-                DataType::I64 => ExprsInner::I64(expr.into_dtype::<i64>()),
-                DataType::Str => ExprsInner::Str(expr.into_dtype::<&'a str>()),
-                DataType::String => ExprsInner::String(expr.into_dtype::<String>()),
-                DataType::Object => ExprsInner::Object(expr.into_dtype::<PyValue>()),
-                DataType::DateTime => ExprsInner::DateTime(expr.into_dtype::<DateTime>()),
-                DataType::TimeDelta => ExprsInner::TimeDelta(expr.into_dtype::<TimeDelta>()),
-                DataType::VecUsize => ExprsInner::VecUsize(expr.into_dtype::<Vec<usize>>()),
-                #[cfg(feature = "option_dtype")]
-                DataType::OptF64 => ExprsInner::OptF64(expr.into_dtype::<OptF64>()),
-                #[cfg(feature = "option_dtype")]
-                DataType::OptF32 => ExprsInner::OptF32(expr.into_dtype::<OptF32>()),
-                #[cfg(feature = "option_dtype")]
-                DataType::OptI32 => ExprsInner::OptI32(expr.into_dtype::<OptI32>()),
-                #[cfg(feature = "option_dtype")]
-                DataType::OptI64 => ExprsInner::OptI64(expr.into_dtype::<OptI64>()),
-                DataType::U64 => unreachable!("U64 is not supported"),
+macro_rules! impl_from_trait {
+    ($($(#[$meta: meta])? $ty: ident: $real: ty),*) => {
+        impl<'a, T: ExprElement> From<ExprInner<'a, T>> for ExprsInner<'a> {
+            fn from(expr: ExprInner<'a, T>) -> Self {
+                unsafe {
+                    match T::dtype() {
+                        $(
+                            $(#[$meta])? DataType::$ty => ExprsInner::$ty(expr.into_dtype::<$real>()),
+                        )*
+                        _ => unreachable!("Not supported dtype in ExprsInner::from")
+                    }
+                }
+            }
+        }
+
+        impl<'a> From<ExprsInner<'a>> for Exprs<'a> {
+            #[allow(unreachable_patterns)]
+            fn from(expr: ExprsInner<'a>) -> Self {
+                match expr {
+                    $(
+                        $(#[$meta])? ExprsInner::$ty(e) => Exprs::$ty(e.into()),
+                    )*
+                }
             }
         }
     }
 }
+
+impl_from_trait!(
+    I32: i32,
+    I64: i64,
+    F32: f32,
+    F64: f64,
+    Usize: usize,
+    Bool: bool,
+    Str: &'a str,
+    String: String,
+    DateTime: DateTime,
+    OptUsize: OptUsize,
+    TimeDelta: TimeDelta,
+    Object: PyValue,
+    VecUsize: Vec<usize>,
+    #[cfg(feature = "option_dtype")]
+    OptF32: OptF32,
+    #[cfg(feature = "option_dtype")]
+    OptF64: OptF64,
+    #[cfg(feature = "option_dtype")]
+    OptI32: OptI32,
+    #[cfg(feature = "option_dtype")]
+    OptI64: OptI64
+);
 
 impl Default for ExprsInner<'_> {
     fn default() -> Self {
@@ -517,7 +544,6 @@ impl<'a> ExprsInner<'a> {
             e,
             ExprsInner,
             T,
-            // (Bool, F32, F64, I32, I64, Usize, Str, String, Object, DateTime, TimeDelta, OpUsize, OpF64),
             { std::mem::transmute(e) }
         )
     }
@@ -526,6 +552,42 @@ impl<'a> ExprsInner<'a> {
     pub(super) fn step(&self) -> usize {
         match_exprs_inner!(self, e, { e.step() })
     }
+
+    // #[allow(unreachable_patterns)]
+    // pub(super) fn set_step(&mut self, step: usize) {
+    //     match_exprs_inner!(self, e, { e.set_step(step) })
+    // }
+
+    // #[allow(unreachable_patterns)]
+    // pub(super) fn set_func<T: ExprElement>(&mut self, func: FuncChainType<'a, T>) {
+    //     match_exprs_inner!(self, e, { e.set_func(unsafe{std::mem::transmute(func)}) })
+    // }
+
+    // #[allow(unreachable_patterns)]
+    // pub(super) fn set_name(&mut self, name: Option<String>) {
+    //     match_exprs_inner!(self, e, { e.name = name })
+    // }
+
+    // #[allow(unreachable_patterns)]
+    // pub(super) fn set_owned(&mut self, owned: Option<bool>) {
+    //     match_exprs_inner!(self, e, { e.owned = owned })
+    // }
+
+    // #[allow(unreachable_patterns)]
+    // /// move all the fields from another ExprInner except ExprBase;
+    // pub(super) fn move_from<T: ExprElement>(&mut self, other: ExprInner<'a, T>) {
+    //     match_exprs_inner!(self, e, {
+    //         e.set_step(other.step());
+    //         e.set_func(unsafe{std::mem::transmute(other.func)});
+    //         e.name = other.name;
+    //         e.ref_expr = other.ref_expr;
+    //     })
+    // }
+
+    // #[allow(unreachable_patterns)]
+    // pub(super) fn set_ref_expr(&mut self, ref_expr: Option<Vec<Arc<Mutex<ExprsInner<'a>>>>>) {
+    //     match_exprs_inner!(self, e, { e.ref_expr = ref_expr })
+    // }
 
     #[allow(dead_code)]
     #[allow(unreachable_patterns)]
@@ -537,6 +599,28 @@ impl<'a> ExprsInner<'a> {
     pub(super) fn step_acc(&self) -> usize {
         match_exprs_inner!(self, e, { e.step_acc() })
     }
+
+    #[allow(unreachable_patterns)]
+    pub fn try_get_base_context(&self) -> TpResult<ColumnSelector<'a>> {
+        match_exprs_inner!(self, e, { e.try_get_base_context() })
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn is_context(&self) -> bool {
+        match_exprs_inner!(self, e, { e.is_context() })
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn cast_by_context(&mut self, context: Option<Context<'a>>) -> TpResult<&mut Self> {
+        let exprs = std::mem::take(self);
+        *self = match_exprs_inner!(exprs, e, { e.cast_by_context(context)? });
+        Ok(self)
+    }
+
+    // #[allow(unreachable_patterns)]
+    // pub fn cast_by_context_into(self, context: Option<Context<'a>>) -> TpResult<ExprsInner<'a>> {
+    //     match_exprs_inner!(self, e, {e.cast_by_context(context)})
+    // }
 
     #[allow(unreachable_patterns)]
     pub(super) fn view<T: GetDataType>(&self) -> TpResult<ExprOutView<'_, T>> {
@@ -552,7 +636,10 @@ impl<'a> ExprsInner<'a> {
     }
 
     #[allow(unreachable_patterns)]
-    pub(super) fn eval_inplace(&mut self) -> TpResult<()> {
-        match_exprs_inner!(self, e, { e.eval_inplace() })
+    pub(super) fn eval_inplace(
+        &mut self,
+        context: Option<Context<'a>>,
+    ) -> TpResult<Option<Context<'a>>> {
+        match_exprs_inner!(self, e, { e.eval_inplace(context) })
     }
 }

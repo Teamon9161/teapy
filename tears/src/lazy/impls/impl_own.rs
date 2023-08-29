@@ -1,9 +1,10 @@
 //! impl methods that return an array.
 
+// use crate::lazy::context::Context;
 use crate::lazy::{Expr, ExprElement, RefType};
 use crate::{
     ArbArray, Arr, Arr1, Cast, CollectTrustedToVec, DateTime, Exprs, FillMethod, GetNone, Number,
-    OptUsize, PyValue, StrError, TpResult, WrapNdarray,
+    OptUsize, PyValue, TpResult, WrapNdarray,
 };
 use ndarray::{Array1, ArrayViewD, Axis, Zip};
 use num::traits::real::Real;
@@ -43,10 +44,10 @@ where
     where
         T: Clone,
     {
-        shape.chain_view_f(
-            |sh| {
+        shape.chain_view_f_ct(
+            |(sh, ct)| {
                 let ndim = sh.ndim();
-                let value = value.eval()?;
+                let (value, ct) = value.eval(ct)?;
                 let v = value
                     .view_arr()
                     .to_dim0()?
@@ -54,14 +55,17 @@ where
                     .into_scalar();
                 if ndim == 0 {
                     let shape = sh.to_dim0()?.into_scalar();
-                    Ok(Arr::from_elem(*shape, v.clone()).to_dimd().into())
+                    Ok((Arr::from_elem(*shape, v.clone()).to_dimd().into(), ct))
                 } else if ndim == 1 {
                     let shape = sh.to_dim1()?;
-                    Ok(Arr::from_elem(shape.to_slice().unwrap(), v.clone())
-                        .to_dimd()
-                        .into())
+                    Ok((
+                        Arr::from_elem(shape.to_slice().unwrap(), v.clone())
+                            .to_dimd()
+                            .into(),
+                        ct,
+                    ))
                 } else {
-                    panic!("the dim of shape should not be greater than 1")
+                    Err("the dim of shape should not be greater than 1".into())
                 }
             },
             RefType::False,
@@ -72,24 +76,28 @@ where
     where
         T: Float + Zero + One,
     {
-        end.chain_owned_f(move |arr| {
+        end.chain_owned_f_ct(move |(arr, ct)| {
             let start = start.map(|s| {
-                *s.eval()
+                *s.eval(ct.clone())
                     .unwrap()
+                    .0
                     .view_arr()
                     .to_dim0()
                     .unwrap()
                     .into_scalar()
             });
             let end = arr.to_dim0()?.0.into_scalar();
-            Ok(Array1::range(
-                start.unwrap_or_else(T::zero),
-                end,
-                step.unwrap_or_else(T::one),
-            )
-            .wrap()
-            .to_dimd()
-            .into())
+            Ok((
+                Array1::range(
+                    start.unwrap_or_else(T::zero),
+                    end,
+                    step.unwrap_or_else(T::one),
+                )
+                .wrap()
+                .to_dimd()
+                .into(),
+                ct,
+            ))
         })
     }
 
@@ -166,14 +174,15 @@ where
     where
         T: Clone + GetNone,
     {
-        self.chain_view_f(
-            move |arr| {
-                Ok(arr
-                    .shift(
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.shift(
                         n,
                         fill.map(|fill| {
-                            fill.eval()
+                            fill.eval(ct.clone())
                                 .unwrap()
+                                .0
                                 .view_arr()
                                 .to_dim0()
                                 .unwrap()
@@ -184,7 +193,9 @@ where
                         axis,
                         par,
                     )
-                    .into())
+                    .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )
@@ -480,8 +491,13 @@ where
     where
         T: Real,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.powi(&other.eval()?.view_arr(), par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.powi(&other.eval(ct.clone())?.0.view_arr(), par).into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }
@@ -490,8 +506,13 @@ where
     where
         T: Real,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.powf(&other.eval()?.view_arr(), par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.powf(&other.eval(ct.clone())?.0.view_arr(), par).into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }
@@ -502,11 +523,12 @@ where
         T: Number,
     {
         use statrs::distribution::StudentsT;
-        self.chain_view_f(
-            move |arr| {
-                let df = *df.eval()?.view_arr().to_dim0()?.into_scalar();
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (df, ct) = df.eval(ct)?;
+                let df = *df.view_arr().to_dim0()?.into_scalar();
                 let n = StudentsT::new(loc.unwrap_or(0.), scale.unwrap_or(1.), df).unwrap();
-                Ok(arr.map(|v| n.cdf(v.f64())).into())
+                Ok((arr.map(|v| n.cdf(v.f64())).into(), ct))
             },
             RefType::False,
         )
@@ -533,12 +555,12 @@ where
         T: Number,
     {
         use statrs::distribution::FisherSnedecor;
-        self.chain_view_f(
-            move |arr| {
-                let df1 = *df1.eval()?.view_arr().to_dim0()?.into_scalar();
-                let df2 = *df2.eval()?.view_arr().to_dim0()?.into_scalar();
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let df1 = *df1.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
+                let df2 = *df2.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
                 let n = FisherSnedecor::new(df1, df2).unwrap();
-                Ok(arr.map(|v| n.cdf(v.f64())).into())
+                Ok((arr.map(|v| n.cdf(v.f64())).into(), ct))
             },
             RefType::False,
         )
@@ -548,21 +570,18 @@ where
     where
         T: Clone,
     {
-        self.chain_view_f(
-            move |arr| {
-                Ok(arr
-                    .filter(
-                        &mask.eval()?.view_arr().to_dim1()?,
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.filter(
+                        &mask.eval(ct.clone())?.0.view_arr().to_dim1()?,
                         // .expect("mask should be dim 1"),
-                        *axis
-                            .eval()?
-                            .view_arr()
-                            .to_dim0()?
-                            // .expect("axis should be dim 0")
-                            .into_scalar(),
+                        *axis.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar(),
                         par,
                     )
-                    .into())
+                    .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )
@@ -572,22 +591,19 @@ where
     where
         T: Clone + Number,
     {
-        self.chain_view_f(
-            move |arr| {
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
                 let ndim = arr.ndim();
-                let axis = *axis
-                    .eval()?
-                    .view_arr()
-                    .to_dim0()?
-                    // .expect("axis should be dim 0")
-                    .into_scalar();
+                let axis = *axis.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
                 match ndim {
-                    1 => Ok(arr
-                        .to_dim1()?
-                        // .unwrap()
-                        .remove_nan_1d()
-                        .to_dimd()
-                        .into()),
+                    1 => Ok((
+                        arr.to_dim1()?
+                            // .unwrap()
+                            .remove_nan_1d()
+                            .to_dimd()
+                            .into(),
+                        ct,
+                    )),
                     2 => {
                         let arr = arr.to_dim2()?;
                         let axis_n = arr.norm_axis(axis);
@@ -598,7 +614,7 @@ where
                             (Axis(1), DropNaMethod::All) => arr.not_nan().any(0, par),
                             _ => panic!("axis should be 0 or 1 and how should be any or all"),
                         };
-                        Ok(arr.filter(&mask, axis, par).to_dimd().into())
+                        Ok((arr.filter(&mask, axis, par).to_dimd().into(), ct))
                     }
                     dim => Err(format!(
                         "dropna only support 1d and 2d array currently, but the array is dim {dim}"
@@ -615,29 +631,29 @@ where
     where
         T: Clone,
     {
-        self.chain_view_f(
-            move |arr| {
-                let slc = slc.no_dim0().eval()?;
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (slc, ct) = slc.no_dim0().eval(ct)?;
                 let slc_eval = slc.view_arr();
-                let axis = *axis
-                    .eval()?
-                    .view_arr()
-                    .to_dim0()?
-                    // .expect("axis should be dim 0")
-                    .into_scalar();
+                let axis = *axis.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
                 if slc_eval.ndim() > 1 {
                     return Err("The slice must be dim 0 or dim 1 when select on axis".into());
                 }
                 let axis = arr.norm_axis(axis);
 
                 if slc_eval.len() == 1 {
-                    Ok(arr
-                        .index_axis(axis, slc_eval.to_dim1()?[0])
-                        .to_owned()
-                        .wrap()
-                        .into())
+                    Ok((
+                        arr.index_axis(axis, slc_eval.to_dim1()?[0])
+                            .to_owned()
+                            .wrap()
+                            .into(),
+                        ct,
+                    ))
                 } else {
-                    Ok(arr.select(axis, slc_eval.as_slice().unwrap()).wrap().into())
+                    Ok((
+                        arr.select(axis, slc_eval.as_slice().unwrap()).wrap().into(),
+                        ct,
+                    ))
                 }
             },
             RefType::False,
@@ -653,31 +669,30 @@ where
     where
         T: Clone,
     {
-        self.chain_view_f(
-            move |arr| {
-                let slc = slc.no_dim0().eval()?;
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (slc, ct) = slc.no_dim0().eval(ct)?;
                 let slc_eval = slc.view_arr();
-                let axis = *axis
-                    .eval()?
-                    .view_arr()
-                    .to_dim0()?
-                    // .expect("axis should be dim 0")
-                    .into_scalar();
+                let axis = *axis.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
                 if slc_eval.ndim() > 1 {
                     return Err("The slice must be dim 0 or dim 1 when select on axis".into());
                 }
                 let axis = arr.norm_axis(axis);
 
                 if slc_eval.len() == 1 {
-                    Ok(arr
-                        .index_axis(axis, slc_eval.to_dim1()?[0])
-                        .to_owned()
-                        .wrap()
-                        .into())
+                    Ok((
+                        arr.index_axis(axis, slc_eval.to_dim1()?[0])
+                            .to_owned()
+                            .wrap()
+                            .into(),
+                        ct,
+                    ))
                 } else {
-                    Ok(arr
-                        .select_unchecked(axis, slc_eval.as_slice().unwrap())
-                        .into())
+                    Ok((
+                        arr.select_unchecked(axis, slc_eval.as_slice().unwrap())
+                            .into(),
+                        ct,
+                    ))
                 }
             },
             RefType::False,
@@ -689,34 +704,27 @@ where
     where
         T: Clone,
     {
-        self.chain_view_f(
-            move |arr| {
-                let slc = slc.no_dim0().eval()?;
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (slc, ct) = slc.no_dim0().eval(ct)?;
                 let slc_eval = slc.view_arr();
-                let axis = *axis
-                    .eval()?
-                    .view_arr()
-                    .to_dim0()?
-                    // .expect("axis should be dim 0")
-                    .into_scalar();
+                let axis = *axis.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
                 if slc_eval.ndim() > 1 {
                     return Err("The slice must be dim 0 or dim 1 when select on axis".into());
                 }
-                // assert!(
-                //     slc_eval.ndim() <= 1,
-                //     "The slice must be dim 0 or dim 1 when select on axis"
-                // );
                 let axis = arr.norm_axis(axis);
                 let length = arr.len_of(axis);
                 if slc_eval.len() == 1 {
-                    Ok(arr
-                        .index_axis(axis, arr.ensure_index(slc_eval.to_dim1()?[0], length))
-                        .to_owned()
-                        .wrap()
-                        .into())
+                    Ok((
+                        arr.index_axis(axis, arr.ensure_index(slc_eval.to_dim1()?[0], length))
+                            .to_owned()
+                            .wrap()
+                            .into(),
+                        ct,
+                    ))
                 } else {
                     let slc = slc_eval.to_dim1()?.mapv(|i| arr.ensure_index(i, length));
-                    Ok(arr.select(axis, slc.as_slice().unwrap()).wrap().into())
+                    Ok((arr.select(axis, slc.as_slice().unwrap()).wrap().into(), ct))
                 }
             },
             RefType::False,
@@ -737,24 +745,28 @@ where
     where
         T: Clone + GetNone,
     {
-        self.chain_view_f(
-            move |arr| {
-                let slc = slc.no_dim0().eval()?;
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (slc, ct) = slc.no_dim0().eval(ct)?;
                 let slc_eval = slc.view_arr();
                 if slc_eval.ndim() > 1 {
                     return Err("The slice must be dim 0 or dim 1 when take on axis".into());
                 }
-                let axis = *axis.eval()?.view_arr().to_dim0()?.into_scalar();
+                let axis = *axis.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
                 if slc_eval.len() == 1 {
-                    Ok(arr
-                        .index_axis(arr.norm_axis(axis), slc_eval.to_dim1()?[0].unwrap())
-                        .to_owned()
-                        .wrap()
-                        .into())
+                    Ok((
+                        arr.index_axis(arr.norm_axis(axis), slc_eval.to_dim1()?[0].unwrap())
+                            .to_owned()
+                            .wrap()
+                            .into(),
+                        ct,
+                    ))
                 } else {
-                    Ok(arr
-                        .take_option_clone_unchecked(slc_eval.to_dim1()?, axis, par)
-                        .into())
+                    Ok((
+                        arr.take_option_clone_unchecked(slc_eval.to_dim1()?, axis, par)
+                            .into(),
+                        ct,
+                    ))
                 }
             },
             RefType::False,
@@ -765,15 +777,17 @@ where
     where
         T: Clone,
     {
-        self.chain_view_f(
-            move |arr| {
-                Ok(arr
-                    .where_(
-                        &mask.eval()?.try_view_arr().unwrap(),
-                        &value.eval()?.try_view_arr().unwrap(),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.where_(
+                        &mask.eval(ct.clone())?.0.try_view_arr().unwrap(),
+                        &value.eval(ct.clone())?.0.try_view_arr().unwrap(),
                         par,
                     )
-                    .into())
+                    .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )
@@ -799,17 +813,15 @@ where
     where
         T: Clone,
     {
-        self.no_dim0().chain_view_f(
-            move |arr| {
+        self.no_dim0().chain_view_f_ct(
+            move |(arr, ct)| {
                 // evaluate in parallel
                 let axis = arr.norm_axis(axis);
                 let mut other: Vec<Expr<'a, T>> =
                     other.into_iter().map(|e| e.no_dim0()).collect_trusted();
-                let eval_result: Vec<_> = other.par_iter_mut().map(|e| e.eval_inplace()).collect();
-                let eval_error = StrError::from_vec_res(eval_result);
-                if let Some(e) = eval_error {
-                    return Err(e);
-                }
+                other
+                    .par_iter_mut()
+                    .try_for_each(|e| e.eval_inplace(ct.clone()).map(|_| {}))?;
                 let arr1 = vec![arr.0];
                 // safety: array view other exists in lifetime '_, and concatenate will create a own array later
                 let arrays: Vec<ArrayViewD<'_, T>> = unsafe {
@@ -817,11 +829,14 @@ where
                         .chain(other.iter().map(|e| mem::transmute(e.view().into_arr().0)))
                         .collect()
                 };
-                Ok(ndarray::concatenate(axis, &arrays)
-                    .map_err(|_| "Shape error when concatenate")?
-                    // .expect("Shape error when concatenate")
-                    .wrap()
-                    .into())
+                Ok((
+                    ndarray::concatenate(axis, &arrays)
+                        .map_err(|_| "Shape error when concatenate")?
+                        // .expect("Shape error when concatenate")
+                        .wrap()
+                        .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )
@@ -831,19 +846,17 @@ where
     where
         T: Clone,
     {
-        self.chain_view_f(
-            move |arr| {
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
                 // evaluate in parallel
                 let axis = if axis < 0 {
                     Axis(arr.norm_axis(axis).index() + 1)
                 } else {
                     Axis(axis as usize)
                 };
-                let eval_result: Vec<_> = other.par_iter_mut().map(|e| e.eval_inplace()).collect();
-                let eval_error = StrError::from_vec_res(eval_result);
-                if let Some(e) = eval_error {
-                    return Err(e);
-                }
+                other
+                    .par_iter_mut()
+                    .try_for_each(|e| e.eval_inplace(ct.clone()).map(|_| {}))?;
                 let arr1 = vec![arr.0];
                 // safety: array view other exists in lifetime '_, and stack will create a own array later
                 let arrays: Vec<ArrayViewD<'_, T>> = unsafe {
@@ -851,28 +864,29 @@ where
                         .chain(other.iter().map(|e| mem::transmute(e.view().into_arr().0)))
                         .collect()
                 };
-                Ok(ndarray::stack(axis, &arrays)
-                    .map_err(|_| "Shape error when stack")?
-                    .wrap()
-                    .into())
+                Ok((
+                    ndarray::stack(axis, &arrays)
+                        .map_err(|_| "Shape error when stack")?
+                        .wrap()
+                        .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )
     }
 
     pub fn get_sort_idx(self, mut by: Vec<Exprs<'a>>, rev: bool) -> Expr<'a, usize> {
-        self.chain_view_f(
-            move |arr| {
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
                 if arr.ndim() != 1 {
                     return Err("Currently only 1 dim Expr can be sorted".into());
                 }
                 let arr = arr.to_dim1()?;
                 let len = arr.len();
                 // evaluate the key expressions first
-                let eval_res: Vec<_> = by.par_iter_mut().map(|e| e.eval_inplace()).collect();
-                if eval_res.iter().any(|e| e.is_err()) {
-                    return Err("Some of the expressions can't be evaluated".into());
-                }
+                by.par_iter_mut()
+                    .try_for_each(|e| e.eval_inplace(ct.clone()).map(|_| {}))?;
                 let mut idx = Vec::from_iter(0..len);
                 idx.sort_by(move |a, b| {
                     let mut order = Ordering::Equal;
@@ -940,7 +954,7 @@ where
                     }
                     order
                 });
-                Ok(Arr1::from_vec(idx).to_dimd().into())
+                Ok((Arr1::from_vec(idx).to_dimd().into(), ct))
             },
             RefType::False,
         )
@@ -981,7 +995,7 @@ impl<'a> Expr<'a, bool> {
 
 impl<'a> Expr<'a, PyValue> {
     pub fn object_to_string(self, py: Python) -> TpResult<Expr<'a, String>> {
-        let e = self.eval()?;
+        let e = self.eval(None)?.0;
         let name = e.name();
         let out = e.view_arr().object_to_string(py);
         Ok(Expr::new(out.into(), name))
@@ -1009,28 +1023,34 @@ impl<'a> Expr<'a, String> {
     }
 
     pub fn add_str(self, other: Expr<'a, &'a str>) -> Expr<'a, String> {
-        self.chain_view_f(
-            |arr| {
-                let other = other.eval()?;
-                Ok(Zip::from(arr.0)
-                    .and(other.view_arr().0)
-                    .par_map_collect(|s1, s2| s1.to_owned() + s2)
-                    .wrap()
-                    .into())
+        self.chain_view_f_ct(
+            |(arr, ct)| {
+                let (other, ct) = other.eval(ct)?;
+                Ok((
+                    Zip::from(arr.0)
+                        .and(other.view_arr().0)
+                        .par_map_collect(|s1, s2| s1.to_owned() + s2)
+                        .wrap()
+                        .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )
     }
 
     pub fn add_string(self, other: Expr<'a, String>) -> Expr<'a, String> {
-        self.chain_view_f(
-            |arr| {
-                let other = other.eval()?;
-                Ok(Zip::from(arr.0)
-                    .and(other.view_arr().0)
-                    .par_map_collect(|s1, s2| s1.to_owned() + s2)
-                    .wrap()
-                    .into())
+        self.chain_view_f_ct(
+            |(arr, ct)| {
+                let (other, ct) = other.eval(ct)?;
+                Ok((
+                    Zip::from(arr.0)
+                        .and(other.view_arr().0)
+                        .par_map_collect(|s1, s2| s1.to_owned() + s2)
+                        .wrap()
+                        .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )

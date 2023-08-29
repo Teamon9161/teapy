@@ -2,7 +2,6 @@ use super::{ArrD, ArrViewD, ArrViewMutD, WrapNdarray};
 use ndarray::{Array, ArrayD, IxDyn, ShapeBuilder};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-// #[derive(Debug)]
 pub enum ArbArray<'a, T> {
     View(ArrViewD<'a, T>),
     ViewMut(ArrViewMutD<'a, T>),
@@ -12,7 +11,6 @@ pub enum ArbArray<'a, T> {
 impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
     #[allow(unreachable_patterns)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // match_arbarray!(self, a, { a.fmt(f) })
         match &self {
             ArbArray::View(a) => write!(f, "ArrayView({a:#?})"),
             ArbArray::ViewMut(a) => write!(f, "ArrayViewMut({a:#?})"),

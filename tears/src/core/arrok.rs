@@ -135,3 +135,45 @@ impl<'a> ArrOk<'a> {
         match_arr!(self, arr, { arr.view().into_dtype::<T>() })
     }
 }
+
+#[macro_export]
+macro_rules! match_all {
+    // select the match arm
+    ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($(#[$meta: meta])? $arm: ident),*) => {
+        match $exprs {
+            $($(#[$meta])? $enum::$arm($e) => $body,)*
+            _ => unimplemented!("Not supported dtype in match_exprs")
+        }
+    };
+
+    ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
+        {
+            #[cfg(feature="option_dtype")]
+            macro_rules! inner_macro {
+                () => {
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
+                };
+            }
+
+            #[cfg(not(feature="option_dtype"))]
+            macro_rules! inner_macro {
+                () => {
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize, VecUsize)
+                };
+            }
+            inner_macro!()
+        }
+
+    };
+
+    ($enum: ident, ($exprs1: expr, $e1: ident, $($arm1: ident),*), ($exprs2: expr, $e2: ident, $($arm2: ident),*), $body: tt) => {
+        match_all!($enum, $exprs1, $e1, {match_all!($enum, $exprs2, $e2, $body, $($arm2),*)}, $($arm1),*)
+    };
+}
+
+#[macro_export]
+macro_rules! match_arrok {
+    (numeric $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize)};
+    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, String, Str, DateTime)};
+    ($($tt: tt)*) => {match_all!(ArrOk, $($tt)*)};
+}

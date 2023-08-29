@@ -17,9 +17,9 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn reshape(self, shape: Expr<'a, usize>) -> Self {
-        self.chain_view_f(
-            |arr| {
-                let shape = shape.eval()?;
+        self.chain_view_f_ct(
+            |(arr, ct)| {
+                let (shape, ct) = shape.eval(ct)?;
                 let sh = shape.view_arr();
                 let ndim = sh.ndim();
                 if ndim == 0 {
@@ -32,7 +32,7 @@ where
                         .to_dimd()
                         .into();
                     // safe because the view exist in lifetime 'a
-                    Ok(mem::transmute(out))
+                    Ok((mem::transmute(out), ct))
                 } else if ndim == 1 {
                     let shape = sh.to_dim1().unwrap();
                     let out: ArbArray<'_, T> = arr
@@ -42,7 +42,7 @@ where
                         .wrap()
                         .to_dimd()
                         .into();
-                    Ok(mem::transmute(out))
+                    Ok((mem::transmute(out), ct))
                 } else {
                     Err("the dim of shape should not be greater than 1".into())
                 }
@@ -255,9 +255,9 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn permuted_axes(self, axes: Expr<'a, i32>) -> Self {
-        self.chain_view_f(
-            move |arr| {
-                let axes = axes.eval()?;
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (axes, ct) = axes.eval(ct)?;
                 // let axes_view = axes.view_arr().to_dim1().expect("axes should be dim 1");
                 let axes = axes
                     .view_arr()
@@ -269,7 +269,7 @@ where
                     .permuted_axes(axes.view().to_slice().unwrap())
                     .wrap()
                     .into();
-                Ok(mem::transmute(out))
+                Ok((mem::transmute(out), ct))
             },
             RefType::True,
         )
@@ -311,9 +311,9 @@ where
     ///
     /// the data for the array view should exist
     pub unsafe fn broadcast(self, shape: Expr<'a, usize>) -> Self {
-        self.chain_view_f(
-            move |arr| {
-                let shape = shape.eval()?;
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (shape, ct) = shape.eval(ct)?;
                 let sh = shape.view_arr();
                 let ndim = sh.ndim();
                 let out: ArbArray<'_, T> = if ndim == 0 {
@@ -335,7 +335,7 @@ where
                 } else {
                     return Err("the dim of shape should not be greater than 1".into());
                 };
-                Ok(mem::transmute(out))
+                Ok((mem::transmute(out), ct))
             },
             RefType::True,
         )
@@ -353,14 +353,15 @@ where
     where
         T: Clone,
     {
-        self.chain_arr_f(
-            move |arr| {
-                let con = con.eval()?;
+        self.chain_arr_f_ct(
+            move |(arr, ct)| {
+                let (con, ct) = con.eval(ct)?;
                 let flag = con.view_arr().to_dim0()?;
                 if *flag.into_scalar() {
-                    Ok(then.eval()?.into_arr()?.to_owned().into())
+                    let (then, ct) = then.into_arr(ct)?;
+                    Ok((then.to_owned().into(), ct))
                 } else {
-                    Ok(arr)
+                    Ok((arr, ct))
                 }
             },
             RefType::Keep,

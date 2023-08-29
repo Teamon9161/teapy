@@ -129,6 +129,7 @@ impl PyDataDict {
     }
 }
 
+/// Be careful when implement a new method as we should also deal with the reference of the object.
 #[pymethods]
 #[allow(clippy::missing_safety_doc)]
 impl PyDataDict {
@@ -195,7 +196,7 @@ impl PyDataDict {
         self.eval_all()?;
         let dict = PyDict::new(py);
         for expr in &self.data {
-            dict.set_item(expr.name(), expr.clone().to_py(None).value(None, py)?)?;
+            dict.set_item(expr.name(), expr.clone().to_py(None).value(None, None, py)?)?;
         }
         Ok(dict)
     }

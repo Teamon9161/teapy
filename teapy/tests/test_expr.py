@@ -53,12 +53,40 @@ def test_rolling():
     res2 = value.rolling("12h", by=time, start_by="duration_start").min().eval()
     expect2 = [5, 5, 9, 5, 5, 8, 2, 2, 3, 3, 3, 6, 4, 4, 8, 3, 1, 5, 3, 3, 4, 4, 4, 3]
     assert_allclose(res2.view, expect2)
+    res3 = value.rolling(by=time, window="3d", offset="1d").sum().eval()
+    expect3 = [
+        5,
+        5,
+        9,
+        5,
+        8,
+        8,
+        7,
+        12,
+        12,
+        8,
+        16,
+        14,
+        11,
+        19,
+        20,
+        11,
+        17,
+        19,
+        14,
+        23,
+        24,
+        18,
+        26,
+        22,
+    ]
+    assert_allclose(res3.view, expect3)
 
     time = tp.Expr(pd.date_range("2020-01-01", "2020-05-05", freq="8d").values)
     value = tp.Expr([1, 9, 3, 1, 5, 4, 3, 8, 1, 1, 5, 2, 6, 8, 7, 9])
-    res3 = value.rolling("1mo", by=time).min().eval()
-    expect3 = [1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 2, 2, 6]
-    assert_allclose(res3.view, expect3)
-    res4 = value.rolling("1mo", by=time, start_by="duration_start").max().eval()
-    expect4 = [1, 9, 9, 9, 5, 5, 5, 8, 1, 1, 5, 5, 6, 8, 8, 9]
+    res4 = value.rolling("1mo", by=time).min().eval()
+    expect4 = [1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 2, 2, 6]
     assert_allclose(res4.view, expect4)
+    res5 = value.rolling("1mo", by=time, start_by="duration_start").max().eval()
+    expect5 = [1, 9, 9, 9, 5, 5, 5, 8, 1, 1, 5, 5, 6, 8, 8, 9]
+    assert_allclose(res5.view, expect5)

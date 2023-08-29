@@ -1,4 +1,5 @@
-use chrono::{Datelike, Duration, DurationRound, Months, NaiveDateTime};
+use chrono::{Datelike, Duration, DurationRound, Months, NaiveDateTime, NaiveTime, Timelike};
+use core::panic;
 use ndarray::ScalarOperand;
 use numpy::{
     datetime::{Datetime as NPDatetime, Unit as NPUnit},
@@ -12,7 +13,7 @@ use std::{
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
 
-use crate::{Cast, GetNone};
+use crate::{Cast, GetNone, OptUsize};
 // #[cfg(feature = "option_dtype")]
 // use crate::{OptF32, OptF64, OptI32, OptI64};
 
@@ -283,6 +284,36 @@ impl DateTime {
         } else {
             i64::MIN.into()
         }
+    }
+
+    #[inline]
+    pub fn time(&self) -> Option<NaiveTime> {
+        self.0.map(|dt| dt.time())
+    }
+
+    #[inline]
+    pub fn day(&self) -> OptUsize {
+        self.0.map(|dt| dt.day().cast()).into()
+    }
+
+    #[inline]
+    pub fn month(&self) -> OptUsize {
+        self.0.map(|dt| dt.month().cast()).into()
+    }
+
+    #[inline]
+    pub fn hour(&self) -> OptUsize {
+        self.0.map(|dt| dt.hour().cast()).into()
+    }
+
+    #[inline]
+    pub fn minute(&self) -> OptUsize {
+        self.0.map(|dt| dt.minute().cast()).into()
+    }
+
+    #[inline]
+    pub fn second(&self) -> OptUsize {
+        self.0.map(|dt| dt.second().cast()).into()
     }
 }
 
@@ -564,18 +595,25 @@ impl Mul<i32> for TimeDelta {
     }
 }
 
-impl Div<i32> for TimeDelta {
-    type Output = TimeDelta;
+impl Div<TimeDelta> for TimeDelta {
+    type Output = i32;
 
-    fn div(self, rhs: i32) -> TimeDelta {
-        if self.is_not_nat() {
+    fn div(self, rhs: TimeDelta) -> Self::Output {
+        if self.is_not_nat() & rhs.is_not_nat() {
             // may not as expected
-            Self {
-                months: self.months / rhs,
-                inner: self.inner / rhs,
+            let inner_div =
+                self.inner.num_nanoseconds().unwrap() / rhs.inner.num_nanoseconds().unwrap();
+            if self.months == 0 || rhs.months == 0 {
+                return inner_div as i32;
+            }
+            let month_div = self.months / rhs.months;
+            if month_div == inner_div as i32 {
+                month_div
+            } else {
+                panic!("not support div TimeDelta when month div and time div is not equal")
             }
         } else {
-            TimeDelta::nat()
+            panic!("not support div TimeDelta when one of them is nat")
         }
     }
 }

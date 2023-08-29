@@ -1,7 +1,7 @@
 use ndarray::{Array1, Axis, Slice};
 use pyo3::types::{PyList as PyList3, PyTuple};
 
-use tears::lazy::DataDict;
+use tears::lazy::{ColumnSelector, DataDict};
 use tears::{ArbArray, DateTime, TimeDelta};
 
 // #[cfg(feature="option_dtype")]
@@ -247,7 +247,7 @@ pub fn concat_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
         Object => cast_object, String => cast_string, Str => cast_str,
         DateTime => cast_datetime(None), TimeDelta => cast_timedelta
     );
-    Ok(rtn.add_obj_vec(obj_vec))
+    Ok(rtn.add_obj_vec_into(obj_vec))
 }
 
 #[pyfunction]
@@ -284,7 +284,7 @@ pub fn stack_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
         Object => cast_object, String => cast_string, Str => cast_str,
         DateTime => cast_datetime(None), TimeDelta => cast_timedelta
     );
-    Ok(rtn.add_obj_vec(obj_vec))
+    Ok(rtn.add_obj_vec_into(obj_vec))
 }
 
 #[pyfunction]
@@ -301,7 +301,9 @@ pub unsafe fn stack_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
 #[pyfunction]
 #[pyo3(signature=(exprs, inplace=false))]
 pub fn eval_exprs(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<PyExpr>>> {
-    exprs.par_iter_mut().try_for_each(|e| e.eval_inplace())?;
+    exprs
+        .par_iter_mut()
+        .try_for_each(|e| e.eval_inplace(None))?;
     if inplace {
         Ok(None)
     } else {
@@ -377,7 +379,7 @@ pub fn where_(mask: PyExpr, expr: PyExpr, value: PyExpr, par: bool) -> PyResult<
             .into(),
         _ => todo!(),
     };
-    Ok(out.add_obj_vec(obj_vec))
+    Ok(out.add_obj_vec_into(obj_vec))
 }
 
 #[pyfunction]
@@ -387,11 +389,11 @@ pub unsafe fn full(shape: &PyAny, value: &PyAny, py: Python) -> PyResult<PyObjec
     let shape = parse_expr_nocopy(shape)?;
     let value = parse_expr_nocopy(value)?;
     let obj = shape.obj();
-    let out = match_exprs!(&value.inner, e, {
-        Expr::full(shape.cast_usize()?, e.clone())
-            .to_py(obj)
-            .add_obj(value.obj())
+    let mut out = match_exprs!(&value.inner, e, {
+        Expr::full(shape.cast_usize()?, e.clone()).to_py(obj)
+        // .add_obj(value.obj())
     });
+    out.add_obj(value.obj());
     Ok(out.into_py(py))
 }
 
@@ -406,7 +408,7 @@ pub unsafe fn arange(start: &PyAny, end: Option<&PyAny>, step: Option<f64>) -> P
         let obj_end = end.obj();
         Ok(Expr::arange(Some(start.cast_f64()?), end.cast_f64()?, step)
             .to_py(obj_start)
-            .add_obj(obj_end))
+            .add_obj_into(obj_end))
     } else {
         // we only have start argument, this is actually end argument
         Ok(Expr::arange(None, start.cast_f64()?, step).to_py(obj_start))
@@ -435,10 +437,10 @@ pub fn get_newey_west_adjust_s(x: PyExpr, resid: PyExpr, lag: PyExpr) -> PyResul
     let resid = resid.cast_f64()?;
     let mut out: PyExpr = x
         .cast_f64()?
-        .chain_owned_f(move |x| {
-            let lag = *lag.eval()?.view_arr().to_dim0()?.into_scalar();
+        .chain_owned_f_ct(move |(x, ct)| {
+            let lag = *lag.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
             let lag_f64 = lag as f64;
-            let resid = resid.eval()?;
+            let (resid, ct) = resid.eval(ct)?;
             let resid_view = resid.view_arr().to_dim1()?.0;
             let weights = Array1::range(0., lag_f64 + 1., 1.)
                 .mapv(|v| 1. - v / (lag_f64 + 1.))
@@ -458,11 +460,11 @@ pub fn get_newey_west_adjust_s(x: PyExpr, resid: PyExpr, lag: PyExpr) -> PyResul
                     .0;
                 s = s + *weights.get(lag).unwrap() * (temp.to_owned() + temp.t());
             }
-            Ok(ArbArray::Owned(s.wrap()))
+            Ok((ArbArray::Owned(s.wrap()), ct))
         })
         .into();
     for obj in obj_vec {
-        out = out.add_obj(obj)
+        out = out.add_obj_into(obj)
     }
     Ok(out)
 }
@@ -476,4 +478,13 @@ pub fn from_pandas(df: &PyAny) -> PyResult<PyDataDict> {
     }
     let (data, obj_map) = data.into_rs(Some(columns.clone()))?;
     Ok(DataDict::new(data, Some(columns)).to_py(obj_map))
+}
+
+#[pyfunction]
+pub fn context(s: Option<&PyAny>) -> PyResult<PyExpr> {
+    let s: ColumnSelector = s.into();
+    let e: Expr<'static, f64> =
+        unsafe { std::mem::transmute(Expr::<'_, f64>::new_with_selector(s, None)) };
+    let es: Exprs<'static> = e.into();
+    Ok(es.to_py(None))
 }

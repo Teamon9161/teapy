@@ -51,7 +51,7 @@ impl Default for PyValue {
 }
 
 impl GetDataType for PyValue {
-    type Physical = PyObject;
+    // type Physical = PyObject;
     fn dtype() -> DataType {
         DataType::Object
     }

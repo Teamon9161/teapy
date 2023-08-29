@@ -12,6 +12,7 @@ description = "Wrapper of NdArray"
 default = ["lazy", "window_func", "blas"]
 option_dtype = []
 lazy = []
+new_expr = []
 window_func = []
 blas = ["ndarray/blas", "lazy", "stat", "lapack-sys", "intel-mkl"]
 npy = ["ndarray-npy"]

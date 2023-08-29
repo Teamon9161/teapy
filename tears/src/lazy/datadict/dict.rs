@@ -4,8 +4,9 @@ use std::fmt::Debug;
 use std::iter::zip;
 use std::sync::Arc;
 
+// use crate::lazy::context::Context;
 use crate::lazy::{Expr, Exprs};
-use crate::{CollectTrustedToVec, StrError, TpResult};
+use crate::{CollectTrustedToVec, Context, StrError, TpResult};
 
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;
@@ -400,18 +401,38 @@ impl<'a> DataDict<'a> {
     }
 
     pub fn eval_inplace(&mut self, col: ColumnSelector) -> TpResult<()> {
+        // is there a good way to avoid clone at all cases? Currently we can not get a immutable reference
+        // of self and a mutable reference of self at the same time.
+        let context: Option<Context<'a>> = self.clone().into();
         let expr = self.get_mut(col)?;
         match expr {
             GetMutOutput::Expr(e) => {
                 // we should update_column_map if the name of the expr has changed after evaluation.
                 let ori_name = e.name().unwrap();
-                e.eval_inplace()?;
+                if e.is_context() {
+                    // e.cast_by_context(context.clone())?;
+                    e.cast_by_context(context.clone())?.eval_inplace(context)?;
+                } else {
+                    e.eval_inplace(None)?;
+                }
                 let new_name = e.name().unwrap();
                 self.update_column_map(ori_name, new_name)?
             }
             GetMutOutput::Exprs(mut es) => {
                 let ori_name_vec = es.iter().map(|e| e.name().unwrap()).collect_trusted();
-                es.par_iter_mut().try_for_each(|e| e.eval_inplace())?;
+                let context_flag = es.iter().any(|e| e.is_context());
+                if context_flag {
+                    // let ct: Option<Context<'a>> = self.clone().into();
+                    es.par_iter_mut().try_for_each(move |e| {
+                        e.cast_by_context(context.clone())?
+                            .eval_inplace(context.clone())
+                            .map(|_| {})
+                    })?;
+                } else {
+                    es.par_iter_mut()
+                        .try_for_each(|e| e.eval_inplace(None).map(|_| {}))?;
+                }
+
                 let new_name_vec = es.iter().map(|e| e.name().unwrap()).collect_trusted();
                 zip(ori_name_vec, new_name_vec).try_for_each(|(ori_name, new_name)| {
                     self.update_column_map(ori_name, new_name)

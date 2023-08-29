@@ -41,13 +41,13 @@ where
     where
         T: TpHash,
     {
-        self.chain_view_f(
-            move |arr| {
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
                 let others = others
                     .map(|mut x| {
-                        x.par_iter_mut().for_each(|e| {
-                            _ = e.eval_inplace();
-                        });
+                        x.par_iter_mut()
+                            .try_for_each(|e| e.eval_inplace(ct.clone()).map(|_| {}))
+                            .unwrap();
                         x
                     })
                     .unwrap_or(vec![]);
@@ -130,7 +130,7 @@ where
                     return Err("keep must be either first or last".into());
                 }
                 let arr = Arr1::from_vec(out_idx).to_dimd();
-                Ok(arr.into())
+                Ok((arr.into(), ct))
             },
             RefType::False,
         )

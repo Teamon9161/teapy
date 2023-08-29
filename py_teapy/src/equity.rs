@@ -54,15 +54,15 @@ pub unsafe fn calc_ret_single(
     } else {
         (None, None)
     };
-    let out_expr: Expr<f64> = pos.cast_f64()?.chain_view_f(
-        move |pos_arr| {
+    let out_expr: Expr<f64> = pos.cast_f64()?.chain_view_f_ct(
+        move |(pos_arr, ct)| {
             let pos_arr = pos_arr.to_dim1()?; // 当期仓位的1d array
-            let opening_cost_expr = opening_cost.eval()?; // 开仓成本的1d array
-            let closing_cost_expr = closing_cost.eval()?; // 平仓价格的1d array
+            let (opening_cost_expr, ct) = opening_cost.eval(ct)?; // 开仓成本的1d array
+            let (closing_cost_expr, ct) = closing_cost.eval(ct)?; // 平仓价格的1d array
             let opening_cost_arr = opening_cost_expr.view_arr().to_dim1()?;
             let closing_cost_arr = closing_cost_expr.view_arr().to_dim1()?;
             if pos_arr.is_empty() {
-                return Ok(Arr1::from_vec(vec![]).to_dimd().into());
+                return Ok((Arr1::from_vec(vec![]).to_dimd().into(), ct));
             }
             // 账户变动信息
             let mut cash = init_cash.f64();
@@ -70,126 +70,134 @@ pub unsafe fn calc_ret_single(
             let mut last_lot_num = 0.;
             let mut last_close = closing_cost_arr[0];
             if let Some(contract_signal) = contract_signal {
-                let contract_signal_expr = contract_signal.eval()?;
+                let (contract_signal_expr, ct) = contract_signal.eval(ct)?;
                 let contract_signal_arr = contract_signal_expr.view_arr().to_dim1()?;
-                Ok(Zip::from(&pos_arr.0)
-                    .and(&opening_cost_arr.0)
-                    .and(&closing_cost_arr.0)
-                    .and(&contract_signal_arr.0)
-                    .map_collect(|&pos, &opening_cost, &closing_cost, &contract_signal| {
-                        if blowup && cash <= 0. {
-                            return 0.;
-                        }
-                        if (last_lot_num != 0.) && (!contract_signal) {
-                            // 换月的时候不计算跳开的损益
-                            cash += last_lot_num
-                                * (opening_cost - last_close)
-                                * multiplier.f64()
-                                * last_pos.signum();
-                        }
-                        // 因为采用pos来判断加减仓，所以杠杆leverage必须是个常量，不应修改leverage的类型
-                        if (pos != last_pos) || contract_signal {
-                            // 仓位出现变化，计算新的理论持仓手数
-                            let l = ((cash * leverage * pos.abs())
-                                / (multiplier.f64() * opening_cost))
-                                .floor();
-                            let (lot_num, lot_num_change) = if !contract_signal {
-                                (
-                                    l,
-                                    (l * pos.signum() - last_lot_num * last_pos.signum()).abs(),
-                                )
-                            } else {
-                                (l, l.abs() * 2.)
-                            };
-                            // 扣除手续费变动
-                            if let CommisionType::Percent = commision_type {
-                                cash -= lot_num_change
+                Ok((
+                    Zip::from(&pos_arr.0)
+                        .and(&opening_cost_arr.0)
+                        .and(&closing_cost_arr.0)
+                        .and(&contract_signal_arr.0)
+                        .map_collect(|&pos, &opening_cost, &closing_cost, &contract_signal| {
+                            if blowup && cash <= 0. {
+                                return 0.;
+                            }
+                            if (last_lot_num != 0.) && (!contract_signal) {
+                                // 换月的时候不计算跳开的损益
+                                cash += last_lot_num
+                                    * (opening_cost - last_close)
                                     * multiplier.f64()
-                                    * (opening_cost * c_rate + slippage * ticksize);
-                            } else {
-                                cash -= lot_num_change
-                                    * (c_rate + multiplier.f64() * slippage * ticksize);
-                            };
-                            // 更新上期持仓手数和持仓头寸
-                            last_lot_num = lot_num;
-                            last_pos = pos;
-                        }
-                        // 计算当期损益
-                        if last_lot_num != 0. {
-                            cash += last_lot_num
-                                * last_pos.signum()
-                                * (closing_cost - opening_cost)
-                                * multiplier.f64();
-                        }
-                        last_close = closing_cost; // 更新上期收盘价
+                                    * last_pos.signum();
+                            }
+                            // 因为采用pos来判断加减仓，所以杠杆leverage必须是个常量，不应修改leverage的类型
+                            if (pos != last_pos) || contract_signal {
+                                // 仓位出现变化，计算新的理论持仓手数
+                                let l = ((cash * leverage * pos.abs())
+                                    / (multiplier.f64() * opening_cost))
+                                    .floor();
+                                let (lot_num, lot_num_change) = if !contract_signal {
+                                    (
+                                        l,
+                                        (l * pos.signum() - last_lot_num * last_pos.signum()).abs(),
+                                    )
+                                } else {
+                                    (l, l.abs() * 2.)
+                                };
+                                // 扣除手续费变动
+                                if let CommisionType::Percent = commision_type {
+                                    cash -= lot_num_change
+                                        * multiplier.f64()
+                                        * (opening_cost * c_rate + slippage * ticksize);
+                                } else {
+                                    cash -= lot_num_change
+                                        * (c_rate + multiplier.f64() * slippage * ticksize);
+                                };
+                                // 更新上期持仓手数和持仓头寸
+                                last_lot_num = lot_num;
+                                last_pos = pos;
+                            }
+                            // 计算当期损益
+                            if last_lot_num != 0. {
+                                cash += last_lot_num
+                                    * last_pos.signum()
+                                    * (closing_cost - opening_cost)
+                                    * multiplier.f64();
+                            }
+                            last_close = closing_cost; // 更新上期收盘价
 
-                        cash
-                        // closing_cost - opening_cost
-                    })
-                    .wrap()
-                    .to_dimd()
-                    .into())
+                            cash
+                            // closing_cost - opening_cost
+                        })
+                        .wrap()
+                        .to_dimd()
+                        .into(),
+                    ct,
+                ))
             } else {
                 // 不考虑合约换月信号的情况
-                Ok(Zip::from(&pos_arr.0)
-                    .and(&opening_cost_arr.0)
-                    .and(&closing_cost_arr.0)
-                    .map_collect(|&pos, &opening_cost, &closing_cost| {
-                        if blowup && cash <= 0. {
-                            return 0.;
-                        }
-                        if last_lot_num != 0. {
-                            cash += last_lot_num
-                                * (opening_cost - last_close)
-                                * multiplier.f64()
-                                * last_pos.signum();
-                        }
-                        // 因为采用pos来判断加减仓，所以杠杆leverage必须是个常量，不应修改leverage的类型
-                        if pos != last_pos {
-                            // 仓位出现变化
-                            // 计算新的理论持仓手数
-                            let lot_num = ((cash * leverage * pos.abs())
-                                / (multiplier.f64() * opening_cost))
-                                .floor();
-                            // 扣除手续费变动
-                            if let CommisionType::Percent = commision_type {
-                                cash -= (lot_num * pos.signum() - last_lot_num * last_pos.signum())
-                                    .abs()
+                Ok((
+                    Zip::from(&pos_arr.0)
+                        .and(&opening_cost_arr.0)
+                        .and(&closing_cost_arr.0)
+                        .map_collect(|&pos, &opening_cost, &closing_cost| {
+                            if blowup && cash <= 0. {
+                                return 0.;
+                            }
+                            if last_lot_num != 0. {
+                                cash += last_lot_num
+                                    * (opening_cost - last_close)
                                     * multiplier.f64()
-                                    * (opening_cost * c_rate + slippage * ticksize);
-                            } else {
-                                cash -= (lot_num * pos.signum() - last_lot_num * last_pos.signum())
+                                    * last_pos.signum();
+                            }
+                            // 因为采用pos来判断加减仓，所以杠杆leverage必须是个常量，不应修改leverage的类型
+                            if pos != last_pos {
+                                // 仓位出现变化
+                                // 计算新的理论持仓手数
+                                let lot_num = ((cash * leverage * pos.abs())
+                                    / (multiplier.f64() * opening_cost))
+                                    .floor();
+                                // 扣除手续费变动
+                                if let CommisionType::Percent = commision_type {
+                                    cash -= (lot_num * pos.signum()
+                                        - last_lot_num * last_pos.signum())
                                     .abs()
-                                    * (c_rate + multiplier.f64() * slippage * ticksize);
-                            };
-                            // 更新上期持仓手数和持仓头寸
-                            last_lot_num = lot_num;
-                            last_pos = pos;
-                        }
-                        // 计算当期损益
-                        if last_lot_num != 0. {
-                            cash += last_lot_num
-                                * (closing_cost - opening_cost)
-                                * multiplier.f64()
-                                * last_pos.signum();
-                        }
-                        last_close = closing_cost; // 更新上期收盘价
+                                        * multiplier.f64()
+                                        * (opening_cost * c_rate + slippage * ticksize);
+                                } else {
+                                    cash -= (lot_num * pos.signum()
+                                        - last_lot_num * last_pos.signum())
+                                    .abs()
+                                        * (c_rate + multiplier.f64() * slippage * ticksize);
+                                };
+                                // 更新上期持仓手数和持仓头寸
+                                last_lot_num = lot_num;
+                                last_pos = pos;
+                            }
+                            // 计算当期损益
+                            if last_lot_num != 0. {
+                                cash += last_lot_num
+                                    * (closing_cost - opening_cost)
+                                    * multiplier.f64()
+                                    * last_pos.signum();
+                            }
+                            last_close = closing_cost; // 更新上期收盘价
 
-                        cash
-                        // cash
-                    })
-                    .wrap()
-                    .to_dimd()
-                    .into())
+                            cash
+                            // cash
+                        })
+                        .wrap()
+                        .to_dimd()
+                        .into(),
+                    ct,
+                ))
             }
         },
         RefType::False,
     );
     Ok(out_expr
         .to_py(obj)
-        .add_obj(obj1)
-        .add_obj(obj2)
-        .add_obj(obj3))
+        .add_obj_into(obj1)
+        .add_obj_into(obj2)
+        .add_obj_into(obj3))
 }
 
 // #[pyfunction]
@@ -226,7 +234,7 @@ pub fn calc_digital_ret(
     let out_expr: Expr<f64> = price.cast_f64()?.chain_view_f(
         move |price_arr| {
             let price = price_arr.to_dim2()?;
-            let factor_expr = factor.eval()?;
+            let factor_expr = factor.eval(None)?.0;
             let factor = factor_expr.view_arr().to_dim2()?;
             let time_n = factor.shape()[1];
             let mut cash_vec = Vec::with_capacity(time_n);
