@@ -1,8 +1,9 @@
+use crate::{Cast, GetDataType, TpResult};
+
 use super::{ArrD, ArrViewD, ArrViewMutD, WrapNdarray};
 use ndarray::{Array, ArrayD, IxDyn, ShapeBuilder};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-// #[derive(Debug)]
 pub enum ArbArray<'a, T> {
     View(ArrViewD<'a, T>),
     ViewMut(ArrViewMutD<'a, T>),
@@ -12,7 +13,6 @@ pub enum ArbArray<'a, T> {
 impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
     #[allow(unreachable_patterns)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // match_arbarray!(self, a, { a.fmt(f) })
         match &self {
             ArbArray::View(a) => write!(f, "ArrayView({a:#?})"),
             ArbArray::ViewMut(a) => write!(f, "ArrayViewMut({a:#?})"),
@@ -119,6 +119,20 @@ impl<'a, T> ArbArray<'a, T> {
         matches!(self, ArbArray::Owned(_))
     }
 
+    /// Cast to another type
+    pub fn cast<T2>(self) -> ArbArray<'a, T2>
+    where
+        T: GetDataType + Cast<T2> + Clone,
+        T2: GetDataType + Clone + 'a,
+    {
+        if T::dtype() == T2::dtype() {
+            // safety: T and T2 are the same type
+            unsafe { std::mem::transmute(self) }
+        } else {
+            self.view().cast::<T2>().into()
+        }
+    }
+
     #[allow(unreachable_patterns)]
     pub fn get_type(&self) -> &'static str {
         match self {
@@ -162,11 +176,11 @@ impl<'a, T> ArbArray<'a, T> {
         }
     }
 
-    pub fn into_owned_inner(self) -> Result<ArrD<T>, &'static str> {
+    pub fn into_owned_inner(self) -> TpResult<ArrD<T>> {
         if let ArbArray::Owned(arr) = self {
             Ok(arr)
         } else {
-            Err("ArbArray is not owned")
+            Err("ArbArray is not owned".into())
         }
     }
 
@@ -212,6 +226,21 @@ impl<'a, T> ArbArray<'a, T> {
             ArbArray::View(arr) => arr.view(),
             ArbArray::ViewMut(arr) => arr.view(),
             ArbArray::Owned(arr) => arr.view(),
+        }
+    }
+
+    pub fn viewmut(&mut self) -> ArrViewMutD<'_, T>
+    where
+        T: Clone,
+    {
+        match self {
+            ArbArray::ViewMut(arr) => arr.view_mut(),
+            ArbArray::Owned(arr) => arr.view_mut(),
+            ArbArray::View(arr_view) => {
+                let arr = arr_view.to_owned();
+                *self = ArbArray::Owned(arr);
+                self.viewmut()
+            }
         }
     }
 }

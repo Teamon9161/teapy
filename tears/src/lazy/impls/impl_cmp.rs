@@ -11,8 +11,14 @@ where
         T: PartialOrd<T2>,
         T2: ExprElement + 'a,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.gt(rhs.eval()?.view().try_as_arr()?, par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.gt(rhs.eval(ct.clone())?.0.view().try_as_arr()?, par)
+                        .into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }
@@ -22,8 +28,14 @@ where
         T: PartialOrd<T2>,
         T2: ExprElement + 'a,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.ge(rhs.eval()?.view().try_as_arr()?, par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.ge(rhs.eval(ct.clone())?.0.view().try_as_arr()?, par)
+                        .into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }
@@ -33,8 +45,14 @@ where
         T: PartialOrd<T2>,
         T2: ExprElement + 'a,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.lt(rhs.eval()?.view().try_as_arr()?, par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.lt(rhs.eval(ct.clone())?.0.view().try_as_arr()?, par)
+                        .into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }
@@ -44,8 +62,14 @@ where
         T: PartialOrd<T2>,
         T2: ExprElement + 'a,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.le(rhs.eval()?.view().try_as_arr()?, par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.le(rhs.eval(ct.clone())?.0.view().try_as_arr()?, par)
+                        .into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }
@@ -55,8 +79,14 @@ where
         T: PartialEq<T2>,
         T2: ExprElement + 'a,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.eq(rhs.eval()?.view().try_as_arr()?, par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.eq(rhs.eval(ct.clone())?.0.view().try_as_arr()?, par)
+                        .into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }
@@ -66,8 +96,14 @@ where
         T: PartialEq<T2>,
         T2: ExprElement + 'a,
     {
-        self.chain_view_f(
-            move |arr| Ok(arr.ne(rhs.eval()?.view().try_as_arr()?, par).into()),
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                Ok((
+                    arr.ne(rhs.eval(ct.clone())?.0.view().try_as_arr()?, par)
+                        .into(),
+                    ct,
+                ))
+            },
             RefType::False,
         )
     }

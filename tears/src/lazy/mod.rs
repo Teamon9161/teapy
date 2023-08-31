@@ -2,7 +2,10 @@ pub mod expr;
 #[macro_use]
 pub mod exprs;
 
+mod context;
 mod datadict;
+#[cfg(feature = "new_expr")]
+mod expr_core;
 mod expr_view;
 mod groupby;
 mod impls;
@@ -11,6 +14,7 @@ mod join;
 mod linalg;
 mod unique;
 
+pub use context::Context;
 pub use datadict::{ColumnSelector, DataDict, GetMutOutput, GetOutput, SetInput};
 pub use expr::{Expr, ExprElement, ExprOut, RefType};
 pub use expr_view::ExprOutView;

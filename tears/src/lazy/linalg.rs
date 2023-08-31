@@ -65,25 +65,28 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     where
         T: Cast<f64> + Clone + 'a,
     {
-        self.cast::<f64>().chain_f(
-            move |x| {
+        self.cast::<f64>().chain_f_ct(
+            move |(x, ct)| {
                 let x = x.into_arr();
-                let y = y.cast::<f64>().eval()?;
+                let (y, ct) = y.cast::<f64>().eval(ct)?;
                 let y_arr = y.view_arr();
                 let x_view = match x.ndim() {
                     1 => x.view().to_dim1().unwrap().insert_axis(Axis(1)).wrap(),
                     2 => x.view().to_dim::<Ix2>().unwrap(),
                     _ => panic!("Too much dimension in lstsq"),
                 };
-                Ok(OlsResult::new(
-                    x_view
-                        .to_owned()
-                        .least_squares(&mut y_arr.to_owned())
-                        .unwrap(),
-                    x,
-                    y,
-                )
-                .into())
+                Ok((
+                    OlsResult::new(
+                        x_view
+                            .to_owned()
+                            .least_squares(&mut y_arr.to_owned())
+                            .unwrap(),
+                        x,
+                        y,
+                    )
+                    .into(),
+                    ct,
+                ))
             },
             RefType::False,
         )
@@ -129,10 +132,10 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
     where
         T: LinalgScalar,
     {
-        self.chain_view_f(
-            move |arr| {
-                let other = other.eval()?;
-                Ok(arr.dot(&other.view_arr())?.into())
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (other, ct) = other.eval(ct)?;
+                Ok((arr.dot(&other.view_arr())?.into(), ct))
             },
             RefType::False,
         )

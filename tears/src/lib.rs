@@ -1,6 +1,7 @@
-// #![feature(hash_raw_entry)]
 #![feature(let_chains)]
 #![feature(drain_filter)]
+// #![feature(hash_raw_entry)]
+// #![feature(get_many_mut)]
 // #![feature(build_hasher_simple_hash_one)]
 
 #[cfg(any(feature = "intel-mkl-system", feature = "intel-mkl-static"))]
@@ -42,12 +43,13 @@ pub use error::{StrError, TpResult};
 
 pub use iterators::{Iter, IterMut};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
-pub use utils::{kh_sum, DefaultNew, EmptyNew};
+pub use utils::{kh_sum, EmptyNew};
 
 #[cfg(feature = "lazy")]
 pub use lazy::{
-    flatten, get_partition_size, groupby, groupby_par, join_left, prepare_groupby, DropNaMethod,
-    Expr, ExprElement, ExprOut, ExprOutView, Exprs, JoinType, RefType, RollingTimeStartBy,
+    flatten, get_partition_size, groupby, groupby_par, join_left, prepare_groupby, Context,
+    DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, JoinType, RefType,
+    RollingTimeStartBy,
 };
 
 #[cfg(feature = "blas")]

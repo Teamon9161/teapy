@@ -15,7 +15,10 @@ macro_rules! impl_binary_op {
         {
             type Output = Expr<'a, T>;
             fn $func(self, other: Expr<'a, T2>) -> Self {
-                self.chain_owned_f(move |arr| Ok((arr.0 $operator other.eval()?.view_arr().0).wrap().into()))
+                self.chain_owned_f_ct(move |(arr, ct)| {
+                    let (out, ct) = other.eval(ct)?;
+                    Ok(((arr.0 $operator out.view_arr().0).wrap().into(), ct))
+                })
             }
         }
 
@@ -63,20 +66,27 @@ where
 
 impl<'a> Expr<'a, DateTime> {
     pub fn sub_datetime(self, other: Expr<'a, DateTime>, par: bool) -> Expr<'a, TimeDelta> {
-        self.chain_view_f(
-            move |arr| {
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
+                let (other, ct) = other.eval(ct)?;
                 if !par {
-                    Ok(Zip::from(arr.0)
-                        .and(other.eval()?.view_arr().0)
-                        .map_collect(|v1, v2| *v1 - *v2)
-                        .wrap()
-                        .into())
+                    Ok((
+                        Zip::from(arr.0)
+                            .and(other.view_arr().0)
+                            .map_collect(|v1, v2| *v1 - *v2)
+                            .wrap()
+                            .into(),
+                        ct,
+                    ))
                 } else {
-                    Ok(Zip::from(arr.0)
-                        .and(other.eval()?.view_arr().0)
-                        .par_map_collect(|v1, v2| *v1 - *v2)
-                        .wrap()
-                        .into())
+                    Ok((
+                        Zip::from(arr.0)
+                            .and(other.view_arr().0)
+                            .par_map_collect(|v1, v2| *v1 - *v2)
+                            .wrap()
+                            .into(),
+                        ct,
+                    ))
                 }
             },
             RefType::False,

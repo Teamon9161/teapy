@@ -37,7 +37,10 @@ macro_rules! impl_view_lazy {
         where
             T2: Number + ExprElement,
         {
-            self.chain_view_f(move |arr| Ok(arr.$func(&other.eval()?.view_arr(), $($p),*).into()), RefType::False)
+            self.chain_view_f_ct(move |(arr, ct)| {
+                let (out, ct)= other.eval(ct)?;
+                Ok((arr.$func(&out.view_arr(), $($p),*).into(), ct))
+            }, RefType::False)
         }
     };
     (in2, [$($func: ident -> $otype:ident),* $(,)?], $other: tt) => {

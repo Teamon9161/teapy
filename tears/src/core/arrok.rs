@@ -3,7 +3,9 @@ use std::fmt::Debug;
 use super::arbarray::{match_arbarray, ArbArray};
 use super::view::ArrViewD;
 // use crate::core::arbarray;
-use crate::{match_datatype_arm, DataType, DateTime, GetDataType, OptUsize, PyValue, TimeDelta};
+use crate::{
+    match_datatype_arm, Cast, DataType, DateTime, GetDataType, OptUsize, PyValue, TimeDelta,
+};
 use ndarray::IxDyn;
 
 #[cfg(feature = "option_dtype")]
@@ -135,3 +137,117 @@ impl<'a> ArrOk<'a> {
         match_arr!(self, arr, { arr.view().into_dtype::<T>() })
     }
 }
+
+#[macro_export]
+macro_rules! match_all {
+    // select the match arm
+    ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($(#[$meta: meta])? $arm: ident),*) => {
+        match $exprs {
+            $($(#[$meta])? $enum::$arm($e) => $body,)*
+            _ => unimplemented!("Not supported dtype in match_exprs")
+        }
+    };
+
+    ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
+        {
+            #[cfg(feature="option_dtype")]
+            macro_rules! inner_macro {
+                () => {
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
+                };
+            }
+
+            #[cfg(not(feature="option_dtype"))]
+            macro_rules! inner_macro {
+                () => {
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize, VecUsize)
+                };
+            }
+            inner_macro!()
+        }
+
+    };
+
+    ($enum: ident, ($exprs1: expr, $e1: ident, $($arm1: ident),*), ($exprs2: expr, $e2: ident, $($arm2: ident),*), $body: tt) => {
+        match_all!($enum, $exprs1, $e1, {match_all!($enum, $exprs2, $e2, $body, $($arm2),*)}, $($arm1),*)
+    };
+}
+
+#[macro_export]
+macro_rules! match_arrok {
+    (numeric $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize)};
+    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, String, Str, DateTime)};
+    ($($tt: tt)*) => {match_all!(ArrOk, $($tt)*)};
+}
+
+macro_rules! impl_arrok_cast {
+    ($($(#[$meta: meta])? $T: ty: $cast_func: ident),*) => {
+        $(
+            $(#[$meta])?
+            impl<'a> Cast<ArbArray<'a, $T>> for ArrOk<'a>
+            {
+                fn cast(self) -> ArbArray<'a, $T> {
+                    match self {
+                        ArrOk::F32(e) => e.cast::<$T>(),
+                        ArrOk::F64(e) => e.cast::<$T>(),
+                        ArrOk::I32(e) => e.cast::<$T>(),
+                        ArrOk::I64(e) => e.cast::<$T>(),
+                        ArrOk::Bool(e) => e.cast::<i32>().cast::<$T>(),
+                        ArrOk::Usize(e) => e.cast::<$T>(),
+                        // ArrOk::Str(e) => e.cast::<$T>(),
+                        ArrOk::String(e) => e.cast::<$T>(),
+                        // ArrOk::Object(e) => e.cast::<$T>(),
+                        ArrOk::DateTime(e) => e.cast::<i64>().cast::<$T>(),
+                        ArrOk::TimeDelta(e) => e.cast::<i64>().cast::<$T>(),
+                        #[cfg(feature = "option_dtype")]
+                        ArrOk::OptF64(e) => e.cast::<$T>(),
+                        #[cfg(feature = "option_dtype")]
+                        ArrOk::OptF32(e) => e.cast::<$T>(),
+                        #[cfg(feature = "option_dtype")]
+                        ArrOk::OptI32(e) => e.cast::<$T>(),
+                        #[cfg(feature = "option_dtype")]
+                        ArrOk::OptI64(e) => e.cast::<$T>(),
+                        ArrOk::OptUsize(e) => e.cast::<$T>(),
+                        _ => unimplemented!("Cast to this dtype is unimplemented"),
+                    }
+                }
+            }
+            // $(#[$meta])?
+            // impl<'a> Cast<ArrViewD<'a, $T>> for ArrOk<'a>
+            // {
+            //     fn cast(self) -> ArrViewD<'a, $T> {
+            //         let arb: ArbArray<'a, $T> = self.cast();
+            //         arb.view()
+            //     }
+            // }
+
+            $(#[$meta])?
+            impl<'a> ArrOk<'a>
+            {
+                pub fn $cast_func(self) -> ArbArray<'a, $T> {
+                    self.cast()
+                }
+            }
+        )*
+    };
+}
+impl_arrok_cast!(
+    i32: cast_i32,
+    i64: cast_i64,
+    f32: cast_f32,
+    f64: cast_f64,
+    usize: cast_usize,
+    bool: cast_bool,
+    String: cast_string,
+    DateTime: cast_datetime_default,
+    OptUsize: cast_optusize,
+    TimeDelta: cast_timedelta,
+    #[cfg(feature = "option_dtype")]
+    OptF32: cast_optf32,
+    #[cfg(feature = "option_dtype")]
+    OptF64: cast_optf64,
+    #[cfg(feature = "option_dtype")]
+    OptI32: cast_opti32,
+    #[cfg(feature = "option_dtype")]
+    OptI64: cast_opti64
+);

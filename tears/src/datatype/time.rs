@@ -1,4 +1,5 @@
-use chrono::{Datelike, Duration, DurationRound, Months, NaiveDateTime};
+use chrono::{Datelike, Duration, DurationRound, Months, NaiveDateTime, NaiveTime, Timelike};
+use core::panic;
 use ndarray::ScalarOperand;
 use numpy::{
     datetime::{Datetime as NPDatetime, Unit as NPUnit},
@@ -12,7 +13,7 @@ use std::{
     ops::{Add, Deref, Div, Mul, Neg, Sub},
 };
 
-use crate::{Cast, GetNone};
+use crate::{Cast, GetNone, OptUsize};
 // #[cfg(feature = "option_dtype")]
 // use crate::{OptF32, OptF64, OptI32, OptI64};
 
@@ -284,6 +285,36 @@ impl DateTime {
             i64::MIN.into()
         }
     }
+
+    #[inline]
+    pub fn time(&self) -> Option<NaiveTime> {
+        self.0.map(|dt| dt.time())
+    }
+
+    #[inline]
+    pub fn day(&self) -> OptUsize {
+        self.0.map(|dt| dt.day().cast()).into()
+    }
+
+    #[inline]
+    pub fn month(&self) -> OptUsize {
+        self.0.map(|dt| dt.month().cast()).into()
+    }
+
+    #[inline]
+    pub fn hour(&self) -> OptUsize {
+        self.0.map(|dt| dt.hour().cast()).into()
+    }
+
+    #[inline]
+    pub fn minute(&self) -> OptUsize {
+        self.0.map(|dt| dt.minute().cast()).into()
+    }
+
+    #[inline]
+    pub fn second(&self) -> OptUsize {
+        self.0.map(|dt| dt.second().cast()).into()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -403,15 +434,20 @@ impl Sub<DateTime> for DateTime {
     type Output = TimeDelta;
     fn sub(self, rhs: DateTime) -> Self::Output {
         if let (Some(dt1), Some(dt2)) = (self.0, rhs.0) {
-            let r_year = dt2.year();
-            let years = dt1.year() - r_year;
-            let months = dt1.month() as i32 - dt2.month() as i32;
-            let duration =
-                dt1.with_year(r_year).unwrap().with_month(1).unwrap() - dt2.with_month(1).unwrap();
+            let duration = dt1 - dt2;
             TimeDelta {
-                months: 12 * years + months,
+                months: 0,
                 inner: duration,
             }
+            // let r_year = dt2.year();
+            // let years = dt1.year() - r_year;
+            // let months = dt1.month() as i32 - dt2.month() as i32;
+            // let duration =
+            //     dt1.with_year(r_year).expect(&format!("{dt1} with {r_year}")).with_month(1).expect(&format!("{dt1} with month1")) - dt2.with_month(1).expect(&format!("{dt2} with month1"));
+            // TimeDelta {
+            //     months: 12 * years + months,
+            //     inner: duration,
+            // }
         } else {
             TimeDelta::nat()
         }
@@ -564,18 +600,25 @@ impl Mul<i32> for TimeDelta {
     }
 }
 
-impl Div<i32> for TimeDelta {
-    type Output = TimeDelta;
+impl Div<TimeDelta> for TimeDelta {
+    type Output = i32;
 
-    fn div(self, rhs: i32) -> TimeDelta {
-        if self.is_not_nat() {
+    fn div(self, rhs: TimeDelta) -> Self::Output {
+        if self.is_not_nat() & rhs.is_not_nat() {
             // may not as expected
-            Self {
-                months: self.months / rhs,
-                inner: self.inner / rhs,
+            let inner_div =
+                self.inner.num_nanoseconds().unwrap() / rhs.inner.num_nanoseconds().unwrap();
+            if self.months == 0 || rhs.months == 0 {
+                return inner_div as i32;
+            }
+            let month_div = self.months / rhs.months;
+            if month_div == inner_div as i32 {
+                month_div
+            } else {
+                panic!("not support div TimeDelta when month div and time div is not equal")
             }
         } else {
-            TimeDelta::nat()
+            panic!("not support div TimeDelta when one of them is nat")
         }
     }
 }

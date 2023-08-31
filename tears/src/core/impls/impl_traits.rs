@@ -123,6 +123,7 @@ impl_from!(
     (DateTime, DateTime),
     (TimeDelta, TimeDelta), //, (Str, &str)
     (OptUsize, OptUsize),
+    (VecUsize, Vec<usize>),
     (OptF64, OptF64),
     (OptF32, OptF32),
     (OptI32, OptI32),
@@ -136,6 +137,7 @@ impl_from!(
     (I32, i32),
     (I64, i64),
     (Usize, usize),
+    (VecUsize, Vec<usize>),
     (Object, PyValue),
     (String, String),
     (DateTime, DateTime),

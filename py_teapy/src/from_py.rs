@@ -1,11 +1,17 @@
+use std::sync::Arc;
+
 use numpy::{
     datetime::{units, Datetime},
     PyArray, PyArrayDyn,
 };
-use pyo3::{exceptions::PyValueError, FromPyObject, PyObject, PyResult, Python, ToPyObject};
-use tears::PyValue;
+use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
+use tears::{Context, PyValue};
 #[cfg(feature = "option_dtype")]
 use tears::{OptF64, OptI64};
+
+use crate::pylazy::{PyDataDict, RefObj};
+use ahash::HashMap;
+// use super::export::*;
 
 #[derive(FromPyObject)]
 pub enum Scalar {
@@ -131,6 +137,48 @@ impl<T, D> NoDim0 for &PyArray<T, D> {
             Ok(self.call_method0("item")?.to_object(py))
         } else {
             Ok(self.to_object(py))
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct PyContext<'py> {
+    pub ct: Option<Context<'py>>,
+    pub obj_map: HashMap<String, RefObj>,
+}
+
+impl<'py> From<Context<'py>> for PyContext<'py> {
+    fn from(ct: Context<'py>) -> Self {
+        Self {
+            ct: Some(ct),
+            obj_map: Default::default(),
+        }
+    }
+}
+
+impl<'py> FromPyObject<'py> for PyContext<'py> {
+    fn extract(ob: &'py PyAny) -> PyResult<PyContext<'py>> {
+        if ob.is_none() {
+            Ok(Self {
+                ct: None,
+                obj_map: Default::default(),
+            })
+        } else if let Ok(dd) = ob.extract::<PyDataDict>() {
+            Ok(Self {
+                // safety: we can cast 'py to 'static as we are running in python
+                ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
+                obj_map: dd.obj_map,
+            })
+        } else if ob.hasattr("_dd")? && ob.get_type().name()? == "DataDict" {
+            let dd = ob.getattr("_dd")?.extract::<PyDataDict>()?;
+            Ok(Self {
+                ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
+                obj_map: dd.obj_map,
+            })
+        } else {
+            Err(PyValueError::new_err(
+                "Cannot extract a Context from the object",
+            ))
         }
     }
 }

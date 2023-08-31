@@ -47,23 +47,23 @@ impl StrError {
         self.into()
     }
 
-    pub fn from_vec_res<T>(vec_res: Vec<TpResult<T>>) -> Option<Self> {
-        let mut count = 0;
-        let out = Self(Cow::Owned(
-            vec_res
-                .into_iter()
-                .filter_map(|e| e.err())
-                .map(|e| {
-                    count += 1;
-                    e.to_string()
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
-        ));
-        if count > 0 {
-            Some(out)
-        } else {
-            None
-        }
-    }
+    // pub fn from_vec_res<T>(vec_res: Vec<TpResult<T>>) -> Option<Self> {
+    //     let mut count = 0;
+    //     let out = Self(Cow::Owned(
+    //         vec_res
+    //             .into_iter()
+    //             .filter_map(|e| e.err())
+    //             .map(|e| {
+    //                 count += 1;
+    //                 e.to_string()
+    //             })
+    //             .collect::<Vec<_>>()
+    //             .join("\n"),
+    //     ));
+    //     if count > 0 {
+    //         Some(out)
+    //     } else {
+    //         None
+    //     }
+    // }
 }

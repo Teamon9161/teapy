@@ -36,22 +36,22 @@ macro_rules! impl_py_matmul {
             match (&$self.inner, &$other.inner) {
                 (Exprs::F64(_), _) | (_, Exprs::F64(_)) => {
                     match_exprs!(($self.inner, e1, I32, I64, F32, F64, Usize), ($other.inner, e2, I32, I64, F32, F64, Usize), {
-                        (e1.cast::<f64>().$func(e2.cast::<f64>() $(,$args)*)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<f64>().$func(e2.cast::<f64>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
                     })
                 },
                 (Exprs::F32(_), _) | (_, Exprs::F32(_)) => {
                     match_exprs!(($self.inner, e1, I32, I64, F32, Usize), ($other.inner, e2, I32, I64, F32, Usize), {
-                        (e1.cast::<f32>().$func(e2.cast::<f32>() $(,$args)*)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<f32>().$func(e2.cast::<f32>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
                     })
                 },
                 (Exprs::I64(_), _) | (_, Exprs::I64(_)) => {
                     match_exprs!(($self.inner, e1, I64, I32, Bool, Usize), ($other.inner, e2, I64, I32, Bool, Usize), {
-                        (e1.cast::<i64>().$func(e2.cast::<i64>() $(,$args)*)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<i64>().$func(e2.cast::<i64>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
                     })
                 },
                 (Exprs::I32(_), _) | (_, Exprs::I32(_)) => {
                     match_exprs!(($self.inner, e1, I32, Bool, Usize), ($other.inner, e2, I32, Bool, Usize), {
-                        (e1.cast::<i32>().$func(e2.cast::<i32>() $(,$args)*)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<i32>().$func(e2.cast::<i32>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
                     })
                 },
                 _ => todo!()
@@ -68,28 +68,28 @@ macro_rules! impl_py_cmp {
             match (&$self.inner, &$other.inner) {
                 (F64(_), _) | (_, F64(_)) => {
                     match_exprs!(($self.inner, e1, I32, F64, Usize), ($other.inner, e2, I32, F64, Usize), {
-                        (e1.cast::<f64>().$func(e2.cast::<f64>(), false)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<f64>().$func(e2.cast::<f64>(), false)).to_py(obj).add_obj_into(obj2)
                     })
                 },
                 (F32(_), _) | (_, F32(_)) => {
                     match_exprs!(($self.inner, e1, I32, I64, F32, Usize), ($other.inner, e2, I32, I64, F32, Usize), {
-                        (e1.cast::<f32>().$func(e2.cast::<f32>(), false)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<f32>().$func(e2.cast::<f32>(), false)).to_py(obj).add_obj_into(obj2)
                     })
                 },
                 (I64(_), _) | (_, I64(_)) => {
                     match_exprs!(($self.inner, e1, I64, I32, Bool, Usize), ($other.inner, e2, I64, I32, Bool, Usize), {
-                        (e1.cast::<i64>().$func(e2.cast::<i64>(), false)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<i64>().$func(e2.cast::<i64>(), false)).to_py(obj).add_obj_into(obj2)
                     })
                 },
                 (I32(_), _) | (_, I32(_)) => {
                     match_exprs!(($self.inner, e1, I32, Bool, Usize), ($other.inner, e2, I32, Bool, Usize), {
-                        (e1.cast::<i32>().$func(e2.cast::<i32>(), false)).to_py(obj).add_obj(obj2)
+                        (e1.cast::<i32>().$func(e2.cast::<i32>(), false)).to_py(obj).add_obj_into(obj2)
                     })
                 },
-                (Object(e1), String(e2)) => e1.clone().object_to_string($py).map_err(StrError::to_py)?.$func(e2.clone(), false).to_py(obj).add_obj(obj2),
-                (String(e1), Object(e2)) => e1.clone().$func(e2.clone().object_to_string($py).map_err(StrError::to_py)?, false).to_py(obj).add_obj(obj2),
+                (Object(e1), String(e2)) => e1.clone().object_to_string($py).map_err(StrError::to_py)?.$func(e2.clone(), false).to_py(obj).add_obj_into(obj2),
+                (String(e1), Object(e2)) => e1.clone().$func(e2.clone().object_to_string($py).map_err(StrError::to_py)?, false).to_py(obj).add_obj_into(obj2),
                 $(
-                    ($dtype(e1), $dtype(e2)) => e1.clone().$func(e2.clone(), false).to_py(obj).add_obj(obj2),
+                    ($dtype(e1), $dtype(e2)) => e1.clone().$func(e2.clone(), false).to_py(obj).add_obj_into(obj2),
                 )*
                 _ => todo!()
             }
@@ -203,14 +203,14 @@ impl PyExpr {
                         expr.clone()
                             .filter(slc.cast_bool()?, idx, false)
                             .to_py(out.obj())
-                            .add_obj(obj)
+                            .add_obj_into(obj)
                     })
                 } else {
                     match_exprs!(&out.inner, expr, {
                         expr.clone()
                             .select_by_i32_expr(slc.cast_i32()?, idx)
                             .to_py(out.obj())
-                            .add_obj(obj)
+                            .add_obj_into(obj)
                     })
                 }
             }
@@ -221,10 +221,10 @@ impl PyExpr {
         }
     }
 
-    #[pyo3(name="eval", signature=(inplace=false))]
+    #[pyo3(name="eval", signature=(inplace=false, context=None))]
     #[allow(unreachable_patterns)]
-    pub fn eval_py(&mut self, inplace: bool) -> PyResult<Option<Self>> {
-        self.eval_inplace()?;
+    pub fn eval_py(&mut self, inplace: bool, context: Option<&PyAny>) -> PyResult<Option<Self>> {
+        self.eval_inplace(context)?;
         if !inplace {
             Ok(Some(self.clone()))
         } else {
@@ -239,16 +239,18 @@ impl PyExpr {
             let arr = self
                 .clone()
                 .cast_object_eager(py)?
-                .into_arr()
+                .into_arr(None)
                 .map_err(StrError::to_py)?
+                .0
                 .to_owned()
                 .0;
             return PyArray::from_owned_array(py, arr).no_dim0(py);
         } else if let Exprs::DateTime(e) = &self.inner {
             let arr = e
                 .clone()
-                .eval()
+                .eval(None)
                 .map_err(StrError::to_py)?
+                .0
                 .view_arr()
                 .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -292,31 +294,49 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
+    #[pyo3(signature=(context=None))]
     /// eval and view, used for fast test
-    pub fn eview(mut self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
-        self.eval_inplace()?;
+    pub fn eview(
+        mut self: PyRefMut<Self>,
+        context: Option<&PyAny>,
+        py: Python,
+    ) -> PyResult<PyObject> {
+        self.eval_inplace(context)?;
         self.get_view(py)
     }
 
     #[allow(unreachable_patterns)]
-    #[pyo3(signature=(unit=None))]
-    pub fn value<'py>(&'py self, unit: Option<&'py str>, py: Python<'py>) -> PyResult<PyObject> {
-        if self.is_string() || self.is_str() || self.is_timedelta() {
-            let arr = self
-                .clone()
+    #[pyo3(signature=(unit=None, _context=None))]
+    pub fn value<'py>(
+        &'py self,
+        unit: Option<&'py str>,
+        _context: Option<&'py PyAny>,
+        py: Python<'py>,
+    ) -> PyResult<PyObject> {
+        // let ct: PyContext<'static> = if let Some(context) = context {
+        //     unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+        // } else {
+        //     Default::default()
+        // };
+        // let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
+        let expr = self.clone(); //.cast_by_context(ct_rs.clone())?;
+        if expr.is_string() || expr.is_str() || expr.is_timedelta() {
+            let arr = expr
                 .cast_object_eager(py)?
-                .into_arr()
+                .into_arr(None)
                 .map_err(StrError::to_py)?
+                .0
                 .to_owned()
                 .0;
             return PyArray::from_owned_array(py, arr).no_dim0(py);
-        } else if let Exprs::DateTime(e) = &self.inner {
+        } else if let Exprs::DateTime(e) = &expr.inner {
             match unit.unwrap_or("us").to_lowercase().as_str() {
                 "ms" => {
                     let arr = e
                         .clone()
-                        .eval()
+                        .eval(None)
                         .map_err(StrError::to_py)?
+                        .0
                         .view_arr()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -324,8 +344,9 @@ impl PyExpr {
                 "us" => {
                     let arr = e
                         .clone()
-                        .eval()
+                        .eval(None)
                         .map_err(StrError::to_py)?
+                        .0
                         .view_arr()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -333,8 +354,9 @@ impl PyExpr {
                 "ns" => {
                     let arr = e
                         .clone()
-                        .eval()
+                        .eval(None)
                         .map_err(StrError::to_py)?
+                        .0
                         .view_arr()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Nanoseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -343,10 +365,10 @@ impl PyExpr {
             }
         }
         match_exprs!(
-            &self.inner,
+            &expr.inner,
             expr,
             {
-                let out = expr.clone().into_out().map_err(StrError::to_py)?;
+                let (out, _ct_rs) = expr.clone().into_out(None).map_err(StrError::to_py)?;
                 if matches!(out, ExprOut::ArrVec(_)) {
                     let out = out
                         .into_arr_vec()
@@ -419,7 +441,7 @@ impl PyExpr {
             expr.clone()
                 .reshape(shape.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -470,55 +492,55 @@ impl PyExpr {
         let out = match (&self.inner, &other.inner) {
             (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? + other.cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? + other.cast_f32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? + other.cast_i64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? + other.cast_i32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_usize()? + other.cast_usize()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (String(_), String(_)) => self
                 .clone()
                 .cast_string()?
                 .add_string(other.cast_string()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Str(_), String(_)) => self
                 .clone()
                 .cast_string()?
                 .add_string(other.cast_string()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (String(_), Str(_)) => self
                 .clone()
                 .cast_string()?
                 .add_str(other.cast_str()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Str(_), Str(_)) => self
                 .clone()
                 .cast_string()?
                 .add_str(other.cast_str()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (DateTime(_), TimeDelta(_)) => (self.clone().cast_datetime_default()?
                 + other.cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (TimeDelta(_), DateTime(_)) => (other.cast_datetime_default()?
                 + self.clone().cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (TimeDelta(_), TimeDelta(_)) => (self.clone().cast_timedelta()?
                 + other.cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             _ => todo!(),
         };
         Ok(out)
@@ -531,52 +553,52 @@ impl PyExpr {
         let out = match (&self.inner, &other.inner) {
             (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? + other.cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? + other.cast_f32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? + other.cast_i64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? + other.cast_i32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_usize()? + other.cast_usize()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             // note that we should not swap the order of self and other when add string
             (String(_), String(_)) => other
                 .cast_string()?
                 .add_string(self.clone().cast_string()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (String(_), Str(_)) => other
                 .cast_string()?
                 .add_string(self.clone().cast_string()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Str(_), String(_)) => other
                 .cast_string()?
                 .add_str(self.clone().cast_str()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Str(_), Str(_)) => other
                 .cast_string()?
                 .add_str(self.clone().cast_str()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (DateTime(_), TimeDelta(_)) => (self.clone().cast_datetime_default()?
                 + other.cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (TimeDelta(_), DateTime(_)) => (other.cast_datetime_default()?
                 + self.clone().cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (TimeDelta(_), TimeDelta(_)) => (self.clone().cast_timedelta()?
                 + other.cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             _ => todo!(),
         };
         Ok(out)
@@ -593,33 +615,33 @@ impl PyExpr {
         let out = match (&self.inner, &other.inner) {
             (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? - other.cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? - other.cast_f32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? - other.cast_i64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? - other.cast_i32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_i64()? - other.cast_i64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (DateTime(_), TimeDelta(_)) => (self.clone().cast_datetime_default()?
                 - other.cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (TimeDelta(_), TimeDelta(_)) => (self.clone().cast_timedelta()?
                 - other.cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (DateTime(_), DateTime(_)) => (self
                 .clone()
                 .cast_datetime_default()?
                 .sub_datetime(other.cast_datetime_default()?, false))
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             _ => todo!(),
         };
         Ok(out)
@@ -632,32 +654,32 @@ impl PyExpr {
         let out = match (&other.inner, &self.inner) {
             (F64(_), _) | (_, F64(_)) => (other.cast_f64()? - self.clone().cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (F32(_), _) | (_, F32(_)) => (other.cast_f32()? - self.clone().cast_f32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I64(_), _) | (_, I64(_)) => (other.cast_i64()? - self.clone().cast_i64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I32(_), _) | (_, I32(_)) => (other.cast_i32()? - self.clone().cast_i32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Usize(_), _) | (_, Usize(_)) => (other.cast_i64()? - self.clone().cast_i64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (DateTime(_), TimeDelta(_)) => (other.cast_datetime_default()?
                 - self.clone().cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (TimeDelta(_), TimeDelta(_)) => (other.cast_timedelta()?
                 - self.clone().cast_timedelta()?)
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             (DateTime(_), DateTime(_)) => (other
                 .cast_datetime_default()?
                 .sub_datetime(self.clone().cast_datetime_default()?, false))
             .to_py(obj)
-            .add_obj(obj2),
+            .add_obj_into(obj2),
             _ => todo!(),
         };
         Ok(out)
@@ -674,19 +696,19 @@ impl PyExpr {
         let out = match (&self.inner, &other.inner) {
             (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? * other.cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? * other.cast_f32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? * other.cast_i64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? * other.cast_i32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_usize()? * other.cast_usize()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             _ => todo!(),
         };
         Ok(out)
@@ -707,10 +729,10 @@ impl PyExpr {
         let out = match (&self.inner, &other.inner) {
             (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? / other.cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? / other.cast_f32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I64(_), _)
             | (_, I64(_))
             | (I32(_), _)
@@ -718,7 +740,7 @@ impl PyExpr {
             | (Usize(_), _)
             | (_, Usize(_)) => (self.clone().cast_f64()? / other.cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             _ => todo!(),
         };
         Ok(out)
@@ -731,10 +753,10 @@ impl PyExpr {
         let out = match (&other.inner, &self.inner) {
             (F64(_), _) | (_, F64(_)) => (other.cast_f64()? / self.clone().cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (F32(_), _) | (_, F32(_)) => (other.cast_f32()? / self.clone().cast_f32()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             (I64(_), _)
             | (_, I64(_))
             | (I32(_), _)
@@ -742,7 +764,7 @@ impl PyExpr {
             | (Usize(_), _)
             | (_, Usize(_)) => (other.cast_f64()? / self.clone().cast_f64()?)
                 .to_py(obj)
-                .add_obj(obj2),
+                .add_obj_into(obj2),
             _ => todo!(),
         };
         Ok(out)
@@ -762,7 +784,7 @@ impl PyExpr {
             {
                 Ok((e1.clone().cast::<bool>() & e2.cast::<bool>())
                     .to_py(self.obj())
-                    .add_obj(obj))
+                    .add_obj_into(obj))
             }
         )
     }
@@ -785,7 +807,7 @@ impl PyExpr {
             {
                 Ok((e1.clone().cast::<bool>() | e2.cast::<bool>())
                     .to_py(self.obj())
-                    .add_obj(obj))
+                    .add_obj_into(obj))
             }
         )
     }
@@ -1178,7 +1200,7 @@ impl PyExpr {
             )
         };
         if let Some(obj) = obj {
-            Ok(out.add_obj(obj))
+            Ok(out.add_obj_into(obj))
         } else {
             Ok(out)
         }
@@ -1244,8 +1266,8 @@ impl PyExpr {
             expr.clone()
                 .filter(mask.cast_bool()?, axis.cast_i32()?, par)
                 .to_py(self.obj())
-                .add_obj(obj)
-                .add_obj(obj2)
+                .add_obj_into(obj)
+                .add_obj_into(obj2)
         }))
     }
 
@@ -1269,7 +1291,7 @@ impl PyExpr {
                 expr.clone()
                     .dropna(axis.cast_i32()?, how, par)
                     .to_py(self.obj())
-                    .add_obj(obj)
+                    .add_obj_into(obj)
             },
             F32,
             F64,
@@ -1374,7 +1396,7 @@ impl PyExpr {
             expr.clone()
                 .permuted_axes(axes.cast_i32()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -1619,7 +1641,7 @@ impl PyExpr {
                 e1.clone()
                     .cov(e2.clone(), stable, axis, par)
                     .to_py(self.obj())
-                    .add_obj(obj)
+                    .add_obj_into(obj)
             }
         );
         Ok(res)
@@ -1643,7 +1665,7 @@ impl PyExpr {
                 e1.clone()
                     .corr(e2.clone(), method, stable, axis, par)
                     .to_py(self.obj())
-                    .add_obj(obj)
+                    .add_obj_into(obj)
             }
         );
         Ok(res)
@@ -1676,7 +1698,7 @@ impl PyExpr {
             expr.clone()
                 .get_unique_idx(others, keep)
                 .to_py(self.obj())
-                .add_obj_vec(obj_vec)
+                .add_obj_vec_into(obj_vec)
         });
         Ok(res)
     }
@@ -1698,10 +1720,10 @@ impl PyExpr {
             expr.clone()
                 .get_left_join_idx(left_other, right)
                 .to_py(self.obj())
-                .add_obj_vec(obj_vec2)
+                .add_obj_vec_into(obj_vec2)
         });
         if let Some(obj_vec1) = obj_vec1 {
-            Ok(res.add_obj_vec(obj_vec1))
+            Ok(res.add_obj_vec_into(obj_vec1))
         } else {
             Ok(res)
         }
@@ -1830,7 +1852,7 @@ impl PyExpr {
                 e1.clone()
                     .ts_cov(e2.clone(), window, min_periods, stable, axis, par)
                     .to_py(self.obj())
-                    .add_obj(obj)
+                    .add_obj_into(obj)
             }
         );
         Ok(res)
@@ -1856,7 +1878,7 @@ impl PyExpr {
                 e1.clone()
                     .ts_corr(e2.clone(), window, min_periods, stable, axis, par)
                     .to_py(self.obj())
-                    .add_obj(obj)
+                    .add_obj_into(obj)
             }
         );
         Ok(res)
@@ -2246,7 +2268,7 @@ impl PyExpr {
             e.clone()
                 .t_cdf(df.cast_f64()?, loc, scale)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -2270,8 +2292,8 @@ impl PyExpr {
             e.clone()
                 .f_cdf(df1.cast_f64()?, df2.cast_f64()?)
                 .to_py(self.obj())
-                .add_obj(obj1)
-                .add_obj(obj2)
+                .add_obj_into(obj1)
+                .add_obj_into(obj2)
         });
         Ok(out)
     }
@@ -2355,7 +2377,7 @@ impl PyExpr {
                 .to_py(self.obj()),
             _ => unimplemented!("put_mask is not implemented for this type."),
         };
-        Ok(rtn.add_obj(obj1).add_obj(obj2))
+        Ok(rtn.add_obj_into(obj1).add_obj_into(obj2))
     }
 
     #[pyo3(signature=(mask, value, par=false))]
@@ -2398,7 +2420,7 @@ impl PyExpr {
                 .to_py(self.obj()),
             _ => unimplemented!("if_then is not implemented for this type."),
         };
-        Ok(out.add_obj(con_obj).add_obj(then_obj))
+        Ok(out.add_obj_into(con_obj).add_obj_into(then_obj))
     }
 
     #[cfg(feature = "blas")]
@@ -2408,7 +2430,7 @@ impl PyExpr {
         match_exprs!(
             (&self.inner, x, F64, F32, I64, I32, Usize),
             (y.inner, y, F64, F32, I64, I32, Usize),
-            { Ok(x.clone().lstsq(y).to_py(self.obj()).add_obj(obj)) }
+            { Ok(x.clone().lstsq(y).to_py(self.obj()).add_obj_into(obj)) }
         )
     }
 
@@ -2512,7 +2534,7 @@ impl PyExpr {
             Ok(e.clone()
                 .broadcast(shape.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj))
+                .add_obj_into(obj))
         })
     }
 
@@ -2525,7 +2547,7 @@ impl PyExpr {
             Ok(e.clone()
                 .broadcast(shape.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj))
+                .add_obj_into(obj))
         })
     }
 
@@ -2603,6 +2625,22 @@ impl PyExpr {
         Ok(out)
     }
 
+    #[pyo3(signature=(window, offset))]
+    pub unsafe fn _get_time_rolling_offset_idx(
+        &self,
+        window: &str,
+        offset: &str,
+    ) -> PyResult<Self> {
+        let obj = self.obj();
+        let out = self
+            .inner
+            .clone()
+            .cast_datetime(None)?
+            .get_time_rolling_offset_idx(window, offset)
+            .to_py(obj);
+        Ok(out)
+    }
+
     #[pyo3(signature=(roll_start))]
     pub unsafe fn _rolling_select_mean(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2611,7 +2649,7 @@ impl PyExpr {
             e.clone()
                 .rolling_select_mean(roll_start.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -2624,7 +2662,7 @@ impl PyExpr {
             e.clone()
                 .rolling_select_std(roll_start.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -2637,7 +2675,7 @@ impl PyExpr {
             e.clone()
                 .rolling_select_max(roll_start.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -2650,7 +2688,7 @@ impl PyExpr {
             e.clone()
                 .rolling_select_min(roll_start.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -2663,7 +2701,7 @@ impl PyExpr {
             e.clone()
                 .rolling_select_umax(roll_start.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -2676,7 +2714,59 @@ impl PyExpr {
             e.clone()
                 .rolling_select_umin(roll_start.cast_usize()?)
                 .to_py(self.obj())
-                .add_obj(obj)
+                .add_obj_into(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_sum(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_by_vecusize_sum(idxs.cast_vecusize()?)
+                .to_py(self.obj())
+                .add_obj_into(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_mean(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_by_vecusize_mean(idxs.cast_vecusize()?)
+                .to_py(self.obj())
+                .add_obj_into(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_max(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_by_vecusize_max(idxs.cast_vecusize()?)
+                .to_py(self.obj())
+                .add_obj_into(obj)
+        });
+        Ok(out)
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_min(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let out = match_exprs!(numeric & self.inner, e, {
+            e.clone()
+                .rolling_select_by_vecusize_min(idxs.cast_vecusize()?)
+                .to_py(self.obj())
+                .add_obj_into(obj)
         });
         Ok(out)
     }
@@ -2695,7 +2785,7 @@ impl PyExpr {
         let mut rolling_idx = index_expr
             .cast_datetime(None)?
             .get_time_rolling_idx(duration, RollingTimeStartBy::Full);
-        rolling_idx.eval_inplace()?;
+        rolling_idx = rolling_idx.eval(None)?.0;
         let mut column_num = 0;
         let mut output = rolling_idx
             .view_arr()
@@ -2718,7 +2808,7 @@ impl PyExpr {
         let eval_res: Vec<_> = output
             .par_iter_mut()
             .flatten()
-            .map(|e| e.eval_inplace())
+            .map(|e| e.eval_inplace(None))
             .collect();
         if eval_res.iter().any(|e| e.is_err()) {
             return Err(PyRuntimeError::new_err(
@@ -2757,7 +2847,7 @@ impl PyExpr {
             return Err(PyValueError::new_err("Window should be greater than 0"));
         }
         let mut column_num = 0;
-        self.eval_inplace()?;
+        self.eval_inplace(None)?;
         let axis_n = match_exprs!(&self.inner, expr, { expr.view_arr().norm_axis(axis) });
         let length = match_exprs!(&self.inner, expr, {
             expr.view_arr().shape()[axis_n.index()]
@@ -2779,7 +2869,7 @@ impl PyExpr {
         let eval_res: Vec<_> = output
             .par_iter_mut()
             .flatten()
-            .map(|e| e.eval_inplace())
+            .map(|e| e.eval_inplace(None))
             .collect();
         if eval_res.iter().any(|e| e.is_err()) {
             return Err(PyRuntimeError::new_err(

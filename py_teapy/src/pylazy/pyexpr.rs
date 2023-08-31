@@ -3,6 +3,8 @@ use std::ops::Deref;
 
 use ndarray::{Slice, SliceInfoElem};
 
+// use crate::from_py::PyContext;
+
 use super::export::*;
 use tears::{ArbArray, DateTime, ExprElement, OptUsize, PyValue, StrError, TimeDelta, TimeUnit};
 #[cfg(feature = "option_dtype")]
@@ -112,7 +114,20 @@ impl PyExpr {
         &self.inner
     }
 
-    pub fn add_obj(mut self, mut another: RefObj) -> Self {
+    // pub fn cast_by_context(self, context: Option<Context<'static>>) -> PyResult<Self> {
+    //     if context.is_none() {
+    //         return Ok(self);
+    //     }
+    //     let obj = self.obj();
+    //     let out = match_exprs!(self.inner, expr, {
+    //         expr.cast_by_context(context)
+    //             .map_err(StrError::to_py)?
+    //             .to_py(obj)
+    //     });
+    //     Ok(out)
+    // }
+
+    pub fn add_obj(&mut self, mut another: RefObj) {
         if let Some(obj) = &mut self.obj {
             if let Some(another) = &mut another {
                 obj.append(another);
@@ -120,13 +135,24 @@ impl PyExpr {
         } else if let Some(obj) = another {
             self.obj = Some(obj);
         }
+    }
+
+    #[inline]
+    pub fn add_obj_into(mut self, another: RefObj) -> Self {
+        self.add_obj(another);
         self
     }
 
-    pub fn add_obj_vec(mut self, another: Vec<RefObj>) -> Self {
+    #[inline]
+    pub fn add_obj_vec(&mut self, another: Vec<RefObj>) {
         for obj in another {
-            self = self.add_obj(obj)
+            self.add_obj(obj);
         }
+    }
+
+    #[inline]
+    pub fn add_obj_vec_into(mut self, another: Vec<RefObj>) -> Self {
+        self.add_obj_vec(another);
         self
     }
 
@@ -184,6 +210,11 @@ impl PyExpr {
         self.inner.cast_usize().map_err(StrError::to_py)
     }
 
+    // Cast the output of the expression to usize ndarray
+    pub fn cast_vecusize(self) -> PyResult<Expr<'static, Vec<usize>>> {
+        self.inner.cast_vecusize().map_err(StrError::to_py)
+    }
+
     // Cast the output of the expression to object ndarray lazily
     pub fn cast_object(self) -> PyResult<Expr<'static, PyValue>> {
         self.inner.cast_object().map_err(StrError::to_py)
@@ -225,15 +256,29 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns, dead_code)]
-    pub fn eval(mut self) -> PyResult<Self> {
-        self.eval_inplace()?;
+    pub fn eval(mut self, context: Option<&PyAny>) -> PyResult<Self> {
+        self.eval_inplace(context)?;
         Ok(self)
     }
 
     #[allow(unreachable_patterns)]
-    pub fn eval_inplace(&mut self) -> PyResult<()> {
+    pub fn eval_inplace(&mut self, _context: Option<&PyAny>) -> PyResult<()> {
+        // let ct: PyContext<'static> = if let Some(context) = context {
+        //     unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+        // } else {
+        //     Default::default()
+        // };
+        // let (ct_rs, obj_map) = (ct.ct, ct.obj_map);
+        // if ct_rs.is_some() {
+        //     self.inner
+        //     .cast_by_context(ct_rs.clone())
+        //     .map_err(StrError::to_py)?;
+        //     for obj in obj_map.into_values() {
+        //         self.add_obj(obj)
+        //     }
+        // }
         match_exprs!(&mut self.inner, expr, {
-            expr.eval_inplace().map_err(StrError::to_py)?;
+            expr.eval_inplace(None).map_err(StrError::to_py)?;
             if let Some(owned) = expr.is_owned() {
                 if owned {
                     self.obj = None
@@ -251,7 +296,7 @@ impl PyExpr {
                 .clone()
                 .select_by_expr(slc.cast_usize()?, axis.cast_i32()?)
                 .to_py(self.obj())
-                .add_obj(obj))
+                .add_obj_into(obj))
         })
     }
 
@@ -279,7 +324,7 @@ impl PyExpr {
                                 false,
                             )
                             .to_py(self.obj())
-                            .add_obj(obj))
+                            .add_obj_into(obj))
                     },
                     I32,
                     I64,
@@ -298,7 +343,7 @@ impl PyExpr {
                                 false,
                             )
                             .to_py(self.obj())
-                            .add_obj(obj))
+                            .add_obj_into(obj))
                     },
                     F32,
                     F64,
@@ -323,7 +368,7 @@ impl PyExpr {
                     .clone()
                     .select_by_expr_unchecked(slc.cast_usize()?, axis.cast_i32()?)
                     .to_py(self.obj())
-                    .add_obj(obj))
+                    .add_obj_into(obj))
             })
         }
     }
@@ -336,7 +381,7 @@ impl PyExpr {
                 .clone()
                 .select_by_i32_expr(slc.cast_i32()?, axis.cast_i32()?)
                 .to_py(self.obj())
-                .add_obj(obj))
+                .add_obj_into(obj))
         })
     }
 
@@ -368,7 +413,7 @@ impl PyExpr {
         let out = match_exprs!(&self.inner, expr, {
             expr.clone().sort_by_expr(by, rev).to_py(self.obj())
         });
-        out.add_obj_vec(obj_vec)
+        out.add_obj_vec_into(obj_vec)
     }
 
     #[allow(unreachable_patterns)]
@@ -378,7 +423,7 @@ impl PyExpr {
         let out = match_exprs!(&self.inner, expr, {
             expr.clone().get_sort_idx(by, rev).to_py(self.obj())
         });
-        out.add_obj_vec(obj_vec)
+        out.add_obj_vec_into(obj_vec)
     }
 
     #[allow(unreachable_patterns)]
@@ -399,7 +444,7 @@ impl PyExpr {
                         .cast::<f64>()
                         .powi(other.cast_i32()?, par)
                         .to_py(self.obj())
-                        .add_obj(obj)
+                        .add_obj_into(obj)
                 },
                 F64,
                 I32,
@@ -415,7 +460,7 @@ impl PyExpr {
                         .cast::<f64>()
                         .powf(e2.cast::<f64>(), par)
                         .to_py(self.obj())
-                        .add_obj(obj)
+                        .add_obj_into(obj)
                 }
             )
         };
@@ -487,7 +532,7 @@ impl PyExpr {
             {Bool => cast_bool, "bool"}, {Usize => cast_usize, "usize"}, {Str => cast_str, "str"}, {String => cast_string, "string"},
             {Object => cast_object, "object"}, {DateTime => cast_datetime(None), "DateTime"}, {TimeDelta => cast_timedelta, "TimeDelta"}
         );
-        Ok(rtn.add_obj_vec(obj_vec))
+        Ok(rtn.add_obj_vec_into(obj_vec))
     }
 
     #[allow(unreachable_patterns)]
@@ -509,7 +554,7 @@ impl PyExpr {
             {Bool => cast_bool, "bool"}, {Usize => cast_usize, "usize"}, {Str => cast_str, "str"}, {String => cast_string, "string"},
             {Object => cast_object, "object"}, {DateTime => cast_datetime(None), "DateTime"}, {TimeDelta => cast_timedelta, "TimeDelta"}
         );
-        Ok(rtn.add_obj_vec(obj_vec))
+        Ok(rtn.add_obj_vec_into(obj_vec))
     }
 
     /// # Safety

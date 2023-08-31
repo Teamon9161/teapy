@@ -95,7 +95,7 @@ macro_rules! match_datatype_arm {
 pub(crate) use match_datatype_arm;
 
 pub trait GetDataType: Send + Sync {
-    type Physical;
+    // type Physical;
     fn dtype() -> DataType
     where
         Self: Sized;
@@ -104,7 +104,7 @@ pub trait GetDataType: Send + Sync {
 macro_rules! impl_datatype {
     ($tyname:ident, $physical:ty) => {
         impl GetDataType for $physical {
-            type Physical = $physical;
+            // type Physical = $physical;
             fn dtype() -> DataType {
                 DataType::$tyname
             }
@@ -191,7 +191,7 @@ impl GetNone for bool {
 }
 
 impl<'a> GetDataType for &'a str {
-    type Physical = &'a str;
+    // type Physical = &'a str;
     fn dtype() -> DataType {
         DataType::Str
     }
@@ -216,11 +216,6 @@ pub trait Number:
     + Cast<i32>
     + Cast<i64>
     + 'static
-// + AsPrimitive<f64>
-// + AsPrimitive<f32>
-// + AsPrimitive<usize>
-// + AsPrimitive<i32>
-// + AsPrimitive<i64>
 {
     // type Dtype;
     /// return the min value of the data type

@@ -24,19 +24,19 @@ where
         left_other: Option<Vec<Exprs<'a>>>,
         mut right: Vec<Exprs<'a>>,
     ) -> Expr<'a, OptUsize> {
-        self.chain_view_f(
-            move |arr| {
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
                 let left_other = if let Some(mut left_other) = left_other {
                     left_other
                         .par_iter_mut()
                         .chain(right.par_iter_mut())
                         .for_each(|e| {
-                            _ = e.eval_inplace();
+                            _ = e.eval_inplace(ct.clone());
                         });
                     Some(left_other)
                 } else {
                     right.par_iter_mut().for_each(|e| {
-                        _ = e.eval_inplace();
+                        _ = e.eval_inplace(ct.clone());
                     });
                     None
                 };
@@ -56,12 +56,12 @@ where
                         .collect::<Vec<_>>();
                     let right_keys = right.iter().collect::<Vec<_>>();
                     let idx = join_left(&left_keys, &right_keys);
-                    Ok(Arr1::from_vec(idx).to_dimd().into())
+                    Ok((Arr1::from_vec(idx).to_dimd().into(), ct))
                 } else {
                     let left_keys = vec![&arr_exprs];
                     let right_keys = right.iter().collect::<Vec<_>>();
                     let idx = join_left(&left_keys, &right_keys);
-                    Ok(Arr1::from_vec(idx).to_dimd().into())
+                    Ok((Arr1::from_vec(idx).to_dimd().into(), ct))
                 }
             },
             RefType::False,

@@ -4,28 +4,77 @@ use crate::{Arr1, ArrView1, CollectTrustedToVec, Number, WrapNdarray};
 use ndarray::s;
 use std::iter::zip;
 
-impl<'a, T: ExprElement + 'a> Expr<'a, T> {
-    // pub fn rolling_by_time<TD: Into<TimeDelta>>(self, by: Expr<'a, DateTime>, duration: TD) -> Expr<'a, f64> {
-    //     self.chain_view_f(move |arr| {
-    //         let duration: TimeDelta = duration.into();
-    //         let arr = arr.to_dim1()?;
-    //         let by = by.eval()?;
-    //         let by_arr = by.view_arr().to_dim1()?;
+macro_rules! impl_rolling_by_time_agg {
+    ($(@$func: ident-$func1: ident, $agg_func: ident ($($p:ident),*) -> $T: ty),* ,) => {
+        impl<'a, T: ExprElement + 'a> Expr<'a, T> {
+            $(
+                pub fn $func(self, roll_start: Expr<'a, usize>) -> Expr<'a, $T>
+                where
+                    T: Number,
+                {
+                    self.rolling_select_agg(roll_start, |arr| arr.$agg_func($($p),*))
+                }
 
-    //         Ok(arr.to_owned())
-    //     },
-    //     RefType::False)
-    // }
+                pub fn $func1(self, idxs: Expr<'a, Vec<usize>>) -> Expr<'a, $T>
+                where
+                    T: Number,
+                {
+                    self.rolling_select_agg_by_vecusize(idxs, |arr| arr.$agg_func($($p),*))
+                }
+            )*
+        }
+    };
+}
+
+impl_rolling_by_time_agg!(
+    @rolling_select_max-rolling_select_by_vecusize_max, max_1d() -> T,
+    @rolling_select_min-rolling_select_by_vecusize_min, min_1d() -> T,
+    @rolling_select_mean-rolling_select_by_vecusize_mean, mean_1d(false) -> f64,
+    @rolling_select_sum-rolling_select_by_vecusize_sum, sum_1d(false) -> T,
+    @rolling_select_std-rolling_select_by_vecusize_std, std_1d(false) -> f64,
+);
+
+impl<'a, T: ExprElement + 'a> Expr<'a, T> {
+    pub fn rolling_select_agg_by_vecusize<F, U>(
+        self,
+        idxs: Expr<'a, Vec<usize>>,
+        f: F,
+    ) -> Expr<'a, U>
+    where
+        F: Fn(&ArrView1<T>) -> U + Send + Sync + 'a,
+        U: ExprElement + 'a,
+        T: Clone,
+    {
+        self.chain_view_f_ct(
+            move |(arr, ctx)| {
+                let arr = arr.to_dim1()?;
+                let (idxs, ctx) = idxs.eval(ctx)?;
+                let idxs_arr = idxs.view_arr().to_dim1()?;
+                let out = idxs_arr
+                    .into_iter()
+                    .map(|idx| {
+                        let mut out = Arr1::default(idx.len());
+                        let slc = ArrView1::from_ref_vec(idx.len(), idx);
+                        unsafe { arr.take_clone_1d_unchecked(out.view_mut(), slc) }
+                        f(&out.view())
+                    })
+                    .collect_trusted();
+                let out = Arr1::from_vec(out).to_dimd();
+                Ok((out.into(), ctx))
+            },
+            RefType::False,
+        )
+    }
 
     pub fn rolling_select_agg<F, U>(self, roll_start: Expr<'a, usize>, f: F) -> Expr<'a, U>
     where
         U: ExprElement + 'a,
         F: Fn(&ArrView1<T>) -> U + Send + Sync + 'a,
     {
-        self.chain_view_f(
-            move |arr| {
+        self.chain_view_f_ct(
+            move |(arr, ct)| {
                 let arr = arr.to_dim1()?;
-                let roll_start = roll_start.eval()?;
+                let (roll_start, ct) = roll_start.eval(ct)?;
                 let roll_start_arr = roll_start.view_arr().to_dim1()?;
                 if arr.len() != roll_start_arr.len() {
                     return Err(format!(
@@ -43,24 +92,10 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
                     })
                     .collect_trusted();
                 let out = Arr1::from_vec(out).to_dimd();
-                Ok(out.into())
+                Ok((out.into(), ct))
             },
             RefType::False,
         )
-    }
-
-    pub fn rolling_select_max(self, roll_start: Expr<'a, usize>) -> Expr<'a, T>
-    where
-        T: Number,
-    {
-        self.rolling_select_agg(roll_start, |arr| arr.max_1d())
-    }
-
-    pub fn rolling_select_min(self, roll_start: Expr<'a, usize>) -> Expr<'a, T>
-    where
-        T: Number,
-    {
-        self.rolling_select_agg(roll_start, |arr| arr.min_1d())
     }
 
     pub fn rolling_select_umax(self, roll_start: Expr<'a, usize>) -> Expr<'a, T>
@@ -75,27 +110,6 @@ impl<'a, T: ExprElement + 'a> Expr<'a, T> {
         T: Number,
     {
         self.rolling_select_agg(roll_start, |arr| arr.sorted_unique_1d().min_1d())
-    }
-
-    pub fn rolling_select_mean(self, roll_start: Expr<'a, usize>) -> Expr<'a, f64>
-    where
-        T: Number,
-    {
-        self.rolling_select_agg(roll_start, |arr| arr.mean_1d(false))
-    }
-
-    pub fn rolling_select_sum(self, roll_start: Expr<'a, usize>) -> Expr<'a, T>
-    where
-        T: Number,
-    {
-        self.rolling_select_agg(roll_start, |arr| arr.sum_1d(false))
-    }
-
-    pub fn rolling_select_std(self, roll_start: Expr<'a, usize>) -> Expr<'a, f64>
-    where
-        T: Number,
-    {
-        self.rolling_select_agg(roll_start, |arr| arr.std_1d(false))
     }
 }
 
@@ -215,6 +229,64 @@ impl<'a> Expr<'a, DateTime> {
                     })
                     .collect_trusted();
                 Ok(Arr1::from_vec(out).to_dimd().into())
+            },
+            RefType::False,
+        )
+    }
+
+    /// Rolling with a timedelta, get the idx of the time on the same offset.
+    /// The time expression should be sorted before rolling.
+    pub fn get_time_rolling_offset_idx<TD1: Into<TimeDelta>, TD2: Into<TimeDelta>>(
+        self,
+        window: TD1,
+        offset: TD2,
+    ) -> Expr<'a, Vec<usize>> {
+        let window: TimeDelta = window.into();
+        let offset: TimeDelta = offset.into();
+        assert!(window >= offset);
+        self.chain_view_f(
+            move |arr| {
+                if arr.len() == 0 {
+                    return Ok(Arr1::from_vec(vec![]).to_dimd().into());
+                }
+                let arr = arr.to_dim1()?;
+                let mut out = vec![vec![]; arr.len()];
+                let max_n_offset = window.clone() / offset.clone();
+                if max_n_offset < 0 {
+                    return Err("window // offset < 0!".into());
+                }
+                (0..arr.len()).for_each(|i| {
+                    let dt = unsafe { *arr.uget(i) };
+                    let mut current_n_offset = 0;
+                    unsafe { out.get_unchecked_mut(i) }.push(i);
+                    let mut last_dt = dt;
+                    for j in i + 1..arr.len() {
+                        let current_dt = unsafe { *arr.uget(j) };
+                        if current_n_offset == max_n_offset && current_dt > dt + window.clone() {
+                            break;
+                        }
+
+                        let td = current_dt - last_dt;
+                        if td < offset.clone() {
+                            continue;
+                        } else if td == offset.clone() {
+                            unsafe { out.get_unchecked_mut(j) }.push(i);
+                            current_n_offset += 1;
+                            last_dt = dt + offset.clone() * current_n_offset
+                        } else {
+                            // a large timedelta, need to find the offset
+                            if current_dt <= dt + window.clone() {
+                                current_n_offset += td / offset.clone();
+                                last_dt = dt + offset.clone() * current_n_offset;
+                                if current_dt == last_dt {
+                                    unsafe { out.get_unchecked_mut(j) }.push(i);
+                                }
+                            }
+                        }
+                    }
+                });
+                let out = Arr1::from_vec(out);
+                Ok(out.to_dimd().into())
             },
             RefType::False,
         )
