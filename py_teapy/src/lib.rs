@@ -42,5 +42,7 @@ pub fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(equity::calc_digital_ret, m)?)?;
     #[cfg(feature = "lazy")]
     m.add_function(wrap_pyfunction!(equity::calc_ret_single, m)?)?;
+    #[cfg(feature = "lazy")]
+    m.add_function(wrap_pyfunction!(equity::calc_ret_single_with_spread, m)?)?;
     Ok(())
 }
