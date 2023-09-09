@@ -2,12 +2,13 @@
 
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
-use crate::{DateTime, OptUsize, PyValue, TimeDelta};
+use crate::{DateTime, OptUsize, PyValue, TimeDelta, ViewOnBase};
 
 use crate::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+use std::pin::Pin;
 
 impl<T, S, D> Default for ArrBase<S, D>
 where
@@ -89,7 +90,14 @@ macro_rules! impl_from {
         }
 
         $(
-            impl From<ArrD<$ty>> for ArrOk<'_> {
+            // impl<'a> From<ArbArray<'a, $ty>> for ArrOk<'a> {
+            //     fn from(arr: ArbArray<$ty>) -> Self {
+            //         ArrOk::$arm(arr)
+            //     }
+            // }
+
+
+            impl<'a> From<ArrD<$ty>> for ArrOk<'a> {
                 fn from(arr: ArrD<$ty>) -> Self {
                     ArrOk::$arm(arr.into())
                 }
@@ -103,6 +111,13 @@ macro_rules! impl_from {
 
             impl<'a> From<ArrViewMutD<'a, $ty>> for ArrOk<'a> {
                 fn from(arr: ArrViewMutD<'a, $ty>) -> Self {
+                    ArrOk::$arm(arr.into())
+                }
+            }
+
+
+            impl<'a> From<Pin<Box<ViewOnBase<'a, $ty>>>> for ArrOk<'a> {
+                fn from(arr: Pin<Box<ViewOnBase<'a, $ty>>>) -> Self {
                     ArrOk::$arm(arr.into())
                 }
             }
@@ -159,6 +174,12 @@ impl<'a> From<ArrViewD<'a, &'a str>> for ArrOk<'a> {
 
 impl<'a> From<ArrViewMutD<'a, &'a str>> for ArrOk<'a> {
     fn from(arr: ArrViewMutD<'a, &'a str>) -> Self {
+        ArrOk::Str(arr.into())
+    }
+}
+
+impl<'a> From<Pin<Box<ViewOnBase<'a, &'a str>>>> for ArrOk<'a> {
+    fn from(arr: Pin<Box<ViewOnBase<'a, &'a str>>>) -> Self {
         ArrOk::Str(arr.into())
     }
 }

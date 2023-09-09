@@ -51,14 +51,14 @@ pub trait PyVecExprToRs {
     fn into_rs(
         self,
         names: Option<Vec<String>>,
-    ) -> PyResult<(Vec<Exprs<'static>>, HashMap<String, RefObj>)>;
+    ) -> PyResult<(Vec<Expr<'static>>, HashMap<String, RefObj>)>;
 }
 
 impl PyVecExprToRs for Vec<PyExpr> {
     fn into_rs(
         self,
         names: Option<Vec<String>>,
-    ) -> PyResult<(Vec<Exprs<'static>>, HashMap<String, RefObj>)> {
+    ) -> PyResult<(Vec<Expr<'static>>, HashMap<String, RefObj>)> {
         let obj_map = if let Some(names) = names {
             if names.len() != self.len() {
                 return Err(StrError(
@@ -72,7 +72,7 @@ impl PyVecExprToRs for Vec<PyExpr> {
             self.iter()
                 .map(|e| {
                     (
-                        e.name().unwrap_or_else(|| {
+                        e.e.name().unwrap_or_else(|| {
                             name_auto += 1;
                             format!("column_{name_auto}")
                         }),
@@ -81,7 +81,7 @@ impl PyVecExprToRs for Vec<PyExpr> {
                 })
                 .collect()
         };
-        let expr_rs = self.into_iter().map(|e| e.inner).collect_trusted();
+        let expr_rs = self.into_iter().map(|e| e.e).collect_trusted();
         Ok((expr_rs, obj_map))
     }
 }
@@ -113,13 +113,13 @@ impl PyDataDict {
             .dd
             .data
             .iter()
-            .filter(|e| e.is_owned().unwrap_or(false))
+            .filter(|e| e.is_owned())
             .map(|e| e.name().unwrap())
             .collect_trusted();
         self.remove_ref_obj(cols_to_remove);
     }
 
-    pub fn map_expr_to_py(&self, e: Exprs<'static>) -> PyExpr {
+    pub fn map_expr_to_py(&self, e: Expr<'static>) -> PyExpr {
         let name = &e.name().unwrap();
         e.to_py(self.obj_map.get(name).cloned().unwrap_or(None))
     }
@@ -279,7 +279,6 @@ impl PyDataDict {
                 .into_expr()
                 .unwrap()
                 .is_owned()
-                .unwrap()
             {
                 self.remove_ref_obj(vec![ori.clone()]);
             } else {
@@ -351,19 +350,18 @@ impl PyDataDict {
         if self.is_empty() {
             return Ok(());
         }
-        let out_data = unsafe {
-            self.dd
-                .data
-                .iter()
-                .map(|e| {
-                    parse_expr_nocopy(
-                        func.call((e.clone().to_py(None),), py_kwargs)
-                            .expect("Call python function error!"),
-                    )
-                    .expect("Can not parse fucntion return as Expr")
-                })
-                .collect_trusted()
-        };
+        let out_data = self
+            .dd
+            .data
+            .iter()
+            .map(|e| {
+                parse_expr_nocopy(
+                    func.call((e.clone().to_py(None),), py_kwargs)
+                        .expect("Call python function error!"),
+                )
+                .expect("Can not parse fucntion return as Expr")
+            })
+            .collect_trusted();
         let (rs_data, obj_map) = out_data.into_rs(None)?;
         self.add_obj_map(obj_map);
         self.dd.data = rs_data;

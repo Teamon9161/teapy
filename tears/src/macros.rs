@@ -79,7 +79,7 @@ macro_rules! impl_map_nd {
             $(#[$meta])*
             pub fn $func_1d $(<S2 $(,$t)*>)? (&$self, $out: &mut ArrBase<S2, Ix1> $(, $p: $p_ty)*)
             where
-                S2: DataMut<Elem = $otype>,
+                S2: DataMut<Elem = MaybeUninit<$otype>>,
                 $($generic: $bound $(+ $other_bnd)*,)*
             $body
         }
@@ -97,57 +97,57 @@ macro_rules! impl_map_nd {
                 let axis = $self.norm_axis(axis);
                 let f_flag = !$self.is_standard_layout();
                 let shape = $self.raw_dim().into_shape().set_f(f_flag);
-                let mut out = Arr::<$otype, D>::default(shape);
+                let mut out = Arr::<$otype, D>::uninit(shape);
                 let mut out_wr = out.view_mut();
                 $self.apply_along_axis(&mut out_wr, axis, par, move |x_1d, mut out_1d| {
                     x_1d.$func_1d(&mut out_1d $(,$p.clone())*)
                 });
-                out
+                unsafe{out.assume_init()}
             }
         }
     };
 
-    (
-        $func: ident,
-        $(#[$meta:meta])*
-        pub unsafe fn $func_1d:ident $(<S2 $(, $t: ident)*>)? (&$self:ident, $out:ident : &mut ArrBase<S2, D> $(, $p:ident: $p_ty:ty)* $(,)?) -> $otype:ty
-        {where $($generic:ident: $bound:path $(; $other_bnd:path)* $(,)?)*}
-        $body: tt
-    ) => {
-        impl<T: Clone, S> ArrBase<S, Ix1>
-        where
-            S: Data<Elem = T>,
-        {
-            $(#[$meta])*
-            pub unsafe fn $func_1d $(<S2 $(,$t)*>)? (&$self, $out: &mut ArrBase<S2, Ix1> $(, $p: $p_ty)*)
-            where
-                S2: DataMut<Elem = $otype>,
-                $($generic: $bound $(+ $other_bnd)*,)*
-            $body
-        }
-        impl<T, S, D> ArrBase<S, D>
-        where
-            T: Default + Clone,
-            S: Data<Elem = T>,
-            D: Dimension,
-        {
-            $(#[$meta])*
-            pub unsafe fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: i32, par: bool) -> Arr<$otype, D>
-            where
-                $($generic: $bound $(+ $other_bnd)*,)*
-            {
-                let axis = $self.norm_axis(axis);
-                let f_flag = !$self.is_standard_layout();
-                let shape = $self.raw_dim().into_shape().set_f(f_flag);
-                let mut out = Arr::<$otype, D>::default(shape);
-                let mut out_wr = out.view_mut();
-                $self.apply_along_axis(&mut out_wr, axis, par, |x_1d, mut out_1d| {
-                    x_1d.$func_1d(&mut out_1d $(,$p.clone())*)
-                });
-                out
-            }
-        }
-    };
+    // (
+    //     $func: ident,
+    //     $(#[$meta:meta])*
+    //     pub unsafe fn $func_1d:ident $(<S2 $(, $t: ident)*>)? (&$self:ident, $out:ident : &mut ArrBase<S2, D> $(, $p:ident: $p_ty:ty)* $(,)?) -> $otype:ty
+    //     {where $($generic:ident: $bound:path $(; $other_bnd:path)* $(,)?)*}
+    //     $body: tt
+    // ) => {
+    //     impl<T: Clone, S> ArrBase<S, Ix1>
+    //     where
+    //         S: Data<Elem = T>,
+    //     {
+    //         $(#[$meta])*
+    //         pub unsafe fn $func_1d $(<S2 $(,$t)*>)? (&$self, $out: &mut ArrBase<S2, Ix1> $(, $p: $p_ty)*)
+    //         where
+    //             S2: DataMut<Elem = $otype>,
+    //             $($generic: $bound $(+ $other_bnd)*,)*
+    //         $body
+    //     }
+    //     impl<T, S, D> ArrBase<S, D>
+    //     where
+    //         T: Default + Clone,
+    //         S: Data<Elem = T>,
+    //         D: Dimension,
+    //     {
+    //         $(#[$meta])*
+    //         pub unsafe fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: i32, par: bool) -> Arr<$otype, D>
+    //         where
+    //             $($generic: $bound $(+ $other_bnd)*,)*
+    //         {
+    //             let axis = $self.norm_axis(axis);
+    //             let f_flag = !$self.is_standard_layout();
+    //             let shape = $self.raw_dim().into_shape().set_f(f_flag);
+    //             let mut out = Arr::<$otype, D>::default(shape);
+    //             let mut out_wr = out.view_mut();
+    //             $self.apply_along_axis(&mut out_wr, axis, par, |x_1d, mut out_1d| {
+    //                 x_1d.$func_1d(&mut out_1d $(,$p.clone())*)
+    //             });
+    //             out
+    //         }
+    //     }
+    // };
 }
 pub(super) use impl_map_nd;
 
@@ -221,7 +221,7 @@ macro_rules! impl_map2_nd {
             pub fn $func_1d $(<S2, T2, S3 $(,$t)*>)? (&$self, $other: &ArrBase<S2, Ix1>, $out: &mut ArrBase<S3, Ix1> $(, $p: $p_ty)*)
             where
                 S2: Data<Elem = T2>,
-                S3: DataMut<Elem = $otype>,
+                S3: DataMut<Elem = MaybeUninit<$otype>>,
                 $($generic: $bound $(+ $other_bnd)*,)*
             $body
         }
@@ -250,12 +250,13 @@ macro_rules! impl_map2_nd {
                 };
                 let axis = lhs.norm_axis(axis);
                 let shape = lhs.raw_dim().into_shape().set_f(f_flag);
-                let mut out = Arr::<$otype, <D as DimMax<D2>>::Output>::default(shape);
+                // let mut out = Arr::<$otype, <D as DimMax<D2>>::Output>::default(shape);
+                let mut out = Arr::<$otype, <D as DimMax<D2>>::Output>::uninit(shape);
                 let mut out_wr = out.view_mut();
                 lhs.apply_along_axis_with(rhs, &mut out_wr, axis, par, |x_1d, y_1d, mut out_1d| {
                     x_1d.$func_1d(&y_1d, &mut out_1d $(,$p.clone())*)
                 });
-                out
+                unsafe{out.assume_init()}
             }
         }
     };

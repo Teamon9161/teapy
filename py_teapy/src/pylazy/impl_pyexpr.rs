@@ -1,21 +1,20 @@
 use super::export::*;
 use super::pyfunc::{parse_expr, parse_expr_list, parse_expr_nocopy, where_};
-use crate::from_py::NoDim0;
+use crate::from_py::{NoDim0, PyContext};
 use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use pyo3::{
-    exceptions::{PyAttributeError, PyRuntimeError},
-    pyclass::CompareOp,
-    PyTraverseError, PyVisit,
-};
-use std::iter::repeat;
+use pyo3::{exceptions::PyAttributeError, pyclass::CompareOp, PyTraverseError, PyVisit};
+
+#[cfg(feature = "window_func")]
+use tears::lazy::RollingTimeStartBy;
+
 use tears::{
-    Cast, DropNaMethod, ExprOut, ExprOutView, Number, RefType, RollingTimeStartBy, StrError,
-    TimeDelta, WinsorizeMethod,
+    match_all, match_arrok, ArrOk, Data, DropNaMethod, StrError, TimeDelta, WinsorizeMethod,
 };
-#[cfg(feature = "option_dtype")]
+
+// #[cfg(feature = "option_dtype")]
 // use tears::{OptF32, OptF64, OptI32, OptI64};
 
 static PYEXPR_ATTRIBUTE: Lazy<Mutex<HashMap<String, PyObject>>> =
@@ -27,75 +26,6 @@ pub fn expr_register(name: String, f: PyObject) -> PyResult<()> {
     let mut attr_dict = PYEXPR_ATTRIBUTE.lock();
     let _ = attr_dict.insert(name, f);
     Ok(())
-}
-
-macro_rules! impl_py_matmul {
-    (cast_to_same $self: expr, $other: expr, $func: ident $(,$args: expr)*) => {
-        {
-            let (obj, obj2) = ($self.obj(), $other.obj());
-            match (&$self.inner, &$other.inner) {
-                (Exprs::F64(_), _) | (_, Exprs::F64(_)) => {
-                    match_exprs!(($self.inner, e1, I32, I64, F32, F64, Usize), ($other.inner, e2, I32, I64, F32, F64, Usize), {
-                        (e1.cast::<f64>().$func(e2.cast::<f64>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                (Exprs::F32(_), _) | (_, Exprs::F32(_)) => {
-                    match_exprs!(($self.inner, e1, I32, I64, F32, Usize), ($other.inner, e2, I32, I64, F32, Usize), {
-                        (e1.cast::<f32>().$func(e2.cast::<f32>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                (Exprs::I64(_), _) | (_, Exprs::I64(_)) => {
-                    match_exprs!(($self.inner, e1, I64, I32, Bool, Usize), ($other.inner, e2, I64, I32, Bool, Usize), {
-                        (e1.cast::<i64>().$func(e2.cast::<i64>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                (Exprs::I32(_), _) | (_, Exprs::I32(_)) => {
-                    match_exprs!(($self.inner, e1, I32, Bool, Usize), ($other.inner, e2, I32, Bool, Usize), {
-                        (e1.cast::<i32>().$func(e2.cast::<i32>() $(,$args)*)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                _ => todo!()
-            }
-        }
-    }
-}
-
-macro_rules! impl_py_cmp {
-    (cast_to_same $self: expr, $other: expr, $func: ident, $py: expr $(,$dtype: ident)*) => {
-        {
-            let (obj, obj2) = ($self.obj(), $other.obj());
-            use Exprs::*;
-            match (&$self.inner, &$other.inner) {
-                (F64(_), _) | (_, F64(_)) => {
-                    match_exprs!(($self.inner, e1, I32, F64, Usize), ($other.inner, e2, I32, F64, Usize), {
-                        (e1.cast::<f64>().$func(e2.cast::<f64>(), false)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                (F32(_), _) | (_, F32(_)) => {
-                    match_exprs!(($self.inner, e1, I32, I64, F32, Usize), ($other.inner, e2, I32, I64, F32, Usize), {
-                        (e1.cast::<f32>().$func(e2.cast::<f32>(), false)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                (I64(_), _) | (_, I64(_)) => {
-                    match_exprs!(($self.inner, e1, I64, I32, Bool, Usize), ($other.inner, e2, I64, I32, Bool, Usize), {
-                        (e1.cast::<i64>().$func(e2.cast::<i64>(), false)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                (I32(_), _) | (_, I32(_)) => {
-                    match_exprs!(($self.inner, e1, I32, Bool, Usize), ($other.inner, e2, I32, Bool, Usize), {
-                        (e1.cast::<i32>().$func(e2.cast::<i32>(), false)).to_py(obj).add_obj_into(obj2)
-                    })
-                },
-                (Object(e1), String(e2)) => e1.clone().object_to_string($py).map_err(StrError::to_py)?.$func(e2.clone(), false).to_py(obj).add_obj_into(obj2),
-                (String(e1), Object(e2)) => e1.clone().$func(e2.clone().object_to_string($py).map_err(StrError::to_py)?, false).to_py(obj).add_obj_into(obj2),
-                $(
-                    ($dtype(e1), $dtype(e2)) => e1.clone().$func(e2.clone(), false).to_py(obj).add_obj_into(obj2),
-                )*
-                _ => todo!()
-            }
-        }
-    };
-
 }
 
 #[pymethods]
@@ -112,23 +42,25 @@ impl PyExpr {
     }
 
     #[getter]
-    pub fn dtype(&self) -> &str {
-        self.inner.dtype()
+    pub fn dtype(&self) -> String {
+        // self.inner.dtype()
+        self.e.dtype()
     }
 
     #[getter]
     #[allow(unreachable_patterns)]
     pub fn get_base_type(&self) -> &'static str {
-        match_exprs!(&self.inner, e, { e.get_base_type() })
+        // match_exprs!(&self.inner, e, { e.get_base_type() })
+        self.e.base_type()
     }
 
-    #[getter]
-    #[allow(unreachable_patterns)]
-    pub fn get_base_strong_count(&self) -> PyResult<usize> {
-        match_exprs!(&self.inner, e, {
-            e.get_base_strong_count().map_err(StrError::to_py)
-        })
-    }
+    // #[getter]
+    // #[allow(unreachable_patterns)]
+    // pub fn get_base_strong_count(&self) -> PyResult<usize> {
+    //     match_exprs!(&self.inner, e, {
+    //         e.get_base_strong_count().map_err(StrError::to_py)
+    //     })
+    // }
 
     fn __traverse__(&self, visit: PyVisit<'_>) -> Result<(), PyTraverseError> {
         if let Some(obj_vec) = &self.obj {
@@ -145,7 +77,7 @@ impl PyExpr {
     }
 
     fn __repr__(&self) -> String {
-        match_exprs!(&self.inner, e, { format!("{:?}", e) })
+        format!("{:?}", &self.e)
     }
 
     #[allow(unreachable_patterns)]
@@ -191,32 +123,21 @@ impl PyExpr {
                     }
                 }
             }
-            let ori_dim = self.ndim().cast_i32()?;
-            let mut out = self.view_by_slice(slc_vec);
+
+            let mut out = self.clone();
+            let ori_dim = out.ndim();
+            out.e.view_by_slice(slc_vec);
             for (idx, slc_obj) in zip(no_slice_idx_vec, no_slice_slc_obj_vec) {
                 let slc = parse_expr_nocopy(slc_obj)?;
                 let obj = slc.obj();
-                let idx: Expr<'static, i32> = (idx as i32).into();
-                let idx = idx - (ori_dim.clone() - out.ndim().cast_i32()?);
-                out = if slc.is_bool() {
-                    match_exprs!(&out.inner, expr, {
-                        expr.clone()
-                            .filter(slc.cast_bool()?, idx, false)
-                            .to_py(out.obj())
-                            .add_obj_into(obj)
-                    })
-                } else {
-                    match_exprs!(&out.inner, expr, {
-                        expr.clone()
-                            .select_by_i32_expr(slc.cast_i32()?, idx)
-                            .to_py(out.obj())
-                            .add_obj_into(obj)
-                    })
-                }
+                let idx: Expr<'static> = (idx as i32).into();
+                let idx = idx - (ori_dim.e.clone() - out.ndim().e);
+                out.e.select(slc.e, idx, true);
+                out.add_obj(obj);
             }
             Ok(out)
         } else {
-            let obj = PyTuple::new(py, vec![obj]);
+            let obj = PyList::new(py, vec![obj]);
             self.__getitem__(obj.into(), py)
         }
     }
@@ -224,10 +145,12 @@ impl PyExpr {
     #[pyo3(name="eval", signature=(inplace=false, context=None))]
     #[allow(unreachable_patterns)]
     pub fn eval_py(&mut self, inplace: bool, context: Option<&PyAny>) -> PyResult<Option<Self>> {
-        self.eval_inplace(context)?;
         if !inplace {
-            Ok(Some(self.clone()))
+            let mut e = self.clone();
+            e.eval_inplace(context)?;
+            Ok(Some(e))
         } else {
+            self.eval_inplace(context)?;
             Ok(None)
         }
     }
@@ -235,61 +158,47 @@ impl PyExpr {
     #[getter]
     #[allow(unreachable_patterns)]
     pub fn get_view(self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
-        if self.is_string() || self.is_str() {
-            let arr = self
-                .clone()
-                .cast_object_eager(py)?
-                .into_arr(None)
-                .map_err(StrError::to_py)?
-                .0
-                .to_owned()
-                .0;
-            return PyArray::from_owned_array(py, arr).no_dim0(py);
-        } else if let Exprs::DateTime(e) = &self.inner {
-            let arr = e
-                .clone()
-                .eval(None)
-                .map_err(StrError::to_py)?
-                .0
-                .view_arr()
+        let data = self.e.view_data().map_err(StrError::to_py)?;
+        let container = unsafe { PyAny::from_borrowed_ptr(py, self.as_ptr()) };
+        if matches!(&data, Data::ArrVec(_)) {
+            if let Data::ArrVec(arr_vec) = data {
+                let out = arr_vec
+                    .iter()
+                    .map(|arr| {
+                        match_arrok!(pyelement arr, a, {
+                            unsafe{
+                                PyArray::borrow_from_array(&a.view().0, container)
+                                .no_dim0(py)
+                                .unwrap()
+                            }
+                        })
+                    })
+                    .collect_trusted();
+                return Ok(out.into_py(py));
+            }
+        }
+        let arr = data.view_arr(None)?;
+        if matches!(arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
+            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String, TimeDelta);
+            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+        } else if let ArrOk::DateTime(arr) = arr {
+            let arr = arr
+                .view()
                 .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
         }
-        match_exprs!(
-            &self.inner,
-            expr,
+        match_arrok!(
+            pyelement arr,
+            a,
             {
                 unsafe {
-                    let container = PyAny::from_borrowed_ptr(py, self.as_ptr());
-                    let out_view = expr.try_view().map_err(StrError::to_py)?;
-                    if matches!(out_view, ExprOutView::ArrVec(_)) {
-                        let out = out_view
-                            .try_as_arr_vec()
-                            .map_err(StrError::to_py)?
-                            .iter()
-                            .map(|arr| {
-                                PyArray::borrow_from_array(arr, container)
-                                    .no_dim0(py)
-                                    .unwrap()
-                            })
-                            .collect_trusted();
-                        Ok(out.into_py(py))
-                    } else {
-                        Ok(PyArray::borrow_from_array(
-                            out_view.try_as_arr().map_err(StrError::to_py)?,
-                            container,
-                        )
-                        .no_dim0(py)?)
-                    }
+                    Ok(PyArray::borrow_from_array(
+                        &a.view().0,
+                        container,
+                    )
+                    .no_dim0(py)?)
                 }
-            },
-            I32,
-            I64,
-            F32,
-            F64,
-            Usize,
-            Bool,
-            Object
+            }
         )
     }
 
@@ -306,99 +215,83 @@ impl PyExpr {
     }
 
     #[allow(unreachable_patterns)]
-    #[pyo3(signature=(unit=None, _context=None))]
+    #[pyo3(signature=(unit=None, context=None))]
     pub fn value<'py>(
-        &'py self,
+        &'py mut self,
         unit: Option<&'py str>,
-        _context: Option<&'py PyAny>,
+        context: Option<&'py PyAny>,
         py: Python<'py>,
     ) -> PyResult<PyObject> {
-        // let ct: PyContext<'static> = if let Some(context) = context {
-        //     unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
-        // } else {
-        //     Default::default()
-        // };
-        // let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
-        let expr = self.clone(); //.cast_by_context(ct_rs.clone())?;
-        if expr.is_string() || expr.is_str() || expr.is_timedelta() {
-            let arr = expr
-                .cast_object_eager(py)?
-                .into_arr(None)
-                .map_err(StrError::to_py)?
-                .0
-                .to_owned()
-                .0;
-            return PyArray::from_owned_array(py, arr).no_dim0(py);
-        } else if let Exprs::DateTime(e) = &expr.inner {
+        let ct: PyContext<'static> = if let Some(context) = context {
+            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+        } else {
+            Default::default()
+        };
+        let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
+        // let mut expr = self.clone();
+        self.e.eval_inplace(ct_rs.clone())?;
+        let data = self.e.view_data().map_err(StrError::to_py)?;
+        // let mut expr = self.e.clone();
+        if matches!(&data, Data::ArrVec(_)) {
+            if let Data::ArrVec(_) = data {
+                let arr_vec = data.view_arr_vec(ct_rs.as_ref()).map_err(StrError::to_py)?;
+                let out = arr_vec
+                    .into_iter()
+                    .map(|arr| {
+                        match_arrok!(pyelement arr, a, {
+                            PyArray::from_owned_array(py, a.view().to_owned().0)
+                            .no_dim0(py)
+                            .unwrap()
+                        })
+                    })
+                    .collect_trusted();
+                return Ok(out.into_py(py));
+            }
+        }
+        let arr = data.view_arr(None)?;
+        if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
+            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String, TimeDelta);
+            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+        } else if let ArrOk::DateTime(arr) = &arr {
             match unit.unwrap_or("us").to_lowercase().as_str() {
                 "ms" => {
-                    let arr = e
-                        .clone()
-                        .eval(None)
-                        .map_err(StrError::to_py)?
-                        .0
-                        .view_arr()
+                    let arr = arr
+                        .view()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
                 }
                 "us" => {
-                    let arr = e
-                        .clone()
-                        .eval(None)
-                        .map_err(StrError::to_py)?
-                        .0
-                        .view_arr()
+                    let arr = arr
+                        .view()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
                 }
                 "ns" => {
-                    let arr = e
-                        .clone()
-                        .eval(None)
-                        .map_err(StrError::to_py)?
-                        .0
-                        .view_arr()
+                    let arr = arr
+                        .view()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Nanoseconds>());
                     return PyArray::from_owned_array(py, arr.0).no_dim0(py);
                 }
                 _ => unimplemented!("not support datetime unit"),
             }
         }
-        match_exprs!(
-            &expr.inner,
-            expr,
+        match_arrok!(
+            pyelement arr,
+            a,
             {
-                let (out, _ct_rs) = expr.clone().into_out(None).map_err(StrError::to_py)?;
-                if matches!(out, ExprOut::ArrVec(_)) {
-                    let out = out
-                        .into_arr_vec()
-                        .into_iter()
-                        .map(|arr| {
-                            PyArray::from_owned_array(py, arr.to_owned().0)
-                                .no_dim0(py)
-                                .unwrap()
-                        })
-                        .collect_trusted();
-                    Ok(out.into_py(py))
-                } else {
-                    let out = out.into_arr().to_owned().0;
-                    Ok(PyArray::from_owned_array(py, out).no_dim0(py)?)
-                }
-            },
-            I32,
-            I64,
-            F32,
-            F64,
-            Usize,
-            Bool,
-            Object
+                Ok(PyArray::from_owned_array(
+                    py,
+                    a.view().to_owned().0
+                )
+                .no_dim0(py)?)
+            }
         )
     }
 
     #[getter]
     #[allow(unreachable_patterns)]
     pub fn step(&self) -> usize {
-        match_exprs!(&self.inner, expr, { expr.step_acc() })
+        self.e.step_acc()
     }
 
     // #[getter]
@@ -410,61 +303,58 @@ impl PyExpr {
     #[getter]
     #[allow(unreachable_patterns)]
     pub fn get_name(&self) -> Option<String> {
-        match_exprs!(&self.inner, expr, { expr.name() })
+        self.e.name()
+        // match_exprs!(&self.inner, expr, { expr.name() })
     }
 
     #[setter]
     #[allow(unreachable_patterns)]
     pub fn set_name(&mut self, name: String) {
-        match_exprs!(&mut self.inner, expr, { expr.rename(name) })
+        self.e.rename(name)
+        // match_exprs!(&mut self.inner, expr, { expr.rename(name) })
     }
 
     #[pyo3(name = "copy")]
     #[allow(unreachable_patterns)]
     pub fn deep_copy(&self) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().deep_copy().to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.deep_copy();
+        out
     }
 
     #[allow(unreachable_patterns)]
-    pub(crate) fn is_owned(&self) -> Option<bool> {
-        self.inner.is_owned()
-        // match_exprs!(&self.inner, expr, { expr.owned() })
+    pub(crate) fn is_owned(&self) -> bool {
+        self.e.is_owned()
     }
 
     #[allow(unreachable_patterns)]
     pub unsafe fn reshape(&self, shape: &PyAny) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
-        let out = match_exprs!(&self.inner, expr, {
-            expr.clone()
-                .reshape(shape.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.reshape(shape.e);
+        Ok(out.add_obj_into(obj))
     }
 
-    #[allow(unreachable_patterns)]
-    pub fn strong_count(&mut self) -> usize {
-        match_exprs!(&self.inner, expr, { expr.strong_count() })
-    }
+    // #[allow(unreachable_patterns)]
+    // pub fn strong_count(&mut self) -> usize {
+    //     match_exprs!(&self.inner, expr, { expr.strong_count() })
+    // }
 
-    #[allow(unreachable_patterns)]
-    pub fn weak_count(&mut self) -> usize {
-        match_exprs!(&self.inner, expr, { expr.weak_count() })
-    }
+    // #[allow(unreachable_patterns)]
+    // pub fn weak_count(&mut self) -> usize {
+    //     match_exprs!(&self.inner, expr, { expr.weak_count() })
+    // }
 
-    #[allow(unreachable_patterns)]
-    pub fn ref_count(&mut self) -> usize {
-        match_exprs!(&self.inner, expr, { expr.ref_count() })
-    }
+    // #[allow(unreachable_patterns)]
+    // pub fn ref_count(&mut self) -> usize {
+    //     match_exprs!(&self.inner, expr, { expr.ref_count() })
+    // }
 
-    #[allow(unreachable_patterns)]
-    pub fn hint_arr_type(&mut self) -> Self {
-        match_exprs!(&self.inner, expr, { expr.clone().hint_arr_type().into() })
-    }
+    // #[allow(unreachable_patterns)]
+    // pub fn hint_arr_type(&mut self) -> Self {
+    //     match_exprs!(&self.inner, expr, { expr.clone().hint_arr_type().into() })
+    // }
 
     pub fn __getattr__<'py>(
         self: PyRef<'py, Self>,
@@ -485,233 +375,42 @@ impl PyExpr {
         }
     }
 
-    unsafe fn __add__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __add__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
-        use Exprs::*;
-        let out = match (&self.inner, &other.inner) {
-            (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? + other.cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? + other.cast_f32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? + other.cast_i64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? + other.cast_i32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_usize()? + other.cast_usize()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (String(_), String(_)) => self
-                .clone()
-                .cast_string()?
-                .add_string(other.cast_string()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Str(_), String(_)) => self
-                .clone()
-                .cast_string()?
-                .add_string(other.cast_string()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (String(_), Str(_)) => self
-                .clone()
-                .cast_string()?
-                .add_str(other.cast_str()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Str(_), Str(_)) => self
-                .clone()
-                .cast_string()?
-                .add_str(other.cast_str()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (DateTime(_), TimeDelta(_)) => (self.clone().cast_datetime_default()?
-                + other.cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (TimeDelta(_), DateTime(_)) => (other.cast_datetime_default()?
-                + self.clone().cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (TimeDelta(_), TimeDelta(_)) => (self.clone().cast_timedelta()?
-                + other.cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            _ => todo!(),
-        };
-        Ok(out)
+        Ok((self.clone().e + other.e).to_py(obj).add_obj_into(obj2))
     }
 
-    unsafe fn __radd__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __radd__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
-        use Exprs::*;
-        let out = match (&self.inner, &other.inner) {
-            (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? + other.cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? + other.cast_f32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? + other.cast_i64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? + other.cast_i32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_usize()? + other.cast_usize()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            // note that we should not swap the order of self and other when add string
-            (String(_), String(_)) => other
-                .cast_string()?
-                .add_string(self.clone().cast_string()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (String(_), Str(_)) => other
-                .cast_string()?
-                .add_string(self.clone().cast_string()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Str(_), String(_)) => other
-                .cast_string()?
-                .add_str(self.clone().cast_str()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Str(_), Str(_)) => other
-                .cast_string()?
-                .add_str(self.clone().cast_str()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (DateTime(_), TimeDelta(_)) => (self.clone().cast_datetime_default()?
-                + other.cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (TimeDelta(_), DateTime(_)) => (other.cast_datetime_default()?
-                + self.clone().cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (TimeDelta(_), TimeDelta(_)) => (self.clone().cast_timedelta()?
-                + other.cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            _ => todo!(),
-        };
-        Ok(out)
+        Ok((other.e + self.clone().e).to_py(obj).add_obj_into(obj2))
     }
 
     unsafe fn __iadd__(&mut self, other: &PyAny) {
         *self = self.__add__(other).unwrap()
     }
 
-    unsafe fn __sub__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __sub__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
-        use Exprs::*;
-        let out = match (&self.inner, &other.inner) {
-            (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? - other.cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? - other.cast_f32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? - other.cast_i64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? - other.cast_i32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_i64()? - other.cast_i64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (DateTime(_), TimeDelta(_)) => (self.clone().cast_datetime_default()?
-                - other.cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (TimeDelta(_), TimeDelta(_)) => (self.clone().cast_timedelta()?
-                - other.cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (DateTime(_), DateTime(_)) => (self
-                .clone()
-                .cast_datetime_default()?
-                .sub_datetime(other.cast_datetime_default()?, false))
-            .to_py(obj)
-            .add_obj_into(obj2),
-            _ => todo!(),
-        };
-        Ok(out)
+        Ok((self.clone().e - other.e).to_py(obj).add_obj_into(obj2))
     }
 
-    unsafe fn __rsub__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __rsub__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
-        use Exprs::*;
-        let out = match (&other.inner, &self.inner) {
-            (F64(_), _) | (_, F64(_)) => (other.cast_f64()? - self.clone().cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (F32(_), _) | (_, F32(_)) => (other.cast_f32()? - self.clone().cast_f32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I64(_), _) | (_, I64(_)) => (other.cast_i64()? - self.clone().cast_i64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I32(_), _) | (_, I32(_)) => (other.cast_i32()? - self.clone().cast_i32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Usize(_), _) | (_, Usize(_)) => (other.cast_i64()? - self.clone().cast_i64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (DateTime(_), TimeDelta(_)) => (other.cast_datetime_default()?
-                - self.clone().cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (TimeDelta(_), TimeDelta(_)) => (other.cast_timedelta()?
-                - self.clone().cast_timedelta()?)
-            .to_py(obj)
-            .add_obj_into(obj2),
-            (DateTime(_), DateTime(_)) => (other
-                .cast_datetime_default()?
-                .sub_datetime(self.clone().cast_datetime_default()?, false))
-            .to_py(obj)
-            .add_obj_into(obj2),
-            _ => todo!(),
-        };
-        Ok(out)
+        Ok((other.e - self.clone().e).to_py(obj).add_obj_into(obj2))
     }
 
     unsafe fn __isub__(&mut self, other: &PyAny) {
         *self = self.__sub__(other).unwrap()
     }
 
-    unsafe fn __mul__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __mul__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
-        use Exprs::*;
-        let out = match (&self.inner, &other.inner) {
-            (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? * other.cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? * other.cast_f32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I64(_), _) | (_, I64(_)) => (self.clone().cast_i64()? * other.cast_i64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I32(_), _) | (_, I32(_)) => (self.clone().cast_i32()? * other.cast_i32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (Usize(_), _) | (_, Usize(_)) => (self.clone().cast_usize()? * other.cast_usize()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            _ => todo!(),
-        };
-        Ok(out)
+        Ok((self.clone().e * other.e).to_py(obj).add_obj_into(obj2))
     }
 
     unsafe fn __rmul__(&self, other: &PyAny) -> PyResult<Self> {
@@ -722,71 +421,32 @@ impl PyExpr {
         *self = self.__mul__(other).unwrap()
     }
 
-    unsafe fn __truediv__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __truediv__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
-        use Exprs::*;
-        let out = match (&self.inner, &other.inner) {
-            (F64(_), _) | (_, F64(_)) => (self.clone().cast_f64()? / other.cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (F32(_), _) | (_, F32(_)) => (self.clone().cast_f32()? / other.cast_f32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I64(_), _)
-            | (_, I64(_))
-            | (I32(_), _)
-            | (_, I32(_))
-            | (Usize(_), _)
-            | (_, Usize(_)) => (self.clone().cast_f64()? / other.cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            _ => todo!(),
-        };
-        Ok(out)
+        Ok((self.clone().e / other.e).to_py(obj).add_obj_into(obj2))
     }
 
-    unsafe fn __rtruediv__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __rtruediv__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
-        use Exprs::*;
-        let out = match (&other.inner, &self.inner) {
-            (F64(_), _) | (_, F64(_)) => (other.cast_f64()? / self.clone().cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (F32(_), _) | (_, F32(_)) => (other.cast_f32()? / self.clone().cast_f32()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            (I64(_), _)
-            | (_, I64(_))
-            | (I32(_), _)
-            | (_, I32(_))
-            | (Usize(_), _)
-            | (_, Usize(_)) => (other.cast_f64()? / self.clone().cast_f64()?)
-                .to_py(obj)
-                .add_obj_into(obj2),
-            _ => todo!(),
-        };
-        Ok(out)
+        Ok((other.e / self.clone().e).to_py(obj).add_obj_into(obj2))
     }
 
     unsafe fn __itruediv__(&mut self, other: &PyAny) {
         *self = self.__truediv__(other).unwrap()
     }
 
-    #[allow(unreachable_patterns)]
-    unsafe fn __and__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __and__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
-        let obj = other.obj();
-        match_exprs!(
-            (&self.inner, e1, F32, F64, I32, I64, Bool),
-            (other.inner, e2, F64, F32, I32, I64, Bool),
-            {
-                Ok((e1.clone().cast::<bool>() & e2.cast::<bool>())
-                    .to_py(self.obj())
-                    .add_obj_into(obj))
-            }
-        )
+        let (obj, obj2) = (self.obj(), other.obj());
+        Ok((self.clone().e & other.e).to_py(obj).add_obj_into(obj2))
+    }
+
+    fn __or__(&self, other: &PyAny) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let (obj, obj2) = (self.obj(), other.obj());
+        Ok((self.clone().e | other.e).to_py(obj).add_obj_into(obj2))
     }
 
     unsafe fn __rand__(&self, other: &PyAny) -> PyResult<Self> {
@@ -797,21 +457,6 @@ impl PyExpr {
         *self = self.__and__(other).unwrap()
     }
 
-    #[allow(unreachable_patterns)]
-    unsafe fn __or__(&self, other: &PyAny) -> PyResult<Self> {
-        let other = parse_expr_nocopy(other)?;
-        let obj = other.obj();
-        match_exprs!(
-            (&self.inner, e1, F64, F32, I64, I32, Bool),
-            (other.inner, e2, F64, F32, I64, I32, Bool),
-            {
-                Ok((e1.clone().cast::<bool>() | e2.cast::<bool>())
-                    .to_py(self.obj())
-                    .add_obj_into(obj))
-            }
-        )
-    }
-
     unsafe fn __ror__(&self, other: &PyAny) -> PyResult<Self> {
         self.__or__(other)
     }
@@ -820,28 +465,20 @@ impl PyExpr {
         *self = self.__or__(other).unwrap()
     }
 
-    unsafe fn __richcmp__(&self, other: &PyAny, op: CompareOp, py: Python) -> PyResult<PyExpr> {
+    unsafe fn __richcmp__(&self, other: &PyAny, op: CompareOp, _py: Python) -> PyResult<PyExpr> {
         let other = parse_expr_nocopy(other)?;
+        let (obj, obj2) = (self.obj(), other.obj());
+        let mut lhs = self.e.clone();
+        let rhs = other.e;
         match op {
-            CompareOp::Eq => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, eq, py, DateTime, String, TimeDelta, Bool),
-            ),
-            CompareOp::Lt => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, lt, py, DateTime, String, TimeDelta),
-            ),
-            CompareOp::Le => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, le, py, DateTime, String, TimeDelta),
-            ),
-            CompareOp::Ne => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, ne, py, DateTime, String, TimeDelta, Bool),
-            ),
-            CompareOp::Gt => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, gt, py, DateTime, String, TimeDelta),
-            ),
-            CompareOp::Ge => Ok(
-                impl_py_cmp!(cast_to_same self.clone(), other, ge, py, DateTime, String, TimeDelta),
-            ),
+            CompareOp::Eq => lhs.eq(rhs, false),
+            CompareOp::Lt => lhs.lt(rhs, false),
+            CompareOp::Le => lhs.le(rhs, false),
+            CompareOp::Ne => lhs.ne(rhs, false),
+            CompareOp::Gt => lhs.gt(rhs, false),
+            CompareOp::Ge => lhs.ge(rhs, false),
         }
+        Ok(lhs.to_py(obj).add_obj_into(obj2))
     }
 
     unsafe fn __pow__(&self, other: &PyAny, _mod: &PyAny) -> PyResult<Self> {
@@ -855,24 +492,20 @@ impl PyExpr {
     #[pyo3(name="pow", signature=(other, par=false))]
     unsafe fn pow_py(&self, other: &PyAny, par: bool) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
-        self.pow(other, par)
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e.pow(other.e, par);
+        Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(par=false))]
-    fn abs(&self, par: bool) -> PyResult<Self> {
-        Ok(match_exprs!(
-            &self.inner,
-            e,
-            { e.clone().abs(par).to_py(self.obj()) },
-            F64,
-            F32,
-            I32,
-            I64
-        ))
+    fn abs(&self) -> PyResult<Self> {
+        let mut out = self.clone();
+        out.e.abs();
+        Ok(out)
     }
 
     fn __abs__(&self) -> PyResult<Self> {
-        self.abs(false)
+        self.abs()
     }
 
     // unsafe fn __rshift__(&self, other: &PyAny) -> PyResult<Self> {
@@ -890,41 +523,46 @@ impl PyExpr {
     // }
 
     fn __neg__(&self) -> PyResult<Self> {
-        match_exprs!(
-            &self.inner,
-            e,
-            { Ok((-e.clone()).to_py(self.obj())) },
-            F64,
-            F32,
-            I64,
-            I32
-        )
+        let e = self.clone();
+        Ok((-e.e).to_py(self.obj()))
     }
 
     fn __invert__(&self) -> PyResult<Self> {
-        match_exprs!(&self.inner, e, { Ok((!e.clone()).to_py(self.obj())) }, Bool)
+        let e = self.clone();
+        Ok((!e.e).to_py(self.obj()))
+        // match_exprs!(&self.inner, e, { Ok((!e.clone()).to_py(self.obj())) }, Bool)
     }
 
     #[cfg(feature = "blas")]
     unsafe fn __matmul__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
-        Ok(impl_py_matmul!(cast_to_same self.clone(), other, dot))
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e.dot(other.e);
+        Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "blas")]
+    #[allow(clippy::redundant_clone)]
     unsafe fn __rmatmul__(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
-        Ok(impl_py_matmul!(cast_to_same other, self.clone(), dot))
+        let obj = self.obj();
+        let mut out = other.clone();
+        out.e.dot(self.e.clone());
+        Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(name))]
+    #[pyo3(signature=(name, inplace=false))]
     #[allow(unreachable_patterns)]
-    pub fn alias(&mut self, name: String) -> Self {
-        match_exprs!(&mut self.inner, expr, {
-            let mut e = expr.clone();
-            e.rename(name);
-            e.to_py(self.obj())
-        })
+    pub fn alias(&mut self, name: String, inplace: bool) -> Option<Self> {
+        if inplace {
+            self.e.rename(name);
+            None
+        } else {
+            let mut e = self.clone();
+            e.e.rename(name);
+            Some(e)
+        }
     }
 
     // pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
@@ -945,164 +583,158 @@ impl PyExpr {
     ///
     /// Returns NaN if self is a negative number other than -0.0.
     pub fn sqrt(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().sqrt().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.sqrt();
+        e
     }
 
     /// Returns the cube root of each element.
     pub fn cbrt(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().exp2().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.cbrt();
+        e
     }
 
     /// Returns the sign of each element.
-    fn sign(&self) -> PyResult<Self> {
-        Ok(match_exprs!(
-            &self.inner,
-            e,
-            { e.clone().sign(false).to_py(self.obj()) },
-            F64,
-            F32,
-            I32,
-            I64
-        ))
+    fn sign(&self) -> Self {
+        let mut e = self.clone();
+        e.e.sign();
+        e
     }
 
     /// Returns the natural logarithm of each element.
     pub fn ln(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().ln().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.ln();
+        e
     }
 
     /// Returns ln(1+n) (natural logarithm) more accurately than if the operations were performed separately.
     pub fn ln_1p(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().ln_1p().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.ln_1p();
+        e
     }
 
     /// Returns the base 2 logarithm of each element.
     pub fn log2(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().log2().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.log2();
+        e
     }
 
     /// Returns the base 10 logarithm of each element.
     pub fn log10(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().log10().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.log10();
+        e
     }
 
     /// Returns e^(self) of each element, (the exponential function).
     pub fn exp(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().exp().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.exp();
+        e
     }
 
     /// Returns 2^(self) of each element.
     pub fn exp2(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().exp2().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.exp2();
+        e
     }
 
     /// Returns e^(self) - 1 in a way that is accurate even if the number is close to zero.
     pub fn exp_m1(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().exp_m1().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.exp_m1();
+        e
     }
 
     /// Computes the arccosine of each element. Return value is in radians in the range 0,
     /// pi or NaN if the number is outside the range -1, 1.
     pub fn acos(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().acos().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.acos();
+        e
     }
 
     /// Computes the arcsine of each element. Return value is in radians in the range -pi/2,
     /// pi/2 or NaN if the number is outside the range -1, 1.
     pub fn asin(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().asin().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.asin();
+        e
     }
 
     /// Computes the arctangent of each element. Return value is in radians in the range -pi/2, pi/2;
     pub fn atan(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().atan().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.atan();
+        e
     }
 
     /// Computes the sine of each element (in radians).
     pub fn sin(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().sin().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.sin();
+        e
     }
 
     /// Computes the cosine of each element (in radians).
     pub fn cos(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().cos().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.cos();
+        e
     }
 
     /// Computes the tangent of each element (in radians).
     pub fn tan(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().tan().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.tan();
+        e
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
     pub fn ceil(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().ceil().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.ceil();
+        e
     }
 
     /// Returns the largest integer less than or equal to `self`.
     pub fn floor(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().floor().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.floor();
+        e
     }
 
     /// Returns the fractional part of each element.
     pub fn fract(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().fract().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.fract();
+        e
     }
 
     /// Returns the integer part of each element. This means that non-integer numbers are always truncated towards zero.
     pub fn trunc(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().trunc().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.trunc();
+        e
     }
 
     /// Returns true if this number is neither infinite nor NaN
     pub fn is_finite(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().is_finite().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.is_finite();
+        e
     }
 
     /// Returns true if this value is positive infinity or negative infinity, and false otherwise.
     pub fn is_inf(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().is_inf().to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.is_infinite();
+        e
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -1111,39 +743,39 @@ impl PyExpr {
     /// `self.log2()` can produce more accurate results for base 2,
     /// and `self.log10()` can produce more accurate results for base 10.
     pub fn log(&self, base: f64) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().log(base).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.log(base);
+        e
     }
 
     #[pyo3(signature=(axis=0))]
     #[allow(unreachable_patterns)]
     pub fn first(&self, axis: i32) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().first(axis).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.first(axis);
+        e
     }
 
     #[pyo3(signature=(axis=0))]
     #[allow(unreachable_patterns)]
     pub fn last(&self, axis: i32) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().last(axis).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.last(axis);
+        e
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn valid_first(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().valid_first(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.valid_first(axis, par);
+        e
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn valid_last(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().valid_last(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.valid_last(axis, par);
+        e
     }
 
     #[pyo3(signature=(n=1, fill=None, axis=0, par=false))]
@@ -1153,52 +785,20 @@ impl PyExpr {
         fill: Option<&PyAny>,
         axis: i32,
         par: bool,
-        py: Python,
+        _py: Python,
     ) -> PyResult<Self> {
         let fill = if let Some(fill) = fill {
             if fill.is_none() {
                 None
             } else {
-                unsafe { Some(parse_expr_nocopy(fill)?) }
+                Some(parse_expr_nocopy(fill)?)
             }
         } else {
             None
         };
         let obj = fill.clone().map(|e| e.obj());
-        let out = if matches!(&self.inner, Exprs::Object(_)) {
-            self.inner
-                .clone()
-                .cast_object()?
-                .shift(n, fill.map(|e| e.cast_object_eager(py).unwrap()), axis, par)
-                .to_py(self.obj())
-        } else {
-            match_exprs!(
-                &self.inner,
-                e,
-                {
-                    e.clone()
-                        .shift(n, fill.map(|v| v.inner.cast()), axis, par)
-                        .to_py(self.obj())
-                },
-                Bool,
-                F32,
-                F64,
-                I32,
-                I64,
-                Usize,
-                String,
-                OptUsize,
-                DateTime,
-                #[cfg(feature = "option_dtype")]
-                OptF32,
-                #[cfg(feature = "option_dtype")]
-                OptF64,
-                #[cfg(feature = "option_dtype")]
-                OptI32,
-                #[cfg(feature = "option_dtype")]
-                OptI64
-            )
-        };
+        let mut out = self.clone();
+        out.e.shift(n.into(), fill.map(|f| f.e), axis, par);
         if let Some(obj) = obj {
             Ok(out.add_obj_into(obj))
         } else {
@@ -1208,48 +808,40 @@ impl PyExpr {
 
     #[pyo3(signature=(n=1, axis=0, par=false))]
     pub fn diff(&self, n: i32, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().diff(n, axis, par).to_py(self.obj()) },
-            F32,
-            I64,
-            F64,
-            I32
-        )
+        let mut e = self.clone();
+        e.e.diff(n, axis, par);
+        e
     }
 
     #[pyo3(signature=(n=1, axis=0, par=false))]
     pub fn pct_change(&self, n: i32, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().pct_change(n, axis, par).to_py(self.obj()) },
-            F32,
-            I64,
-            F64,
-            I32
-        )
+        let mut e = self.clone();
+        e.e.pct_change(n, axis, par);
+        e
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn count_nan(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().count_nan(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.count_nan(axis, par);
+        e
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn count_notnan(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().count_notnan(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.count_notnan(axis, par);
+        e
     }
 
-    // #[args(self, value, axis="0", par=false)]
-    // pub fn count_v(&self, value, axis: i32, par: bool) -> Self {
-    //     match_exprs!(&self.inner, expr, {expr.clone().count_v(value, axis, par).to_py(self.obj())}, F64, I32)
-    // }
+    #[pyo3(signature=(value, axis=0, par=false))]
+    pub fn count_value(&self, value: &PyAny, axis: i32, par: bool) -> PyResult<Self> {
+        let value = parse_expr_nocopy(value)?;
+        let obj = value.obj();
+        let mut e = self.clone();
+        e.e.count_value(value.e, axis, par);
+        Ok(e.add_obj_into(obj))
+    }
 
     #[allow(unreachable_patterns)]
     #[pyo3(signature=(mask, axis=None, par=false))]
@@ -1262,13 +854,9 @@ impl PyExpr {
         };
         let obj = mask.obj();
         let obj2 = axis.obj();
-        Ok(match_exprs!(&self.inner, expr, {
-            expr.clone()
-                .filter(mask.cast_bool()?, axis.cast_i32()?, par)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-                .add_obj_into(obj2)
-        }))
+        let mut out = self.clone();
+        out.e.filter(mask.e, axis.e, par);
+        Ok(out.add_obj_into(obj).add_obj_into(obj2))
     }
 
     #[pyo3(signature=(axis=None, how=DropNaMethod::Any, par=false))]
@@ -1284,60 +872,42 @@ impl PyExpr {
             0.into_pyexpr()
         };
         let obj = axis.obj();
-        Ok(match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .dropna(axis.cast_i32()?, how, par)
-                    .to_py(self.obj())
-                    .add_obj_into(obj)
-            },
-            F32,
-            F64,
-            I32,
-            I64,
-            Usize
-        ))
+        let mut e = self.clone();
+        e.e.dropna(axis.e, how, par);
+        Ok(e.add_obj_into(obj))
     }
 
     pub fn is_nan(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().is_nan().to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.is_nan();
+        out
     }
 
     pub fn not_nan(&self) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().not_nan().to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.not_nan();
+        out
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn median(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().median(axis, par).to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.median(axis, par);
+        out
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn all(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().all(axis, par).to_py(self.obj()) },
-            Bool
-        )
+        let mut out = self.clone();
+        out.e.all(axis, par);
+        out
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn any(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().any(axis, par).to_py(self.obj()) },
-            Bool
-        )
+        let mut out = self.clone();
+        out.e.any(axis, par);
+        out
     }
 
     #[allow(unreachable_patterns)]
@@ -1348,29 +918,33 @@ impl PyExpr {
     /// Safety
     /// the data for the array view should exist
     pub unsafe fn diag(&self) -> Self {
-        match_exprs!(&self.inner, expr, { expr.clone().diag().to_py(self.obj()) })
+        let mut out = self.clone();
+        out.e.diag();
+        out
     }
 
     #[allow(unreachable_patterns)]
     /// Insert new array axis at axis and return the result.
     pub unsafe fn insert_axis(&self, axis: i32) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().insert_axis(axis).to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.insert_axis(axis);
+        out
     }
 
     #[allow(unreachable_patterns)]
     /// Remove new array axis at axis and return the result.
     pub unsafe fn remove_axis(&self, axis: i32) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().remove_axis(axis).to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.remove_axis(axis);
+        out
     }
 
     #[allow(unreachable_patterns)]
     /// Return a transposed view of the array.
     pub unsafe fn t(&self) -> Self {
-        match_exprs!(&self.inner, expr, { expr.clone().t().to_py(self.obj()) })
+        let mut out = self.clone();
+        out.e.t();
+        out
     }
 
     #[allow(unreachable_patterns)]
@@ -1378,9 +952,9 @@ impl PyExpr {
     ///
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
     pub unsafe fn swap_axes(&self, ax: i32, bx: i32) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().swap_axes(ax, bx).to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.swap_axes(ax, bx);
+        out
     }
 
     #[allow(unreachable_patterns)]
@@ -1392,108 +966,99 @@ impl PyExpr {
     pub unsafe fn permuted_axes(&self, axes: &PyAny) -> PyResult<Self> {
         let axes = parse_expr_nocopy(axes)?;
         let obj = axes.obj();
-        let out = match_exprs!(&self.inner, expr, {
-            expr.clone()
-                .permuted_axes(axes.cast_i32()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.permuted_axes(axes.e);
+        Ok(out.add_obj_into(obj))
     }
 
     #[allow(unreachable_patterns)]
     /// Return the number of dimensions (axes) in the array
     pub fn ndim(&self) -> Self {
-        match_exprs!(&self.inner, expr, { expr.clone().ndim().to_py(self.obj()) })
+        let mut out = self.clone();
+        out.e.ndim();
+        out
     }
 
     #[allow(unreachable_patterns)]
     #[getter]
     /// Return the shape of the array as a usize Expr.
     pub fn shape(&self) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().shape().to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.shape();
+        out
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn max(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().max(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.max(axis, par);
+        e
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn min(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().min(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.min(axis, par);
+        e
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn sum(&self, stable: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().sum(stable, axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.sum(stable, axis, par);
+        e
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn cumsum(&self, stable: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().cumsum(stable, axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.cumsum(stable, axis, par);
+        e
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn prod(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().prod(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.prod(axis, par);
+        e
     }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn cumprod(&self, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().cumprod(axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.cumprod(axis, par);
+        e
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn mean(&self, stable: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().mean(stable, axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.mean(stable, axis, par);
+        e
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false, warning=true))]
+    #[pyo3(signature=(stable=false, axis=0, par=false, _warning=true))]
     pub fn zscore(
         &self,
         stable: bool,
         axis: i32,
         par: bool,
-        warning: bool,
-        py: Python,
+        _warning: bool,
+        _py: Python,
     ) -> PyResult<Self> {
-        if warning && !self.is_float() {
-            let warnings = py.import("warnings")?;
-            warnings.call_method1(
-                "warn",
-                ("The dtype of input is not Float, so note that the result is not float too",),
-            )?;
-        }
-        let out = match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().zscore(stable, axis, par).to_py(self.obj()) },
-            F64,
-            I32,
-            F32,
-            I64
-        );
-        Ok(out)
+        // if warning && !self.is_float().unwrap() {
+        //     let warnings = py.import("warnings")?;
+        //     warnings.call_method1(
+        //         "warn",
+        //         ("The dtype of input is not Float, so note that the result is not float too",),
+        //     )?;
+        // }
+        let mut e = self.clone();
+        e.e.zscore_inplace(stable, axis, par);
+        Ok(e)
     }
 
-    #[pyo3(signature=(method=WinsorizeMethod::Quantile, method_params=0.01, stable=false, axis=0, par=false, warning=true))]
+    #[pyo3(signature=(method=WinsorizeMethod::Quantile, method_params=0.01, stable=false, axis=0, par=false))]
     #[allow(clippy::too_many_arguments)]
     pub fn winsorize(
         &self,
@@ -1502,149 +1067,91 @@ impl PyExpr {
         stable: bool,
         axis: i32,
         par: bool,
-        warning: bool,
-        py: Python,
+        // _warning: bool,
+        _py: Python,
     ) -> PyResult<Self> {
-        if warning && !self.is_float() {
-            let warnings = py.import("warnings")?;
-            warnings.call_method1(
-                "warn",
-                ("The dtype of input is not Float, so note that the result is not float too",),
-            )?;
-        }
-        let out = match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .winsorize(method, method_params, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64
-        );
-        Ok(out)
+        let mut e = self.clone();
+        e.e.winsorize_inplace(method, method_params, stable, axis, par);
+        Ok(e)
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn var(&self, stable: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().var(stable, axis, par).to_py(self.obj()) },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut e = self.clone();
+        e.e.var(stable, axis, par);
+        e
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn std(&self, stable: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().std(stable, axis, par).to_py(self.obj()) },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut e = self.clone();
+        e.e.std(stable, axis, par);
+        e
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn skew(&self, stable: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().skew(stable, axis, par).to_py(self.obj()) },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut e = self.clone();
+        e.e.skew(stable, axis, par);
+        e
     }
 
     #[pyo3(signature=(stable=false, axis=0, par=false))]
     pub fn kurt(&self, stable: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            { expr.clone().kurt(stable, axis, par).to_py(self.obj()) },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut e = self.clone();
+        e.e.kurt(stable, axis, par);
+        e
     }
 
     #[pyo3(signature=(pct=false, rev=false, axis=0, par=false))]
     pub fn rank(&self, pct: bool, rev: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().rank(pct, rev, axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.rank(pct, rev, axis, par);
+        e
     }
 
     #[pyo3(signature=(q, method=QuantileMethod::Linear, axis=0, par=false))]
     pub fn quantile(&self, q: f64, method: QuantileMethod, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .quantile(q, method, axis, par)
-                .to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.quantile(q, method, axis, par);
+        e
     }
 
     #[pyo3(signature=(rev=false, axis=0, par=false))]
     pub fn argsort(&self, rev: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().argsort(rev, axis, par).to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.argsort(rev, axis, par);
+        e
     }
 
     #[pyo3(signature=(kth, sort=true, rev=false, axis=0, par=false))]
     pub fn arg_partition(&self, kth: usize, sort: bool, rev: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .arg_partition(kth, sort, rev, axis, par)
-                .to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.arg_partition(kth, sort, rev, axis, par);
+        e
     }
 
     #[pyo3(signature=(kth, sort=true, rev=false, axis=0, par=false))]
     pub fn partition(&self, kth: usize, sort: bool, rev: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .partition(kth, sort, rev, axis, par)
-                .to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.partition(kth, sort, rev, axis, par);
+        e
     }
 
     #[pyo3(signature=(group, rev=false, axis=0, par=false))]
     pub fn split_group(&self, group: usize, rev: bool, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .split_group(group, rev, axis, par)
-                .to_py(self.obj())
-        })
+        let mut e = self.clone();
+        e.e.split_group(group, rev, axis, par);
+        e
     }
 
     #[pyo3(signature=(other, stable=false, axis=0, par=false))]
     pub unsafe fn cov(&self, other: &PyAny, stable: bool, axis: i32, par: bool) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        let res = match_exprs!(
-            (&self.inner, e1, F64, F32, I64, I32),
-            (&other.inner, e2, F64, F32, I64, I32),
-            {
-                e1.clone()
-                    .cov(e2.clone(), stable, axis, par)
-                    .to_py(self.obj())
-                    .add_obj_into(obj)
-            }
-        );
-        Ok(res)
+        let mut e = self.clone();
+        e.e.cov(other.e, stable, axis, par);
+        Ok(e.add_obj_into(obj))
     }
 
     #[pyo3(signature=(other, method=CorrMethod::Pearson, stable=false, axis=0, par=false))]
@@ -1658,30 +1165,25 @@ impl PyExpr {
     ) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        let res = match_exprs!(
-            (&self.inner, e1, F64, F32, I64, I32),
-            (&other.inner, e2, F64, F32, I64, I32),
-            {
-                e1.clone()
-                    .corr(e2.clone(), method, stable, axis, par)
-                    .to_py(self.obj())
-                    .add_obj_into(obj)
-            }
-        );
-        Ok(res)
+        let mut e = self.clone();
+        e.e.corr(other.e, method, stable, axis, par);
+        Ok(e.add_obj_into(obj))
     }
 
     #[pyo3(signature=(keep="first".to_string()))]
     pub fn _get_sorted_unique_idx(&self, keep: String) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().get_sorted_unique_idx(keep).to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.get_sorted_unique_idx(keep);
+        out
+        // match_exprs!(&self.inner, expr, {
+        //     expr.clone().get_sorted_unique_idx(keep).to_py(self.obj())
+        // })
     }
 
     pub fn sorted_unique(&self) -> Self {
-        match_exprs!(&self.inner, expr, {
-            expr.clone().sorted_unique().to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.sorted_unique();
+        out
     }
 
     #[pyo3(signature=(others=None, keep="first".to_string()))]
@@ -1693,14 +1195,10 @@ impl PyExpr {
         } else {
             (vec![], None)
         };
-        let others = others.map(|v| v.into_iter().map(|e| e.inner).collect_trusted());
-        let res = match_exprs!(hash & self.inner, expr, {
-            expr.clone()
-                .get_unique_idx(others, keep)
-                .to_py(self.obj())
-                .add_obj_vec_into(obj_vec)
-        });
-        Ok(res)
+        let others = others.map(|v| v.into_iter().map(|e| e.e).collect_trusted());
+        let mut out = self.clone();
+        out.e.get_unique_idx(others, keep);
+        Ok(out.add_obj_vec_into(obj_vec))
     }
 
     pub unsafe fn _get_left_join_idx(&self, left_other: &PyAny, right: &PyAny) -> PyResult<Self> {
@@ -1714,59 +1212,47 @@ impl PyExpr {
             .as_ref()
             .map(|lo| lo.iter().map(|e| e.obj()).collect_trusted());
         let obj_vec2 = right.iter().map(|e| e.obj()).collect_trusted();
-        let left_other = left_other.map(|lo| lo.into_iter().map(|e| e.inner).collect_trusted());
-        let right = right.into_iter().map(|e| e.inner).collect_trusted();
-        let res = match_exprs!(hash & self.inner, expr, {
-            expr.clone()
-                .get_left_join_idx(left_other, right)
-                .to_py(self.obj())
-                .add_obj_vec_into(obj_vec2)
-        });
+        let left_other = left_other.map(|lo| lo.into_iter().map(|e| e.e).collect_trusted());
+        let right = right.into_iter().map(|e| e.e).collect_trusted();
+        let mut out = self.clone();
+        out.e.get_left_join_idx(left_other, right);
         if let Some(obj_vec1) = obj_vec1 {
-            Ok(res.add_obj_vec_into(obj_vec1))
+            Ok(out.add_obj_vec_into(obj_vec1).add_obj_vec_into(obj_vec2))
         } else {
-            Ok(res)
+            Ok(out.add_obj_vec_into(obj_vec2))
         }
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmin(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_argmin(window, min_periods, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_argmin(window, min_periods, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmax(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_argmax(window, min_periods, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_argmax(window, min_periods, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_min(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_min(window, min_periods, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_min(window, min_periods, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_max(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_max(window, min_periods, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_max(window, min_periods, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -1779,57 +1265,37 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
+        let mut out = self.clone();
         if !pct {
-            match_exprs!(numeric & self.inner, expr, {
-                expr.clone()
-                    .ts_rank(window, min_periods, axis, par)
-                    .to_py(self.obj())
-            })
+            out.e.ts_rank(window, min_periods, axis, par);
         } else {
-            match_exprs!(numeric & self.inner, expr, {
-                expr.clone()
-                    .ts_rank_pct(window, min_periods, axis, par)
-                    .to_py(self.obj())
-            })
+            out.e.ts_rank_pct(window, min_periods, axis, par);
         }
+        out
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_prod(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_prod(window, min_periods, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_prod(window, min_periods, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_prod_mean(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_prod_mean(window, min_periods, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_prod_mean(window, min_periods, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_minmaxnorm(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_minmaxnorm(window, min_periods, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut out = self.clone();
+        out.e.ts_minmaxnorm(window, min_periods, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -1845,17 +1311,10 @@ impl PyExpr {
     ) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        let res = match_exprs!(
-            (&self.inner, e1, F64, F32, I64, I32),
-            (&other.inner, e2, F64, F32, I64, I32),
-            {
-                e1.clone()
-                    .ts_cov(e2.clone(), window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-                    .add_obj_into(obj)
-            }
-        );
-        Ok(res)
+        let mut out = self.clone();
+        out.e
+            .ts_cov(other.e, window, min_periods, stable, axis, par);
+        Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "window_func")]
@@ -1871,17 +1330,10 @@ impl PyExpr {
     ) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
-        let res = match_exprs!(
-            (&self.inner, e1, F64, F32, I64, I32),
-            (&other.inner, e2, F64, F32, I64, I32),
-            {
-                e1.clone()
-                    .ts_corr(e2.clone(), window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-                    .add_obj_into(obj)
-            }
-        );
-        Ok(res)
+        let mut out = self.clone();
+        out.e
+            .ts_corr(other.e, window, min_periods, stable, axis, par);
+        Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "window_func")]
@@ -1894,11 +1346,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_sum(window, min_periods, stable, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_sum(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -1911,20 +1361,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            numeric & self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_sma(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            F32,
-            I32,
-            I64,
-            Usize
-        )
+        let mut out = self.clone();
+        out.e.ts_sma(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -1950,11 +1389,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_ewm(window, min_periods, stable, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_ewm(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -1967,11 +1404,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .ts_wma(window, min_periods, stable, axis, par)
-                .to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.ts_wma(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -1984,19 +1419,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_std(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            F32,
-            I64,
-            I32
-        )
+        let mut out = self.clone();
+        out.e.ts_std(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2009,19 +1434,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_var(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            I64,
-            F32
-        )
+        let mut out = self.clone();
+        out.e.ts_var(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2034,19 +1449,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_skew(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            F32,
-            I64,
-            I32
-        )
+        let mut out = self.clone();
+        out.e.ts_skew(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2059,19 +1464,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_kurt(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            F32,
-            I64,
-            I32
-        )
+        let mut out = self.clone();
+        out.e.ts_kurt(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2084,19 +1479,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_stable(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            F32,
-            I64,
-            I32
-        )
+        let mut out = self.clone();
+        out.e.ts_stable(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2109,19 +1494,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_meanstdnorm(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            F32,
-            I64,
-            I32
-        )
+        let mut out = self.clone();
+        out.e.ts_meanstdnorm(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2134,19 +1509,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_reg(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut out = self.clone();
+        out.e.ts_reg(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2159,19 +1524,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_tsf(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut out = self.clone();
+        out.e.ts_tsf(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2184,19 +1539,9 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_reg_slope(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut out = self.clone();
+        out.e.ts_reg_slope(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
@@ -2209,54 +1554,52 @@ impl PyExpr {
         axis: i32,
         par: bool,
     ) -> Self {
-        match_exprs!(
-            &self.inner,
-            expr,
-            {
-                expr.clone()
-                    .ts_reg_intercept(window, min_periods, stable, axis, par)
-                    .to_py(self.obj())
-            },
-            F64,
-            I32,
-            F32,
-            I64
-        )
+        let mut out = self.clone();
+        out.e
+            .ts_reg_intercept(window, min_periods, stable, axis, par);
+        out
     }
 
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(method=FillMethod::Ffill, value=None, axis=0, par=false))]
-    pub fn fillna(&self, method: FillMethod, value: Option<f64>, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone()
-                .fillna(method, value, axis, par)
-                .to_py(self.obj())
-        })
+    pub fn fillna(
+        &self,
+        method: FillMethod,
+        value: Option<&PyAny>,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
+        let mut out = self.clone();
+        let (value, obj) = if let Some(value) = value {
+            let v = parse_expr_nocopy(value)?;
+            let obj = v.obj();
+            (Some(v.e), obj)
+        } else {
+            (None, None)
+        };
+        out.e.fillna(method, value, axis, par);
+        Ok(out.add_obj_into(obj))
     }
 
     #[pyo3(signature=(min, max, axis=0, par=false))]
     pub fn clip(&self, min: f64, max: f64, axis: i32, par: bool) -> Self {
-        match_exprs!(numeric & self.inner, expr, {
-            expr.clone().clip(min, max, axis, par).to_py(self.obj())
-        })
+        let mut out = self.clone();
+        out.e.clip(min.into(), max.into(), axis, par);
+        out
     }
 
-    #[pyo3(signature=(slc, axis=0))]
-    pub unsafe fn select(&self, slc: &PyAny, axis: i32) -> PyResult<Self> {
+    #[pyo3(signature=(slc, axis=None, check=true))]
+    pub unsafe fn select(&self, slc: &PyAny, axis: Option<&PyAny>, check: bool) -> PyResult<Self> {
+        let axis = if let Some(axis) = axis {
+            parse_expr_nocopy(axis)?
+        } else {
+            0.into_pyexpr()
+        };
         let slc = parse_expr_nocopy(slc)?;
-        self._select_by_expr(slc, axis.into_pyexpr())
-    }
-
-    #[pyo3(signature=(slc, axis=0))]
-    pub unsafe fn _select_unchecked(&self, slc: &PyAny, axis: i32) -> PyResult<Self> {
-        let slc = parse_expr_nocopy(slc)?;
-        self._select_by_expr_unchecked(slc, axis.into_pyexpr())
-    }
-
-    #[pyo3(signature=(slc, axis=0))]
-    pub unsafe fn _select_by_i32(&self, slc: &PyAny, axis: i32) -> PyResult<Self> {
-        let slc = parse_expr_nocopy(slc)?;
-        self._select_by_i32_expr(slc, axis.into_pyexpr())
+        let (obj1, obj2) = (slc.obj(), axis.obj());
+        let mut out = self.clone();
+        out.e.select(slc.e, axis.e, check);
+        Ok(out.add_obj_into(obj1).add_obj_into(obj2))
     }
 
     #[cfg(feature = "stat")]
@@ -2264,21 +1607,16 @@ impl PyExpr {
     pub unsafe fn t_cdf(&self, df: &PyAny, loc: Option<f64>, scale: Option<f64>) -> PyResult<Self> {
         let df = parse_expr_nocopy(df)?;
         let obj = df.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .t_cdf(df.cast_f64()?, loc, scale)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.t_cdf(df.e, loc, scale);
+        Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "stat")]
     #[pyo3(signature=(mean=None, std=None))]
     pub unsafe fn norm_cdf(&self, mean: Option<f64>, std: Option<f64>) -> PyResult<Self> {
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone().norm_cdf(mean, std).to_py(self.obj())
-        });
+        let mut out = self.clone();
+        out.e.norm_cdf(mean, std);
         Ok(out)
     }
 
@@ -2288,24 +1626,23 @@ impl PyExpr {
         let df1 = parse_expr_nocopy(df1)?;
         let df2 = parse_expr_nocopy(df2)?;
         let (obj1, obj2) = (df1.obj(), df2.obj());
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .f_cdf(df1.cast_f64()?, df2.cast_f64()?)
-                .to_py(self.obj())
-                .add_obj_into(obj1)
-                .add_obj_into(obj2)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.f_cdf(df1.e, df2.e);
+        Ok(out.add_obj_into(obj1).add_obj_into(obj2))
     }
 
     #[pyo3(signature=(by, rev=false, return_idx=false))]
     pub fn sort(&self, by: &PyAny, rev: bool, return_idx: bool) -> PyResult<Self> {
         let by = unsafe { parse_expr_list(by, false) }?;
+        let obj_vec = by.iter().map(|e| e.obj()).collect_trusted();
+        let by = by.into_iter().map(|e| e.e).collect_trusted();
+        let mut out = self.clone();
         if !return_idx {
-            Ok(self.sort_by_expr(by, rev))
+            out.e.sort(by, rev);
         } else {
-            Ok(self.get_sort_idx(by, rev))
+            out.e.get_sort_idx(by, rev);
         }
+        Ok(out.add_obj_vec_into(obj_vec))
     }
 
     pub fn cast(&self, ty: &PyAny, py: Python) -> PyResult<Self> {
@@ -2318,66 +1655,28 @@ impl PyExpr {
         }
     }
 
-    #[pyo3(signature=(mask, value, axis=0, par=false))]
+    #[pyo3(signature=(mask, value, axis=0, par=false, inplace=false))]
     pub unsafe fn put_mask(
-        &self,
+        &mut self,
         mask: &PyAny,
         value: &PyAny,
         axis: i32,
         par: bool,
-        py: Python,
-    ) -> PyResult<Self> {
+        inplace: bool,
+        _py: Python,
+    ) -> PyResult<Option<Self>> {
         let (mask, value) = (parse_expr_nocopy(mask)?, parse_expr_nocopy(value)?);
         let (obj1, obj2) = (mask.obj(), value.obj());
-        let mask = mask.cast_bool()?;
-        let rtn = match self.inner() {
-            Exprs::F64(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_f64()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::F32(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_f32()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::I64(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_i64()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::I32(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_i32()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::Bool(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_bool()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::Usize(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_usize()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::Str(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_str()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::String(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_string()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::DateTime(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_datetime(None)?, axis, par)
-                .to_py(self.obj()),
-            Exprs::TimeDelta(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_timedelta()?, axis, par)
-                .to_py(self.obj()),
-            Exprs::Object(expr) => expr
-                .clone()
-                .put_mask(mask, value.cast_object_eager(py)?, axis, par)
-                .to_py(self.obj()),
-            _ => unimplemented!("put_mask is not implemented for this type."),
-        };
-        Ok(rtn.add_obj_into(obj1).add_obj_into(obj2))
+        if !inplace {
+            let mut e = self.clone();
+            e.e.put_mask(mask.e, value.e, axis, par);
+            e.add_obj(obj1).add_obj(obj2);
+            Ok(Some(e))
+        } else {
+            self.e.put_mask(mask.e, value.e, axis, par);
+            self.add_obj(obj1).add_obj(obj2);
+            Ok(None)
+        }
     }
 
     #[pyo3(signature=(mask, value, par=false))]
@@ -2388,38 +1687,13 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(con, then))]
-    pub unsafe fn if_then(&self, con: &PyAny, then: &PyAny, py: Python) -> PyResult<PyExpr> {
+    pub unsafe fn if_then(&self, con: &PyAny, then: &PyAny) -> PyResult<PyExpr> {
         let con = parse_expr_nocopy(con)?;
         let then = parse_expr_nocopy(then)?;
         let con_obj = con.obj();
         let then_obj = then.obj();
-        let con = con.cast_bool()?;
-        let out: PyExpr = match self.inner() {
-            Exprs::F64(e) => e.clone().if_then(con, then.cast_f64()?).to_py(self.obj()),
-            Exprs::F32(e) => e.clone().if_then(con, then.cast_f32()?).to_py(self.obj()),
-            Exprs::I64(e) => e.clone().if_then(con, then.cast_i64()?).to_py(self.obj()),
-            Exprs::I32(e) => e.clone().if_then(con, then.cast_i32()?).to_py(self.obj()),
-            Exprs::Usize(e) => e.clone().if_then(con, then.cast_usize()?).to_py(self.obj()),
-            Exprs::Bool(e) => e.clone().if_then(con, then.cast_bool()?).to_py(self.obj()),
-            Exprs::Str(e) => e.clone().if_then(con, then.cast_str()?).to_py(self.obj()),
-            Exprs::String(e) => e
-                .clone()
-                .if_then(con, then.cast_string()?)
-                .to_py(self.obj()),
-            Exprs::DateTime(e) => e
-                .clone()
-                .if_then(con, then.cast_datetime(None)?)
-                .to_py(self.obj()),
-            Exprs::TimeDelta(e) => e
-                .clone()
-                .if_then(con, then.cast_timedelta()?)
-                .to_py(self.obj()),
-            Exprs::Object(e) => e
-                .clone()
-                .if_then(con, then.cast_object_eager(py)?)
-                .to_py(self.obj()),
-            _ => unimplemented!("if_then is not implemented for this type."),
-        };
+        let mut out = self.clone();
+        out.e.if_then(con.e, then.e);
         Ok(out.add_obj_into(con_obj).add_obj_into(then_obj))
     }
 
@@ -2427,71 +1701,72 @@ impl PyExpr {
     pub unsafe fn lstsq(&self, y: &PyAny) -> PyResult<Self> {
         let y = parse_expr_nocopy(y)?;
         let obj = y.obj();
-        match_exprs!(
-            (&self.inner, x, F64, F32, I64, I32, Usize),
-            (y.inner, y, F64, F32, I64, I32, Usize),
-            { Ok(x.clone().lstsq(y).to_py(self.obj()).add_obj_into(obj)) }
-        )
+        let mut out = self.clone();
+        out.e.lstsq(y.e);
+        Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "blas")]
     #[allow(unreachable_patterns)]
     pub fn params(&self) -> PyResult<Self> {
-        match_exprs!(&self.inner, e, { Ok(e.clone().params().to_py(self.obj())) })
+        let mut out = self.clone();
+        out.e.params();
+        Ok(out)
     }
 
     #[cfg(feature = "blas")]
     #[allow(unreachable_patterns)]
     pub fn singular_values(&self) -> PyResult<Self> {
-        match_exprs!(&self.inner, e, {
-            Ok(e.clone().singular_values().to_py(self.obj()))
-        })
+        let mut out = self.clone();
+        out.e.singular_values();
+        Ok(out)
     }
 
     #[cfg(feature = "blas")]
     #[allow(unreachable_patterns)]
     pub fn ols_rank(&self) -> PyResult<Self> {
-        match_exprs!(&self.inner, e, {
-            Ok(e.clone().ols_rank().to_py(self.obj()))
-        })
+        let mut out = self.clone();
+        out.e.ols_rank();
+        Ok(out)
     }
 
     #[cfg(feature = "blas")]
     #[allow(unreachable_patterns)]
     pub fn sse(&self) -> PyResult<Self> {
-        match_exprs!(&self.inner, e, { Ok(e.clone().sse().to_py(self.obj())) })
+        let mut out = self.clone();
+        out.e.sse();
+        Ok(out)
     }
 
     #[cfg(feature = "blas")]
     #[allow(unreachable_patterns)]
     pub fn fitted_values(&self) -> PyResult<Self> {
-        match_exprs!(&self.inner, e, {
-            Ok(e.clone().fitted_values().to_py(self.obj()))
-        })
+        let mut out = self.clone();
+        out.e.fitted_values();
+        Ok(out)
     }
 
     #[cfg(feature = "blas")]
     #[pyo3(signature=(full=true, calc_uvt=true, split=true))]
     pub fn svd(&self, full: bool, calc_uvt: bool, split: bool, py: Python) -> PyResult<PyObject> {
+        let mut out = self.clone();
         if split {
-            match_exprs!(numeric & self.inner, e, {
-                let out = e.clone().svd(full, calc_uvt);
-                let mut out = out
-                    .split_vec_base(1 + 2 * calc_uvt as usize)
-                    .into_iter()
-                    .map(|e| e.to_py(self.obj()))
-                    .collect_trusted();
-                if out.len() == 1 {
-                    Ok(out.pop().into_py(py))
-                } else {
-                    Ok(out.into_py(py))
-                }
-            })
+            let len = 1 + 2 * calc_uvt as usize;
+            out.e.svd(full, calc_uvt);
+            let mut out = out
+                .e
+                .split_vec_base(len)
+                .into_iter()
+                .map(|e| e.to_py(self.obj()))
+                .collect_trusted();
+            if out.len() == 1 {
+                Ok(out.pop().unwrap().into_py(py))
+            } else {
+                Ok(out.into_py(py))
+            }
         } else {
-            Ok(match_exprs!(numeric & self.inner, e, {
-                e.clone().svd(full, calc_uvt).to_py(self.obj())
-            })
-            .into_py(py))
+            out.e.svd(full, calc_uvt);
+            Ok(out.into_py(py))
         }
     }
 
@@ -2504,25 +1779,23 @@ impl PyExpr {
         split: bool,
         py: Python,
     ) -> PyResult<PyObject> {
+        let mut out = self.clone();
         if split {
-            match_exprs!(numeric & self.inner, e, {
-                let out = e.clone().pinv(r_cond, return_s);
-                let mut out = out
-                    .split_vec_base(1 + return_s as usize)
-                    .into_iter()
-                    .map(|e| e.to_py(self.obj()))
-                    .collect_trusted();
-                if out.len() == 1 {
-                    Ok(out.pop().into_py(py))
-                } else {
-                    Ok(out.into_py(py))
-                }
-            })
+            out.e.pinv(r_cond, return_s);
+            let mut out = out
+                .e
+                .split_vec_base(1 + return_s as usize)
+                .into_iter()
+                .map(|e| e.to_py(self.obj()))
+                .collect_trusted();
+            if out.len() == 1 {
+                Ok(out.pop().unwrap().into_py(py))
+            } else {
+                Ok(out.into_py(py))
+            }
         } else {
-            Ok(match_exprs!(numeric & self.inner, e, {
-                e.clone().pinv(r_cond, return_s).to_py(self.obj())
-            })
-            .into_py(py))
+            out.e.pinv(r_cond, return_s);
+            Ok(out.into_py(py))
         }
     }
 
@@ -2530,367 +1803,391 @@ impl PyExpr {
     pub unsafe fn broadcast(&self, shape: &PyAny) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
-        match_exprs!(self.inner(), e, {
-            Ok(e.clone()
-                .broadcast(shape.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj))
-        })
+        let mut out = self.clone();
+        out.e.broadcast(shape.e);
+        Ok(out.add_obj_into(obj))
     }
 
     #[allow(unreachable_patterns)]
-    pub unsafe fn broadcast_to(&self, other: &PyAny) -> PyResult<Self> {
+    pub unsafe fn broadcast_with(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let shape = other.shape();
         let obj = shape.obj();
-        match_exprs!(self.inner(), e, {
-            Ok(e.clone()
-                .broadcast(shape.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj))
-        })
+        let mut out = self.clone();
+        out.e.broadcast_with(other.e);
+        Ok(out.add_obj_into(obj))
     }
 
     #[pyo3(name = "concat")]
     #[pyo3(signature=(other, axis=0))]
     pub unsafe fn concat_py(&self, other: &PyAny, axis: i32) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
-        self.concat(other, axis)
+        let obj_vec = other.iter().map(|e| e.obj()).collect_trusted();
+        let other = other.into_iter().map(|e| e.e).collect_trusted();
+        let mut out = self.clone();
+        out.e.concat(other, axis);
+        Ok(out.add_obj_vec_into(obj_vec))
     }
 
     #[pyo3(name = "stack")]
     #[pyo3(signature=(other, axis=0))]
     pub unsafe fn stack_py(&self, other: &PyAny, axis: i32) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
-        self.stack(other, axis)
+        let obj_vec = other.iter().map(|e| e.obj()).collect_trusted();
+        let other = other.into_iter().map(|e| e.e).collect_trusted();
+        let mut out = self.clone();
+        out.e.stack(other, axis);
+        Ok(out.add_obj_vec_into(obj_vec))
     }
 
     pub fn offset_by(&self, delta: &str) -> PyResult<Self> {
-        let delta: Expr<'static, TimeDelta> = TimeDelta::parse(delta).into();
-        Ok((self.clone().cast_datetime(None)? + delta).to_py(self.obj()))
+        let delta: Expr<'static> = TimeDelta::parse(delta).into();
+        let out = self.clone();
+        Ok((out.e + delta).to_py(self.obj()))
     }
 
     pub fn strptime(&self, fmt: String) -> PyResult<Self> {
-        Ok((self.clone().cast_string()?.strptime(fmt)).to_py(self.obj()))
+        let mut out = self.clone();
+        out.e.strptime(fmt);
+        Ok(out)
     }
 
     pub fn strftime(&self, fmt: Option<String>) -> PyResult<Self> {
-        Ok((self.clone().cast_datetime(None)?.strftime(fmt)).to_py(self.obj()))
+        let mut out = self.clone();
+        out.e.strftime(fmt);
+        Ok(out)
     }
 
     pub fn round(&self, precision: u32) -> PyResult<Self> {
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .chain_view_f::<_, f64>(
-                    move |arr| {
-                        Ok(arr
-                            .mapv(|v| {
-                                let scale = 10_i32.pow(precision) as f64;
-                                (v.f64() * scale).round() / scale
-                            })
-                            .into())
-                    },
-                    RefType::False,
-                )
-                .to_py(self.obj())
-        });
+        let mut out = self.clone();
+        out.e.round(precision);
         Ok(out)
     }
 
-    pub fn round_string(&self, precision: usize) -> PyResult<Self> {
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .chain_view_f::<_, String>(
-                    move |arr| Ok(arr.map(|v| format!("{v:.precision$}")).into()),
-                    RefType::False,
-                )
-                .to_py(self.obj())
-        });
-        Ok(out)
+    // pub fn round_string(&self, precision: usize) -> PyResult<Self> {
+    //     let out = match_exprs!(numeric & self.inner, e, {
+    //         e.clone()
+    //             .chain_view_f::<_, String>(
+    //                 move |arr| Ok(arr.map(|v| format!("{v:.precision$}")).into()),
+    //                 RefType::False,
+    //             )
+    //             .to_py(self.obj())
+    //     });
+    //     Ok(out)
+    // }
+
+    #[cfg(feature = "window_func")]
+    pub unsafe fn _get_fix_window_rolling_idx(&self, window: &PyAny) -> PyResult<Self> {
+        let mut length = self.clone();
+        length.e.len();
+        let mut window = parse_expr(window, true)?;
+        Expr::get_fix_window_rolling_idx(&mut window.e, length.e);
+        Ok(window.add_obj_into(self.obj()))
     }
 
     #[pyo3(signature=(duration, start_by=RollingTimeStartBy::Full))]
+    #[cfg(feature = "window_func")]
     pub unsafe fn _get_time_rolling_idx(
         &self,
         duration: &str,
         start_by: RollingTimeStartBy,
     ) -> PyResult<Self> {
-        let obj = self.obj();
-        let out = self
-            .inner
-            .clone()
-            .cast_datetime(None)?
-            .get_time_rolling_idx(duration, start_by)
-            .to_py(obj);
+        let mut out = self.clone();
+        out.e.get_time_rolling_idx(duration, start_by);
+        Ok(out)
+    }
+
+    #[pyo3(signature=(agg_expr, roll_start, others=None))]
+    #[cfg(feature = "window_func")]
+    pub unsafe fn rolling_apply_with_start(
+        &self,
+        agg_expr: &PyAny,
+        roll_start: &PyAny,
+        others: Option<&PyAny>,
+    ) -> PyResult<Self> {
+        let agg_expr = parse_expr_nocopy(agg_expr)?;
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let others = if let Some(others) = others {
+            Some(parse_expr_list(others, false)?)
+        } else {
+            None
+        };
+        let obj1 = agg_expr.obj();
+        let obj2 = roll_start.obj();
+        let others_obj_vec = if let Some(others) = &others {
+            others.iter().map(|e| e.obj()).collect_trusted()
+        } else {
+            vec![]
+        };
+        let others = if let Some(others) = others {
+            others.into_iter().map(|e| e.e).collect_trusted()
+        } else {
+            vec![]
+        };
+        let mut out = self.clone();
+        out.e
+            .rolling_apply_with_start(agg_expr.e, roll_start.e, others, false);
+        out.add_obj(obj1).add_obj(obj2).add_obj_vec(others_obj_vec);
         Ok(out)
     }
 
     #[pyo3(signature=(window, offset))]
+    #[cfg(feature = "window_func")]
     pub unsafe fn _get_time_rolling_offset_idx(
         &self,
         window: &str,
         offset: &str,
     ) -> PyResult<Self> {
         let obj = self.obj();
-        let out = self
-            .inner
-            .clone()
-            .cast_datetime(None)?
-            .get_time_rolling_offset_idx(window, offset)
-            .to_py(obj);
-        Ok(out)
+        let mut out = self.clone();
+        out.e.get_time_rolling_offset_idx(window, offset);
+        Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_mean(&self, roll_start: &PyAny) -> PyResult<Self> {
+    #[pyo3(signature=(roll_start, stable=false))]
+    pub unsafe fn _rolling_select_mean(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_mean(roll_start.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.rolling_select_mean(roll_start.e, stable);
+        Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_std(&self, roll_start: &PyAny) -> PyResult<Self> {
+    #[pyo3(signature=(roll_start, stable=false))]
+    pub unsafe fn _rolling_select_sum(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_std(roll_start.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.rolling_select_sum(roll_start.e, stable);
+        Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_max(&self, roll_start: &PyAny) -> PyResult<Self> {
+    #[pyo3(signature=(roll_start, stable=false))]
+    pub unsafe fn _rolling_select_std(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_max(roll_start.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.rolling_select_std(roll_start.e, stable);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(roll_start, stable=false))]
+    pub unsafe fn _rolling_select_var(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_var(roll_start.e, stable);
+        Ok(out.add_obj_into(obj))
     }
 
     #[pyo3(signature=(roll_start))]
     pub unsafe fn _rolling_select_min(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_min(roll_start.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.rolling_select_min(roll_start.e);
+        Ok(out.add_obj_into(obj))
     }
 
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_umax(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_max(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_umax(roll_start.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.rolling_select_max(roll_start.e);
+        Ok(out.add_obj_into(obj))
     }
 
     #[pyo3(signature=(roll_start))]
     pub unsafe fn _rolling_select_umin(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_umin(roll_start.cast_usize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+        let mut out = self.clone();
+        out.e.rolling_select_umin(roll_start.e);
+        Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_sum(&self, idxs: &PyAny) -> PyResult<Self> {
-        let idxs = parse_expr_nocopy(idxs)?;
-        let obj = idxs.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_by_vecusize_sum(idxs.cast_vecusize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_umax(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_umax(roll_start.e);
+        Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_mean(&self, idxs: &PyAny) -> PyResult<Self> {
-        let idxs = parse_expr_nocopy(idxs)?;
-        let obj = idxs.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_by_vecusize_mean(idxs.cast_vecusize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
-    }
+    // #[pyo3(signature=(idxs))]
+    // pub unsafe fn _rolling_select_by_vecusize_sum(&self, idxs: &PyAny) -> PyResult<Self> {
+    //     let idxs = parse_expr_nocopy(idxs)?;
+    //     let obj = idxs.obj();
+    //     let out = match_exprs!(numeric & self.inner, e, {
+    //         e.clone()
+    //             .rolling_select_by_vecusize_sum(idxs.cast_vecusize()?)
+    //             .to_py(self.obj())
+    //             .add_obj_into(obj)
+    //     });
+    //     Ok(out)
+    // }
 
-    #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_max(&self, idxs: &PyAny) -> PyResult<Self> {
-        let idxs = parse_expr_nocopy(idxs)?;
-        let obj = idxs.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_by_vecusize_max(idxs.cast_vecusize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
-    }
+    // #[pyo3(signature=(idxs))]
+    // pub unsafe fn _rolling_select_by_vecusize_mean(&self, idxs: &PyAny) -> PyResult<Self> {
+    //     let idxs = parse_expr_nocopy(idxs)?;
+    //     let obj = idxs.obj();
+    //     let out = match_exprs!(numeric & self.inner, e, {
+    //         e.clone()
+    //             .rolling_select_by_vecusize_mean(idxs.cast_vecusize()?)
+    //             .to_py(self.obj())
+    //             .add_obj_into(obj)
+    //     });
+    //     Ok(out)
+    // }
 
-    #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_min(&self, idxs: &PyAny) -> PyResult<Self> {
-        let idxs = parse_expr_nocopy(idxs)?;
-        let obj = idxs.obj();
-        let out = match_exprs!(numeric & self.inner, e, {
-            e.clone()
-                .rolling_select_by_vecusize_min(idxs.cast_vecusize()?)
-                .to_py(self.obj())
-                .add_obj_into(obj)
-        });
-        Ok(out)
-    }
+    // #[pyo3(signature=(idxs))]
+    // pub unsafe fn _rolling_select_by_vecusize_max(&self, idxs: &PyAny) -> PyResult<Self> {
+    //     let idxs = parse_expr_nocopy(idxs)?;
+    //     let obj = idxs.obj();
+    //     let out = match_exprs!(numeric & self.inner, e, {
+    //         e.clone()
+    //             .rolling_select_by_vecusize_max(idxs.cast_vecusize()?)
+    //             .to_py(self.obj())
+    //             .add_obj_into(obj)
+    //     });
+    //     Ok(out)
+    // }
 
-    #[pyo3(signature=(index, duration, func, axis=0, **py_kwargs))]
-    pub unsafe fn rolling_apply_by_time(
-        &self,
-        index: &PyAny,
-        duration: &str,
-        func: &PyAny,
-        axis: i32,
-        py_kwargs: Option<&PyDict>,
-        py: Python,
-    ) -> PyResult<PyObject> {
-        let index_expr = parse_expr_nocopy(index)?;
-        let mut rolling_idx = index_expr
-            .cast_datetime(None)?
-            .get_time_rolling_idx(duration, RollingTimeStartBy::Full);
-        rolling_idx = rolling_idx.eval(None)?.0;
-        let mut column_num = 0;
-        let mut output = rolling_idx
-            .view_arr()
-            .to_dim1()
-            .unwrap()
-            .into_iter()
-            .enumerate()
-            .map(|(end, start)| {
-                let pye = self.select_by_slice_eager(Some(axis), start, end, None);
-                let res = func
-                    .call((pye,), py_kwargs)
-                    .expect("Call python function error!");
-                let res = unsafe {
-                    parse_expr_list(res, false).expect("Can not parse fucntion return as Expr list")
-                };
-                column_num = res.len();
-                res
-            })
-            .collect_trusted();
-        let eval_res: Vec<_> = output
-            .par_iter_mut()
-            .flatten()
-            .map(|e| e.eval_inplace(None))
-            .collect();
-        if eval_res.iter().any(|e| e.is_err()) {
-            return Err(PyRuntimeError::new_err(
-                "Some of the expressions can't be evaluated",
-            ));
-        }
-        // we don't need to add object for `out_data` because we no longer need a reference of `index`.
-        let mut out_data: Vec<PyExpr> = (0..column_num)
-            .into_par_iter()
-            .map(|i| {
-                let group_vec = output
-                    .iter()
-                    .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
-                    .collect_trusted();
-                concat_expr(group_vec, axis).expect("concat expr error")
-            })
-            .collect();
-        if out_data.len() == 1 {
-            Ok(out_data.pop().unwrap().into_py(py))
-        } else {
-            Ok(out_data.into_py(py))
-        }
-    }
+    // #[pyo3(signature=(idxs))]
+    // pub unsafe fn _rolling_select_by_vecusize_min(&self, idxs: &PyAny) -> PyResult<Self> {
+    //     let idxs = parse_expr_nocopy(idxs)?;
+    //     let obj = idxs.obj();
+    //     let out = match_exprs!(numeric & self.inner, e, {
+    //         e.clone()
+    //             .rolling_select_by_vecusize_min(idxs.cast_vecusize()?)
+    //             .to_py(self.obj())
+    //             .add_obj_into(obj)
+    //     });
+    //     Ok(out)
+    // }
 
-    #[allow(unreachable_patterns)]
-    #[pyo3(signature=(window, func, axis=0, **py_kwargs))]
-    pub unsafe fn rolling_apply(
-        &mut self,
-        window: usize,
-        func: &PyAny,
-        axis: i32,
-        py_kwargs: Option<&PyDict>,
-        py: Python,
-    ) -> PyResult<PyObject> {
-        if window == 0 {
-            return Err(PyValueError::new_err("Window should be greater than 0"));
-        }
-        let mut column_num = 0;
-        self.eval_inplace(None)?;
-        let axis_n = match_exprs!(&self.inner, expr, { expr.view_arr().norm_axis(axis) });
-        let length = match_exprs!(&self.inner, expr, {
-            expr.view_arr().shape()[axis_n.index()]
-        });
-        let mut output = zip(repeat(0).take(window - 1), 0..window - 1)
-            .chain((window - 1..length).enumerate())
-            .map(|(end, start)| {
-                let pye = self.select_by_slice_eager(Some(axis), start, end, None);
-                let res = func
-                    .call((pye,), py_kwargs)
-                    .expect("Call python function error!");
-                let res = unsafe {
-                    parse_expr_list(res, false).expect("Can not parse fucntion return as Expr list")
-                };
-                column_num = res.len();
-                res
-            })
-            .collect_trusted();
-        let eval_res: Vec<_> = output
-            .par_iter_mut()
-            .flatten()
-            .map(|e| e.eval_inplace(None))
-            .collect();
-        if eval_res.iter().any(|e| e.is_err()) {
-            return Err(PyRuntimeError::new_err(
-                "Some of the expressions can't be evaluated",
-            ));
-        }
-        // we don't need to add object for `out_data` because we no longer need a reference of `index`.
-        let mut out_data: Vec<PyExpr> = (0..column_num)
-            .into_par_iter()
-            .map(|i| {
-                let group_vec = output
-                    .iter()
-                    .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
-                    .collect_trusted();
-                concat_expr(group_vec, axis).expect("Concat expr error")
-            })
-            .collect();
-        if out_data.len() == 1 {
-            Ok(out_data.pop().unwrap().into_py(py))
-        } else {
-            Ok(out_data.into_py(py))
-        }
-    }
+    // #[pyo3(signature=(index, duration, func, axis=0, **py_kwargs))]
+    // pub unsafe fn rolling_apply_by_time(
+    //     &self,
+    //     index: &PyAny,
+    //     duration: &str,
+    //     func: &PyAny,
+    //     axis: i32,
+    //     py_kwargs: Option<&PyDict>,
+    //     py: Python,
+    // ) -> PyResult<PyObject> {
+    //     let index_expr = parse_expr_nocopy(index)?;
+    //     let mut rolling_idx = index_expr
+    //         .cast_datetime(None)?
+    //         .get_time_rolling_idx(duration, RollingTimeStartBy::Full);
+    //     rolling_idx = rolling_idx.eval(None)?.0;
+    //     let mut column_num = 0;
+    //     let mut output = rolling_idx
+    //         .view_arr()
+    //         .to_dim1()
+    //         .unwrap()
+    //         .into_iter()
+    //         .enumerate()
+    //         .map(|(end, start)| {
+    //             let pye = self.select_by_slice_eager(Some(axis), start, end, None);
+    //             let res = func
+    //                 .call((pye,), py_kwargs)
+    //                 .expect("Call python function error!");
+    //             let res = unsafe {
+    //                 parse_expr_list(res, false).expect("Can not parse fucntion return as Expr list")
+    //             };
+    //             column_num = res.len();
+    //             res
+    //         })
+    //         .collect_trusted();
+    //     let eval_res: Vec<_> = output
+    //         .par_iter_mut()
+    //         .flatten()
+    //         .map(|e| e.eval_inplace(None))
+    //         .collect();
+    //     if eval_res.iter().any(|e| e.is_err()) {
+    //         return Err(PyRuntimeError::new_err(
+    //             "Some of the expressions can't be evaluated",
+    //         ));
+    //     }
+    //     // we don't need to add object for `out_data` because we no longer need a reference of `index`.
+    //     let mut out_data: Vec<PyExpr> = (0..column_num)
+    //         .into_par_iter()
+    //         .map(|i| {
+    //             let group_vec = output
+    //                 .iter()
+    //                 .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
+    //                 .collect_trusted();
+    //             concat_expr(group_vec, axis).expect("concat expr error")
+    //         })
+    //         .collect();
+    //     if out_data.len() == 1 {
+    //         Ok(out_data.pop().unwrap().into_py(py))
+    //     } else {
+    //         Ok(out_data.into_py(py))
+    //     }
+    // }
+
+    // #[allow(unreachable_patterns)]
+    // #[pyo3(signature=(window, func, axis=0, **py_kwargs))]
+    // pub unsafe fn rolling_apply(
+    //     &mut self,
+    //     window: usize,
+    //     func: &PyAny,
+    //     axis: i32,
+    //     py_kwargs: Option<&PyDict>,
+    //     py: Python,
+    // ) -> PyResult<PyObject> {
+    //     if window == 0 {
+    //         return Err(PyValueError::new_err("Window should be greater than 0"));
+    //     }
+    //     let mut column_num = 0;
+    //     self.eval_inplace(None)?;
+    //     let axis_n = match_exprs!(&self.inner, expr, { expr.view_arr().norm_axis(axis) });
+    //     let length = match_exprs!(&self.inner, expr, {
+    //         expr.view_arr().shape()[axis_n.index()]
+    //     });
+    //     let mut output = zip(repeat(0).take(window - 1), 0..window - 1)
+    //         .chain((window - 1..length).enumerate())
+    //         .map(|(end, start)| {
+    //             let pye = self.select_by_slice_eager(Some(axis), start, end, None);
+    //             let res = func
+    //                 .call((pye,), py_kwargs)
+    //                 .expect("Call python function error!");
+    //             let res = unsafe {
+    //                 parse_expr_list(res, false).expect("Can not parse fucntion return as Expr list")
+    //             };
+    //             column_num = res.len();
+    //             res
+    //         })
+    //         .collect_trusted();
+    //     let eval_res: Vec<_> = output
+    //         .par_iter_mut()
+    //         .flatten()
+    //         .map(|e| e.eval_inplace(None))
+    //         .collect();
+    //     if eval_res.iter().any(|e| e.is_err()) {
+    //         return Err(PyRuntimeError::new_err(
+    //             "Some of the expressions can't be evaluated",
+    //         ));
+    //     }
+    //     // we don't need to add object for `out_data` because we no longer need a reference of `index`.
+    //     let mut out_data: Vec<PyExpr> = (0..column_num)
+    //         .into_par_iter()
+    //         .map(|i| {
+    //             let group_vec = output
+    //                 .iter()
+    //                 .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
+    //                 .collect_trusted();
+    //             concat_expr(group_vec, axis).expect("Concat expr error")
+    //         })
+    //         .collect();
+    //     if out_data.len() == 1 {
+    //         Ok(out_data.pop().unwrap().into_py(py))
+    //     } else {
+    //         Ok(out_data.into_py(py))
+    //     }
+    // }
 }

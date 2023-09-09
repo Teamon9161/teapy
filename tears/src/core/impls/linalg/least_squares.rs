@@ -46,7 +46,7 @@ impl Arr2<f64> {
                     let b_layout = rhs.layout()?;
                     least_squares_impl(self, a_layout, rhs, b_layout)?
                 };
-                res.solution = Some(rhs.slice(s![0..n]).to_owned().wrap().to_dimd());
+                res.solution = Some(rhs.slice(s![0..n]).to_owned().to_dimd());
                 res.residual_sum_of_squares =
                     compute_residual_scalar(m, n, res.rank, unsafe { transmute(rhs) })
                         .map(|r| r.to_dimd());
@@ -72,7 +72,7 @@ impl Arr2<f64> {
                     let b_layout = rhs.layout()?;
                     least_squares_impl(self, a_layout, rhs, b_layout)?
                 };
-                res.solution = Some(rhs.slice(s![0..n]).to_owned().wrap().to_dimd());
+                res.solution = Some(rhs.slice(s![0..n]).to_owned().to_dimd());
                 res.residual_sum_of_squares =
                     compute_residual_array1(m, n, res.rank, unsafe { transmute(rhs) })
                         .map(|r| r.to_dimd());
@@ -88,7 +88,7 @@ fn compute_residual_scalar(m: usize, n: usize, rank: i32, b: &Arr1<f64>) -> Opti
         return None;
     }
     let mut arr: Arr<f64, Ix0> = Arr::zeros(());
-    arr[()] = b.slice(s![n..]).mapv(|x| x.powi(2).abs()).sum();
+    arr[()] = b.slice(s![n..]).mapv(|x| x.powi(2).abs()).0.sum();
     Some(arr)
 }
 

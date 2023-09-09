@@ -1,20 +1,17 @@
-use ndarray::{Array1, Axis, Slice};
 use pyo3::types::{PyList as PyList3, PyTuple};
 
-use tears::lazy::{ColumnSelector, DataDict};
+use tears::lazy::{ColumnSelector, Data, DataDict};
 use tears::{ArbArray, DateTime, TimeDelta};
 
-// #[cfg(feature="option_dtype")]
-// use tears::datatype::OptDateTime;
-
 use super::super::from_py::{PyArrayOk, PyList};
-use super::datadict::{IntoPyDataDict, PyVecExprToRs};
+// #[cfg(feature="datadict")]
+use super::datadict::{IntoPyDataDict, PyDataDict, PyVecExprToRs};
 use super::export::*;
 
 #[pyfunction]
 /// A util function to convert python object to PyExpr without copy
-pub unsafe fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
-    parse_expr(obj, false)
+pub fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
+    unsafe { parse_expr(obj, false) }
 }
 
 #[pyfunction]
@@ -68,15 +65,18 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         if pyarr.is_object() {
             let arr = pyarr.into_object()?;
             if copy {
-                return Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into());
+                let e: Expr<'static> = arr.to_owned_array().wrap().into();
+                return Ok(e.into());
+                // return Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into());
             } else {
                 let arr_res = arr.try_readwrite();
                 if let Ok(mut arr) = arr_res {
                     let arr_write = arr.as_array_mut();
                     let arb_arr = ArbArray::ViewMut(arr_write.wrap());
                     // This is only safe when the pyarray exists
-                    return Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
-                        Expr::new(arb_arr, None).into(),
+                    return Ok(std::mem::transmute::<Expr<'_>, Expr<'static>>(
+                        // Expr::new(arb_arr, None).into(),
+                        arb_arr.into(),
                     )
                     .to_py(Some(vec![obj.to_object(obj.py())])));
                 } else {
@@ -84,8 +84,9 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                     let arr_read = arr.as_array();
                     let arb_arr = ArbArray::View(arr_read.wrap());
                     // This is only safe when the pyarray exists
-                    return Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
-                        Expr::new(arb_arr, None).into(),
+                    return Ok(std::mem::transmute::<Expr<'_>, Expr<'static>>(
+                        // Expr::new(arb_arr, None).into(),
+                        arb_arr.into(),
                     )
                     .to_py(Some(vec![obj.to_object(obj.py())])));
                 };
@@ -126,6 +127,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         }
 
         if copy {
+            // Ok(Exprs::new_from_owned(pyarr.to_owned_array().wrap(), None).into())
             match_pyarray!(
                 pyarr,
                 arr,
@@ -146,18 +148,22 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                         let arr_write = arr.as_array_mut();
                         let arb_arr = ArbArray::ViewMut(arr_write.wrap());
                         // safe when pyarray exists
-                        Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
-                            Expr::new(arb_arr, None).into(),
+                        Ok(
+                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new(
+                                arb_arr, None,
+                            ))
+                            .to_py(Some(vec![obj.to_object(obj.py())])),
                         )
-                        .to_py(Some(vec![obj.to_object(obj.py())])))
                     } else {
                         let arr_read = arr.as_array();
                         let arb_arr = ArbArray::View(arr_read.wrap());
                         // safe when pyarray exists
-                        Ok(std::mem::transmute::<Exprs<'_>, Exprs<'static>>(
-                            Expr::new(arb_arr, None).into(),
+                        Ok(
+                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new(
+                                arb_arr, None,
+                            ))
+                            .to_py(Some(vec![obj.to_object(obj.py())])),
                         )
-                        .to_py(Some(vec![obj.to_object(obj.py())])))
                     }
                 },
                 F64,
@@ -228,26 +234,13 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
 pub fn concat_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
-    let e1 = exprs.get(0).unwrap().clone();
+    let mut e1 = exprs.get(0).unwrap().clone();
     let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
-    macro_rules! concat_macro {
-        ($($arm: ident => $cast_func: ident $(($arg: expr))?),*) => {
-            match e1.inner() {
-                $(Exprs::$arm(expr) => {
-                    let other = exprs.into_iter().skip(1).map(|e| e.$cast_func($(($arg))?).unwrap()).collect_trusted();
-                    expr.clone().concat(other, axis).to_py(e1.obj())
-                }),*
-                _ => unimplemented!("concat is not implemented for this type.")
-            }
-        };
-    }
-    let rtn = concat_macro!(
-        F64 => cast_f64, F32 => cast_f32, I32 => cast_i32, I64 => cast_i64,
-        Bool => cast_bool, Usize => cast_usize,
-        Object => cast_object, String => cast_string, Str => cast_str,
-        DateTime => cast_datetime(None), TimeDelta => cast_timedelta
+    e1.e.concat(
+        exprs.into_iter().skip(1).map(|e| e.e).collect_trusted(),
+        axis,
     );
-    Ok(rtn.add_obj_vec_into(obj_vec))
+    Ok(e1.add_obj_vec_into(obj_vec))
 }
 
 #[pyfunction]
@@ -256,7 +249,7 @@ pub fn concat_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
 pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
     let exprs = exprs
         .into_iter()
-        .map(|e| parse_expr_nocopy(e))
+        .map(parse_expr_nocopy)
         .collect::<PyResult<Vec<PyExpr>>>()?;
     concat_expr(exprs, axis)
 }
@@ -265,26 +258,13 @@ pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> 
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
 pub fn stack_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
-    let e1 = exprs.get(0).unwrap().clone();
+    let mut e1 = exprs.get(0).unwrap().clone();
     let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
-    macro_rules! stack_macro {
-        ($($arm: ident => $cast_func: ident $(($arg: expr))?),*) => {
-            match e1.inner() {
-                $(Exprs::$arm(expr) => {
-                    let other = exprs.into_iter().skip(1).map(|e| e.$cast_func($(($arg))?).unwrap()).collect_trusted();
-                    expr.clone().stack(other, axis).to_py(e1.obj())
-                }),*
-                _ => unimplemented!("stack is not implemented for this type.")
-            }
-        };
-    }
-    let rtn = stack_macro!(
-        F64 => cast_f64, F32 => cast_f32, I32 => cast_i32, I64 => cast_i64,
-        Bool => cast_bool, Usize => cast_usize,
-        Object => cast_object, String => cast_string, Str => cast_str,
-        DateTime => cast_datetime(None), TimeDelta => cast_timedelta
+    e1.e.stack(
+        exprs.into_iter().skip(1).map(|e| e.e).collect_trusted(),
+        axis,
     );
-    Ok(rtn.add_obj_vec_into(obj_vec))
+    Ok(e1.add_obj_vec_into(obj_vec))
 }
 
 #[pyfunction]
@@ -333,68 +313,30 @@ pub fn eval_dicts(dds: Vec<&PyAny>, inplace: bool) -> PyResult<Option<Vec<PyData
 }
 
 #[pyfunction]
-#[allow(clippy::missing_safety_doc)]
+#[allow(clippy::missing_safety_doc, clippy::redundant_clone)]
 #[pyo3(name="where_", signature=(mask, expr, value, par=false))]
 pub unsafe fn where_py(mask: &PyAny, expr: &PyAny, value: &PyAny, par: bool) -> PyResult<PyExpr> {
     let expr = parse_expr_nocopy(expr)?;
     let mask = parse_expr_nocopy(mask)?;
     let value = parse_expr_nocopy(value)?;
-    where_(mask, expr, value, par)
+    where_(expr.clone(), mask, value, par)
 }
 
-pub fn where_(mask: PyExpr, expr: PyExpr, value: PyExpr, par: bool) -> PyResult<PyExpr> {
-    let obj_vec = vec![expr.obj(), mask.obj(), value.obj()];
-    let out: PyExpr = match (&expr.inner, &value.inner) {
-        (Exprs::F64(_), _) | (_, Exprs::F64(_)) => expr
-            .cast_f64()?
-            .where_(mask.cast_bool()?, value.cast_f64()?, par)
-            .into(),
-        (Exprs::F32(_), _) | (_, Exprs::F32(_)) => expr
-            .cast_f32()?
-            .where_(mask.cast_bool()?, value.cast_f32()?, par)
-            .into(),
-        (Exprs::I64(_), _) | (_, Exprs::I64(_)) => expr
-            .cast_i64()?
-            .where_(mask.cast_bool()?, value.cast_i64()?, par)
-            .into(),
-        (Exprs::I32(_), _) | (_, Exprs::I32(_)) => expr
-            .cast_i32()?
-            .where_(mask.cast_bool()?, value.cast_i32()?, par)
-            .into(),
-        (Exprs::Usize(_), Exprs::Usize(_)) => expr
-            .cast_usize()?
-            .where_(mask.cast_bool()?, value.cast_usize()?, par)
-            .into(),
-        (Exprs::DateTime(_), Exprs::DateTime(_)) => expr
-            .cast_datetime(None)?
-            .where_(mask.cast_bool()?, value.cast_datetime(None)?, par)
-            .into(),
-        (Exprs::String(_), Exprs::String(_)) => expr
-            .cast_string()?
-            .where_(mask.cast_bool()?, value.cast_string()?, par)
-            .into(),
-        (Exprs::TimeDelta(_), Exprs::TimeDelta(_)) => expr
-            .cast_timedelta()?
-            .where_(mask.cast_bool()?, value.cast_timedelta()?, par)
-            .into(),
-        _ => todo!(),
-    };
-    Ok(out.add_obj_vec_into(obj_vec))
+pub fn where_(mut expr: PyExpr, mask: PyExpr, value: PyExpr, par: bool) -> PyResult<PyExpr> {
+    let obj_vec = vec![mask.obj(), value.obj()];
+    expr.e.where_(mask.e, value.e, par);
+    Ok(expr.add_obj_vec_into(obj_vec))
 }
 
 #[pyfunction]
 #[allow(clippy::missing_safety_doc)]
 #[allow(unreachable_patterns)]
-pub unsafe fn full(shape: &PyAny, value: &PyAny, py: Python) -> PyResult<PyObject> {
+pub unsafe fn full(shape: &PyAny, value: &PyAny) -> PyResult<PyExpr> {
     let shape = parse_expr_nocopy(shape)?;
     let value = parse_expr_nocopy(value)?;
-    let obj = shape.obj();
-    let mut out = match_exprs!(&value.inner, e, {
-        Expr::full(shape.cast_usize()?, e.clone()).to_py(obj)
-        // .add_obj(value.obj())
-    });
-    out.add_obj(value.obj());
-    Ok(out.into_py(py))
+    let (obj, obj2) = (shape.obj(), value.obj());
+    let out = Expr::full(&shape.e, value.e).to_py(obj);
+    Ok(out.add_obj_into(obj2))
 }
 
 #[pyfunction]
@@ -402,89 +344,66 @@ pub unsafe fn full(shape: &PyAny, value: &PyAny, py: Python) -> PyResult<PyObjec
 #[allow(unreachable_patterns, clippy::missing_safety_doc)]
 pub unsafe fn arange(start: &PyAny, end: Option<&PyAny>, step: Option<f64>) -> PyResult<PyExpr> {
     let start = parse_expr_nocopy(start)?;
+    let step = step.map(|s| s.into());
     let obj_start = start.obj();
     if let Some(end) = end {
         let end = parse_expr_nocopy(end)?;
         let obj_end = end.obj();
-        Ok(Expr::arange(Some(start.cast_f64()?), end.cast_f64()?, step)
+        Ok(Expr::arange(Some(start.e), &end.e, step)
             .to_py(obj_start)
             .add_obj_into(obj_end))
     } else {
         // we only have start argument, this is actually end argument
-        Ok(Expr::arange(None, start.cast_f64()?, step).to_py(obj_start))
+        Ok(Expr::arange(None, &start.e, step).to_py(obj_start))
     }
-    // Ok(Expr::arange(start, end.cast_f64()?, step).to_py(obj))
 }
 
 #[pyfunction]
 pub fn timedelta(rule: &str) -> PyExpr {
-    let e: Expr<'static, TimeDelta> = TimeDelta::parse(rule).into();
+    let e: Expr<'static> = TimeDelta::parse(rule).into();
     e.into()
 }
 
 #[pyfunction]
 pub fn datetime(s: &str, fmt: &str) -> PyResult<PyExpr> {
-    let e: Expr<'static, DateTime> = DateTime::parse(s, fmt)
+    let e: Expr<'static> = DateTime::parse(s, fmt)
         .map_err(PyValueError::new_err)?
         .into();
     Ok(e.into())
 }
 
 #[pyfunction]
+#[cfg(feature = "blas")]
+#[allow(clippy::redundant_clone)]
 pub fn get_newey_west_adjust_s(x: PyExpr, resid: PyExpr, lag: PyExpr) -> PyResult<PyExpr> {
     let obj_vec = [x.obj(), resid.obj(), lag.obj()];
-    let lag = lag.cast_usize()?;
-    let resid = resid.cast_f64()?;
-    let mut out: PyExpr = x
-        .cast_f64()?
-        .chain_owned_f_ct(move |(x, ct)| {
-            let lag = *lag.eval(ct.clone())?.0.view_arr().to_dim0()?.into_scalar();
-            let lag_f64 = lag as f64;
-            let (resid, ct) = resid.eval(ct)?;
-            let resid_view = resid.view_arr().to_dim1()?.0;
-            let weights = Array1::range(0., lag_f64 + 1., 1.)
-                .mapv(|v| 1. - v / (lag_f64 + 1.))
-                .wrap();
-            let score = x.0 * resid_view.insert_axis(Axis(1));
-            let mut s = score.t().wrap().dot(&score.view().wrap())?.0;
-            for lag in 1..=lag {
-                let temp = score
-                    .slice_axis(Axis(0), Slice::new(lag as isize, None, 1))
-                    .t()
-                    .wrap()
-                    .dot(
-                        &score
-                            .slice_axis(Axis(0), Slice::new(0, Some(-(lag as isize)), 1))
-                            .wrap(),
-                    )?
-                    .0;
-                s = s + *weights.get(lag).unwrap() * (temp.to_owned() + temp.t());
-            }
-            Ok((ArbArray::Owned(s.wrap()), ct))
-        })
-        .into();
+    let mut out = x.clone();
+    out.e.get_newey_west_adjust_s(resid.e, lag.e);
     for obj in obj_vec {
-        out = out.add_obj_into(obj)
+        out.add_obj(obj);
     }
     Ok(out)
 }
 
+// #[cfg(feature="datadict")]
 #[pyfunction]
 pub fn from_pandas(df: &PyAny) -> PyResult<PyDataDict> {
     let columns = df.getattr("columns")?.extract::<Vec<String>>()?;
     let mut data = Vec::with_capacity(columns.len());
     for col in &columns {
-        data.push(unsafe { parse_expr_nocopy(df.get_item(col)?.getattr("values")?)? });
+        data.push(parse_expr_nocopy(df.get_item(col)?.getattr("values")?)?);
     }
     let (data, obj_map) = data.into_rs(Some(columns.clone()))?;
     Ok(DataDict::new(data, Some(columns)).to_py(obj_map))
 }
 
 #[pyfunction]
-pub fn context(s: Option<&PyAny>) -> PyResult<PyExpr> {
-    let s: ColumnSelector = s.into();
-    let e: Expr<'static, f64> =
-        unsafe { std::mem::transmute(Expr::<'_, f64>::new_with_selector(s, None)) };
-    let es: Exprs<'static> = e.into();
-    Ok(es.to_py(None))
+pub fn context<'py>(s: Option<&'py PyAny>) -> PyResult<PyExpr> {
+    let s: ColumnSelector<'py> = s.into();
+    let name = s.name();
+    let a: Data = s.into();
+    // safety: this function is using in python
+    let mut e = unsafe { std::mem::transmute::<Expr<'_>, Expr<'static>>(a.into()) };
+    e.set_name(name);
+    Ok(e.to_py(None))
 }

@@ -1,6 +1,7 @@
 use crate::export::*;
 use ndarray::{Ix1, RawData};
 use std::cmp::Ordering;
+use std::mem::MaybeUninit;
 use std::ops::Add;
 
 impl<T, S> ArrBase<S, Ix1>
@@ -334,7 +335,7 @@ where
     where
         U: Clone,
         S: Data,
-        S2: DataMut<Elem = U>,
+        S2: DataMut<Elem = MaybeUninit<U>>,
         F: FnMut(&T, Option<&T>) -> U,
     {
         let len = self.len();
@@ -350,13 +351,13 @@ where
         for i in 0..window - 1 {
             let (v, vo) = unsafe { (self.uget(i), out.uget_mut(i)) };
             // no value should be removed in the first window
-            *vo = f(v, None);
+            vo.write(f(v, None));
         }
         // other windows
         for (start, end) in (window - 1..len).enumerate() {
             // new valid value
             let (v_rm, v, vo) = unsafe { (self.uget(start), self.uget(end), out.uget_mut(end)) };
-            *vo = f(v, Some(v_rm));
+            vo.write(f(v, Some(v_rm)));
         }
     }
 
@@ -371,7 +372,7 @@ where
         U: Clone,
         S: Data,
         S2: Data<Elem = T2>,
-        S3: DataMut<Elem = U>,
+        S3: DataMut<Elem = MaybeUninit<U>>,
         F: FnMut(&T, &T2, Option<&T>, Option<&T2>) -> U,
     {
         let len = self.len();
@@ -388,14 +389,14 @@ where
         for i in 0..window - 1 {
             let (v1, v2, vo) = unsafe { (self.uget(i), other.uget(i), out.uget_mut(i)) };
             // no value should be removed in the first window
-            *vo = f(v1, v2, None, None);
+            vo.write(f(v1, v2, None, None));
         }
         // other windows
         for (start, end) in (window - 1..len).enumerate() {
             // new valid value
             let (v1_rm, v1, vo) = unsafe { (self.uget(start), self.uget(end), out.uget_mut(end)) };
             let (v2_rm, v2) = unsafe { (other.uget(start), other.uget(end)) };
-            *vo = f(v1, v2, Some(v1_rm), Some(v2_rm));
+            vo.write(f(v1, v2, Some(v1_rm), Some(v2_rm)));
         }
     }
 
@@ -405,7 +406,7 @@ where
     where
         T: Number,
         S: Data,
-        S2: DataMut<Elem = f64>,
+        S2: DataMut<Elem = MaybeUninit<f64>>,
         F: FnMut(f64, f64) -> f64,
     {
         let len = self.len();
@@ -423,14 +424,14 @@ where
         for i in 0..window - 1 {
             let (v, vo) = unsafe { (self.uget(i), out.uget_mut(i)) };
             // no value should be removed in the first window
-            *vo = f(v.f64() - _mean, f64::NAN);
+            vo.write(f(v.f64() - _mean, f64::NAN));
         }
         // other windows
         for (start, end) in (window - 1..len).enumerate() {
             // new valid value
             let (v_rm, v, vo) = unsafe { (self.uget(start), self.uget(end), out.uget_mut(end)) };
             let (v_rm, v) = (v_rm.f64() - _mean, v.f64() - _mean);
-            *vo = f(v, v_rm);
+            vo.write(f(v, v_rm));
         }
     }
 
@@ -446,7 +447,7 @@ where
         T2: Number,
         S: Data,
         S2: Data<Elem = T2>,
-        S3: DataMut<Elem = f64>,
+        S3: DataMut<Elem = MaybeUninit<f64>>,
         F: FnMut(f64, f64, f64, f64) -> f64,
     {
         let len = self.len();
@@ -464,7 +465,7 @@ where
         for i in 0..window - 1 {
             let (v1, v2, vo) = unsafe { (self.uget(i), other.uget(i), out.uget_mut(i)) };
             // no value should be removed in the first window
-            *vo = f(v1.f64() - _mean1, v2.f64() - _mean2, f64::NAN, f64::NAN);
+            vo.write(f(v1.f64() - _mean1, v2.f64() - _mean2, f64::NAN, f64::NAN));
         }
         // other windows
         for (start, end) in (window - 1..len).enumerate() {
@@ -473,7 +474,7 @@ where
             let (v2_rm, v2) = unsafe { (other.uget(start), other.uget(end)) };
             let (v1_rm, v1) = (v1_rm.f64() - _mean1, v1.f64() - _mean1);
             let (v2_rm, v2) = (v2_rm.f64() - _mean2, v2.f64() - _mean2);
-            *vo = f(v1, v2, v1_rm, v2_rm);
+            vo.write(f(v1, v2, v1_rm, v2_rm));
         }
     }
 
@@ -487,7 +488,7 @@ where
     where
         U: Clone,
         S: Data,
-        S2: DataMut<Elem = U>,
+        S2: DataMut<Elem = MaybeUninit<U>>,
         F: FnMut(&T, Option<&T>) -> U,
     {
         let len = self.len();
@@ -504,13 +505,13 @@ where
         for (start, end) in (window - 1..len).enumerate() {
             // new valid value
             let (v, v_rm, vo) = unsafe { (self.uget(start), self.uget(end), out.uget_mut(start)) };
-            *vo = f(v, Some(v_rm));
+            vo.write(f(v, Some(v_rm)));
         }
         // within the last window
         for i in len - window + 1..len {
             let (v, vo) = unsafe { (self.uget(i), out.uget_mut(i)) };
             // no value should be removed in the first window
-            *vo = f(v, None);
+            vo.write(f(v, None));
         }
     }
 

@@ -1,11 +1,11 @@
-use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 use crate::hash::{TpBuildHasher, TpHash};
-use crate::ArbArray;
+use crate::ArrOk;
 
 use super::super::{Arr1, CollectTrustedToVec, OptUsize};
 use super::groupby::{collect_hashmap_keys, collect_hashmap_one_key, prepare_groupby};
-use super::{Expr, ExprElement, Exprs, RefType};
+use super::Expr;
 use std::collections::hash_map::Entry;
 
 pub enum JoinType {
@@ -15,62 +15,44 @@ pub enum JoinType {
     Outer,
 }
 
-impl<'a, T> Expr<'a, T>
-where
-    T: ExprElement + 'a,
-{
+impl<'a> Expr<'a> {
     pub fn get_left_join_idx(
-        self,
-        left_other: Option<Vec<Exprs<'a>>>,
-        mut right: Vec<Exprs<'a>>,
-    ) -> Expr<'a, OptUsize> {
-        self.chain_view_f_ct(
-            move |(arr, ct)| {
-                let left_other = if let Some(mut left_other) = left_other {
-                    left_other
-                        .par_iter_mut()
-                        .chain(right.par_iter_mut())
-                        .for_each(|e| {
-                            _ = e.eval_inplace(ct.clone());
-                        });
-                    Some(left_other)
-                } else {
-                    right.par_iter_mut().for_each(|e| {
-                        _ = e.eval_inplace(ct.clone());
-                    });
-                    None
-                };
-                // safety: we don't use arr_expr outside the closure
-                let arr_expr = unsafe {
-                    Expr::<'_, T>::new(
-                        std::mem::transmute(Into::<ArbArray<'_, T>>::into(arr)),
-                        None,
-                    )
-                };
-                let arr_exprs: Exprs<'_> = arr_expr.into();
-                if right.len() > 1 {
-                    let left_other = left_other
-                        .expect("left_other should be given when right has more than one key");
-                    let left_keys = std::iter::once(&arr_exprs)
-                        .chain(&left_other)
-                        .collect::<Vec<_>>();
-                    let right_keys = right.iter().collect::<Vec<_>>();
-                    let idx = join_left(&left_keys, &right_keys);
-                    Ok((Arr1::from_vec(idx).to_dimd().into(), ct))
-                } else {
-                    let left_keys = vec![&arr_exprs];
-                    let right_keys = right.iter().collect::<Vec<_>>();
-                    let idx = join_left(&left_keys, &right_keys);
-                    Ok((Arr1::from_vec(idx).to_dimd().into(), ct))
-                }
-            },
-            RefType::False,
-        )
+        &mut self,
+        left_other: Option<Vec<Expr<'a>>>,
+        right: Vec<Expr<'a>>,
+    ) -> &mut Self {
+        self.chain_f_ctx(move |(data, ctx)| {
+            let left_len = left_other.as_ref().map(|a| a.len()).unwrap_or(0);
+            let left_other = left_other.clone();
+            let right = right.clone();
+            let all_keys = if let Some(left_other) = left_other {
+                left_other
+                    .into_par_iter()
+                    .chain(right.into_par_iter())
+                    .map(|a| a.into_arr(ctx.clone()).unwrap())
+                    .collect::<Vec<_>>()
+                // Some(left_other)
+            } else {
+                right
+                    .into_par_iter()
+                    .map(|a| a.into_arr(ctx.clone()).unwrap())
+                    .collect::<Vec<_>>()
+            };
+
+            let arr = data.view_arr(ctx.as_ref())?;
+            let left_keys = std::iter::once(arr)
+                .chain(all_keys.iter().take(left_len))
+                .collect::<Vec<_>>();
+            let right_keys = all_keys.iter().skip(left_len).collect::<Vec<_>>();
+            let idx = join_left(&left_keys, &right_keys);
+            Ok((Arr1::from_vec(idx).to_dimd().into(), ctx))
+        });
+        self
     }
 }
 
 #[allow(clippy::useless_conversion)]
-pub fn join_left(left_keys: &[&Exprs], right_keys: &[&Exprs]) -> Vec<OptUsize> {
+pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec<OptUsize> {
     assert_eq!(
         left_keys.len(),
         right_keys.len(),

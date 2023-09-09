@@ -36,6 +36,18 @@ const SECS_PER_DAY: i64 = 86400;
 /// The number of (non-leap) seconds in a week.
 const SECS_PER_WEEK: i64 = 604800;
 
+const TIME_RULE_VEC: [&str; 9] = [
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M:%S.%f",
+    "%Y-%m-%d",
+    "%Y%m%d",
+    "%Y%m%d %H%M%S",
+    "%d/%m/%Y",
+    "%d/%m/%Y H%M%S",
+    "%Y%m%d%H%M%S",
+    "%d/%m/%YH%M%S",
+];
+
 #[derive(Clone, Copy, Default, Hash, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct DateTime(pub Option<NaiveDateTime>);
 
@@ -82,19 +94,19 @@ impl Cast<String> for DateTime {
 
 impl Cast<DateTime> for String {
     fn cast(self) -> DateTime {
-        let rule_vec = vec![
-            "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%d %H:%M:%S.%f",
-            "%Y-%m-%d",
-            "%Y%m%d",
-            "%Y%m%d %H%M%S",
-            "%d/%m/%Y",
-            "%d/%m/%Y H%M%S",
-            "%Y%m%d%H%M%S",
-            "%d/%m/%YH%M%S",
-        ];
-        for rule in rule_vec {
+        for rule in TIME_RULE_VEC {
             if let Ok(dt) = DateTime::parse(&self, rule) {
+                return dt;
+            }
+        }
+        panic!("can not parse datetime from string: {self}")
+    }
+}
+
+impl Cast<DateTime> for &str {
+    fn cast(self) -> DateTime {
+        for rule in TIME_RULE_VEC {
+            if let Ok(dt) = DateTime::parse(self, rule) {
                 return dt;
             }
         }
@@ -197,10 +209,10 @@ impl DateTime {
         )))
     }
 
-    pub fn strftime(&self, fmt: Option<String>) -> String {
+    pub fn strftime(&self, fmt: Option<&str>) -> String {
         if let Some(fmt) = fmt {
             self.0
-                .map_or("NaT".to_string(), |dt| dt.format(&fmt).to_string())
+                .map_or("NaT".to_string(), |dt| dt.format(fmt).to_string())
         } else {
             self.0.map_or("NaT".to_string(), |dt| dt.to_string())
         }
@@ -660,6 +672,12 @@ impl From<&str> for TimeDelta {
 impl GetNone for TimeDelta {
     fn none() -> Self {
         TimeDelta::nat()
+    }
+}
+
+impl Cast<TimeDelta> for &str {
+    fn cast(self) -> TimeDelta {
+        TimeDelta::parse(self)
     }
 }
 

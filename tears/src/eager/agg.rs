@@ -9,32 +9,6 @@ pub enum QuantileMethod {
     MidPoint,
 }
 
-impl<T, S, D> ArrBase<S, D>
-where
-    S: Data<Elem = T>,
-    D: Dimension,
-{
-    // pub fn take_one_on_axis(&self, index: usize, axis: i32, par: bool) -> Arr<T, D::Smaller>
-    // where
-    //     T: Send + Sync + Clone,
-    //     D: RemoveAxis,
-    // {
-    //     let axis = self.norm_axis(axis);
-    //     self.index_axis(axis, index).to_owned().wrap()
-    //     // assert!(index < self.shape()[axis.index()], "Index out of bound.");
-    //     // // Safety: we have checked that 0 <= index <= the length of axis - 1
-    //     // if !par {
-    //     //     Zip::from(self.lanes(axis))
-    //     //         .map_collect(|lane| unsafe { lane.uget(index).clone() })
-    //     //         .into()
-    //     // } else {
-    //     //     Zip::from(self.lanes(axis))
-    //     //         .par_map_collect(|lane| unsafe { lane.uget(index).clone() })
-    //     //         .into()
-    //     // }
-    // }
-}
-
 impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
     /// sum of the array on a given axis, return valid_num n and the sum of the array
     pub fn nsum_1d(&self, stable: bool) -> (usize, T)
@@ -84,7 +58,7 @@ impl_reduce_nd!(
     /// count a value of an array on a given axis
     #[inline]
     pub fn count_v_1d(&self, value: T) -> i32
-    {T: Eq; Send; Sync,}
+    {T: PartialEq; Send; Sync,}
     {
         self.count_by(|v| v == &value)
     }

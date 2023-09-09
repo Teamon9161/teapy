@@ -99,11 +99,15 @@ impl_reduce2_nd!(
     {
         assert_eq!(self.len(), other.len(), "Both arrays must be the same length when calculating correlation.");
         let (arr1, arr2) = self.remove_nan2_1d(other);
-        let mut rank1 = Arr1::<f64>::zeros(arr1.raw_dim());
-        let mut rank2 = Arr1::<f64>::zeros(arr2.raw_dim());
+        let mut rank1 = Arr1::<f64>::uninit(arr1.raw_dim());
+        let mut rank2 = Arr1::<f64>::uninit(arr2.raw_dim());
         arr1.rank_1d(&mut rank1.view_mut(), false, false);
         arr2.rank_1d(&mut rank2.view_mut(), false, false);
-        rank1.corr_pearson_1d(&rank2, stable)
+        unsafe{
+            let rank1 = rank1.assume_init();
+            let rank2 = rank2.assume_init();
+            rank1.corr_pearson_1d(&rank2, stable)
+        }
     }
 );
 

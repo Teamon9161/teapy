@@ -6,7 +6,8 @@ mod traits;
 mod view;
 mod viewmut;
 
-pub use arbarray::ArbArray;
+pub use arbarray::{ArbArray, ViewOnBase};
+// pub(crate) use arbarray::match_arbarray;
 pub use arrok::ArrOk;
 #[cfg(feature = "blas")]
 pub use impls::{conjugate, replicate, LeastSquaresResult};
@@ -18,8 +19,8 @@ pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMutD};
 use crate::{export::*, DateTime, GetDataType, Iter, IterMut, TimeUnit, TpResult};
 
 use ndarray::{
-    Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
-    RawData, RemoveAxis, ShapeBuilder, Zip,
+    s, Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
+    NewAxis, RawData, RemoveAxis, ShapeBuilder, SliceArg, Zip,
 };
 
 use num::Zero;
@@ -68,12 +69,32 @@ where
     }
 
     #[inline]
+    pub fn norm_index(&self, index: i32, axis: Axis) -> usize {
+        let length = self.len_of(axis);
+        self.ensure_index(index, length)
+    }
+
+    #[inline]
     pub fn ensure_index(&self, index: i32, length: usize) -> usize {
         if index < 0 {
             (length as i32 + index) as usize
         } else {
             index as usize
         }
+    }
+
+    pub fn slice<I: SliceArg<D>>(&self, info: I) -> ArrView<'_, T, <I as SliceArg<D>>::OutDim>
+    where
+        S: Data,
+    {
+        self.0.slice(info).wrap()
+    }
+
+    pub fn dtype(&self) -> DataType
+    where
+        T: GetDataType,
+    {
+        T::dtype()
     }
 
     #[cfg(feature = "npy")]
@@ -137,7 +158,11 @@ where
     /// Note that the original array must be dim0.
     #[inline]
     pub fn to_dim0(self) -> TpResult<ArrBase<S, Ix0>> {
-        self.to_dim::<Ix0>().map_err(|e| format!("{e}").into())
+        if self.ndim() == 1 {
+            Ok(self.to_dim1()?.0.slice_move(s![0]).wrap())
+        } else {
+            self.to_dim::<Ix0>().map_err(|e| format!("{e}").into())
+        }
     }
 
     /// Change the array to dim1.
@@ -145,7 +170,11 @@ where
     /// Note that the original array must be dim1.
     #[inline]
     pub fn to_dim1(self) -> TpResult<ArrBase<S, Ix1>> {
-        self.to_dim::<Ix1>().map_err(|e| format!("{e}").into())
+        if self.ndim() == 0 {
+            Ok(self.to_dim0()?.0.slice_move(s![NewAxis]).wrap())
+        } else {
+            self.to_dim::<Ix1>().map_err(|e| format!("{e}").into())
+        }
     }
 
     /// Change the array to dim2.
@@ -184,6 +213,18 @@ where
         S2: DataMut<Elem = T>,
     {
         out.zip_mut_with(self, |vo, v| *vo = v.clone());
+    }
+
+    /// Clone the elements in the array to `out` array.
+    #[inline]
+    pub fn clone_to_uninit<S2>(&self, out: &mut ArrBase<S2, D>)
+    where
+        T: Clone,
+        S2: DataMut<Elem = MaybeUninit<T>>,
+    {
+        out.zip_mut_with(self, |vo, v| {
+            vo.write(v.clone());
+        });
     }
 
     /// Return a read-only view of the array
@@ -366,26 +407,39 @@ where
     where
         T: Cast<i64> + GetDataType + Clone,
     {
-        match T::dtype() {
-            DataType::DateTime => unsafe { Ok(self.to_owned().into_dtype::<DateTime>()) },
-            _ => {
-                match unit {
-                    TimeUnit::Nanosecond => Ok(self.map(|v| {
-                        DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()
-                    })),
-                    TimeUnit::Microsecond => Ok(self.map(|v| {
-                        DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()
-                    })),
-                    TimeUnit::Millisecond => Ok(self.map(|v| {
-                        DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()
-                    })),
-                    TimeUnit::Second => {
-                        Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0)))
-                    }
-                    _ => Err("not support datetime unit".into()),
-                }
+        match unit {
+            TimeUnit::Nanosecond => {
+                Ok(self.map(|v| DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()))
             }
+            TimeUnit::Microsecond => {
+                Ok(self.map(|v| DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()))
+            }
+            TimeUnit::Millisecond => {
+                Ok(self.map(|v| DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()))
+            }
+            TimeUnit::Second => Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0))),
+            _ => Err("not support datetime unit".into()),
         }
+        // match T::dtype() {
+        //     DataType::DateTime => unsafe { Ok(self.to_owned().into_dtype::<DateTime>()) },
+        //     _ => {
+        //         match unit {
+        //             TimeUnit::Nanosecond => Ok(self.map(|v| {
+        //                 DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()
+        //             })),
+        //             TimeUnit::Microsecond => Ok(self.map(|v| {
+        //                 DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()
+        //             })),
+        //             TimeUnit::Millisecond => Ok(self.map(|v| {
+        //                 DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()
+        //             })),
+        //             TimeUnit::Second => {
+        //                 Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0)))
+        //             }
+        //             _ => Err("not support datetime unit".into()),
+        //         }
+        //     }
+        // }
     }
 
     /// Try to cast to string

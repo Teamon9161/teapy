@@ -4,7 +4,6 @@ mod export;
 mod impl_pyexpr;
 mod pyexpr;
 mod pyfunc;
-// mod time;
 
 pub use datadict::PyDataDict;
 // pub use groupby::PyGroupBy;

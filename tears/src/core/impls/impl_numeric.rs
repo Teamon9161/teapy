@@ -1,4 +1,4 @@
-use crate::{Arr, ArrBase, ArrD, TpResult, WrapNdarray};
+use crate::{Arr, ArrBase, ArrD, ArrView, ArrViewMut, TpResult, WrapNdarray};
 use ndarray::{Data, DataMut, DimMax, Dimension, Zip};
 use ndarray::{Ix2, IxDyn, LinalgScalar};
 use num::traits::{abs, real::Real, Signed};
@@ -91,42 +91,83 @@ where
         // .into()
     }
 }
-
-impl<S, D> ArrBase<S, D>
-where
-    S: Data<Elem = i32>,
-    D: Dimension,
-{
-    pub fn pow<S2, D2>(
-        &self,
-        rhs: &ArrBase<S2, D2>,
-        par: bool,
-    ) -> Arr<i32, <D as DimMax<D2>>::Output>
-    where
-        D2: Dimension,
-        D: DimMax<D2>,
-        S2: Data<Elem = usize>,
-    {
-        let (lhs, rhs) = if self.ndim() == rhs.ndim() && self.shape() == rhs.shape() {
-            let lhs = self.view().to_dim::<<D as DimMax<D2>>::Output>().unwrap();
-            let rhs = rhs.view().to_dim::<<D as DimMax<D2>>::Output>().unwrap();
-            (lhs, rhs)
-        } else {
-            self.broadcast_with(rhs).unwrap()
-        };
-        if !par {
-            Zip::from(lhs.0)
-                .and(rhs.0)
-                .map_collect(|a, b| a.pow(*b as u32))
-                .wrap()
-        } else {
-            Zip::from(lhs.0)
-                .and(rhs.0)
-                .par_map_collect(|a, b| a.pow(*b as u32))
-                .wrap()
+macro_rules! impl_pow {
+    ($T: ty) => {
+        impl<'a, D> ArrView<'a, $T, D>
+        where
+            D: Dimension,
+        {
+            pub fn pow<S2, D2>(
+                &self,
+                rhs: &ArrBase<S2, D2>,
+                par: bool,
+            ) -> Arr<$T, <D as DimMax<D2>>::Output>
+            where
+                D2: Dimension,
+                D: DimMax<D2>,
+                S2: Data<Elem = usize>,
+            {
+                let (lhs, rhs) = if self.ndim() == rhs.ndim() && self.shape() == rhs.shape() {
+                    let lhs = self.view().to_dim::<<D as DimMax<D2>>::Output>().unwrap();
+                    let rhs = rhs.view().to_dim::<<D as DimMax<D2>>::Output>().unwrap();
+                    (lhs, rhs)
+                } else {
+                    self.broadcast_with(rhs).unwrap()
+                };
+                if !par {
+                    Zip::from(lhs.0)
+                        .and(rhs.0)
+                        .map_collect(|a, b| a.pow(*b as u32))
+                        .wrap()
+                } else {
+                    Zip::from(lhs.0)
+                        .and(rhs.0)
+                        .par_map_collect(|a, b| a.pow(*b as u32))
+                        .wrap()
+                }
+            }
         }
-    }
+
+        impl<'a, D> ArrViewMut<'a, $T, D>
+        where
+            D: Dimension,
+        {
+            pub fn pow<S2, D2>(
+                &self,
+                rhs: &ArrBase<S2, D2>,
+                par: bool,
+            ) -> Arr<$T, <D as DimMax<D2>>::Output>
+            where
+                D2: Dimension,
+                D: DimMax<D2>,
+                S2: Data<Elem = usize>,
+            {
+                self.view().pow(rhs, par)
+            }
+        }
+
+        impl<D> Arr<$T, D>
+        where
+            D: Dimension,
+        {
+            pub fn pow<S2, D2>(
+                &self,
+                rhs: &ArrBase<S2, D2>,
+                par: bool,
+            ) -> Arr<$T, <D as DimMax<D2>>::Output>
+            where
+                D2: Dimension,
+                D: DimMax<D2>,
+                S2: Data<Elem = usize>,
+            {
+                self.view().pow(rhs, par)
+            }
+        }
+    };
 }
+impl_pow!(i32);
+impl_pow!(i64);
+impl_pow!(usize);
 
 impl<T, S, D> ArrBase<S, D>
 where
@@ -145,14 +186,14 @@ where
         }
     }
 
-    pub fn abs(&self, _par: bool) -> Arr<T, D>
+    pub fn abs(&self) -> Arr<T, D>
     where
         T: Signed + Send + Sync + Clone,
     {
         self.map(|v| abs(v.clone()))
     }
 
-    pub fn sign(&self, _par: bool) -> Arr<T, D>
+    pub fn sign(&self) -> Arr<T, D>
     where
         T: Signed + Clone,
     {

@@ -9,4 +9,4 @@ pub(super) use super::{
 };
 pub(super) use ndarray::{Data, DataMut, DimMax, Dimension, Ix1, RemoveAxis, ShapeBuilder, Zip};
 pub(super) use num::traits::MulAdd;
-pub(super) use std::{cmp::min, iter::zip};
+pub(super) use std::{cmp::min, iter::zip, mem::MaybeUninit};

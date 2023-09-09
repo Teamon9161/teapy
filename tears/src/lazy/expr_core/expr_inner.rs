@@ -1,188 +1,96 @@
-// use crate::{Cast, OptUsize, PyValue, TpResult, Exprs};
-use parking_lot::Mutex;
-use parking_lot::MutexGuard;
-// // use rayon::prelude::*;
-use std::{fmt::Debug, marker::PhantomData, mem, sync::Arc};
+use super::Data;
+use crate::{ArbArray, ArrD, ArrOk, Context, ExprElement, TpResult};
+use std::{fmt::Debug, sync::Arc};
 
-// #[cfg(feature = "option_dtype")]
-// use crate::{OptF32, OptF64, OptI32, OptI64};
-use super::expr_element::ExprElement;
-use crate::lazy::ColumnSelector;
-use crate::lazy::OlsResult;
-use crate::ArrViewMut;
-use crate::ArrViewMutD;
-use crate::{ArbArray, ArrD, ArrOk, ArrViewD, Context, GetDataType, TpResult};
-
-pub struct Expr<'a> {
-    pub base: ExprBase<'a>,
+#[derive(Default)]
+pub struct ExprInner<'a> {
+    pub base: Data<'a>,
     pub name: Option<String>,
     pub nodes: Vec<FuncNode<'a>>,
 }
 
-pub type ExprBase<'a> = Arc<Mutex<Data<'a>>>;
-pub type FuncOut<'a> = (Data<'a>, Option<Context<'a>>);
-pub type FuncNode<'a> = Box<dyn FnOnce(FuncOut<'a>) -> TpResult<FuncOut<'a>> + Send + Sync + 'a>;
-
-impl<'a> Clone for Expr<'a> {
-    fn clone(&self) -> Self {
-        let ref_expr = Expr {
-            base: self.base.clone(),
-            name: self.name.clone(),
+impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
+    fn from(arr: T) -> Self {
+        let a: ArbArray<'a, T> = arr.into();
+        ExprInner {
+            base: Data::Arr(a.into()),
+            name: None,
             nodes: Vec::new(),
-        };
-        Expr::new(ref_expr.into(), self.name.clone())
-    }
-}
-
-pub enum Data<'a> {
-    Expr(Expr<'a>),         // an expression based on another expression
-    Arr(ArrOk<'a>),         // classical expression based on an array
-    ArrVec(Vec<ArrOk<'a>>), // an expression based on a vector of array
-    ArcArr(Arc<ArrOk<'a>>),
-    // ArcArrVec(Vec<Arc<ArrOk<'a>>>)   ,        // multi expressions share the same array
-    Context(ColumnSelector<'a>), // an expression based on a context (e.g. groupby
-    #[cfg(feature = "blas")]
-    OlsRes(Arc<OlsResult<'a>>), // only for least squares
-}
-
-impl<'a> Default for Data<'a> {
-    fn default() -> Self {
-        Data::ArrVec(Vec::with_capacity(0))
-    }
-}
-
-impl<'a> Data<'a> {
-    pub fn is_expr(&self) -> bool {
-        matches!(&self, Data::Expr(_))
-    }
-
-    pub fn as_expr(&self) -> Option<&Expr<'a>> {
-        match self {
-            Data::Expr(expr) => Some(expr),
-            _ => None,
         }
     }
-
-    pub fn as_expr_mut(&mut self) -> Option<&mut Expr<'a>> {
-        match self {
-            Data::Expr(expr) => Some(expr),
-            _ => None,
-        }
-    }
-
-    pub fn get_type(&self) -> &'static str {
-        match self {
-            Data::Expr(_) => "Expr",
-            Data::Arr(arr) => arr.get_type(),
-            Data::ArrVec(_) => "ArrVec",
-            Data::ArcArr(_) => "ArcArr",
-            Data::Context(_) => "Context",
-            #[cfg(feature = "blas")]
-            Data::OlsRes(_) => "OlsRes",
-        }
-    }
-
-    pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<(ArrOk<'a>, Option<Context<'a>>)> {
-        match self {
-            Data::Arr(arr) => Ok((arr, ctx)),
-            Data::Expr(e) => e.into_arr(ctx),
-            _ => Err("The output of the expression is not an array".into()),
-        }
-    }
-
-    pub fn view_arr(&self) -> TpResult<&ArrOk<'a>> {
-        match self {
-            Data::Arr(arr) => Ok(&arr),
-            Data::Expr(e) => e.lock_base().view_arr(),
-            _ => Err("The output of the expression is not an array".into()),
-        }
-    }
-
-    // pub fn view_arr(&mut self, ctx: Option<Context<'a>>) -> TpResult<(&mut ArrOk<'a>, Option<Context<'a>>)> {
-    //     match self {
-    //         Data::Arr(arr) => Ok((arr, ctx)),
-    //         Data::Expr(e) => e.view_arr(ctx),
-    //         _ => Err("The output of the expression is not an array".into())
-    //     }
-    // }
 }
 
-impl<'a> From<ArrOk<'a>> for Data<'a> {
-    fn from(arr: ArrOk<'a>) -> Self {
-        Data::Arr(arr)
-    }
-}
-
-impl<'a> From<Expr<'a>> for Data<'a> {
-    fn from(expr: Expr<'a>) -> Self {
-        Data::Expr(expr)
-    }
-}
-
-impl<'a, T: GetDataType + 'a> From<ArrD<T>> for Data<'a> {
-    #[inline]
+impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a> {
     fn from(arr: ArrD<T>) -> Self {
-        let arb: ArbArray<'a, T> = arr.into();
-        Data::Arr(arb.into())
+        let a: ArbArray<'a, T> = arr.into();
+        ExprInner {
+            base: Data::Arr(a.into()),
+            name: None,
+            nodes: Vec::new(),
+        }
     }
 }
 
-impl<'a, T: GetDataType + 'a> From<ArbArray<'a, T>> for Data<'a> {
-    #[inline]
-    fn from(arb: ArbArray<'a, T>) -> Self {
-        Data::Arr(arb.into())
+impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for ExprInner<'a> {
+    fn from(arr: ArbArray<'a, T>) -> Self {
+        ExprInner {
+            base: Data::Arr(arr.into()),
+            name: None,
+            nodes: Vec::new(),
+        }
     }
 }
 
-impl<'a, T: GetDataType + 'a> From<ArrViewMutD<'a, T>> for Data<'a> {
-    #[inline]
-    fn from(arr: ArrViewMutD<'a, T>) -> Self {
-        let arb: ArbArray<'a, T> = arr.into();
-        Data::Arr(arb.into())
+// pub type ExprBase<'a> = Arc<Mutex<Data<'a>>>;
+pub type FuncOut<'a> = (Data<'a>, Option<Context<'a>>);
+pub type FuncNode<'a> = Arc<dyn Fn(FuncOut<'a>) -> TpResult<FuncOut<'a>> + Send + Sync + 'a>;
+
+impl<'a> Debug for ExprInner<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.step() == 0 {
+            writeln!(f, "{:?}", self.base)?;
+            Ok(())
+        } else {
+            // if let Data::Expr(e) = &self.base {
+            //     let out = format!("{:?}", e.lock());
+            //     writeln!(f, "{}", out.split("Expr").next().unwrap())?;
+            // }
+            let mut f = f.debug_struct("Expr");
+            if let Some(name) = &self.name {
+                f.field("name", name);
+            }
+            f.field("step", &self.step_acc()).finish()
+        }
     }
 }
 
-impl<'a> From<Vec<ArrOk<'a>>> for Data<'a> {
-    fn from(arr_vec: Vec<ArrOk<'a>>) -> Self {
-        Data::ArrVec(arr_vec)
-    }
-}
-
-impl<'a> From<Arc<ArrOk<'a>>> for Data<'a> {
-    fn from(arr: Arc<ArrOk<'a>>) -> Self {
-        Data::ArcArr(arr)
-    }
-}
-
-impl<'a> From<ColumnSelector<'a>> for Data<'a> {
-    fn from(col: ColumnSelector<'a>) -> Self {
-        Data::Context(col)
-    }
-}
-
-impl<'a> Expr<'a> {
+impl<'a> ExprInner<'a> {
     pub fn new(data: Data<'a>, name: Option<String>) -> Self {
-        Expr {
-            base: Arc::new(Mutex::new(data)),
+        ExprInner {
+            base: data,
             name,
             nodes: Vec::new(),
         }
-    }
-
-    pub fn lock_base(&self) -> MutexGuard<'a, Data<'a>> {
-        if self.step() > 0 {
-            panic!("Do not lock base before evaluate the expression")
-        }
-        self.base.lock()
     }
 
     pub fn step(&self) -> usize {
         self.nodes.len()
     }
 
+    pub fn context_clone(&self) -> Self {
+        let new_nodes = self.nodes.clone();
+        let new_base = self.base.context_clone();
+        let name = self.name.clone();
+        ExprInner {
+            base: new_base.unwrap(),
+            name,
+            nodes: new_nodes,
+        }
+    }
+
     pub fn step_acc(&self) -> usize {
         let self_step = self.step();
-        if let Some(expr) = self.base.lock().as_expr() {
+        if let Some(expr) = self.base.as_expr() {
             self_step + expr.step_acc()
         } else {
             self_step
@@ -190,7 +98,7 @@ impl<'a> Expr<'a> {
     }
 
     pub fn name(&self) -> Option<&str> {
-        self.name.as_ref().map(|s| s.as_str())
+        self.name.as_deref()
     }
 
     pub fn name_owned(&self) -> Option<String> {
@@ -201,68 +109,110 @@ impl<'a> Expr<'a> {
         self.name = name;
     }
 
+    pub fn set_base(&mut self, data: Data<'a>) {
+        self.base = data;
+    }
+
+    pub fn is_owned(&self) -> bool {
+        if self.step() == 0 {
+            self.base.is_owned()
+        } else {
+            false
+        }
+    }
+
     pub fn base_type(&self) -> &'static str {
-        &self.base.lock().get_type()
+        self.base.get_type()
+    }
+
+    pub fn dtype(&self) -> String {
+        if self.step() == 0 {
+            self.base.dtype()
+        } else {
+            "Unknown".to_string()
+        }
     }
 
     /// chain a new function to current function chain
     pub fn chain_f_ctx<F>(&mut self, f: F)
     where
-        F: FnOnce(FuncOut<'a>) -> TpResult<FuncOut<'a>> + Send + Sync + 'a,
+        F: Fn(FuncOut<'a>) -> TpResult<FuncOut<'a>> + Send + Sync + 'a,
     {
-        self.nodes.push(Box::new(f));
+        self.nodes.push(Arc::new(f));
     }
 
     // chain a function without context
     pub fn chain_f<F>(&mut self, f: F)
     where
-        F: FnOnce(Data<'a>) -> TpResult<Data<'a>> + Send + Sync + 'a,
+        F: Fn(Data<'a>) -> TpResult<Data<'a>> + Send + Sync + 'a,
     {
-        let f = Box::new(move |(data, ctx)| Ok((f(data)?, ctx)));
+        let f = Arc::new(move |(data, ctx)| Ok((f(data)?, ctx)));
         self.nodes.push(f);
     }
 
-    pub fn eval_inplace(&mut self, mut ctx: Option<Context<'a>>) -> TpResult<Option<Context<'a>>> {
-        let mut data = if let Some(base) = Arc::get_mut(&mut self.base) {
-            std::mem::take(base).into_inner()
-        } else {
-            Data::Expr(Expr {
-                base: self.base.clone(),
-                name: self.name.clone(),
-                nodes: Vec::new(),
-            })
-        };
-        let nodes = std::mem::take(&mut self.nodes);
-        for f in nodes.into_iter() {
+    pub fn eval_inplace(&mut self, mut ctx: Option<Context<'a>>) -> TpResult<&mut Self> {
+        if self.step() == 0 {
+            if let Some(e) = self.base.as_expr_mut() {
+                e.eval_inplace(ctx)?;
+            }
+            return Ok(self);
+        }
+        let mut data = std::mem::take(&mut self.base);
+        // let nodes = std::mem::take(&mut self.nodes);
+        for f in &self.nodes {
             (data, ctx) = f((data, ctx))?;
         }
-        self.base = Arc::new(Mutex::new(data));
-        Ok(ctx)
+        self.base = data;
+        // if ctx.is_none() {
+        self.nodes.clear();
+        // }
+        Ok(self)
     }
 
-    pub fn eval(mut self, ctx: Option<Context<'a>>) -> TpResult<(Self, Option<Context<'a>>)> {
-        let ctx = self.eval_inplace(ctx)?;
-        Ok((self, ctx))
+    pub fn eval(mut self, ctx: Option<Context<'a>>) -> TpResult<Self> {
+        self.eval_inplace(ctx)?;
+        Ok(self)
     }
 
-    pub fn into_out(self, ctx: Option<Context<'a>>) -> TpResult<(Data<'a>, Option<Context<'a>>)> {
-        let (expr, ctx) = self.eval(ctx)?;
-        if let Ok(base) = Arc::try_unwrap(expr.base) {
-            Ok((base.into_inner(), ctx))
-        } else {
-            unreachable!("the new expression of the evaluation result should not be shared")
+    pub fn into_out(self, mut ctx: Option<Context<'a>>) -> TpResult<Data<'a>> {
+        let mut data = self.base;
+        for f in self.nodes.into_iter() {
+            (data, ctx) = f((data, ctx))?;
         }
+        Ok(data)
     }
 
-    pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<(ArrOk<'a>, Option<Context<'a>>)> {
-        self.into_out(ctx)
-            .map(|(data, ctx)| (data.into_arr(ctx).unwrap()))
+    pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<ArrOk<'a>> {
+        self.into_out(ctx.clone())
+            .map(|data| data.into_arr(ctx).unwrap())
     }
 
-    pub fn view_arr(&self) -> TpResult<ArrOk<'_>> {
+    pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TpResult<Vec<ArrOk<'a>>> {
+        self.into_out(ctx.clone())
+            .map(|data| data.into_arr_vec(ctx).unwrap())
+    }
+
+    pub fn view_arr<'b>(&'b self, ctx: Option<&'b Context<'a>>) -> TpResult<&'b ArrOk<'a>> {
+        if (self.step() > 0) & ctx.is_none() {
+            return Err("Do not lock base before evaluate the expression".into());
+        }
+        self.base.view_arr(ctx)
+    }
+
+    pub fn view_arr_vec<'b>(
+        &'b self,
+        ctx: Option<&'b Context<'a>>,
+    ) -> TpResult<Vec<&'b ArrOk<'a>>> {
+        if (self.step() > 0) & ctx.is_none() {
+            return Err("Do not lock base before evaluate the expression".into());
+        }
+        self.base.view_arr_vec(ctx)
+    }
+
+    pub fn view_data(&self) -> TpResult<&Data<'a>> {
         if self.step() > 0 {
-            panic!("Do not lock base before evaluate the expression")
+            return Err("Do not lock base before evaluate the expression".into());
         }
-        self.lock_base().view_arr()
+        Ok(&self.base)
     }
 }

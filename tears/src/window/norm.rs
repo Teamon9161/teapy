@@ -14,7 +14,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut sum = 0.;
         let mut sum2 = 0.;
@@ -100,7 +100,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut sum = 0.;
         let mut sum2 = 0.;
@@ -185,7 +185,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut max: T = T::min_();
         let mut max_idx = 0;
@@ -204,13 +204,12 @@ impl_map_nd!(
             if v <= min {
                 (min, min_idx) = (v, i);
             }
-            unsafe {
-                *out.uget_mut(i) = if (n >= min_periods) & (max != min) {
-                    (v - min).f64() / (max - min).f64()
-                } else {
-                    f64::NAN
-                };
-            }
+            let out = unsafe { out.uget_mut(i) };
+            if (n >= min_periods) & (max != min) {
+                out.write((v - min).f64() / (max - min).f64());
+            } else {
+                out.write(f64::NAN);
+            };
         }
         for (start, end) in (window - 1..self.len()).enumerate() {
             // 安全性：start和end不会超过self和out的长度
@@ -262,11 +261,11 @@ impl_map_nd!(
                 if v <= min {
                     (min, min_idx) = (v, end);
                 }
-
-                *out.uget_mut(end) = if (n >= min_periods) & (max != min) {
-                    (v - min).f64() / (max - min).f64()
+                let out = out.uget_mut(end);
+                if (n >= min_periods) & (max != min) {
+                    out.write((v - min).f64() / (max - min).f64());
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN);
                 };
                 if self.uget(start).notnan() {
                     n -= 1

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::pylazy::RefObj;
 use numpy::{
     datetime::{units, Datetime},
     PyArray, PyArrayDyn,
@@ -8,8 +9,8 @@ use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Py
 use tears::{Context, PyValue};
 #[cfg(feature = "option_dtype")]
 use tears::{OptF64, OptI64};
-
-use crate::pylazy::{PyDataDict, RefObj};
+// #[cfg(feature="datadict")]
+use crate::pylazy::PyDataDict;
 use ahash::HashMap;
 // use super::export::*;
 

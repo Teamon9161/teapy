@@ -198,7 +198,7 @@ class DataDict:
 
     def _select_on_axis_unchecked(self, idx, axis=0, inplace=False):
         return self.apply(
-            lambda e: e._select_unchecked(idx, axis=axis), inplace=inplace
+            lambda e: e.select(idx, axis=axis, check=False), inplace=inplace
         )
 
     def sort(self, by, rev=False, inplace=False):

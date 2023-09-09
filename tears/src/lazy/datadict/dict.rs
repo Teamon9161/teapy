@@ -4,8 +4,7 @@ use std::fmt::Debug;
 use std::iter::zip;
 use std::sync::Arc;
 
-// use crate::lazy::context::Context;
-use crate::lazy::{Expr, Exprs};
+use crate::lazy::Expr;
 use crate::{CollectTrustedToVec, Context, StrError, TpResult};
 
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
@@ -17,7 +16,7 @@ static DATADICT_INIT_SIZE: usize = 10;
 
 #[derive(Clone, Default)]
 pub struct DataDict<'a> {
-    pub data: Vec<Exprs<'a>>,
+    pub data: Vec<Expr<'a>>,
     pub map: Arc<HashMap<String, usize>>,
 }
 
@@ -31,7 +30,7 @@ impl Debug for DataDict<'_> {
 
 #[allow(clippy::missing_safety_doc)]
 impl<'a> DataDict<'a> {
-    pub fn new(mut data: Vec<Exprs<'a>>, columns: Option<Vec<String>>) -> Self {
+    pub fn new(mut data: Vec<Expr<'a>>, columns: Option<Vec<String>>) -> Self {
         if let Some(columns) = columns {
             assert_eq!(data.len(), columns.len());
             let mut column_map =
@@ -87,13 +86,13 @@ impl<'a> DataDict<'a> {
         // safety: we can't evaluate the exprs because we don't reference mut.
         self.data
             .iter()
-            .map(|e| unsafe { e.ref_name().unwrap() })
+            .map(|e| e.ref_name().unwrap())
             .collect_trusted()
         // self.map.keys().map(|k| k.as_str()).collect_trusted()
     }
 
     #[inline(always)]
-    pub fn into_data(self) -> Vec<Exprs<'a>> {
+    pub fn into_data(self) -> Vec<Expr<'a>> {
         self.data
     }
 
@@ -236,7 +235,11 @@ impl<'a> DataDict<'a> {
         match col {
             ColumnSelector::Index(col_idx) => {
                 let col_idx = self.valid_idx(col_idx)?;
-                Ok(unsafe { self.data.get_unchecked(col_idx).into() })
+                Ok(self
+                    .data
+                    .get(col_idx)
+                    .expect("Select index of ot bound")
+                    .into())
             }
             ColumnSelector::NameOwned(col_name) => self.get(col_name.as_str().into()),
             ColumnSelector::Name(col_name) => {
@@ -247,11 +250,15 @@ impl<'a> DataDict<'a> {
                 let col_idx = *self.map.get(col_name).ok_or_else(|| -> StrError {
                     format!("Column {col_name} doesn't exist!").into()
                 })?;
-                Ok(unsafe { self.data.get_unchecked(col_idx).into() })
+                Ok(self
+                    .data
+                    .get(col_idx)
+                    .expect("Select index of ot bound")
+                    .into())
             }
             ColumnSelector::All => Ok(self.data.iter().collect::<Vec<_>>().into()),
             ColumnSelector::Regex(re) => {
-                let out: Vec<&Exprs> = self
+                let out: Vec<&Expr> = self
                     .data
                     .iter()
                     .filter(|e| re.is_match(e.name().unwrap().as_str()))
@@ -294,7 +301,7 @@ impl<'a> DataDict<'a> {
             }
             ColumnSelector::All => Ok(self.data.iter_mut().collect::<Vec<_>>().into()),
             ColumnSelector::Regex(re) => {
-                let out: Vec<&mut Exprs> = self
+                let out: Vec<&mut Expr> = self
                     .data
                     .iter_mut()
                     .filter(|e| re.is_match(e.name().unwrap().as_str()))
@@ -306,7 +313,7 @@ impl<'a> DataDict<'a> {
                     .into_iter()
                     .map(|idx| self.valid_idx(idx).unwrap())
                     .collect::<Vec<_>>();
-                let out: Vec<&mut Exprs> = self
+                let out: Vec<&mut Expr> = self
                     .data
                     .iter_mut()
                     .enumerate()
@@ -318,7 +325,7 @@ impl<'a> DataDict<'a> {
             }
             ColumnSelector::VecName(vn) => {
                 // may be slow, todo: improve the performance
-                let out: Vec<&mut Exprs> = self
+                let out: Vec<&mut Expr> = self
                     .data
                     .iter_mut()
                     .filter(|e| {
@@ -475,7 +482,7 @@ impl<'a> DataDict<'a> {
     /// Insert a new expr or update the old value,
     /// the column name will be the name of the value expression.
     /// The caller must ensure that the name of the value is not None;
-    pub fn insert_inplace(&mut self, expr: Exprs<'a>) -> TpResult<()> {
+    pub fn insert_inplace(&mut self, expr: Expr<'a>) -> TpResult<()> {
         let new_name = expr
             .name()
             .ok_or(StrError("The name of the value expression is None!".into()))?;
@@ -520,42 +527,44 @@ impl<'a> DataDict<'a> {
         Ok(())
     }
 
-    #[allow(unreachable_patterns)]
-    pub fn select_on_axis(&self, slc: Vec<usize>, axis: Option<i32>) -> Self {
-        let mut out_data = Vec::<Exprs>::with_capacity(slc.len());
-        let axis = axis.unwrap_or(0);
-        let slc_expr: Expr<'a, usize> = slc.into();
-        for expr in &self.data {
-            out_data.push(match_exprs!(expr, e, {
-                e.clone()
-                    .select_by_expr(slc_expr.clone(), axis.into())
-                    .into()
-            }))
-        }
-        DataDict {
-            data: out_data,
-            map: self.map.clone(),
-        }
-    }
+    // #[allow(unreachable_patterns)]
+    // pub fn select_on_axis(&self, slc: Vec<usize>, axis: Option<i32>) -> Self {
+    //     let mut out_data = Vec::<Exprs>::with_capacity(slc.len());
+    //     let axis = axis.unwrap_or(0);
+    //     let slc_expr: Expr<'a> = slc.into();
+    //     for expr in &self.data {
+    //         let mut e = expr.clone();
+    //         e.select(&slc_expr, &axis.into(), true);
+    //         out_data.push(e)
+    //         // out_data.push(match_exprs!(expr, e, {
+    //         //     e.clone()
+    //         //         .select_by_expr(slc_expr.clone(), axis.into())
+    //         //         .into()
+    //         // }))
 
-    #[allow(unreachable_patterns)]
-    /// Safety
-    ///
-    /// The caller must ensure that the slice is valid.
-    pub unsafe fn select_on_axis_unchecked(&self, slc: Vec<usize>, axis: Option<i32>) -> Self {
-        let mut out_data = Vec::<Exprs>::with_capacity(slc.len());
-        let axis = axis.unwrap_or(0);
-        let slc_expr: Expr<'a, usize> = slc.into();
-        for expr in &self.data {
-            out_data.push(match_exprs!(expr, e, {
-                e.clone()
-                    .select_by_expr_unchecked(slc_expr.clone(), axis.into())
-                    .into()
-            }))
-        }
-        DataDict {
-            data: out_data,
-            map: self.map.clone(),
-        }
-    }
+    //     }
+    //     DataDict {
+    //         data: out_data,
+    //         map: self.map.clone(),
+    //     }
+    // }
+
+    // #[allow(unreachable_patterns)]
+    // /// Safety
+    // ///
+    // /// The caller must ensure that the slice is valid.
+    // pub fn select_on_axis_unchecked(&self, slc: Vec<usize>, axis: Option<i32>) -> Self {
+    //     let mut out_data = Vec::<Exprs>::with_capacity(slc.len());
+    //     let axis = axis.unwrap_or(0);
+    //     let slc_expr: Expr<'a> = slc.into();
+    //     for expr in &self.data {
+    //         let mut e = expr.clone();
+    //         e.select(&slc_expr, &axis.into(), false);
+    //         out_data.push(e)
+    //     }
+    //     DataDict {
+    //         data: out_data,
+    //         map: self.map.clone(),
+    //     }
+    // }
 }

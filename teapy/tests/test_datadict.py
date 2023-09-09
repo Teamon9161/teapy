@@ -145,7 +145,7 @@ def test_dtypes():
         b=[1.0, 2.0, 3.0],
         c=["df", "134", "231"],
     )
-    assert dd.dtypes == {"a": "Int32", "b": "Float64", "c": "String"}
+    assert dd.dtypes == {"a": "I32", "b": "F64", "c": "String"}
 
 
 def test_join():

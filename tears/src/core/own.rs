@@ -1,5 +1,9 @@
+use std::mem::MaybeUninit;
+
+use crate::TpResult;
+
 use super::{ArrBase, WrapNdarray};
-use ndarray::{Array, Dimension, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
+use ndarray::{Array, Dimension, Ix0, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
 
 pub type Arr<T, D> = ArrBase<OwnedRepr<T>, D>;
 pub type ArrD<T> = Arr<T, IxDyn>;
@@ -15,19 +19,12 @@ impl<T, D: Dimension> Arr<T, D> {
     pub unsafe fn into_dtype<T2>(self) -> Arr<T2, D> {
         use std::mem;
         if mem::size_of::<T>() == mem::size_of::<T2>() {
-            // mem::transmute(self)
             let out = mem::transmute_copy(&self);
             mem::forget(self);
             out
         } else {
             panic!("the size of new type is different when calling into_dtype for Arr")
         }
-
-        // let shape = self.raw_dim();
-        // let vec = self.0.into_raw_vec();
-        // let (ptr, len, cap) = vec.into_raw_parts();
-        // let vec = Vec::<T2>::from_raw_parts(ptr as *mut T2, len, cap);
-        // Array::<T2, D>::from_shape_vec_unchecked(shape, vec).wrap()
     }
 
     pub fn from_elem<Sh>(shape: Sh, elem: T) -> Self
@@ -47,5 +44,48 @@ impl<T, D: Dimension> Arr<T, D> {
         Sh: ShapeBuilder<Dim = D>,
     {
         Array::default(shape).wrap()
+    }
+
+    pub fn uninit<Sh>(shape: Sh) -> Arr<MaybeUninit<T>, D>
+    where
+        Sh: ShapeBuilder<Dim = D>,
+    {
+        Array::uninit(shape).wrap()
+    }
+
+    // pub unsafe fn assume_init(&mut self: Arr<MaybeUninit<T>, D>) -> Arr<T, D>
+    // {
+    //     self.0.assume_init()
+    // }
+}
+
+impl<T, D: Dimension> Arr<MaybeUninit<T>, D> {
+    /// **Promise** that the array's elements are all fully initialized, and convert
+    /// the array from element type `MaybeUninit<A>` to `A`.
+    ///
+    /// For example, it can convert an `Arr<MaybeUninit<f64>, D>` to `Arr<f64, D>`.
+    ///
+    /// ## Safety
+    ///
+    /// Safe to use if all the array's elements have been initialized.
+    ///
+    /// Note that for owned and shared ownership arrays, the promise must include all of the
+    /// array's storage; it is for example possible to slice these in place, but that must
+    /// only be done after all elements have been initialized.
+    pub unsafe fn assume_init(self) -> Arr<T, D> {
+        self.0.assume_init().wrap()
+    }
+}
+
+impl<T> Arr<T, Ix0> {
+    #[inline]
+    pub fn into_scalar(self) -> T {
+        self.0.into_scalar()
+    }
+}
+
+impl<T> ArrD<T> {
+    pub fn into_scalar(self) -> TpResult<T> {
+        Ok(self.to_dim0()?.into_scalar())
     }
 }

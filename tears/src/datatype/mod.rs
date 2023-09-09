@@ -112,6 +112,74 @@ macro_rules! impl_datatype {
     };
 }
 
+impl DataType {
+    #[cfg(not(feature = "option_dtype"))]
+    pub fn is_float(&self) -> bool {
+        matches!(self, DataType::F32 | DataType::F64)
+    }
+
+    #[cfg(feature = "option_dtype")]
+    pub fn is_float(&self) -> bool {
+        matches!(
+            self,
+            DataType::F32 | DataType::F64 | DataType::OptF32 | DataType::OptF64
+        )
+    }
+
+    #[cfg(not(feature = "option_dtype"))]
+    pub fn is_int(&self) -> bool {
+        matches!(
+            self,
+            DataType::I32 | DataType::I64 | DataType::Usize | DataType::OptUsize
+        )
+    }
+
+    #[cfg(feature = "option_dtype")]
+    pub fn is_int(&self) -> bool {
+        matches!(
+            self,
+            DataType::I32
+                | DataType::I64
+                | DataType::Usize
+                | DataType::OptUsize
+                | DataType::OptI32
+                | DataType::OptI64
+        )
+    }
+
+    pub fn float(self) -> Self {
+        use DataType::*;
+        match self {
+            F32 => F32,
+            I32 => F32,
+            I64 => F64,
+            Usize => F64,
+            OptUsize => F64,
+            #[cfg(feature = "option_dtype")]
+            OptI32 => OptF32,
+            #[cfg(feature = "option_dtype")]
+            OptI64 => OptF64,
+            _ => F64,
+        }
+    }
+
+    pub fn int(self) -> Self {
+        use DataType::*;
+        match self {
+            I32 => I32,
+            F32 => I32,
+            F64 => I64,
+            Usize => Usize,
+            OptUsize => OptUsize,
+            #[cfg(feature = "option_dtype")]
+            OptF32 => OptI32,
+            #[cfg(feature = "option_dtype")]
+            OptF64 => OptI64,
+            _ => I64,
+        }
+    }
+}
+
 impl_datatype!(Bool, bool);
 impl_datatype!(F32, f32);
 impl_datatype!(F64, f64);
@@ -134,8 +202,6 @@ impl_datatype!(OptF32, OptF32);
 impl_datatype!(OptI32, OptI32);
 #[cfg(feature = "option_dtype")]
 impl_datatype!(OptI64, OptI64);
-// #[cfg(feature = "option_dtype")]
-// impl_datatype!(OptUsize, OptUsize);
 
 pub trait GetNone {
     fn none() -> Self;
@@ -173,13 +239,13 @@ impl GetNone for usize {
 
 impl GetNone for i32 {
     fn none() -> Self {
-        0
+        unreachable!("dtype i32 can not be None")
     }
 }
 
 impl GetNone for i64 {
     fn none() -> Self {
-        0
+        unreachable!("dtype i64 can not be None")
     }
 }
 
@@ -187,6 +253,12 @@ impl GetNone for bool {
     #[inline]
     fn none() -> Self {
         panic!("Can not cast None to bool")
+    }
+}
+
+impl GetNone for Vec<usize> {
+    fn none() -> Self {
+        vec![]
     }
 }
 

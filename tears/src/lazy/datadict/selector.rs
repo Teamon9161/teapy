@@ -13,6 +13,21 @@ pub enum ColumnSelector<'a> {
     All,
 }
 
+impl ColumnSelector<'_> {
+    pub fn name(&self) -> Option<String> {
+        use ColumnSelector::*;
+        match self {
+            Index(_) => None,
+            VecIndex(_) => None,
+            VecName(_) => None,
+            Name(name) => Some(name.to_string()),
+            NameOwned(name) => Some(name.clone()),
+            Regex(_) => None,
+            All => None,
+        }
+    }
+}
+
 impl From<i32> for ColumnSelector<'_> {
     fn from(idx: i32) -> Self {
         ColumnSelector::Index(idx)

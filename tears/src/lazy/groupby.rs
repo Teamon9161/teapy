@@ -1,9 +1,10 @@
-use super::super::{export::*, Exprs};
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
+use super::super::export::*;
 use crate::{
     hash::{TpBuildHasher, TpHash, TpHashMap},
-    match_, match_exprs,
+    match_all, match_arrok,
 };
-use rayon::prelude::*;
 use std::collections::hash_map::Entry;
 
 /// Get the partition size for parallel
@@ -41,21 +42,20 @@ pub fn flatten<T: Clone, R: AsRef<[T]>>(bufs: &[R], len: Option<usize>) -> Vec<T
 static GROUP_DICT_INIT_SIZE: usize = 512;
 static GROUP_VEC_INIT_SIZE: usize = 32;
 
-/// Prepare for a groupby, return len of each key, a hasher and hashed keys
 pub fn prepare_groupby(
-    keys: &[&Exprs],
+    keys: &[&ArrOk<'_>],
     hasher: Option<TpBuildHasher>,
 ) -> (usize, TpBuildHasher, Vec<Arr1<u64>>) {
     let hasher = hasher.unwrap_or(TpBuildHasher::default());
     let hashed_keys = keys
         .iter()
-        .map(|e| {
-            match_exprs!(
+        .map(|arr| {
+            match_arrok!(
                 hash
-                e,
-                e1,
+                arr,
+                a,
                 {
-                    e1.view_arr()
+                    a.view()
                         .to_dim1()
                         .expect("groupby key should be dim1")
                         .tphash_1d()
@@ -132,7 +132,7 @@ pub(super) fn collect_hashmap_keys(
     group_dict
 }
 
-pub fn groupby(keys: &[&Exprs], sort: bool) -> Vec<(usize, Vec<usize>)> {
+pub fn groupby(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
     let (len, hasher, hashed_keys) = prepare_groupby(keys, None);
     // fast path for only one key
     let mut vec = if hashed_keys.len() == 1 {
@@ -146,14 +146,17 @@ pub fn groupby(keys: &[&Exprs], sort: bool) -> Vec<(usize, Vec<usize>)> {
         vec.sort_unstable_by_key(|v| v.0);
     }
     vec
+    // unimplemented!()
 }
+
+// pub fn groupby_apply(&mut self, others: Vec<Expr<'a>>, by: Vec<Expr<'a>>)
 
 /// Groupby this array, return a `vec` contains
 /// index of the first value in each group and a `vec` contains the
 /// index of values within each group.
 ///
 /// sort: whether to sort on index of the first value in each group
-pub fn groupby_par(keys: &[&Exprs], sort: bool) -> Vec<(usize, Vec<usize>)> {
+pub fn groupby_par(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
     let n_partition = get_partition_size() as u64;
     let (len, hasher, hashed_keys) = prepare_groupby(keys, None);
     let mut out = (0..n_partition)

@@ -1,5 +1,7 @@
+use crate::TpResult;
+
 use super::{ArrBase, WrapNdarray};
-use ndarray::{Dimension, Ix1, IxDyn, RawArrayView, StrideShape, ViewRepr};
+use ndarray::{Dimension, Ix0, Ix1, IxDyn, RawArrayView, StrideShape, ViewRepr};
 
 pub type ArrView<'a, T, D> = ArrBase<ViewRepr<&'a T>, D>;
 pub type ArrView1<'a, T> = ArrView<'a, T, Ix1>;
@@ -59,5 +61,18 @@ impl<'a, T, D: Dimension> ArrView<'a, T, D> {
                 .deref_into_view()
                 .wrap()
         }
+    }
+}
+
+impl<'a, T> ArrView<'a, T, Ix0> {
+    #[inline]
+    pub fn into_scalar(self) -> &'a T {
+        self.0.into_scalar()
+    }
+}
+
+impl<'a, T> ArrViewD<'a, T> {
+    pub fn into_scalar(self) -> TpResult<&'a T> {
+        Ok(self.to_dim0()?.into_scalar())
     }
 }

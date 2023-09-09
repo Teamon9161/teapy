@@ -1,15 +1,12 @@
 #![feature(let_chains)]
 #![feature(drain_filter)]
-// #![feature(hash_raw_entry)]
-// #![feature(get_many_mut)]
-// #![feature(build_hasher_simple_hash_one)]
 
 #[cfg(any(feature = "intel-mkl-system", feature = "intel-mkl-static"))]
 extern crate intel_mkl_src as _src;
 
 #[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
 extern crate openblas_src as _src;
-
+#[macro_use]
 mod core;
 mod eager;
 mod error;
@@ -32,6 +29,7 @@ pub mod util_trait;
 pub mod utils;
 
 pub(crate) use datatype::match_datatype_arm;
+// pub(crate) use crate::core::match_arbarray;
 #[cfg(feature = "option_dtype")]
 pub use datatype::{ArrToOpt, OptF32, OptF64, OptI32, OptI64};
 pub use datatype::{
@@ -45,17 +43,14 @@ pub use iterators::{Iter, IterMut};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
 pub use utils::{kh_sum, EmptyNew};
 
+pub use lazy::expr_core::{Data, DropNaMethod, Expr, ExprElement};
 #[cfg(feature = "lazy")]
-pub use lazy::{
-    flatten, get_partition_size, groupby, groupby_par, join_left, prepare_groupby, Context,
-    DropNaMethod, Expr, ExprElement, ExprOut, ExprOutView, Exprs, JoinType, RefType,
-    RollingTimeStartBy,
-};
+pub use lazy::Context;
 
 #[cfg(feature = "blas")]
 pub use lazy::OlsResult;
 
 pub use crate::core::{
     ArbArray, Arr, Arr1, Arr2, ArrBase, ArrBase1, ArrD, ArrOk, ArrView, ArrView1, ArrViewD,
-    ArrViewMut, ArrViewMut1, ArrViewMutD, Dim1, WrapNdarray,
+    ArrViewMut, ArrViewMut1, ArrViewMutD, Dim1, ViewOnBase, WrapNdarray,
 };

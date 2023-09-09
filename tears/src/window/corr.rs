@@ -16,7 +16,7 @@ impl_map2_nd!(
         let window = min(other.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut sum_a = 0.;
         let mut sum_b = 0.;
@@ -89,7 +89,7 @@ impl_map2_nd!(
         let window = min(other.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut sum_a = 0.;
         let mut sum2_a = 0.;

@@ -2,7 +2,7 @@ use std::{fmt::Debug, hash::Hash};
 
 use ahash::RandomState;
 
-use crate::{hash::TpHash, Cast, OptUsize};
+use crate::{hash::TpHash, Cast, DateTime, OptUsize, TimeDelta};
 
 use super::super::{export::*, ArrView1, GetNone};
 // use super::groupby::CollectTrustedToVec;
@@ -524,9 +524,9 @@ impl_map_nd!(
             out.apply_mut_with(self, |vo, v| {
                 if v.notnan() {
                     sum += *v;
-                    *vo = sum;
+                    vo.write(sum);
                 } else {
-                    *vo = T::nan();
+                    vo.write(T::nan());
                 }
             });
         } else {
@@ -534,9 +534,9 @@ impl_map_nd!(
             out.apply_mut_with(self, |vo, v| {
                 if v.notnan() {
                     sum.kh_sum(*v, c);
-                    *vo = sum;
+                    vo.write(sum);
                 } else {
-                    *vo = T::nan();
+                    vo.write(T::nan());
                 }
             });
         }
@@ -553,9 +553,9 @@ impl_map_nd!(
         out.apply_mut_with(self, |vo, v| {
             if v.notnan() {
                 prod *= *v;
-                *vo = prod;
+                vo.write(prod);
             } else {
-                *vo = T::nan();
+                vo.write(T::nan());
             }
         });
     }
@@ -569,27 +569,28 @@ impl_map_nd!(
     {
         let (mean, var) = self.meanvar_1d(stable);
         if var == 0. {
-            out.apply_mut(|v| *v = T::zero());
+            out.apply_mut(|v| {v.write(T::zero());});
         } else if var.isnan() {
-            out.apply_mut(|v| *v = T::nan());
+            out.apply_mut(|v| {v.write(T::nan());});
         } else {
-            out.apply_mut_with(self, |vo, v| *vo = ((v.f64() - mean) / var.sqrt()).cast());
+            out.apply_mut_with(self, |vo, v| {vo.write(((v.f64() - mean) / var.sqrt()).cast());});
         }
     }
 );
 
 impl_map_nd!(
     shift,
-    pub fn shift_1d<S2>(&self, out: &mut ArrBase<S2, D>, n: i32, fill: T) -> T
-    {where T: Clone; Send; Sync}
+    pub fn shift_1d<S2>(&self, out: &mut ArrBase<S2, D>, n: i32, fill: Option<T>) -> T
+    {where T: Clone; GetNone; Send; Sync}
     {
         if self.is_empty() {
             return;
         }
+        let fill = fill.unwrap_or(T::none());
         if n == 0 {
-            out.apply_mut_with(self, |vo, v| *vo = v.clone());
+            out.apply_mut_with(self, |vo, v| {vo.write(v.clone());});
         } else if n.unsigned_abs() as usize > self.shape()[0] - 1 {
-            out.apply_mut_with(self, |vo, _| *vo = fill.clone());
+            out.apply_mut_with(self, |vo, _| {vo.write(fill.clone());});
         } else if n > 0 {
             self.apply_window_to(out, n.unsigned_abs() as usize + 1, |_v, v_rm| {
                 if let Some(v_rm) = v_rm {
@@ -619,9 +620,9 @@ impl_map_nd!(
             return;
         }
         if n == 0 {
-            out.apply_mut_with(self, |vo, _| *vo = 0.);
+            out.apply_mut_with(self, |vo, _| {vo.write(0.);});
         } else if n.unsigned_abs() as usize > self.shape()[0] -1 {
-            out.apply_mut_with(self, |vo, _| *vo = f64::NAN);
+            out.apply_mut_with(self, |vo, _| {vo.write(f64::NAN);});
         } else if n > 0 {
             self.apply_window_to(out, n.unsigned_abs() as usize + 1, |v, v_rm| {
                 if let Some(v_rm) = v_rm {
@@ -651,9 +652,9 @@ impl_map_nd!(
             return;
         }
         if n == 0 {
-            out.apply_mut_with(self, |vo, _| *vo = 0.);
+            out.apply_mut_with(self, |vo, _| {vo.write(0.);});
         } else if n.unsigned_abs() as usize > self.shape()[0] -1 {
-            out.apply_mut_with(self, |vo, _| *vo = f64::NAN);
+            out.apply_mut_with(self, |vo, _| {vo.write(f64::NAN);});
         } else if n > 0 {
             self.apply_window_to(out, n.unsigned_abs() as usize + 1, |v, v_rm| {
                 if let Some(v_rm) = v_rm {
@@ -691,11 +692,11 @@ impl_map_nd!(
         out.apply_mut_with(self, |vo, v| {
             if *v > max {
                 // Note that NaN is excluded
-                *vo = max
+                vo.write(max);
             } else if *v < min {
-                *vo = min;
+                vo.write(min);
             } else {
-                *vo = *v
+                vo.write(*v);
             }
         })
     }
@@ -720,15 +721,15 @@ impl_map_nd!(
         match method {
             Bfill | Ffill => {
                 let mut last_valid: Option<T> = None;
-                let mut f = |vo: &mut T, v: &T| {
+                let mut f = |vo: &mut MaybeUninit<T>, v: &T| {
                     if v.isnan() {
                         if let Some(lv) = last_valid {
-                            *vo = lv;
+                            vo.write(lv);
                         } else {
-                            *vo = f64::NAN.cast();
+                            vo.write(f64::NAN.cast());
                         }
                     } else { // v is valid, update last_valid
-                        *vo = *v;
+                        vo.write(*v);
                         last_valid = Some(*v);
                     }
                 };
@@ -744,9 +745,9 @@ impl_map_nd!(
                 let value = value.expect("Fill value must be pass when using value to fillna");
                 let value: T = value.cast();
                 out.apply_mut_with(self, |vo, v| if v.isnan() {
-                    *vo = value;
+                    vo.write(value);
                 } else {
-                    *vo = *v;
+                    vo.write(*v);
                 });
             }
         }
@@ -774,7 +775,7 @@ impl_map_nd!(
                     self.clip_1d(out, min, max);
                 } else {
                     // elements in the given axis are all NaN or equal to a constant
-                    self.clone_to(out);
+                    self.clone_to_uninit(out);
                 }
             },
             Median => {
@@ -787,7 +788,7 @@ impl_map_nd!(
                     let max = median + method_params * mad;
                     self.clip_1d(out, min, max);
                 } else {
-                    self.clone_to(out);
+                    self.clone_to_uninit(out);
                 }
             },
             Sigma => {
@@ -800,7 +801,7 @@ impl_map_nd!(
                     let max = mean + method_params * std;
                     self.clip_1d(out, min, max);
                 } else {
-                    self.clone_to(out);
+                    self.clone_to_uninit(out);
                 }
             }
         }
@@ -817,17 +818,17 @@ impl_map_nd!(
         assert!(out.len() >= self.len());
         let mut i = 0;
         out.apply_mut(|v| {
-            *v = i;
+            v.write(i);
             i += 1;
         }); // set elements of out array
         if !rev {
             out.sort_unstable_by(|a, b| {
-                let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
+                let (va, vb) = unsafe { (*self.uget((a.assume_init_read()) as usize), *self.uget((b.assume_init_read()) as usize)) }; // safety: out不超过self的长度
                 va.nan_sort_cmp(&vb)
             });
         } else {
             out.sort_unstable_by(|a, b| {
-                let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
+                let (va, vb) = unsafe { (*self.uget((a.assume_init_read()) as usize), *self.uget((b.assume_init_read()) as usize)) }; // safety: out不超过self的长度
                 va.nan_sort_cmp_rev(&vb)
             });
         }
@@ -853,8 +854,8 @@ impl_map_nd!(
             return;
         } else if len == 1 {
             // safety: out.len() == self.len() == 1
-            unsafe { *out.uget_mut(0) = 1. };
-            return;
+            // unsafe { *out.uget_mut(0) = 1. };
+            return unsafe { out.uget_mut(0).write(1.); };
         }
         // argsort at first
         let mut idx_sorted = Arr1::from_iter(0..len);
@@ -872,7 +873,7 @@ impl_map_nd!(
 
         // if the smallest value is nan then all the elements are nan
         if unsafe { *self.uget(*idx_sorted.uget(0)) }.isnan() {
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut repeat_num = 1usize;
         let mut nan_flag = false;
@@ -890,8 +891,8 @@ impl_map_nd!(
                         cur_rank += 1;
                         for j in 0..repeat_num {
                             // safe because i >= repeat_num
-                            *out.uget_mut(*idx_sorted.uget(i - j)) =
-                                sum_rank.f64() / repeat_num.f64()
+                            let out = out.uget_mut(*idx_sorted.uget(i - j));
+                            out.write(sum_rank.f64() / repeat_num.f64());
                         }
                         idx = i + 1;
                         nan_flag = true;
@@ -903,7 +904,8 @@ impl_map_nd!(
                         cur_rank += 1;
                     } else if repeat_num == 1 {
                         // 无重复，可直接得出排名
-                        *out.uget_mut(idx) = cur_rank as f64;
+                        let out = out.uget_mut(idx);
+                        out.write(cur_rank as f64);
                         cur_rank += 1;
                     } else {
                         // 当前元素是最后一个重复元素
@@ -911,8 +913,8 @@ impl_map_nd!(
                         cur_rank += 1;
                         for j in 0..repeat_num {
                             // safe because i >= repeat_num
-                            *out.uget_mut(*idx_sorted.uget(i - j)) =
-                                sum_rank.f64() / repeat_num.f64()
+                            let out = out.uget_mut(*idx_sorted.uget(i - j));
+                            out.write(sum_rank.f64() / repeat_num.f64());
                         }
                         sum_rank = 0; // rank和归零
                         repeat_num = 1; // 重复计数归一
@@ -920,13 +922,15 @@ impl_map_nd!(
                 }
                 if nan_flag {
                     for i in idx..len {
-                        *out.uget_mut(*idx_sorted.uget(i)) = f64::NAN;
+                        let out = out.uget_mut(*idx_sorted.uget(i));
+                        out.write(f64::NAN);
                     }
                 } else {
                     sum_rank += cur_rank;
                     for i in len - repeat_num..len {
                         // safe because repeat_num <= len
-                        *out.uget_mut(*idx_sorted.uget(i)) = sum_rank.f64() / repeat_num.f64()
+                        let out = out.uget_mut(*idx_sorted.uget(i));
+                        out.write(sum_rank.f64() / repeat_num.f64());
                     }
                 }
             }
@@ -943,8 +947,8 @@ impl_map_nd!(
                         cur_rank += 1;
                         for j in 0..repeat_num {
                             // safe because i >= repeat_num
-                            *out.uget_mut(*idx_sorted.uget(i - j)) =
-                                sum_rank.f64() / (repeat_num * notnan_count).f64()
+                            let out = out.uget_mut(*idx_sorted.uget(i - j));
+                            out.write(sum_rank.f64() / (repeat_num * notnan_count).f64());
                         }
                         idx = i + 1;
                         nan_flag = true;
@@ -956,7 +960,8 @@ impl_map_nd!(
                         cur_rank += 1;
                     } else if repeat_num == 1 {
                         // 无重复，可直接得出排名
-                        *out.uget_mut(idx) = cur_rank.f64() / notnan_count.f64();
+                        let out = out.uget_mut(idx);
+                        out.write(cur_rank.f64() / notnan_count.f64());
                         cur_rank += 1;
                     } else {
                         // 当前元素是最后一个重复元素
@@ -964,8 +969,8 @@ impl_map_nd!(
                         cur_rank += 1;
                         for j in 0..repeat_num {
                             // safe because i >= repeat_num
-                            *out.uget_mut(*idx_sorted.uget(i - j)) =
-                                sum_rank.f64() / (repeat_num * notnan_count).f64()
+                            let out = out.uget_mut(*idx_sorted.uget(i - j));
+                            out.write(sum_rank.f64() / (repeat_num * notnan_count).f64());
                         }
                         sum_rank = 0; // rank和归零
                         repeat_num = 1; // 重复计数归一
@@ -973,14 +978,15 @@ impl_map_nd!(
                 }
                 if nan_flag {
                     for i in idx..len {
-                        *out.uget_mut(*idx_sorted.uget(i)) = f64::NAN;
+                        let out = out.uget_mut(*idx_sorted.uget(i));
+                        out.write(f64::NAN);
                     }
                 } else {
                     sum_rank += cur_rank;
                     for i in len - repeat_num..len {
                         // safe because repeat_num <= len
-                        *out.uget_mut(*idx_sorted.uget(i)) =
-                            sum_rank.f64() / (repeat_num * notnan_count).f64()
+                        let out = out.uget_mut(*idx_sorted.uget(i));
+                        out.write(sum_rank.f64() / (repeat_num * notnan_count).f64());
                     }
                 }
             }
@@ -996,10 +1002,12 @@ impl_map_nd!(
     {where T: Number}
     {
         let valid_count = self.count_notnan_1d();
-        let mut rank = Arr1::<f64>::zeros(self.raw_dim());
+        // let mut rank = Arr1::<f64>::zeros(self.raw_dim());
+        let mut rank = Arr1::<f64>::uninit(self.raw_dim());
         self.rank_1d(&mut rank, false, rev);
+        let rank = unsafe{rank.assume_init()};
         out.apply_mut_with(&rank, |vo, v| {
-            *vo = ((*v * group.f64()) / valid_count.f64()).ceil() as i32;
+            vo.write(((*v * group.f64()) / valid_count.f64()).ceil() as i32);
         })
     }
 );
@@ -1144,3 +1152,57 @@ impl_map_inplace_nd!(
         }
     }
 );
+
+impl<S, D> ArrBase<S, D>
+where
+    S: Data<Elem = String>,
+    D: Dimension,
+{
+    pub fn add_string<S2>(&self, other: &ArrBase<S2, D>) -> Arr<String, D>
+    where
+        S2: Data<Elem = String>,
+    {
+        Zip::from(&self.0)
+            .and(&other.0)
+            .par_map_collect(|s1, s2| s1.to_owned() + s2)
+            .wrap()
+    }
+
+    pub fn add_str<'a, S2: Data<Elem = &'a str>>(&self, other: &ArrBase<S2, D>) -> Arr<String, D> {
+        Zip::from(&self.0)
+            .and(&other.0)
+            .par_map_collect(|s1, s2| s1.to_owned() + s2)
+            .wrap()
+    }
+
+    pub fn strptime(&self, fmt: String) -> Arr<DateTime, D> {
+        self.map(|s| DateTime::parse(s, fmt.as_str()).unwrap_or_default())
+    }
+}
+
+impl<S, D> ArrBase<S, D>
+where
+    S: Data<Elem = DateTime>,
+    D: Dimension,
+{
+    pub fn strftime(&self, fmt: Option<&str>) -> Arr<String, D> {
+        self.map(|dt| dt.strftime(fmt))
+    }
+
+    pub fn sub_datetime<S2>(&self, other: &ArrBase<S2, D>, par: bool) -> Arr<TimeDelta, D>
+    where
+        S2: Data<Elem = DateTime>,
+    {
+        if !par {
+            Zip::from(&self.0)
+                .and(&other.0)
+                .map_collect(|v1, v2| *v1 - *v2)
+                .wrap()
+        } else {
+            Zip::from(&self.0)
+                .and(&other.0)
+                .par_map_collect(|v1, v2| *v1 - *v2)
+                .wrap()
+        }
+    }
+}

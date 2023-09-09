@@ -74,6 +74,49 @@ impl_numeric_cast!(f64 => { f32: OptF32, f64: OptF64 });
 impl_numeric_cast!(char => { char });
 impl_numeric_cast!(bool => {});
 
+macro_rules! impl_bool_cast {
+    ($($T: ty),*) => {
+        $(
+            impl Cast<$T> for bool {
+                #[inline] fn cast(self) -> $T { Cast::<i32>::cast(self).cast() }
+            }
+        )*
+    };
+}
+
+macro_rules! impl_time_cast {
+    ($($T: ty),*) => {
+        $(
+            impl Cast<$T> for DateTime {
+                #[inline] fn cast(self) -> $T { Cast::<i64>::cast(self).cast() }
+            }
+
+
+            impl Cast<$T> for TimeDelta {
+                #[inline] fn cast(self) -> $T { Cast::<i64>::cast(self).cast() }
+            }
+        )*
+
+    };
+}
+
+impl Cast<DateTime> for DateTime {
+    #[inline]
+    fn cast(self) -> DateTime {
+        self
+    }
+}
+
+impl Cast<TimeDelta> for TimeDelta {
+    #[inline]
+    fn cast(self) -> TimeDelta {
+        self
+    }
+}
+
+impl_bool_cast!(f32, f64);
+impl_time_cast!(f32, f64, i32, u32, u64, usize, isize, bool, OptUsize);
+
 macro_rules! impl_option_numeric_cast {
     (@ $T: ty: $Real: ty => $(#[$cfg:meta])* impl $U: ty ) => {
         $(#[$cfg])*
@@ -151,11 +194,18 @@ impl_option_numeric_cast!(OptF64: f64 => { f32: OptF32, f64: OptF64 });
 impl_option_numeric_cast!(OptI32: i32 => { f32: OptF32, f64: OptF64 });
 #[cfg(feature = "option_dtype")]
 impl_option_numeric_cast!(OptI64: i64 => { f32: OptF32, f64: OptF64 });
+#[cfg(feature = "option_dtype")]
+impl_bool_cast!(OptF32, OptF64);
+impl_time_cast!(OptF32, OptF64, OptI32, OptI64);
 
 macro_rules! impl_cast_from_string {
     ($($T: ty),*) => {
         $(
             impl Cast<$T> for String {
+                #[inline] fn cast(self) -> $T { self.parse().expect("Parse string error") }
+            }
+
+            impl Cast<$T> for &str {
                 #[inline] fn cast(self) -> $T { self.parse().expect("Parse string error") }
             }
         )*
@@ -170,6 +220,10 @@ macro_rules! impl_option_cast_from_string {
             impl Cast<$T> for String {
                 #[inline] fn cast(self) -> $T { self.parse().expect("Parse string error") }
             }
+
+            impl Cast<$T> for &str {
+                #[inline] fn cast(self) -> $T { self.parse().expect("Parse string error") }
+            }
         )*
     };
 }
@@ -177,6 +231,20 @@ macro_rules! impl_option_cast_from_string {
 impl Cast<String> for String {
     #[inline]
     fn cast(self) -> String {
+        self
+    }
+}
+
+impl Cast<String> for &str {
+    #[inline]
+    fn cast(self) -> String {
+        self.to_string()
+    }
+}
+
+impl<'a> Cast<&'a str> for &'a str {
+    #[inline]
+    fn cast(self) -> &'a str {
         self
     }
 }

@@ -109,3 +109,11 @@ impl TpHash for f32 {
         unsafe { std::mem::transmute::<f32, u32>((*self).cast()) as u64 }
     }
 }
+
+impl TpHash for bool {
+    #[inline]
+    #[allow(clippy::transmute_float_to_int)]
+    fn hash(&self) -> u64 {
+        *self as u64
+    }
+}

@@ -1,5 +1,7 @@
+use crate::TpResult;
+
 use super::{ArrBase, WrapNdarray};
-use ndarray::{Dimension, Ix1, IxDyn, RawArrayViewMut, StrideShape, ViewRepr};
+use ndarray::{Dimension, Ix0, Ix1, IxDyn, RawArrayViewMut, StrideShape, ViewRepr};
 
 pub type ArrViewMut<'a, T, D> = ArrBase<ViewRepr<&'a mut T>, D>;
 pub type ArrViewMut1<'a, T> = ArrViewMut<'a, T, Ix1>;
@@ -47,5 +49,18 @@ impl<'a, T, D: Dimension> ArrViewMut<'a, T, D> {
                 .deref_into_view_mut()
                 .wrap()
         }
+    }
+}
+
+impl<'a, T> ArrViewMut<'a, T, Ix0> {
+    #[inline]
+    pub fn into_scalar(self) -> &'a mut T {
+        self.0.into_scalar()
+    }
+}
+
+impl<'a, T> ArrViewMutD<'a, T> {
+    pub fn into_scalar(self) -> TpResult<&'a mut T> {
+        Ok(self.to_dim0()?.into_scalar())
     }
 }

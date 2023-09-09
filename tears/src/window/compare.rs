@@ -13,7 +13,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut min: T = T::max_();
         let mut min_idx = 0usize;
@@ -27,13 +27,12 @@ impl_map_nd!(
             if v < min {
                 (min, min_idx) = (v, i);
             }
-            unsafe {
-                *out.uget_mut(i) = if n >= min_periods {
-                    (min_idx + 1).f64()
-                } else {
-                    f64::NAN
-                };
-            }
+            let out = unsafe {out.uget_mut(i)};
+            if n >= min_periods {
+                out.write((min_idx + 1).f64());
+            } else {
+                out.write(f64::NAN);
+            };
         }
         for (start, end) in (window - 1..self.len()).enumerate() {
             // 安全性：start和end不会超过self和out的长度
@@ -56,10 +55,11 @@ impl_map_nd!(
                     // 当前是最小值
                     (min, min_idx) = (v, end);
                 }
-                *out.uget_mut(end) = if n >= min_periods {
-                    (min_idx - start + 1).f64()
+                let out = out.uget_mut(end);
+                if n >= min_periods {
+                    out.write((min_idx - start + 1).f64());
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN);
                 };
                 if self.uget(start).notnan() {
                     n -= 1
@@ -82,7 +82,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut max: T = T::min_();
         let mut max_idx = 0usize;
@@ -96,13 +96,12 @@ impl_map_nd!(
             if v > max {
                 (max, max_idx) = (v, i);
             }
-            unsafe {
-                *out.uget_mut(i) = if n >= min_periods {
-                    (max_idx + 1).f64()
-                } else {
-                    f64::NAN
-                };
-            }
+            let out = unsafe {out.uget_mut(i)};
+            if n >= min_periods {
+                out.write((max_idx + 1).f64());
+            } else {
+                out.write(f64::NAN);
+            };
         }
         for (start, end) in (window - 1..self.len()).enumerate() {
             // 安全性：start和end不会超过self和out的长度
@@ -125,10 +124,11 @@ impl_map_nd!(
                     // 当前是最大值
                     (max, max_idx) = (v, end);
                 }
-                *out.uget_mut(end) = if n >= min_periods {
-                    (max_idx - start + 1).f64()
+                let out = out.uget_mut(end);
+                if n >= min_periods {
+                    out.write((max_idx - start + 1).f64());
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN);
                 };
                 if self.uget(start).notnan() {
                     n -= 1
@@ -151,7 +151,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut min: T = T::max_();
         let mut min_idx = 0usize;
@@ -165,13 +165,12 @@ impl_map_nd!(
             if v < min {
                 (min, min_idx) = (v, i);
             }
-            unsafe {
-                *out.uget_mut(i) = if n >= min_periods {
-                    min.f64()
-                } else {
-                    f64::NAN
-                };
-            }
+            let out = unsafe {out.uget_mut(i)};
+            if n >= min_periods {
+                out.write(min.f64());
+            } else {
+                out.write(f64::NAN);
+            };
         }
         for (start, end) in (window - 1..self.len()).enumerate() {
             // 安全性：start和end不会超过self和out的长度
@@ -194,10 +193,11 @@ impl_map_nd!(
                     // 当前是最小值
                     (min, min_idx) = (v, end);
                 }
-                *out.uget_mut(end) = if n >= min_periods {
-                    min.f64()
+                let out = out.uget_mut(end);
+                if n >= min_periods {
+                    out.write(min.f64());
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN);
                 };
                 if self.uget(start).notnan() {
                     n -= 1
@@ -220,7 +220,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut max: T = T::min_();
         let mut max_idx = 0usize;
@@ -234,13 +234,13 @@ impl_map_nd!(
             if v > max {
                 (max, max_idx) = (v, i);
             }
-            unsafe {
-                *out.uget_mut(i) = if n >= min_periods {
-                    max.f64()
-                } else {
-                    f64::NAN
-                };
-            }
+            let out = unsafe {out.uget_mut(i)};
+            if n >= min_periods {
+                out.write(max.f64());
+            } else {
+                out.write(f64::NAN);
+            };
+
         }
         for (start, end) in (window - 1..self.len()).enumerate() {
             // 安全性：start和end不会超过self和out的长度
@@ -263,10 +263,11 @@ impl_map_nd!(
                     // 当前是最大值
                     (max, max_idx) = (v, end);
                 }
-                *out.uget_mut(end) = if n >= min_periods {
-                    max.f64()
+                let out = out.uget_mut(end);
+                if n >= min_periods {
+                    out.write(max.f64());
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN);
                 };
                 if self.uget(start).notnan() {
                     n -= 1
@@ -289,7 +290,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut n = 0usize;
         for i in 0..window - 1 {
@@ -311,10 +312,11 @@ impl_map_nd!(
                 } else {
                     rank = f64::NAN
                 };
-                *out.uget_mut(i) = if n >= min_periods {
-                    rank + 0.5 * (n_repeat - 1).f64()
+                let out = out.uget_mut(i);
+                if n >= min_periods {
+                    out.write(rank + 0.5 * (n_repeat - 1).f64())
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN)
                 };
             }
         }
@@ -337,10 +339,11 @@ impl_map_nd!(
                 } else {
                     rank = f64::NAN
                 };
-                *out.uget_mut(end) = if n >= min_periods {
-                    rank + 0.5 * (n_repeat - 1).f64() // 对于重复值的method: average
+                let out = out.uget_mut(end);
+                if n >= min_periods {
+                    out.write(rank + 0.5 * (n_repeat - 1).f64()) // 对于重复值的method: average
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN)
                 };
                 let v = *self.uget(start);
                 if v.notnan() {
@@ -364,7 +367,7 @@ impl_map_nd!(
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| *v = f64::NAN);
+            return out.apply_mut(|v| {v.write(f64::NAN);});
         }
         let mut n = 0usize;
         for i in 0..window - 1 {
@@ -386,10 +389,11 @@ impl_map_nd!(
                 } else {
                     rank = f64::NAN
                 };
-                *out.uget_mut(i) = if n >= min_periods {
-                    (rank + 0.5 * (n_repeat - 1).f64()) / n.f64()
+                let out = out.uget_mut(i);
+                if n >= min_periods {
+                    out.write((rank + 0.5 * (n_repeat - 1).f64()) / n.f64());
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN);
                 };
             }
         }
@@ -412,10 +416,11 @@ impl_map_nd!(
                 } else {
                     rank = f64::NAN
                 };
-                *out.uget_mut(end) = if n >= min_periods {
-                    (rank + 0.5 * (n_repeat - 1).f64()) / n.f64() // 对于重复值的method: average
+                let out = out.uget_mut(end);
+                if n >= min_periods {
+                    out.write((rank + 0.5 * (n_repeat - 1).f64()) / n.f64()); // 对于重复值的method: average
                 } else {
-                    f64::NAN
+                    out.write(f64::NAN);
                 };
                 let v = *self.uget(start);
                 if v.notnan() {

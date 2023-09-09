@@ -271,13 +271,13 @@ def test_fillna():
     for method in ["ffill", "bfill"]:
         assert_allclose3(
             tp.fillna(s, method),
-            Expr(s).fillna(method).eview(),
+            Expr(s, copy=True).fillna(method).eview(),
             s.fillna(method=method).values,
         )
-        # # test inplace
-        # s1 = s.copy()
-        # tp.fillna(s1, method, inplace=True)
-        # assert_allclose(s1, s.fillna(method=method).values)
+        # test inplace
+        s1 = s.copy()
+        tp.fillna(s1, method, inplace=True)
+        assert_allclose(s1, s.fillna(method=method).values)
 
     # test fill value directly
     fill_value = 101
@@ -286,9 +286,9 @@ def test_fillna():
         Expr(s, copy=True).fillna(value=fill_value).eview(),
         s.fillna(fill_value).values,
     )
-    # # test inplace
-    # tp.fillna(s, value=fill_value, inplace=True)
-    # assert_allclose(s, np.array([101, 5, 6, 733, 101, 34, 101, 101]))
+    # test inplace
+    tp.fillna(s, value=fill_value, inplace=True)
+    assert_allclose(s, np.array([101, 5, 6, 733, 101, 34, 101, 101]))
 
 
 def test_clip():
@@ -296,10 +296,10 @@ def test_clip():
     assert_allclose3(
         tp.clip(s, 5, 100), Expr(s, copy=True).clip(5, 100).eview(), s.clip(5, 100)
     )
-    # # test inplace
-    # s1 = s.copy()
-    # tp.clip(s1, 5, 100, inplace=True)
-    # assert_allclose(s1, s.clip(5, 100))
+    # test inplace
+    s1 = s.copy()
+    tp.clip(s1, 5, 100, inplace=True)
+    assert_allclose(s1, s.clip(5, 100))
 
 
 @given(make_arr((10, 2), nan_p=0.2), st.integers(0, 1))
@@ -320,10 +320,10 @@ def test_zscore():
         s2 = Expr(s, copy=True).zscore(stable).eview()  # lazy
         s3 = (s - s.mean()) / s.std()  # expect
         assert_allclose3(s1, s2, s3)
-        # # test inplace
-        # s_copy = s.copy()
-        # tp.zscore(s_copy, stable, inplace=True)
-        # assert_series_equal(s_copy, s3)
+        # test inplace
+        s_copy = s.copy()
+        tp.zscore(s_copy, stable, inplace=True)
+        assert_series_equal(s_copy, s3)
 
 
 def test_where():
@@ -346,10 +346,10 @@ def test_winsorize():
     lower, upper = np.nanquantile(s, [q, 1 - q])
     s3 = s.clip(lower, upper)
     assert_allclose3(s1, s2, s3)
-    # # test quantile inplace
-    # s_copy = s.copy()
-    # tp.winsorize(s_copy, "quantile", q, inplace=True)
-    # assert_series_equal(s_copy, s3)
+    # test quantile inplace
+    s_copy = s.copy()
+    tp.winsorize(s_copy, "quantile", q, inplace=True)
+    assert_series_equal(s_copy, s3)
 
     # median method
     q = 1
