@@ -155,10 +155,19 @@ impl PyExpr {
         }
     }
 
-    #[getter]
-    #[allow(unreachable_patterns)]
-    pub fn get_view(self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
-        let data = self.e.view_data().map_err(StrError::to_py)?;
+    #[pyo3(signature=(context=None))]
+    pub fn view_in(
+        self: PyRefMut<Self>,
+        context: Option<&PyAny>,
+        py: Python,
+    ) -> PyResult<PyObject> {
+        let ct: PyContext<'static> = if let Some(context) = context {
+            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+        } else {
+            Default::default()
+        };
+        let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
+        let data = self.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
         let container = unsafe { PyAny::from_borrowed_ptr(py, self.as_ptr()) };
         if matches!(&data, Data::ArrVec(_)) {
             if let Data::ArrVec(arr_vec) = data {
@@ -177,7 +186,7 @@ impl PyExpr {
                 return Ok(out.into_py(py));
             }
         }
-        let arr = data.view_arr(None)?;
+        let arr = data.view_arr(ct_rs.as_ref())?;
         if matches!(arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
             let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String, TimeDelta);
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
@@ -202,17 +211,23 @@ impl PyExpr {
         )
     }
 
+    #[getter]
     #[allow(unreachable_patterns)]
-    #[pyo3(signature=(context=None))]
-    /// eval and view, used for fast test
-    pub fn eview(
-        mut self: PyRefMut<Self>,
-        context: Option<&PyAny>,
-        py: Python,
-    ) -> PyResult<PyObject> {
-        self.eval_inplace(context)?;
-        self.get_view(py)
+    pub fn get_view(self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
+        self.view_in(None, py)
     }
+
+    // #[allow(unreachable_patterns)]
+    // #[pyo3(signature=(context=None))]
+    // /// eval and view, used for fast test
+    // pub fn eview(
+    //     mut self: PyRefMut<Self>,
+    //     context: Option<&PyAny>,
+    //     py: Python,
+    // ) -> PyResult<PyObject> {
+    //     self.eval_inplace(context.clone())?;
+    //     self.view_in(context, py)
+    // }
 
     #[allow(unreachable_patterns)]
     #[pyo3(signature=(unit=None, context=None))]
@@ -230,7 +245,7 @@ impl PyExpr {
         let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
         // let mut expr = self.clone();
         self.e.eval_inplace(ct_rs.clone())?;
-        let data = self.e.view_data().map_err(StrError::to_py)?;
+        let data = self.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
         // let mut expr = self.e.clone();
         if matches!(&data, Data::ArrVec(_)) {
             if let Data::ArrVec(_) = data {
@@ -248,7 +263,7 @@ impl PyExpr {
                 return Ok(out.into_py(py));
             }
         }
-        let arr = data.view_arr(None)?;
+        let arr = data.view_arr(ct_rs.as_ref())?;
         if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
             let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String, TimeDelta);
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);

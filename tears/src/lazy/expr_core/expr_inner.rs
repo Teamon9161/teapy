@@ -10,7 +10,7 @@ pub struct ExprInner<'a> {
     // a field to store the output,
     // as the output of different context is different
     // we can not change expression base in each context
-    pub cxt_ref: Option<Data<'a>>,
+    pub ctx_ref: Option<Data<'a>>,
 }
 
 impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
@@ -20,7 +20,7 @@ impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
             base: Data::Arr(a.into()),
             name: None,
             nodes: Vec::new(),
-            cxt_ref: None,
+            ctx_ref: None,
         }
     }
 }
@@ -32,7 +32,7 @@ impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a> {
             base: Data::Arr(a.into()),
             name: None,
             nodes: Vec::new(),
-            cxt_ref: None,
+            ctx_ref: None,
         }
     }
 }
@@ -43,7 +43,7 @@ impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for ExprInner<'a> {
             base: Data::Arr(arr.into()),
             name: None,
             nodes: Vec::new(),
-            cxt_ref: None,
+            ctx_ref: None,
         }
     }
 }
@@ -77,7 +77,7 @@ impl<'a> ExprInner<'a> {
             base: data,
             name,
             nodes: Vec::new(),
-            cxt_ref: None,
+            ctx_ref: None,
         }
     }
 
@@ -94,7 +94,7 @@ impl<'a> ExprInner<'a> {
             base: new_base.unwrap(),
             name,
             nodes: new_nodes,
-            cxt_ref: None,
+            ctx_ref: None,
         }
     }
 
@@ -151,15 +151,23 @@ impl<'a> ExprInner<'a> {
         self.nodes.push(Arc::new(f));
     }
 
-    pub fn eval_inplace(&mut self, mut ctx: Option<Context<'a>>) -> TpResult<&mut Self> {
+    pub fn eval_inplace(
+        &mut self,
+        mut ctx: Option<Context<'a>>,
+        freeze: bool,
+    ) -> TpResult<&mut Self> {
         if self.step() == 0 {
             if let Some(e) = self.base.as_expr_mut() {
-                e.eval_inplace(ctx)?;
+                if freeze {
+                    e.eval_inplace_freeze(ctx)?;
+                } else {
+                    e.eval_inplace(ctx)?;
+                }
             }
             return Ok(self);
         }
 
-        if ctx.is_none() {
+        if ctx.is_none() || freeze {
             let mut data = std::mem::take(&mut self.base);
             for f in &self.nodes {
                 (data, ctx) = f((data, ctx))?;
@@ -177,15 +185,24 @@ impl<'a> ExprInner<'a> {
             for f in &self.nodes {
                 (data, ctx) = f((data, ctx))?;
             }
-            self.cxt_ref = Some(data);
+            self.ctx_ref = Some(data);
         }
         Ok(self)
     }
 
-    pub fn eval(mut self, ctx: Option<Context<'a>>) -> TpResult<Self> {
-        self.eval_inplace(ctx)?;
+    pub fn eval(mut self, ctx: Option<Context<'a>>, freeze: bool) -> TpResult<Self> {
+        self.eval_inplace(ctx, freeze)?;
         Ok(self)
     }
+
+    // pub fn ctx_ref_to_owned(&mut self) -> TpResult<&mut Self> {
+    //     if self.ctx_ref.is_some() {
+    //         dbg!("clear context");
+    //         self.base = std::mem::take(&mut self.ctx_ref).unwrap();
+    //         self.nodes.clear();
+    //     }
+    //     Ok(self)
+    // }
 
     pub fn into_out(self, mut ctx: Option<Context<'a>>) -> TpResult<Data<'a>> {
         let mut data = self.base;
@@ -215,8 +232,8 @@ impl<'a> ExprInner<'a> {
         if (self.step() > 0) & ctx.is_none() {
             return Err("Can not view array before evaluate the expression".into());
         }
-        if ctx.is_some() && self.step() != 0 {
-            self.cxt_ref.as_ref().unwrap().view_arr(ctx)
+        if (ctx.is_some() || matches!(&self.base, Data::Context(_))) && self.step() != 0 {
+            self.ctx_ref.as_ref().unwrap().view_arr(ctx)
         } else {
             self.base.view_arr(ctx)
         }
@@ -233,7 +250,7 @@ impl<'a> ExprInner<'a> {
             if self.step() == 0 {
                 return self.base.view_arr_vec(ctx);
             }
-            self.cxt_ref.as_ref().unwrap().view_arr_vec(ctx)
+            self.ctx_ref.as_ref().unwrap().view_arr_vec(ctx)
         } else {
             self.base.view_arr_vec(ctx)
         }
@@ -245,23 +262,27 @@ impl<'a> ExprInner<'a> {
         ctx: Option<&'b Context<'a>>,
     ) -> TpResult<Arc<OlsResult<'a>>> {
         if (self.step() > 0) & ctx.is_none() {
-            return Err("Do not lock base before evaluate the expression".into());
+            return Err("Do not view array before evaluate the expression".into());
         }
         if ctx.is_some() {
             if self.step() == 0 {
                 return self.base.view_ols_res(ctx);
             }
-            self.cxt_ref.as_ref().unwrap().view_ols_res(ctx)
+            self.ctx_ref.as_ref().unwrap().view_ols_res(ctx)
         } else {
             self.base.view_ols_res(ctx)
         }
     }
 
-    pub fn view_data(&self) -> TpResult<&Data<'a>> {
-        if self.step() > 0 {
-            return Err("Do not lock base before evaluate the expression".into());
+    pub fn view_data(&self, context: Option<&Context<'a>>) -> TpResult<&Data<'a>> {
+        if (self.step() > 0) && (self.ctx_ref.is_none()) {
+            return Err("Do not view array before evaluate the expression".into());
         }
-        Ok(&self.base)
+        if context.is_some() || matches!(&self.base, Data::Context(_)) {
+            Ok(self.ctx_ref.as_ref().unwrap())
+        } else {
+            Ok(&self.base)
+        }
     }
 
     pub fn get_chain_base(&self) -> Data<'a> {
@@ -285,7 +306,7 @@ impl<'a> ExprInner<'a> {
             base,
             name: self.name.clone(),
             nodes,
-            cxt_ref: None,
+            ctx_ref: None,
         }
     }
 }

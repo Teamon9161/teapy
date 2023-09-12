@@ -7,15 +7,9 @@ from .mod_func import *
 from .teapy import arange
 from .teapy import calc_ret_single as _calc_ret_single
 from .teapy import calc_ret_single_with_spread as _calc_ret_single_with_spread
-from .teapy import (
-    concat,
-    context,
-    eval_dicts,
-    eval_exprs,
-    expr_register,
-    full,
-    get_version,
-)
+from .teapy import concat
+from .teapy import context as ct
+from .teapy import eval_dicts, eval_exprs, expr_register, full, get_version
 from .teapy import parse_expr as asexpr
 from .teapy import parse_expr_list as asexprs
 from .teapy import stack, timedelta

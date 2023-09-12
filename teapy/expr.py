@@ -14,6 +14,17 @@ def register(f):
 
 
 @register
+def eval_in(self, context=None, inplace=False):
+    return self.eval(inplace=inplace, context=context)
+
+
+@register
+def eview(self, context=None):
+    self.eval(True, context=context)
+    return self.view_in(context)
+
+
+@register
 def unique(self, others=None, keep="first"):
     if isinstance(others, (str, int)):
         others = [others]

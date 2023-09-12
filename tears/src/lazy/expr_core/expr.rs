@@ -162,23 +162,40 @@ impl<'a> Expr<'a> {
             } else {
                 unreachable!("Arc::get_mut failed")
             }
-            // self.0.lock().eval_inplace(ctx)?;
         }
-        // Ok(self)
-        // self.lock().chain_f_ctx(f)
     }
 
     #[inline]
     pub fn eval_inplace(&mut self, ctx: Option<Context<'a>>) -> TpResult<&mut Self> {
-        // self.0.lock().eval_inplace(ctx)
         if let Some(e) = Arc::get_mut(&mut self.0) {
-            e.get_mut().eval_inplace(ctx)?;
+            e.get_mut().eval_inplace(ctx, false)?;
         } else {
-            self.0.lock().eval_inplace(ctx)?;
+            self.0.lock().eval_inplace(ctx, false)?;
         }
         Ok(self)
     }
 
+    /// this will freeze the context of the expression,
+    /// the expression can not be evaluated again in other context
+    #[inline]
+    pub fn eval_inplace_freeze(&mut self, ctx: Option<Context<'a>>) -> TpResult<&mut Self> {
+        if let Some(e) = Arc::get_mut(&mut self.0) {
+            e.get_mut().eval_inplace(ctx, true)?;
+        } else {
+            self.0.lock().eval_inplace(ctx, true)?;
+        }
+        Ok(self)
+    }
+
+    // pub fn cxt_ref_to_owned(&mut self) -> TpResult<&mut Self> {
+    //     if let Some(e) = Arc::get_mut(&mut self.0) {
+    //         e.get_mut().ctx_ref_to_owned()?;
+    //     } else {
+    //         // unreachable!("the result may be incorrect in context evaluation")
+    //         self.0.lock().ctx_ref_to_owned()?;
+    //     }
+    //     Ok(self)
+    // }
     // pub fn into_out(self, ctx: Option<Context<'a>>) -> TpResult<Data<'a>> {
     //     match Arc::try_unwrap(self.0) {
     //         Ok(inner) => inner.into_inner().into_out(ctx),
@@ -201,7 +218,7 @@ impl<'a> Expr<'a> {
             Err(expr) => {
                 let out = {
                     let mut e = expr.lock();
-                    e.eval_inplace(ctx.clone())?;
+                    e.eval_inplace(ctx.clone(), false)?;
                     let arr = e.view_arr(ctx.as_ref())?;
                     // need clone here
                     match_arrok!(arr, a, { a.view().to_owned().into() })
@@ -218,7 +235,7 @@ impl<'a> Expr<'a> {
             Ok(inner) => inner.into_inner().into_ols_res(ctx),
             Err(expr) => {
                 let mut e = expr.lock();
-                e.eval_inplace(ctx.clone())?;
+                e.eval_inplace(ctx.clone(), false)?;
                 let res = e.view_ols_res(ctx.as_ref())?;
                 Ok(res)
             }
@@ -231,7 +248,7 @@ impl<'a> Expr<'a> {
             Ok(inner) => inner.into_inner().into_arr_vec(ctx),
             Err(expr) => {
                 let mut e = expr.lock();
-                e.eval_inplace(ctx.clone())?;
+                e.eval_inplace(ctx.clone(), false)?;
                 let arr_vec = e.view_arr_vec(ctx.as_ref())?;
                 // need clone here
                 let arr_vec = arr_vec
@@ -246,9 +263,9 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
-    pub fn view_data(&self) -> TpResult<&Data<'a>> {
+    pub fn view_data(&self, context: Option<&Context<'a>>) -> TpResult<&Data<'a>> {
         let e = self.lock();
-        let data = e.view_data()?;
+        let data = e.view_data(context)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
         unsafe { Ok(std::mem::transmute(data)) }
@@ -258,7 +275,7 @@ impl<'a> Expr<'a> {
     #[cfg(feature = "blas")]
     pub fn view_ols_res(&self, ctx: Option<&Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
         let mut e = self.lock();
-        e.eval_inplace(ctx.cloned())?;
+        e.eval_inplace(ctx.cloned(), false)?;
         let data = e.view_ols_res(ctx)?;
         Ok(data)
         // safety: the array can only be read when the expression is already evaluated
@@ -269,7 +286,7 @@ impl<'a> Expr<'a> {
     #[inline]
     pub fn view_arr(&self, ctx: Option<&Context<'a>>) -> TpResult<&ArrOk<'a>> {
         let mut e = self.lock();
-        e.eval_inplace(ctx.cloned())?;
+        e.eval_inplace(ctx.cloned(), false)?;
         let arr = e.view_arr(ctx)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
@@ -279,7 +296,7 @@ impl<'a> Expr<'a> {
     #[inline]
     pub fn view_arr_vec(&self, ctx: Option<&Context<'a>>) -> TpResult<Vec<&ArrOk<'a>>> {
         let mut e = self.lock();
-        e.eval_inplace(ctx.cloned())?;
+        e.eval_inplace(ctx.cloned(), false)?;
         let arr = e.view_arr_vec(ctx)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
