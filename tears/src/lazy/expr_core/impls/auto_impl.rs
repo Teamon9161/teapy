@@ -24,7 +24,7 @@ macro_rules! auto_impl_view {
             pub fn $func(&mut self, other: Expr<'a>, $($p: $p_ty),*) -> &mut Self {
                 self.chain_f_ctx(move |(data, ctx): FuncOut<'a>| {
                     // other.eval_inplace(ctx.clone())?;
-                    let other_arr = other.view_arr(None)?;
+                    let other_arr = other.view_arr(ctx.as_ref())?;
                     let arr = data.view_arr(ctx.as_ref())?;
                     match_arrok!(
                         (arr, a, F64, F32, I64, I32),

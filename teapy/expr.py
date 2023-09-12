@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .teapy import PyExpr as Expr
 from .teapy import expr_register as _expr_register
+from .teapy import parse_expr_list as asexprs
 
 Expr.where = Expr.where_
 
@@ -72,7 +73,7 @@ class ExprRolling:
         self.idx = idx
         self.offset = offset
         self.start_by = start_by
-        self.others = others
+        self.others = asexprs(others, copy=False) if others is not None else None
         self.name_auto = 0
         if by is not None and "DateTime" in by.dtype:
             self.is_time = True
@@ -112,11 +113,14 @@ class ExprRolling:
         idx = self.get_idx()
         if self.expr.name is None:
             self.expr.alias(self.__get_name_auto(), inplace=True)
-            self.name_auto
         if self.others is not None:
-            for e in self.others:
-                if e.name is None:
-                    e.alias(self.__get_name_auto(), inplace=True)
+            if isinstance(self.others, (list, tuple)):
+                for e in self.others:
+                    if e.name is None:
+                        e.alias(self.__get_name_auto(), inplace=True)
+            else:
+                if self.others.name is None:
+                    self.others.alias(self.__get_name_auto(), inplace=True)
         if isinstance(agg_expr, (list, tuple)):
             return [
                 self.expr.rolling_apply_with_start(

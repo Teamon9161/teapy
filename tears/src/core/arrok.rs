@@ -11,6 +11,7 @@ use ndarray::{Axis, IxDyn, SliceArg};
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
 
+#[derive(Clone)]
 pub enum ArrOk<'a> {
     Bool(ArbArray<'a, bool>),
     Usize(ArbArray<'a, usize>),
@@ -406,14 +407,14 @@ impl_same_dtype_concat_1d!(
     VecUsize
 );
 
-impl<'a> ToOwned for ArrOk<'a> {
-    type Owned = ArrOk<'a>;
-    #[allow(unreachable_patterns)]
-    #[inline]
-    fn to_owned(&self) -> Self::Owned {
-        match_arrok!(self, a, { a.to_owned().into() })
-    }
-}
+// impl<'a> ToOwned for ArrOk<'a> {
+//     type Owned = ArrOk<'a>;
+//     #[allow(unreachable_patterns)]
+//     #[inline]
+//     fn to_owned(&self) -> Self::Owned {
+//         match_arrok!(self, a, { a.to_owned().into() })
+//     }
+// }
 
 impl<'a> Cast<ArbArray<'a, &'a str>> for ArrOk<'a> {
     #[inline]

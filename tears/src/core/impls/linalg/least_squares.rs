@@ -1,13 +1,11 @@
-use crate::{StrError, TpResult};
-
 use super::{transpose, transpose_over, MatrixLayout};
 use crate::{
     utils::{vec_uninit, VecAssumeInit},
-    Arr, Arr1, Arr2, ArrD, WrapNdarray,
+    Arr, Arr1, Arr2, ArrD, ArrView1, ArrView2, StrError, TpResult, WrapNdarray,
 };
 use lapack_sys::dgelsd_;
 use ndarray::{s, Axis, Ix0, ShapeBuilder};
-use std::mem::transmute;
+// use std::mem::transmute;
 
 #[derive(Debug, Clone)]
 pub struct LeastSquaresResult {
@@ -27,7 +25,12 @@ pub struct LeastSquaresResult {
 impl Arr2<f64> {
     pub fn least_squares(&mut self, rhs: &mut ArrD<f64>) -> TpResult<LeastSquaresResult> {
         if self.shape()[0] != rhs.shape()[0] {
-            return Err("Invalid shape in least squares".into());
+            return Err(format!(
+                "Invalid shape in least_squares, x shape: {:?}, y shape: {:?}",
+                &self.shape(),
+                &rhs.shape()
+            )
+            .into());
         }
         match rhs.ndim() {
             1 => {
@@ -35,21 +38,28 @@ impl Arr2<f64> {
                 let mut res = if n > m {
                     // we need a new rhs b/c it will be overwritten with the solution
                     // for which we need `n` entries
-                    let mut new_rhs = Arr1::<f64>::zeros((n,));
-                    new_rhs.slice_mut(s![0..m]).assign(rhs);
+                    // let mut new_rhs = Arr1::<f64>::zeros((n,));
+                    let mut new_rhs = Arr1::<f64>::uninit((n,));
+                    new_rhs.slice_mut(s![0..m]).zip_mut_with(rhs, |x, y| {
+                        x.write(*y);
+                    });
+                    let new_rhs = unsafe { new_rhs.assume_init() };
                     let mut new_rhs = new_rhs.to_dimd();
                     let a_layout = self.layout()?;
-                    let b_layout = new_rhs.layout()?;
-                    least_squares_impl(self, a_layout, &mut new_rhs, b_layout)?
+                    let b_layout = new_rhs.layout()?.resized(new_rhs.len() as i32, 1);
+                    let mut out = least_squares_impl(self, a_layout, &mut new_rhs, b_layout)?;
+                    out.solution = Some(new_rhs.slice(s![0..n]).to_owned().to_dimd());
+                    out
                 } else {
                     let a_layout = self.layout()?;
-                    let b_layout = rhs.layout()?;
-                    least_squares_impl(self, a_layout, rhs, b_layout)?
+                    let b_layout = rhs.layout()?.resized(rhs.len() as i32, 1);
+                    let mut out = least_squares_impl(self, a_layout, rhs, b_layout)?;
+                    out.solution = Some(rhs.slice(s![0..n]).to_owned().to_dimd());
+                    out
                 };
-                res.solution = Some(rhs.slice(s![0..n]).to_owned().to_dimd());
+                let rhs = rhs.view().to_dim1()?;
                 res.residual_sum_of_squares =
-                    compute_residual_scalar(m, n, res.rank, unsafe { transmute(rhs) })
-                        .map(|r| r.to_dimd());
+                    compute_residual_scalar(m, n, res.rank, rhs).map(|r| r.to_dimd());
                 Ok(res)
             }
             2 => {
@@ -59,10 +69,14 @@ impl Arr2<f64> {
                     // for which we need `n` entries
                     let k = rhs.shape()[1];
                     let mut new_rhs = match self.layout()? {
-                        MatrixLayout::C { .. } => Arr2::<f64>::zeros((n, k)),
-                        MatrixLayout::F { .. } => Arr2::<f64>::zeros((n, k).f()),
+                        MatrixLayout::C { .. } => Arr2::<f64>::uninit((n, k)),
+                        MatrixLayout::F { .. } => Arr2::<f64>::uninit((n, k).f()),
                     };
-                    new_rhs.slice_mut(s![0..m, ..]).assign(rhs);
+                    // new_rhs.slice_mut(s![0..m, ..]).assign(rhs);
+                    new_rhs.slice_mut(s![0..m, ..]).zip_mut_with(rhs, |x, y| {
+                        x.write(*y);
+                    });
+                    let new_rhs = unsafe { new_rhs.assume_init() };
                     let mut new_rhs = new_rhs.to_dimd();
                     let a_layout = self.layout()?;
                     let b_layout = new_rhs.layout()?;
@@ -73,9 +87,9 @@ impl Arr2<f64> {
                     least_squares_impl(self, a_layout, rhs, b_layout)?
                 };
                 res.solution = Some(rhs.slice(s![0..n]).to_owned().to_dimd());
+                let rhs = rhs.view().to_dim2()?;
                 res.residual_sum_of_squares =
-                    compute_residual_array1(m, n, res.rank, unsafe { transmute(rhs) })
-                        .map(|r| r.to_dimd());
+                    compute_residual_array1(m, n, res.rank, rhs).map(|r| r.to_dimd());
                 Ok(res)
             }
             _ => Err("Invalid dimension in least squares".into()),
@@ -83,18 +97,23 @@ impl Arr2<f64> {
     }
 }
 
-fn compute_residual_scalar(m: usize, n: usize, rank: i32, b: &Arr1<f64>) -> Option<Arr<f64, Ix0>> {
+fn compute_residual_scalar(
+    m: usize,
+    n: usize,
+    rank: i32,
+    b: ArrView1<f64>,
+) -> Option<Arr<f64, Ix0>> {
     if m < n || n != rank as usize {
-        return None;
+        return Some(f64::NAN.into());
     }
     let mut arr: Arr<f64, Ix0> = Arr::zeros(());
     arr[()] = b.slice(s![n..]).mapv(|x| x.powi(2).abs()).0.sum();
     Some(arr)
 }
 
-fn compute_residual_array1(m: usize, n: usize, rank: i32, b: &Arr2<f64>) -> Option<Arr1<f64>> {
+fn compute_residual_array1(m: usize, n: usize, rank: i32, b: ArrView2<f64>) -> Option<Arr1<f64>> {
     if m < n || n != rank as usize {
-        return None;
+        return Some(Arr1::from_vec(vec![f64::NAN; b.shape()[1]]));
     }
     Some(
         b.slice(s![n.., ..])
@@ -110,6 +129,7 @@ pub fn least_squares_impl(
     b: &mut ArrD<f64>,
     b_layout: MatrixLayout,
 ) -> TpResult<LeastSquaresResult> {
+    // let b_ndim = b.ndim();
     let mut_a = a
         .as_slice_memory_order_mut()
         .ok_or_else(|| StrError::from("Array should be contiguous when lstsq"))?;
@@ -119,7 +139,12 @@ pub fn least_squares_impl(
     let (m, n) = a_layout.size();
     let (m_, nrhs) = b_layout.size();
     let k = m.min(n);
-    assert!(m_ >= m);
+    assert!(
+        m_ >= m,
+        "the size of pred_y: {:?} should be greater than the size of x: {:?}",
+        m_,
+        m
+    );
     let rcond = -1.;
     let mut singular_values = vec_uninit::<f64>(k as usize);
     let mut rank: i32 = 0;
@@ -197,6 +222,7 @@ pub fn least_squares_impl(
             &mut info,
         );
     }
+
     if info != 0 {
         panic!("lstsq error: info = {info}");
     }

@@ -7,10 +7,10 @@ use std::collections::hash_map::Entry;
 impl<'a> Expr<'a> {
     #[allow(unreachable_patterns)]
     pub fn sorted_unique(&mut self) -> &mut Self {
-        self.chain_f(move |data| {
-            let arr = data.into_arr(None)?;
+        self.chain_f_ctx(move |(data, ctx)| {
+            let arr = data.into_arr(ctx.clone())?;
             match_arrok!(arr, a, {
-                Ok(a.view().to_dim1()?.sorted_unique_1d().to_dimd().into())
+                Ok((a.view().to_dim1()?.sorted_unique_1d().to_dimd().into(), ctx))
             })
         });
         self
@@ -18,14 +18,17 @@ impl<'a> Expr<'a> {
 
     #[allow(unreachable_patterns)]
     pub fn get_sorted_unique_idx(&mut self, keep: String) -> &mut Self {
-        self.chain_f(move |arr| {
-            let arr = arr.into_arr(None)?;
+        self.chain_f_ctx(move |(arr, ctx)| {
+            let arr = arr.into_arr(ctx.clone())?;
             match_arrok!(arr, a, {
-                Ok(a.view()
-                    .to_dim1()?
-                    .get_sorted_unique_idx_1d(keep.clone())
-                    .to_dimd()
-                    .into())
+                Ok((
+                    a.view()
+                        .to_dim1()?
+                        .get_sorted_unique_idx_1d(keep.clone())
+                        .to_dimd()
+                        .into(),
+                    ctx,
+                ))
             })
         });
         self

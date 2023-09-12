@@ -230,15 +230,10 @@ where
         let shape = self.shape();
         let strides = self.strides();
         match self.ndim() {
-            1 => {
-                if shape[0] == strides[0] as usize {
-                    return Ok(MatrixLayout::F {
-                        col: self.len() as i32,
-                        lda: 1,
-                    });
-                }
-                Err("Invalid stride".into())
-            }
+            1 => Ok(MatrixLayout::F {
+                col: self.len() as i32,
+                lda: 1,
+            }),
             2 => {
                 let arr2d: &Arr2<T> = unsafe { std::mem::transmute(self) };
                 if shape[0] == strides[1] as usize {
@@ -253,7 +248,7 @@ where
                         lda: arr2d.ncols() as i32,
                     });
                 }
-                Err("Invalid stride".into())
+                Err("Invalid stride of ndim2".into())
             }
             _ => Err("Invalid dimension".into()),
         }

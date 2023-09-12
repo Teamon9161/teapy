@@ -1,9 +1,10 @@
 use super::data::Data;
 use super::expr_element::ExprElement;
 use super::expr_inner::{ExprInner, FuncOut};
+use super::FuncNode;
 use crate::{
     match_all, match_arrok, ArbArray, ArrD, ArrOk, ArrViewD, CollectTrustedToVec, Context,
-    GetDataType, TpResult,
+    GetDataType, OlsResult, TpResult,
 };
 use parking_lot::Mutex;
 use std::fmt::Debug;
@@ -168,23 +169,6 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
-    pub fn chain_f<F>(&mut self, f: F)
-    where
-        F: Fn(Data<'a>) -> TpResult<Data<'a>> + Send + Sync + 'a,
-    {
-        if let Some(e) = Arc::get_mut(&mut self.0) {
-            e.get_mut().chain_f(f);
-        } else {
-            *self = self.clone();
-            if let Some(e) = Arc::get_mut(&mut self.0) {
-                e.get_mut().chain_f(f);
-            } else {
-                unreachable!("Arc::get_mut failed")
-            }
-        }
-    }
-
-    #[inline]
     pub fn eval_inplace(&mut self, ctx: Option<Context<'a>>) -> TpResult<&mut Self> {
         // self.0.lock().eval_inplace(ctx)
         if let Some(e) = Arc::get_mut(&mut self.0) {
@@ -217,11 +201,26 @@ impl<'a> Expr<'a> {
             Err(expr) => {
                 let out = {
                     let mut e = expr.lock();
-                    e.eval_inplace(ctx)?;
-                    let arr = e.view_arr(None)?;
+                    e.eval_inplace(ctx.clone())?;
+                    let arr = e.view_arr(ctx.as_ref())?;
+                    // need clone here
                     match_arrok!(arr, a, { a.view().to_owned().into() })
                 };
                 Ok(out)
+            }
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    #[cfg(feature = "blas")]
+    pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
+        match Arc::try_unwrap(self.0) {
+            Ok(inner) => inner.into_inner().into_ols_res(ctx),
+            Err(expr) => {
+                let mut e = expr.lock();
+                e.eval_inplace(ctx.clone())?;
+                let res = e.view_ols_res(ctx.as_ref())?;
+                Ok(res)
             }
         }
     }
@@ -232,8 +231,9 @@ impl<'a> Expr<'a> {
             Ok(inner) => inner.into_inner().into_arr_vec(ctx),
             Err(expr) => {
                 let mut e = expr.lock();
-                e.eval_inplace(ctx)?;
-                let arr_vec = e.view_arr_vec(None)?;
+                e.eval_inplace(ctx.clone())?;
+                let arr_vec = e.view_arr_vec(ctx.as_ref())?;
+                // need clone here
                 let arr_vec = arr_vec
                     .into_iter()
                     .map(|a| match_arrok!(a, a, { a.view().to_owned().into() }))
@@ -248,9 +248,6 @@ impl<'a> Expr<'a> {
     #[inline]
     pub fn view_data(&self) -> TpResult<&Data<'a>> {
         let e = self.lock();
-        // if e.step() > 0 {
-        //     e.eval_inplace(None)?;
-        // }
         let data = e.view_data()?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
@@ -258,11 +255,21 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
+    #[cfg(feature = "blas")]
+    pub fn view_ols_res(&self, ctx: Option<&Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
+        let mut e = self.lock();
+        e.eval_inplace(ctx.cloned())?;
+        let data = e.view_ols_res(ctx)?;
+        Ok(data)
+        // safety: the array can only be read when the expression is already evaluated
+        // so the data of the array should not be changed
+        // unsafe { Ok(std::mem::transmute(data)) }
+    }
+
+    #[inline]
     pub fn view_arr(&self, ctx: Option<&Context<'a>>) -> TpResult<&ArrOk<'a>> {
         let mut e = self.lock();
-        if e.step() > 0 {
-            e.eval_inplace(ctx.cloned())?;
-        }
+        e.eval_inplace(ctx.cloned())?;
         let arr = e.view_arr(ctx)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
@@ -272,12 +279,25 @@ impl<'a> Expr<'a> {
     #[inline]
     pub fn view_arr_vec(&self, ctx: Option<&Context<'a>>) -> TpResult<Vec<&ArrOk<'a>>> {
         let mut e = self.lock();
-        if e.step() > 0 {
-            e.eval_inplace(ctx.cloned())?;
-        }
+        e.eval_inplace(ctx.cloned())?;
         let arr = e.view_arr_vec(ctx)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
         unsafe { Ok(std::mem::transmute(arr)) }
+    }
+
+    #[inline]
+    pub fn get_chain_base(&self) -> Data<'a> {
+        self.lock().get_chain_base()
+    }
+
+    #[inline]
+    pub fn collect_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
+        self.lock().collect_chain_nodes(nodes)
+    }
+
+    #[inline]
+    pub fn flatten(&self) -> Self {
+        self.lock().flatten().into()
     }
 }

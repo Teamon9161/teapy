@@ -3,7 +3,7 @@ use std::mem::MaybeUninit;
 use crate::TpResult;
 
 use super::{ArrBase, WrapNdarray};
-use ndarray::{Array, Dimension, Ix0, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
+use ndarray::{arr0, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
 
 pub type Arr<T, D> = ArrBase<OwnedRepr<T>, D>;
 pub type ArrD<T> = Arr<T, IxDyn>;
@@ -81,6 +81,12 @@ impl<T> Arr<T, Ix0> {
     #[inline]
     pub fn into_scalar(self) -> T {
         self.0.into_scalar()
+    }
+}
+
+impl<T> From<T> for Arr<T, Ix0> {
+    fn from(t: T) -> Self {
+        arr0(t).wrap()
     }
 }
 

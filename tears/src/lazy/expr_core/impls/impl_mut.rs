@@ -9,9 +9,9 @@ impl<'a> Expr<'a> {
             let mut value = value.clone();
             mask.cast_bool().eval_inplace(ctx.clone())?;
             value.eval_inplace(ctx.clone())?;
-            let mask_arr = mask.view_arr(None)?;
+            let mask_arr = mask.view_arr(ctx.as_ref())?;
             let mask_arr = match_arrok!(mask_arr, a, { a }, Bool);
-            let value_arr = value.into_arr(None)?;
+            let value_arr = value.into_arr(ctx.clone())?;
             let mut arr = data.into_arr(ctx.clone())?;
             match_arrok!(&mut arr, a, {
                 let value: ArbArray<_> = value_arr.cast();

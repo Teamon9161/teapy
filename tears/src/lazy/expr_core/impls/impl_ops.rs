@@ -360,7 +360,7 @@ impl<'a> BitAnd for Expr<'a> {
             let arr = data.into_arr(ctx.clone())?;
             let mut rhs = rhs.clone();
             rhs.cast_bool().eval_inplace(ctx.clone())?;
-            let rhs_arr = rhs.view_arr(None)?;
+            let rhs_arr = rhs.view_arr(ctx.as_ref())?;
             let out = match_arrok!((arr, a, Bool), (rhs_arr, b, Bool), {
                 a.cast_bool()
                     .into_owned()
@@ -382,7 +382,7 @@ impl<'a> BitOr for Expr<'a> {
             let arr = data.into_arr(ctx.clone())?;
             let mut rhs = rhs.clone();
             rhs.cast_bool().eval_inplace(ctx.clone())?;
-            let rhs_arr = rhs.view_arr(None)?;
+            let rhs_arr = rhs.view_arr(ctx.as_ref())?;
             let out = match_arrok!((arr, a, Bool), (rhs_arr, b, Bool), {
                 a.cast_bool()
                     .into_owned()

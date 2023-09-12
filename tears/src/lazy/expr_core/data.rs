@@ -5,8 +5,9 @@ use crate::{ArbArray, ArrD, ArrOk, ArrViewMutD, Context, GetDataType, TpResult};
 use std::fmt::Debug;
 use std::sync::Arc;
 
-use super::{Expr, ExprElement};
+use super::{Expr, ExprElement, FuncNode};
 
+#[derive(Clone)]
 pub enum Data<'a> {
     Expr(Expr<'a>),         // an expression based on another expression
     Arr(ArrOk<'a>),         // classical expression based on an array
@@ -47,6 +48,10 @@ impl<'a> Default for Data<'a> {
 impl<'a> Data<'a> {
     pub fn is_expr(&self) -> bool {
         matches!(&self, Data::Expr(_))
+    }
+
+    pub fn is_context(&self) -> bool {
+        matches!(&self, Data::Context(_))
     }
 
     pub fn as_expr(&self) -> Option<&Expr<'a>> {
@@ -95,6 +100,22 @@ impl<'a> Data<'a> {
         }
     }
 
+    // get initial base of the expression
+    pub fn get_chain_base(&self) -> Data<'a> {
+        match self {
+            Data::Expr(expr) => expr.get_chain_base(),
+            _ => self.clone(),
+        }
+    }
+
+    // get the all nodes of the expression
+    pub fn collect_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
+        match self {
+            Data::Expr(expr) => expr.collect_chain_nodes(nodes),
+            _ => nodes,
+        }
+    }
+
     pub fn context_clone(&self) -> Option<Self> {
         match self {
             Data::Expr(expr) => Some(expr.context_clone().into()),
@@ -108,8 +129,8 @@ impl<'a> Data<'a> {
             Data::Arr(arr) => Ok(arr),
             Data::Expr(e) => e.into_arr(ctx),
             Data::Context(col) => {
-                let ctx = ctx.ok_or("The context is not provided")?;
-                let out = ctx.get(col.clone())?;
+                let ctx1 = ctx.clone().ok_or("The context is not provided")?;
+                let out = ctx1.get(col.clone())?;
                 // need clone here
                 Ok(out.into_expr()?.view_arr(None)?.deref().into_owned())
             }
@@ -121,14 +142,54 @@ impl<'a> Data<'a> {
         match self {
             Data::ArrVec(arr) => Ok(arr),
             Data::Expr(e) => e.into_arr_vec(ctx),
-            _ => Err("The output of the expression is not an array".into()),
+            Data::Context(col) => {
+                let ctx1 = ctx.clone().ok_or("The context is not provided")?;
+                let out = ctx1.get(col.clone())?;
+                // need clone here
+                Ok(out
+                    .into_expr()?
+                    .view_arr_vec(None)?
+                    .into_iter()
+                    .map(|a| a.deref().into_owned())
+                    .collect_trusted())
+            }
+            _ => Err("The output of the expression is not an array vector".into()),
         }
     }
 
     #[cfg(feature = "blas")]
-    pub fn into_ols_res(self) -> TpResult<Arc<OlsResult<'a>>> {
+    pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
         match self {
             Data::OlsRes(res) => Ok(res),
+            Data::Expr(e) => e.into_ols_res(ctx),
+            Data::Context(col) => {
+                let ctx1 = ctx.clone().ok_or("The context is not provided")?;
+                let out = ctx1.get(col.clone())?;
+                Ok(out.into_expr()?.view_ols_res(None)?)
+            }
+            _ => Err(format!(
+                "The output of the expression is not an OlsResult: {:?}",
+                &self
+            )
+            .into()),
+        }
+    }
+
+    #[cfg(feature = "blas")]
+    pub fn view_ols_res<'b>(
+        &'b self,
+        ctx: Option<&'b Context<'a>>,
+    ) -> TpResult<Arc<OlsResult<'a>>> {
+        match self {
+            Data::OlsRes(res) => Ok(res.clone()),
+            Data::Expr(e) => e.view_ols_res(ctx),
+            Data::Context(col) => {
+                let out = ctx
+                    .ok_or("The context is not provided")?
+                    .get(col.clone())?
+                    .into_expr()?;
+                out.view_ols_res(None)
+            }
             _ => Err("The output of the expression is not an OlsResult".into()),
         }
     }
@@ -136,12 +197,7 @@ impl<'a> Data<'a> {
     pub fn view_arr<'b>(&'b self, ctx: Option<&'b Context<'a>>) -> TpResult<&'b ArrOk<'a>> {
         match self {
             Data::Arr(arr) => Ok(arr),
-            Data::Expr(e) => {
-                if e.step() > 0 {
-                    e.lock().eval_inplace(ctx.cloned())?;
-                }
-                e.view_arr(ctx)
-            }
+            Data::Expr(e) => e.view_arr(ctx),
             Data::Context(col) => {
                 let out = ctx
                     .ok_or("The context is not provided")?
@@ -149,7 +205,7 @@ impl<'a> Data<'a> {
                     .into_expr()?;
                 out.view_arr(None)
             }
-            _ => Err("The output of the expression is not an array".into()),
+            _ => Err(format!("The output of the expression is not an array, {:?}", self).into()),
         }
     }
 
@@ -159,14 +215,10 @@ impl<'a> Data<'a> {
     ) -> TpResult<Vec<&'b ArrOk<'a>>> {
         match self {
             Data::ArrVec(arr_vec) => Ok(arr_vec.iter().collect::<Vec<_>>()),
-            Data::Expr(e) => {
-                if e.step() > 0 {
-                    e.lock().eval_inplace(ctx.cloned())?;
-                }
-                e.view_arr_vec(ctx)
-            }
+            Data::Expr(e) => e.view_arr_vec(ctx),
             Data::Context(col) => {
-                let out = ctx.ok_or("The context is not provided")?.get(col.clone())?;
+                let ctx = ctx.ok_or("The context is not provided")?;
+                let out = ctx.get(col.clone())?;
                 Ok(out
                     .into_exprs()
                     .iter()

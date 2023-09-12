@@ -13,8 +13,8 @@ pub use arrok::ArrOk;
 pub use impls::{conjugate, replicate, LeastSquaresResult};
 pub use own::{Arr, Arr1, Arr2, ArrD};
 pub use traits::WrapNdarray;
-pub use view::{ArrView, ArrView1, ArrViewD};
-pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMutD};
+pub use view::{ArrView, ArrView1, ArrView2, ArrViewD};
+pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD};
 
 use crate::{export::*, DateTime, GetDataType, Iter, IterMut, TimeUnit, TpResult};
 

@@ -51,6 +51,6 @@ pub use lazy::Context;
 pub use lazy::OlsResult;
 
 pub use crate::core::{
-    ArbArray, Arr, Arr1, Arr2, ArrBase, ArrBase1, ArrD, ArrOk, ArrView, ArrView1, ArrViewD,
-    ArrViewMut, ArrViewMut1, ArrViewMutD, Dim1, ViewOnBase, WrapNdarray,
+    ArbArray, Arr, Arr1, Arr2, ArrBase, ArrBase1, ArrD, ArrOk, ArrView, ArrView1, ArrView2,
+    ArrViewD, ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD, Dim1, ViewOnBase, WrapNdarray,
 };

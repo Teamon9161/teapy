@@ -1,10 +1,11 @@
 use crate::TpResult;
 
 use super::{ArrBase, WrapNdarray};
-use ndarray::{Dimension, Ix0, Ix1, IxDyn, RawArrayViewMut, StrideShape, ViewRepr};
+use ndarray::{Dimension, Ix0, Ix1, Ix2, IxDyn, RawArrayViewMut, StrideShape, ViewRepr};
 
 pub type ArrViewMut<'a, T, D> = ArrBase<ViewRepr<&'a mut T>, D>;
 pub type ArrViewMut1<'a, T> = ArrViewMut<'a, T, Ix1>;
+pub type ArrViewMut2<'a, T> = ArrViewMut<'a, T, Ix2>;
 pub type ArrViewMutD<'a, T> = ArrViewMut<'a, T, IxDyn>;
 
 impl<'a, T, D: Dimension> ArrViewMut<'a, T, D> {

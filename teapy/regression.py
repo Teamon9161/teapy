@@ -48,8 +48,9 @@ class Ols:
         y, x = Expr(y), Expr(x)
         self.n_ori = y.shape[0]
         self.keep_shape = keep_shape
+        self.dropna = dropna
+        x = x.if_then(x.ndim() == 1, x.insert_axis(1))
         if dropna:
-            x = x.if_then(x.ndim() == 1, x.insert_axis(1))
             nan_mask = y.is_nan() | x.is_nan().any(axis=1)
             y, x = y.filter(~nan_mask), x.filter(~nan_mask)
             if keep_shape:
@@ -64,7 +65,7 @@ class Ols:
         self.df = self.n - self.k
         if not calc_t and not adjust_t:
             self.ols_res = self.x.lstsq(self.y)
-            self.rank = self.ols_res.rank()
+            self.rank = self.ols_res.ols_rank()
             self.params = self.ols_res.params()
             self.fitted_values = self.ols_res.fitted_values()
             self.resid = self.resid()
@@ -97,12 +98,12 @@ class Ols:
                 self.pvalues = (1 - self.tvalues.abs().norm_cdf()) * 2
             self.resid = (
                 tp.full(self.nan_mask.shape, nan).put_mask(~self.nan_mask, resid)
-                if keep_shape
+                if keep_shape and dropna
                 else resid
             )
 
     def resid(self):
-        if self.keep_shape:
+        if self.keep_shape and self.dropna:
             resid = tp.full(self.nan_mask.shape, nan)
             return resid.put_mask(~self.nan_mask, self.y - self.fitted_values)
         else:

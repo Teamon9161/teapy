@@ -35,7 +35,10 @@ macro_rules! impl_rolling_by_startidx_agg {
                         let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
                             let arr = arr.view().to_dim1()?;
                             let out = zip(roll_start_arr, 0..len)
-                            .map(|(start, end)| {
+                            .map(|(mut start, end)| {
+                                if start > end {
+                                    start = end;  // the start idx should be inbound
+                                }
                                 let current_arr = arr.slice(s![start..end + 1]).wrap();
                                 current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
                             })
@@ -87,10 +90,14 @@ impl<'a> Expr<'a> {
             }
             let columns = std::iter::once(name.clone()).chain(others_name).collect::<Vec<_>>();
             let mut map: Option<Arc<HashMap<String, usize>>> = None;
+            let agg_expr = agg_expr.flatten();
             let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
                 let arr = arr.view().to_dim1()?;
                 let out = zip(roll_start_arr, 0..len)
-                .map(|(start, end)| {
+                .map(|(mut start, end)| {
+                    if start > end {
+                        start = end;  // the start idx should be inbound
+                    }
                     let current_arr = arr.slice(s![start..end + 1]).wrap();
                     let current_others: Vec<ArrOk> = others_ref.iter().map(|arr| arr.slice(s![start..=end])).collect_trusted();
                     let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into()).chain(current_others.into_iter().map(|a| a.into())).collect::<Vec<_>>();
@@ -108,7 +115,6 @@ impl<'a> Expr<'a> {
                     // this is safe as we don't return a view on the current context
                     // into_owned is important here to guarantee the above
                     let current_ctx: Arc<DataDict> = Arc::new(unsafe{std::mem::transmute(current_ctx)});
-                    // out_e.into_arr(Some(current_ctx)).unwrap().into_owned()
                     let o = out_e.view_arr(Some(&current_ctx)).unwrap().deref().into_owned();
                     o
                 })

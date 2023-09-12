@@ -28,13 +28,19 @@ impl<'a, T> Deref for ViewOnBase<'a, T> {
     }
 }
 
-impl<'a, T: Clone> ToOwned for ArbArray<'a, T> {
-    type Owned = ArbArray<'a, T>;
-
-    fn to_owned(&self) -> Self {
+impl<'a, T: Clone> Clone for ArbArray<'a, T> {
+    fn clone(&self) -> Self {
         self.view().to_owned().into()
     }
 }
+
+// impl<'a, T: Clone> ToOwned for ArbArray<'a, T> {
+//     type Owned = ArbArray<'a, T>;
+
+//     fn to_owned(&self) -> Self {
+//         self.view().to_owned().into()
+//     }
+// }
 
 // impl<'a, T> From<ArbArray<'a, T>> for ViewOnBase<'a, T> {
 //     fn from(base: ArbArray<'a, T>) -> Self {

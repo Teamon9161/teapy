@@ -71,77 +71,81 @@ impl<'a> Expr<'a> {
             let y = y.clone();
             let y = y.into_arr(ctx.clone())?.cast_f64();
             let y_view = y.view();
+
             let x_view = match x.ndim() {
                 1 => x.view().to_dim1().unwrap().insert_axis(Axis(1)).wrap(),
                 2 => x.view().to_dim::<Ix2>().unwrap(),
                 _ => return Err("Too much dimension in lstsq".into()),
             };
-            Ok((
-                OlsResult::new(
-                    x_view
-                        .to_owned()
-                        .least_squares(&mut y_view.to_owned())
-                        .unwrap(),
-                    x,
-                    y,
-                )
-                .into(),
-                ctx,
-            ))
+            let out = OlsResult::new(
+                x_view
+                    .to_owned()
+                    .least_squares(&mut y_view.to_owned())
+                    .unwrap(),
+                x,
+                y,
+            );
+            Ok((out.into(), ctx))
         });
         self
     }
 
     pub fn ols_rank(&mut self) -> &mut Self {
-        self.chain_f(|data| {
-            let res = data.into_ols_res()?;
-            Ok(res.rank().into())
+        self.chain_f_ctx(|(data, ctx)| {
+            let res = data.into_ols_res(ctx.clone())?;
+            Ok((res.rank().into(), ctx))
         });
         self
     }
 
     pub fn singular_values(&mut self) -> &mut Self {
-        self.chain_f(|data| {
-            let res = data.into_ols_res()?;
+        self.chain_f_ctx(|(data, ctx)| {
+            let res = data.into_ols_res(ctx.clone())?;
             match Arc::try_unwrap(res) {
-                Ok(res) => Ok(res.singular_values.to_dimd().into()),
-                Err(res) => Ok(res.singular_values().to_owned().into()),
+                Ok(res) => Ok((res.singular_values.to_dimd().into(), ctx)),
+                Err(res) => Ok((res.singular_values().to_owned().into(), ctx)),
             }
         });
         self
     }
 
     pub fn params(&mut self) -> &mut Self {
-        self.chain_f(|data| {
-            let res = data.into_ols_res()?;
+        self.chain_f_ctx(|(data, ctx)| {
+            let res = data.view_ols_res(ctx.as_ref())?;
             match Arc::try_unwrap(res) {
-                Ok(res) => Ok(res.solution.to_dimd().into()),
-                Err(res) => Ok(res.solution().to_owned().into()),
+                Ok(res) => Ok((res.solution.to_dimd().into(), ctx)),
+                Err(res) => Ok((res.solution().to_owned().into(), ctx)),
             }
         });
         self
     }
 
     pub fn sse(&mut self) -> &mut Self {
-        self.chain_f(|data| {
-            let res = data.into_ols_res()?;
+        self.chain_f_ctx(|(data, ctx)| {
+            let res = data.into_ols_res(ctx.clone())?;
             match Arc::try_unwrap(res) {
-                Ok(res) => Ok(res.residual_sum_of_squares.unwrap().to_dimd().into()),
-                Err(res) => Ok(res.residual_sum_of_squares().to_owned().into()),
+                Ok(res) => Ok((
+                    res.residual_sum_of_squares
+                        .unwrap_or(f64::NAN.into())
+                        .to_dimd()
+                        .into(),
+                    ctx,
+                )),
+                Err(res) => Ok((res.residual_sum_of_squares().to_owned().into(), ctx)),
             }
         });
         self
     }
 
     pub fn fitted_values(&mut self) -> &mut Self {
-        self.chain_f(|data| {
-            let res = data.into_ols_res()?;
+        self.chain_f_ctx(|(data, ctx)| {
+            let res = data.into_ols_res(ctx.clone())?;
             match Arc::try_unwrap(res) {
-                Ok(res) => Ok(res.x.view().dot(&res.solution)?.into()),
+                Ok(res) => Ok((res.x.view().dot(&res.solution)?.into(), ctx)),
                 Err(res) => {
                     let x = res.x();
                     let params = res.solution();
-                    Ok(x.dot(&params)?.into())
+                    Ok((x.dot(&params)?.into(), ctx))
                 }
             }
         });
@@ -161,32 +165,32 @@ impl<'a> Expr<'a> {
     // }
 
     pub fn conjugate(&mut self) -> &mut Self {
-        self.chain_f(move |data| {
-            let arr = data.into_arr(None)?.cast_f64();
+        self.chain_f_ctx(move |(data, ctx)| {
+            let arr = data.view_arr(ctx.as_ref())?.deref().cast_f64();
             let out: Arr2<f64> = conjugate(&arr.view().to_dim2()?);
-            Ok(out.to_dimd().into())
+            Ok((out.to_dimd().into(), ctx))
         });
         self
     }
 
     pub fn svd(&mut self, full: bool, calc_uvt: bool) -> &mut Self {
-        self.chain_f(move |data| {
-            let arr = data.into_arr(None)?.cast_f64().try_to_owned_f();
+        self.chain_f_ctx(move |(data, ctx)| {
+            let arr = data.into_arr(ctx.clone())?.cast_f64().try_to_owned_f();
             let (u, s, vt) = arr.svd_into(full, calc_uvt)?;
             if !calc_uvt {
-                Ok(s.into())
+                Ok((s.into(), ctx))
             } else {
                 let res_vec: Vec<ArrOk<'a>> = vec![u.unwrap().into(), s.into(), vt.unwrap().into()];
-                Ok(res_vec.into())
+                Ok((res_vec.into(), ctx))
             }
         });
         self
     }
 
     pub fn pinv(&mut self, rcond: Option<f64>, return_s: bool) -> &mut Self {
-        self.chain_f(move |arr| {
+        self.chain_f_ctx(move |(data, ctx)| {
             // we don't need to conjugate because the dtype is float64
-            let arr = arr.into_arr(None)?.cast_f64().try_to_owned_f();
+            let arr = data.into_arr(ctx.clone())?.cast_f64().try_to_owned_f();
             let shape = arr.shape();
             let m = shape[0];
             let n = shape[1];
@@ -204,9 +208,9 @@ impl<'a> Expr<'a> {
                 .to_dimd()
                 .into();
             if return_s {
-                Ok(vec![out, s.to_dimd().into()].into())
+                Ok((vec![out, s.to_dimd().into()].into(), ctx))
             } else {
-                Ok(out.into())
+                Ok((out.into(), ctx))
             }
         });
         self
