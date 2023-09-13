@@ -1357,6 +1357,80 @@ impl PyExpr {
     }
 
     #[cfg(feature = "window_func")]
+    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
+    pub unsafe fn ts_regx_alpha(
+        &self,
+        other: &PyAny,
+        window: usize,
+        min_periods: usize,
+        stable: bool,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e
+            .ts_regx_alpha(other.e, window, min_periods, stable, axis, par);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[cfg(feature = "window_func")]
+    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
+    pub unsafe fn ts_regx_beta(
+        &self,
+        other: &PyAny,
+        window: usize,
+        min_periods: usize,
+        stable: bool,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e
+            .ts_regx_beta(other.e, window, min_periods, stable, axis, par);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[cfg(feature = "window_func")]
+    #[pyo3(signature=(other, window, min_periods=1, axis=0, par=false))]
+    pub unsafe fn ts_regx_resid_std(
+        &self,
+        other: &PyAny,
+        window: usize,
+        min_periods: usize,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e
+            .ts_regx_resid_std(other.e, window, min_periods, axis, par);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[cfg(feature = "window_func")]
+    #[pyo3(signature=(other, window, min_periods=1, axis=0, par=false))]
+    pub unsafe fn ts_regx_resid_skew(
+        &self,
+        other: &PyAny,
+        window: usize,
+        min_periods: usize,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e
+            .ts_regx_resid_skew(other.e, window, min_periods, axis, par);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_sum(
         &self,

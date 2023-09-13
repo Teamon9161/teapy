@@ -138,8 +138,13 @@ auto_impl_view!(in1,
 );
 #[cfg(feature = "window_func")]
 // window corr and cov
-auto_impl_view!(in2, [ts_cov, ts_corr],
+auto_impl_view!(in2, [ts_cov, ts_corr, ts_regx_alpha, ts_regx_beta],
     (window: usize, min_periods: usize, stable: bool, axis: i32, par: bool)
+);
+#[cfg(feature = "window_func")]
+// window corr and cov
+auto_impl_view!(in2, [ts_regx_resid_std, ts_regx_resid_skew],
+    (window: usize, min_periods: usize, axis: i32, par: bool)
 );
 
 // window function with stable argument
