@@ -137,20 +137,25 @@ impl PyExpr {
             }
             Ok(out)
         } else {
-            let obj = PyList::new(py, vec![obj]);
+            let obj = PyTuple::new(py, [obj]);
             self.__getitem__(obj.into(), py)
         }
     }
 
-    #[pyo3(name="eval", signature=(inplace=false, context=None))]
+    #[pyo3(name="eval", signature=(inplace=false, context=None, freeze=true))]
     #[allow(unreachable_patterns)]
-    pub fn eval_py(&mut self, inplace: bool, context: Option<&PyAny>) -> PyResult<Option<Self>> {
+    pub fn eval_py(
+        &mut self,
+        inplace: bool,
+        context: Option<&PyAny>,
+        freeze: bool,
+    ) -> PyResult<Option<Self>> {
         if !inplace {
             let mut e = self.clone();
-            e.eval_inplace(context)?;
+            e.eval_inplace(context, freeze)?;
             Ok(Some(e))
         } else {
-            self.eval_inplace(context)?;
+            self.eval_inplace(context, freeze)?;
             Ok(None)
         }
     }

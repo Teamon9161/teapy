@@ -177,6 +177,8 @@ impl<'a> ExprInner<'a> {
             self.nodes.clear();
             self.base = data;
         } else {
+            // this allow exprssion be re-evaluated in different context
+            // useful in rolling and groupby
             let mut data = self.base.get_chain_base();
             let nodes = self.collect_chain_nodes(vec![]);
             self.base = data.clone();

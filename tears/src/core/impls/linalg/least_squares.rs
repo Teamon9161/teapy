@@ -32,6 +32,22 @@ impl Arr2<f64> {
             )
             .into());
         }
+        // special case for m = 0
+        if self.shape()[0] == 0 {
+            let k = self.shape()[0].min(self.shape()[1]);
+            return Ok(LeastSquaresResult {
+                singular_values: Arr1::from_vec(vec![f64::NAN; k]),
+                solution: Some(Arr1::from_vec(vec![f64::NAN; self.shape()[1]]).to_dimd()),
+                rank: 0,
+                residual_sum_of_squares: {
+                    if rhs.ndim() == 1 {
+                        Some(f64::NAN.into())
+                    } else {
+                        Some(Arr1::from_vec(vec![f64::NAN; rhs.shape()[1]]).to_dimd())
+                    }
+                },
+            });
+        }
         match rhs.ndim() {
             1 => {
                 let (m, n) = (self.shape()[0], self.shape()[1]);
@@ -129,7 +145,7 @@ pub fn least_squares_impl(
     b: &mut ArrD<f64>,
     b_layout: MatrixLayout,
 ) -> TpResult<LeastSquaresResult> {
-    // let b_ndim = b.ndim();
+    // dbg!("a: {:?}, b: {:?}", &a, &b);
     let mut_a = a
         .as_slice_memory_order_mut()
         .ok_or_else(|| StrError::from("Array should be contiguous when lstsq"))?;

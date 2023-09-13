@@ -107,14 +107,14 @@ impl PyExpr {
         self
     }
 
-    #[allow(unreachable_patterns, dead_code)]
-    pub fn eval(mut self, context: Option<&PyAny>) -> PyResult<Self> {
-        self.eval_inplace(context)?;
-        Ok(self)
-    }
+    // #[allow(unreachable_patterns, dead_code)]
+    // pub fn eval(mut self, context: Option<&PyAny>, freeze: bool) -> PyResult<Self> {
+    //     self.eval_inplace(context, freeze)?;
+    //     Ok(self)
+    // }
 
     #[allow(unreachable_patterns)]
-    pub fn eval_inplace(&mut self, context: Option<&PyAny>) -> PyResult<()> {
+    pub fn eval_inplace(&mut self, context: Option<&PyAny>, freeze: bool) -> PyResult<()> {
         let ct: PyContext<'static> = if let Some(context) = context {
             unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
         } else {
@@ -124,7 +124,11 @@ impl PyExpr {
         for obj in obj_map.into_values() {
             self.add_obj(obj);
         }
-        self.e.eval_inplace(ct_rs).map_err(StrError::to_py)?;
+        if freeze {
+            self.e.eval_inplace_freeze(ct_rs).map_err(StrError::to_py)?;
+        } else {
+            self.e.eval_inplace(ct_rs).map_err(StrError::to_py)?;
+        }
         if self.e.is_owned() {
             self.obj = None
         }

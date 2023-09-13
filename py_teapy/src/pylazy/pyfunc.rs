@@ -279,11 +279,15 @@ pub unsafe fn stack_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
 }
 
 #[pyfunction]
-#[pyo3(signature=(exprs, inplace=false))]
-pub fn eval_exprs(mut exprs: Vec<PyExpr>, inplace: bool) -> PyResult<Option<Vec<PyExpr>>> {
+#[pyo3(signature=(exprs, inplace=false, freeze=true))]
+pub fn eval_exprs(
+    mut exprs: Vec<PyExpr>,
+    inplace: bool,
+    freeze: bool,
+) -> PyResult<Option<Vec<PyExpr>>> {
     exprs
         .par_iter_mut()
-        .try_for_each(|e| e.eval_inplace(None))?;
+        .try_for_each(|e| e.eval_inplace(None, freeze))?;
     if inplace {
         Ok(None)
     } else {

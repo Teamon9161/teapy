@@ -14,14 +14,17 @@ def register(f):
 
 
 @register
-def eval_in(self, context=None, inplace=False):
-    return self.eval(inplace=inplace, context=context)
+def eval_in(self, context=None, inplace=False, freeze=True):
+    return self.eval(inplace=inplace, context=context, freeze=freeze)
 
 
 @register
-def eview(self, context=None):
-    self.eval(True, context=context)
-    return self.view_in(context)
+def eview(self, context=None, freeze=True):
+    if freeze:
+        return self.eval(False, context=context, freeze=True).view
+    else:
+        self.eval(True, context=context, freeze=False)
+        return self.view_in(context)
 
 
 @register
