@@ -586,7 +586,7 @@ impl_map_nd!(
         if self.is_empty() {
             return;
         }
-        let fill = fill.unwrap_or(T::none());
+        let fill = fill.unwrap_or_else(T::none);
         if n == 0 {
             out.apply_mut_with(self, |vo, v| {vo.write(v.clone());});
         } else if n.unsigned_abs() as usize > self.shape()[0] - 1 {
