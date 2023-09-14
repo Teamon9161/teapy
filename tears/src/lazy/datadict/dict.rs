@@ -430,16 +430,16 @@ impl<'a> DataDict<'a> {
         }
     }
 
-    pub fn eval(self, col: ColumnSelector) -> TpResult<Self> {
+    pub fn eval(self, col: ColumnSelector, context: bool) -> TpResult<Self> {
         let mut df = self.clone();
-        df.eval_inplace(col)?;
+        df.eval_inplace(col, context)?;
         Ok(df)
     }
 
-    pub fn eval_inplace(&mut self, col: ColumnSelector) -> TpResult<()> {
+    pub fn eval_inplace(&mut self, col: ColumnSelector, context: bool) -> TpResult<()> {
         // is there a good way to avoid clone at all cases? Currently we can not get a immutable reference
         // of self and a mutable reference of self at the same time.
-        let context: Option<Context<'a>> = self.clone().into();
+        let context: Option<Context<'a>> = if context { self.clone().into() } else { None };
         let expr = self.get_mut(col)?;
         match expr {
             GetMutOutput::Expr(e) => {

@@ -296,8 +296,12 @@ pub fn eval_exprs(
 }
 
 #[pyfunction]
-#[pyo3(signature=(dds, inplace=true))]
-pub fn eval_dicts(dds: Vec<&PyAny>, inplace: bool) -> PyResult<Option<Vec<PyDataDict>>> {
+#[pyo3(signature=(dds, inplace=true, context=false))]
+pub fn eval_dicts(
+    dds: Vec<&PyAny>,
+    inplace: bool,
+    context: bool,
+) -> PyResult<Option<Vec<PyDataDict>>> {
     let mut dds = dds
         .into_iter()
         .map(|dd| {
@@ -308,7 +312,7 @@ pub fn eval_dicts(dds: Vec<&PyAny>, inplace: bool) -> PyResult<Option<Vec<PyData
             }
         })
         .collect_trusted();
-    dds.par_iter_mut().try_for_each(|dd| dd.eval_all())?;
+    dds.par_iter_mut().try_for_each(|dd| dd.eval_all(context))?;
     if inplace {
         Ok(None)
     } else {

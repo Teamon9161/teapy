@@ -176,7 +176,7 @@ impl<'a> ExprInner<'a> {
             // as the result would be different in different context
             self.nodes.clear();
             self.base = data;
-        } else {
+        } else if self.init_base_is_context() {
             // this allow exprssion be re-evaluated in different context
             // useful in rolling and groupby
             let mut data = self.base.get_chain_base();
@@ -188,14 +188,16 @@ impl<'a> ExprInner<'a> {
                 (data, ctx) = f((data, ctx))?;
             }
             self.ctx_ref = Some(data);
+        } else {
+            return self.eval_inplace(ctx, true);
         }
         Ok(self)
     }
 
-    pub fn eval(mut self, ctx: Option<Context<'a>>, freeze: bool) -> TpResult<Self> {
-        self.eval_inplace(ctx, freeze)?;
-        Ok(self)
-    }
+    // pub fn eval(mut self, ctx: Option<Context<'a>>, freeze: bool) -> TpResult<Self> {
+    //     self.eval_inplace(ctx, freeze)?;
+    //     Ok(self)
+    // }
 
     // pub fn ctx_ref_to_owned(&mut self) -> TpResult<&mut Self> {
     //     if self.ctx_ref.is_some() {
@@ -287,8 +289,14 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    #[inline]
     pub fn get_chain_base(&self) -> Data<'a> {
         self.base.get_chain_base()
+    }
+
+    #[inline]
+    pub fn init_base_is_context(&self) -> bool {
+        self.base.init_base_is_context()
     }
 
     pub fn collect_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {

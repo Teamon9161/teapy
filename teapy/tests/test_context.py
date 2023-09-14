@@ -17,7 +17,7 @@ def test_base():
     assert c.step > 0
     assert_allclose(c.eview(dd, freeze=True), [4, 7, 4])
     assert_allclose(c.view, [4, 7, 4])
-    dd.eval()
+    dd.eval(context=True)
     assert dd["d"].view == 2.5
 
 

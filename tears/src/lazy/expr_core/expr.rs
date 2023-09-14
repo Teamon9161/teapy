@@ -304,6 +304,11 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
+    pub fn init_base_is_context(&self) -> bool {
+        self.lock().init_base_is_context()
+    }
+
+    #[inline]
     pub fn get_chain_base(&self) -> Data<'a> {
         self.lock().get_chain_base()
     }

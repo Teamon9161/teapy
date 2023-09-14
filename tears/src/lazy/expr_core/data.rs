@@ -100,6 +100,14 @@ impl<'a> Data<'a> {
         }
     }
 
+    pub fn init_base_is_context(&self) -> bool {
+        match self {
+            Data::Expr(expr) => expr.init_base_is_context(),
+            Data::Context(_) => true,
+            _ => false,
+        }
+    }
+
     // get initial base of the expression
     pub fn get_chain_base(&self) -> Data<'a> {
         match self {

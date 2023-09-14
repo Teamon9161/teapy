@@ -75,11 +75,11 @@ class DataDict:
     def copy(self):
         return self._dd.copy()
 
-    def eval(self, cols=None, inplace=True):
+    def eval(self, cols=None, inplace=True, context=False):
         dd = self if inplace else self.copy()
         if isinstance(cols, bool):
             cols, inplace = None, cols
-        dd._dd.eval(cols)
+        dd._dd.eval(cols, context=context)
         return None if inplace else dd
 
     def drop(self, cols, inplace=False):

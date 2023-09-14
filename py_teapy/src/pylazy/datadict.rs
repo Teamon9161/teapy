@@ -147,11 +147,15 @@ impl PyDataDict {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_pd(&mut self) -> PyResult<PyObject> {
-        self.eval_all()?;
+    #[pyo3(signature=(context=false))]
+    pub fn to_pd(&mut self, context: bool) -> PyResult<PyObject> {
+        self.eval_all(context)?;
         Python::with_gil(|py| {
             let pd = PyModule::import(py, "pandas").unwrap(); //.to_object(py)
-            Ok(pd.getattr("DataFrame")?.call1((self.to_dict(py)?,))?.into())
+            Ok(pd
+                .getattr("DataFrame")?
+                .call1((self.to_dict(context, py)?,))?
+                .into())
         })
     }
 
@@ -192,8 +196,9 @@ impl PyDataDict {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_dict<'py>(&'py mut self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        self.eval_all()?;
+    #[pyo3(signature=(context=false))]
+    pub fn to_dict<'py>(&'py mut self, context: bool, py: Python<'py>) -> PyResult<&'py PyDict> {
+        self.eval_all(context)?;
         let dict = PyDict::new(py);
         for expr in &self.data {
             dict.set_item(expr.name(), expr.clone().to_py(None).value(None, None, py)?)?;
@@ -253,19 +258,20 @@ impl PyDataDict {
         self.dd.set_columns(columns)
     }
 
-    pub fn eval_all(&mut self) -> PyResult<()> {
-        self.eval(None)
+    #[pyo3(signature=(context=false))]
+    pub fn eval_all(&mut self, context: bool) -> PyResult<()> {
+        self.eval(None, context)
     }
 
-    #[pyo3(signature=(cols=None))]
-    pub fn eval(&mut self, cols: Option<&PyAny>) -> PyResult<()> {
+    #[pyo3(signature=(cols=None, context=false))]
+    pub fn eval(&mut self, cols: Option<&PyAny>, context: bool) -> PyResult<()> {
         let cs = ColumnSelector::from(cols);
         let ori_name = self.get_selector_out_name(cs.clone());
         let eval_idx = ori_name
             .iter()
             .map(|e| *self.dd.map.get(e).unwrap())
             .collect_trusted();
-        self.dd.eval_inplace(cs).map_err(StrError::to_py)?;
+        self.dd.eval_inplace(cs, context).map_err(StrError::to_py)?;
 
         let new_name = eval_idx
             .into_iter()
