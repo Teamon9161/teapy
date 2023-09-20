@@ -2,6 +2,7 @@ mod auto_impl;
 mod export;
 mod impl_cast;
 mod impl_dtype_judge;
+mod impl_io;
 mod impl_mut;
 mod impl_own;
 mod impl_view;

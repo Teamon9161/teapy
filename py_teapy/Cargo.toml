@@ -9,13 +9,14 @@ description = "Fash DataDict Library in Python"
 
 
 [features]
-default = ["lazy", "window_func", "blas"]
+default = ["lazy", "window_func", "blas", "arw"]
 option_dtype = ["tears/option_dtype"]
 lazy = ["tears/lazy"]
 window_func = ["tears/window_func"]
 blas = ["tears/blas", "lazy", "stat"]
 npy = ["tears/npy"]
 stat = ["tears/stat"]
+arw = ["tears/arw"]
 
 [dependencies]
 tears = { path = "../tears", default-features = false, optional = true}

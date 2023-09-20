@@ -10,10 +10,13 @@ use ndarray::{Axis, IxDyn, SliceArg};
 
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
+#[cfg(feature = "arrow")]
+use crate::ArrView1;
 
 #[derive(Clone)]
 pub enum ArrOk<'a> {
     Bool(ArbArray<'a, bool>),
+    U8(ArbArray<'a, u8>),
     Usize(ArbArray<'a, usize>),
     OptUsize(ArbArray<'a, OptUsize>),
     F32(ArbArray<'a, f32>),
@@ -51,14 +54,14 @@ macro_rules! match_all {
             #[cfg(feature="option_dtype")]
             macro_rules! inner_macro {
                 () => {
-                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, DateTime, TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
                 };
             }
 
             #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize, VecUsize)
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize, VecUsize)
                 };
             }
             inner_macro!()
@@ -86,7 +89,7 @@ macro_rules! match_arrok {
     (numeric2 $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, OptUsize, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
     (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};//, OptUsize, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
     (float $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64)};//, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64)};
-    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, String, Str, DateTime, Bool)};
+    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, String, Str, DateTime, Bool, U8)};
     (castable $($tt: tt)*) => {match_all!(
         ArrOk, $($tt)*,
         F32, F64, I32, I64, Usize, String, DateTime, Bool, OptUsize,
@@ -393,6 +396,7 @@ impl_same_dtype_concat_1d!(
     #[cfg(feature = "option_dtype")]
     OptI64,
     Bool,
+    U8,
     F32,
     F64,
     I32,
@@ -446,6 +450,155 @@ impl<'a> Cast<ArbArray<'a, Vec<usize>>> for ArrOk<'a> {
     }
 }
 
+#[cfg(feature = "arw")]
+macro_rules! impl_from_arrow {
+    ($([$arrow_dt: ident, $arrow_array: ident, $real: ty]),*) => {
+        impl<'a> ArrOk<'a> {
+            pub fn from_arrow(arr: Box<dyn arrow::array::Array>) -> ArrOk<'a> {
+                use arrow::datatypes::DataType as ArrowDT;
+                use crate::{ViewOnBase, GetNone, Number};
+                use arrow::array::PrimitiveArray;
+                match arr.data_type() {
+                    $(ArrowDT::$arrow_dt => {
+                        let a = arr.as_any().downcast_ref::<PrimitiveArray<$real>>().unwrap();
+                        let data: &[$real] = a.values();
+                        let nulls = a.validity();
+                        if nulls.is_some() {
+                            let data = a.into_iter().map(|v| v.cloned().unwrap_or_else(|| <$real>::none())).collect_trusted();
+                            Arr1::from_vec(data).to_dimd().into()
+                        } else {
+                            let view: ArrViewD<'a, $real> = unsafe {
+                                std::mem::transmute(ArrView1::from_slice(data.len(), data).to_dimd())
+                            };
+                            let out = ViewOnBase::new_from_arrow(arr, view);
+                            out.into()
+                        }
+
+                    }),*
+                    ArrowDT::Int32 => {
+                        // let a: &arrow::array::Int32Array = arr.as_primitive();
+                        let a = arr.as_any().downcast_ref::<PrimitiveArray<i32>>().unwrap();
+                        let data: &[i32] = a.values();
+                        let nulls = a.validity();
+                        if nulls.is_some() {
+                            let data = a.into_iter().map(|v| v.map(|v| v.f64()).unwrap_or(f64::NAN)).collect_trusted();
+                            Arr1::from_vec(data).to_dimd().into()
+                        } else {
+                            let view: ArrViewD<'a, i32> = unsafe {
+                                std::mem::transmute(ArrView1::from_slice(data.len(), data).to_dimd())
+                            };
+                            let out = ViewOnBase::new_from_arrow(arr, view);
+                            out.into()
+                        }
+
+                    },
+                    ArrowDT::Int64 => {
+                        // let a: &arrow::array::Int64Array = arr.as_primitive();
+                        let a = arr.as_any().downcast_ref::<PrimitiveArray<i64>>().unwrap();
+                        let data: &[i64] = a.values();
+                        let nulls = a.validity();
+                        if nulls.is_some() {
+                            let data = a.into_iter().map(|v| v.map(|v| v.f64()).unwrap_or(f64::NAN)).collect_trusted();
+                            Arr1::from_vec(data).to_dimd().into()
+                        } else {
+                            let view: ArrViewD<'a, i64> = unsafe {
+                                std::mem::transmute(ArrView1::from_slice(data.len(), data).to_dimd())
+                            };
+                            let out = ViewOnBase::new_from_arrow(arr, view);
+                            out.into()
+                        }
+
+                    },
+                    ArrowDT::Boolean => {
+                        let a = arr.as_any().downcast_ref::<arrow::array::BooleanArray>().unwrap();
+                        let (data, start, len) = a.values().as_slice();
+                        if start != 0 {
+                            unreachable!("start index of the boolean is not 0")
+                        }
+                        let nulls = a.validity();
+                        if nulls.is_some() {
+                            unreachable!("can not read feather with null bool");
+                        } else {
+                            let view: ArrViewD<'a, u8> = unsafe {
+                                std::mem::transmute(ArrView1::from_slice(len, data).to_dimd())
+                            };
+                            let out = ViewOnBase::new_from_arrow(arr, view);
+                            out.into()
+                        }
+                    },
+                    ArrowDT::Utf8 => {
+                        // todo: remove unneeded clone here
+                        // let a: &arrow::array::StringArray = arr.as_string();
+                        let a = arr.as_any().downcast_ref::<arrow::array::Utf8Array<i32>>().unwrap();
+                        let data = a.into_iter().map(|s| s.map(|s| s.to_string()).unwrap_or_default()).collect_trusted();
+                        Arr1::from_vec(data).to_dimd().into()
+                    },
+                    ArrowDT::LargeUtf8 => {
+                        // let a: &arrow::array::LargeStringArray = arr.as_string();
+                        let a = arr.as_any().downcast_ref::<arrow::array::Utf8Array<i64>>().unwrap();
+                        let data = a.into_iter().map(|s| s.map(|s| s.to_string()).unwrap_or_default()).collect_trusted();
+                        Arr1::from_vec(data).to_dimd().into()
+                    }
+                    ArrowDT::Timestamp(arw_unit, arw_tz) => {
+                        use arrow::datatypes::TimeUnit;
+                        assert!(arw_tz.is_none(), "Timezone is not supported yet");
+                        let a = arr.as_any().downcast_ref::<PrimitiveArray<i64>>().unwrap();
+                        let data = match arw_unit {
+                            TimeUnit::Second => {
+                                // let a: &arrow::array::TimestampSecondArray = arr.as_primitive();
+                                a.into_iter().map(|v| {
+                                    if let Some(v) = v {
+                                        DateTime::from_timestamp_opt(*v, 0)
+                                    } else {
+                                        None.into()
+                                    }
+                                }).collect_trusted()
+                            },
+                            TimeUnit::Millisecond => {
+                                // let a: &arrow::array::TimestampMillisecondArray = arr.as_primitive();
+                                a.into_iter().map(|v| {
+                                    if let Some(v) = v {
+                                        DateTime::from_timestamp_ms(*v).unwrap_or_default()
+                                    } else {
+                                        DateTime(None)
+                                    }
+                                }).collect_trusted()
+                            },
+                            TimeUnit::Microsecond => {
+                                // let a: &arrow::array::TimestampMicrosecondArray = arr.as_primitive();
+                                a.into_iter().map(|v| {
+                                    if let Some(v) = v {
+                                        DateTime::from_timestamp_us(*v).unwrap_or_default()
+                                    } else {
+                                        DateTime(None)
+                                    }
+                                }).collect_trusted()
+                            },
+                            TimeUnit::Nanosecond => {
+                                // let a: &arrow::array::TimestampNanosecondArray = arr.as_primitive();
+                                a.into_iter().map(|v| {
+                                    if let Some(v) = v {
+                                        DateTime::from_timestamp_ns(*v).unwrap_or_default()
+                                    } else {
+                                        DateTime(None)
+                                    }
+                                }).collect_trusted()
+                            },
+                        };
+                        Arr1::from_vec(data).to_dimd().into()
+                    }
+                    _ => unimplemented!("Arrow datatype {:?} is not supported yet", arr.data_type())
+                }
+            }
+        }
+    };
+}
+
+impl_from_arrow!(
+    [Float32, Float32Array, f32],
+    [Float64, Float64Array, f64] // [Int32, Int32Array, i32], [Int64, Int64Array, i64]
+);
+
 macro_rules! impl_arrok_cast {
     ($($(#[$meta: meta])? $T: ty: $cast_func: ident),*) => {
         $(
@@ -455,6 +608,7 @@ macro_rules! impl_arrok_cast {
                 #[inline]
                 fn cast(self) -> ArbArray<'a, $T> {
                     match self {
+                        ArrOk::U8(e) => e.cast::<$T>(),
                         ArrOk::F32(e) => e.cast::<$T>(),
                         ArrOk::F64(e) => e.cast::<$T>(),
                         ArrOk::I32(e) => e.cast::<$T>(),
@@ -509,6 +663,7 @@ macro_rules! impl_arrok_cast {
     };
 }
 impl_arrok_cast!(
+    u8: cast_u8,
     i32: cast_i32,
     i64: cast_i64,
     f32: cast_f32,

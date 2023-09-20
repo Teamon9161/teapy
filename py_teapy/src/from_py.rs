@@ -12,7 +12,6 @@ use tears::{OptF64, OptI64};
 // #[cfg(feature="datadict")]
 use crate::pylazy::PyDataDict;
 use ahash::HashMap;
-// use super::export::*;
 
 #[derive(FromPyObject)]
 pub enum Scalar {
@@ -179,6 +178,30 @@ impl<'py> FromPyObject<'py> for PyContext<'py> {
         } else {
             Err(PyValueError::new_err(
                 "Cannot extract a Context from the object",
+            ))
+        }
+    }
+}
+
+#[cfg(feature = "arw")]
+pub struct PyColSelect<'py>(pub tears::ColSelect<'py>);
+
+#[cfg(feature = "arw")]
+impl<'py> FromPyObject<'py> for PyColSelect<'py> {
+    fn extract(ob: &'py PyAny) -> PyResult<PyColSelect<'py>> {
+        if ob.is_none() {
+            Ok(Self(tears::ColSelect::Null))
+        } else if let Ok(idx) = ob.extract::<i32>() {
+            Ok(Self(tears::ColSelect::Idx(vec![idx])))
+        } else if let Ok(name) = ob.extract::<&str>() {
+            Ok(Self(tears::ColSelect::Name(vec![name])))
+        } else if let Ok(idx) = ob.extract::<Vec<i32>>() {
+            Ok(Self(tears::ColSelect::Idx(idx)))
+        } else if let Ok(name) = ob.extract::<Vec<&str>>() {
+            Ok(Self(tears::ColSelect::Name(name)))
+        } else {
+            Err(PyValueError::new_err(
+                "Cannot extract a ColSelect object from the given object",
             ))
         }
     }

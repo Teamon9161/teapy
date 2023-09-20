@@ -6,7 +6,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.6"
+version = "0.4.7"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
@@ -14,7 +14,7 @@ license = "MIT"
 
 [package]
 name = "teapy"
-version = "0.4.6"
+version = "0.4.7"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
@@ -25,12 +25,13 @@ name = "teapy"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["lazy", "window_func", "option_dtype", "blas"]
+default = ["lazy", "window_func", "option_dtype", "blas", "arw"]
 
 option_dtype = ["py_teapy/option_dtype"]
 lazy = ["py_teapy/lazy"]
 window_func = ["py_teapy/window_func"]
 blas = ["py_teapy/blas"]
+arw = ["py_teapy/arw"]
 
 [profile.release]
 lto = true
@@ -49,6 +50,7 @@ numpy = "0.19"
 pyo3 = {version = "0.19.0", features = ["extension-module", "abi3-py38", "macros", "serde"]}
 parking_lot = "0.12"
 chrono = {version = "0.4.23", features = ["serde"]}
+
 
 [dependencies]
 py_teapy = {path = "./py_teapy", default-features = false}

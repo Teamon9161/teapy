@@ -37,6 +37,7 @@ pub fn get_version() -> &'static str {
 #[pymodule]
 pub fn teapy(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     add_lazy(m)?;
+    m.add("nan", f64::NAN)?;
     m.add_function(wrap_pyfunction!(get_version, m)?)?;
     // #[cfg(feature = "lazy")]
     // m.add_function(wrap_pyfunction!(equity::calc_digital_ret, m)?)?;

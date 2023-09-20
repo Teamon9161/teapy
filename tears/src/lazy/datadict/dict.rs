@@ -1,4 +1,5 @@
 use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+// use rayon::prelude::*;
 use regex::Regex;
 use std::fmt::Debug;
 use std::iter::zip;
@@ -11,6 +12,8 @@ use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;
 
 use ahash::{HashMap, HashMapExt};
+#[cfg(feature = "arw")]
+use std::path::Path;
 
 static DATADICT_INIT_SIZE: usize = 10;
 
@@ -89,6 +92,36 @@ impl<'a> DataDict<'a> {
             .map(|e| e.ref_name().unwrap())
             .collect_trusted()
         // self.map.keys().map(|k| k.as_str()).collect_trusted()
+    }
+
+    #[cfg(feature = "arw")]
+    pub fn read_ipc<P: AsRef<Path>>(path: P, columns: crate::ColSelect<'_>) -> TpResult<Self> {
+        let (schema, arr_vec) = crate::arrow_io::read_ipc(path, columns)?;
+        let data: Vec<Expr<'a>> = schema
+            .fields
+            .into_iter()
+            .zip(arr_vec)
+            .map(|(s, a)| Expr::new_from_arr(a, Some(s.name)))
+            .collect();
+        Ok(DataDict::new(data, None))
+    }
+
+    #[cfg(feature = "arw")]
+    pub fn scan_ipc<P>(path: P, columns: crate::ColSelect<'_>) -> TpResult<Self>
+    where
+        P: AsRef<Path> + Send + Sync + Clone + 'a,
+    {
+        let mut schema = crate::arrow_io::get_ipc_schema(path.clone())?;
+        let proj = columns.into_proj(&schema)?;
+        if let Some(proj) = proj {
+            schema = schema.filter(|i, _f| proj.contains(&i));
+        }
+        let out = schema
+            .fields
+            .into_iter()
+            .map(|f| Expr::read_ipc(path.clone(), f.name.into()))
+            .collect_trusted();
+        Ok(Self::new(out, None))
     }
 
     #[inline(always)]

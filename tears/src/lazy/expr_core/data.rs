@@ -1,11 +1,10 @@
+use super::{Expr, ExprElement, FuncNode};
 #[cfg(feature = "blas")]
 use crate::lazy::OlsResult;
 use crate::{lazy::ColumnSelector, ArrViewD, CollectTrustedToVec};
 use crate::{ArbArray, ArrD, ArrOk, ArrViewMutD, Context, GetDataType, TpResult};
 use std::fmt::Debug;
 use std::sync::Arc;
-
-use super::{Expr, ExprElement, FuncNode};
 
 #[derive(Clone)]
 pub enum Data<'a> {
@@ -17,6 +16,8 @@ pub enum Data<'a> {
     Context(ColumnSelector<'a>), // an expression based on a context (e.g. groupby
     #[cfg(feature = "blas")]
     OlsRes(Arc<OlsResult<'a>>), // only for least squares
+                                 // #[cfg(feature = "arw")]
+                                 // Arrow(Arc<dyn Array>),
 }
 
 impl<'a> Debug for Data<'a> {
@@ -35,6 +36,8 @@ impl<'a> Debug for Data<'a> {
             Data::ArcArr(arr) => write!(f, "{arr:#?}"),
             #[cfg(feature = "blas")]
             Data::OlsRes(res) => write!(f, "{res:#?}"),
+            // #[cfg(feature = "arw")]
+            // Data::Arrow(arr) => write!(f, "{arr:#?}"),
         }
     }
 }
@@ -77,6 +80,8 @@ impl<'a> Data<'a> {
             Data::Context(_) => "Context",
             #[cfg(feature = "blas")]
             Data::OlsRes(_) => "OlsRes",
+            // #[cfg(feature = "arw")]
+            // Data::Arrow(_) => "Arrow",
         }
     }
 
@@ -97,6 +102,10 @@ impl<'a> Data<'a> {
             Data::Context(_) => false,
             #[cfg(feature = "blas")]
             Data::OlsRes(_) => false,
+            // currently we can only read arrow array from file
+            // so we assume that the array is owned
+            // #[cfg(feature = "arw")]
+            // Data::Arrow(_) => true,
         }
     }
 
@@ -142,6 +151,8 @@ impl<'a> Data<'a> {
                 // need clone here
                 Ok(out.into_expr()?.view_arr(None)?.deref().into_owned())
             }
+            // #[cfg(feature = "arw")]
+            // Data::Arrow(arr) => Ok(ArrOk::from_arrow(arr)),
             _ => Err("The output of the expression is not an array".into()),
         }
     }

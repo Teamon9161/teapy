@@ -1,7 +1,7 @@
 use crate::TpResult;
 
 use super::{ArrBase, WrapNdarray};
-use ndarray::{Dimension, Ix0, Ix1, Ix2, IxDyn, RawArrayView, StrideShape, ViewRepr};
+use ndarray::{s, Dimension, Ix0, Ix1, Ix2, IxDyn, NewAxis, RawArrayView, StrideShape, ViewRepr};
 
 pub type ArrView<'a, T, D> = ArrBase<ViewRepr<&'a T>, D>;
 pub type ArrView1<'a, T> = ArrView<'a, T, Ix1>;
@@ -75,5 +75,13 @@ impl<'a, T> ArrView<'a, T, Ix0> {
 impl<'a, T> ArrViewD<'a, T> {
     pub fn into_scalar(self) -> TpResult<&'a T> {
         Ok(self.to_dim0()?.into_scalar())
+    }
+
+    pub fn no_dim0(self) -> ArrViewD<'a, T> {
+        if self.ndim() == 0 {
+            self.0.slice_move(s!(NewAxis)).wrap().to_dimd()
+        } else {
+            self
+        }
     }
 }

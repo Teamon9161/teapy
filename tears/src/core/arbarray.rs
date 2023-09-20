@@ -14,8 +14,27 @@ pub enum ArbArray<'a, T> {
     ViewOnBase(Pin<Box<ViewOnBase<'a, T>>>),
 }
 
+pub enum ViewBase<'a, T> {
+    ArbArray(ArbArray<'a, T>),
+    #[cfg(feature = "arw")]
+    Arrow(Box<dyn arrow::array::Array>),
+}
+
+impl<'a, T> From<ArbArray<'a, T>> for ViewBase<'a, T> {
+    fn from(arr: ArbArray<'a, T>) -> Self {
+        ViewBase::ArbArray(arr)
+    }
+}
+
+#[cfg(feature = "arw")]
+impl<T> From<Box<dyn arrow::array::Array>> for ViewBase<'_, T> {
+    fn from(arr: Box<dyn arrow::array::Array>) -> Self {
+        ViewBase::Arrow(arr)
+    }
+}
+
 pub struct ViewOnBase<'a, T> {
-    pub base: ArbArray<'a, T>,
+    pub base: ViewBase<'a, T>, // ArbArray<'a, T>,
     pub view: Option<ArrViewD<'a, T>>,
     _pin: PhantomPinned,
 }
@@ -34,54 +53,6 @@ impl<'a, T: Clone> Clone for ArbArray<'a, T> {
     }
 }
 
-// impl<'a, T: Clone> ToOwned for ArbArray<'a, T> {
-//     type Owned = ArbArray<'a, T>;
-
-//     fn to_owned(&self) -> Self {
-//         self.view().to_owned().into()
-//     }
-// }
-
-// impl<'a, T> From<ArbArray<'a, T>> for ViewOnBase<'a, T> {
-//     fn from(base: ArbArray<'a, T>) -> Self {
-//         Self {
-//             base: base,
-//             view: None,
-//             _pin: PhantomPinned,
-//         }
-//     }
-// }
-
-// impl<'a, T> From<ArrViewD<'a, T>> for ViewOnBase<'a, T> {
-//     fn from(base: ArrViewD<'a, T>) -> Self {
-//         Self {
-//             base: base.into(),
-//             view: None,
-//             _pin: PhantomPinned,
-//         }
-//     }
-// }
-
-// impl<'a, T> From<ArrD<T>> for ViewOnBase<'a, T> {
-//     fn from(base: ArrD<T>) -> Self {
-//         Self {
-//             base: base,
-//             view: None,
-//             // _pin: PhantomPinned,
-//         }
-//     }
-// }
-
-// impl<'a, T> Pin<ViewOnBase<'a, T>> {
-//     pub fn set_view(&mut self, view: ArrViewD<'a, T>) {
-//         // 这里其实安全的，因为修改一个字段不会转移整个结构体的所有权
-//         unsafe {
-//             let mut_ref: Pin<&mut Self> = Pin::as_mut(&mut self);
-//             Pin::get_unchecked_mut(mut_ref).view = view;
-//         }
-//     }
-// }
-
 impl<'a, T> ViewOnBase<'a, T> {
     pub fn view(&self) -> &ArrViewD<'a, T> {
         self.view.as_ref().unwrap()
@@ -89,7 +60,20 @@ impl<'a, T> ViewOnBase<'a, T> {
 
     pub fn new(arr: ArbArray<'a, T>, view: ArrViewD<'a, T>) -> Pin<Box<Self>> {
         let out = Self {
-            base: arr,
+            base: arr.into(),
+            view: Some(view),
+            _pin: PhantomPinned,
+        };
+        Box::pin(out)
+    }
+
+    #[cfg(feature = "arw")]
+    pub fn new_from_arrow(
+        arr: Box<dyn arrow::array::Array>,
+        view: ArrViewD<'a, T>,
+    ) -> Pin<Box<Self>> {
+        let out = Self {
+            base: arr.into(),
             view: Some(view),
             _pin: PhantomPinned,
         };
@@ -451,8 +435,8 @@ impl<'a, T> ArbArray<'a, T> {
     where
         T: Clone,
     {
-        let arrs = std::iter::once(self.view().0)
-            .chain(other.iter().map(|o| o.view().0))
+        let arrs = std::iter::once(self.view().no_dim0().0)
+            .chain(other.iter().map(|o| o.view().no_dim0().0))
             .collect::<Vec<_>>();
         ArbArray::Owned(ndarray::concatenate(axis, &arrs).unwrap().wrap())
     }
@@ -461,8 +445,8 @@ impl<'a, T> ArbArray<'a, T> {
     where
         T: Clone,
     {
-        let arrs = std::iter::once(self.view().0)
-            .chain(other.iter().map(|o| o.view().0))
+        let arrs = std::iter::once(self.view().no_dim0().0)
+            .chain(other.iter().map(|o| o.view().no_dim0().0))
             .collect::<Vec<_>>();
         ArbArray::Owned(ndarray::stack(axis, &arrs).unwrap().wrap())
     }

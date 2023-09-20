@@ -90,6 +90,13 @@ impl<'a> Expr<'a> {
         e.set_name(name);
         e
     }
+
+    pub fn new_from_arr(arr: ArrOk<'a>, name: Option<String>) -> Self {
+        let mut e: Expr<'a> = arr.into();
+        e.set_name(name);
+        e
+    }
+
     pub fn new<T: ExprElement + 'a>(arr: ArbArray<'a, T>, name: Option<String>) -> Self {
         let e: ExprInner<'a> = arr.into();
         let mut e: Expr<'a> = e.into();

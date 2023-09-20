@@ -7,6 +7,8 @@ use super::super::from_py::{PyArrayOk, PyList};
 // #[cfg(feature="datadict")]
 use super::datadict::{IntoPyDataDict, PyDataDict, PyVecExprToRs};
 use super::export::*;
+#[cfg(feature = "arw")]
+use crate::from_py::PyColSelect;
 
 #[pyfunction]
 /// A util function to convert python object to PyExpr without copy
@@ -414,4 +416,26 @@ pub fn context<'py>(s: Option<&'py PyAny>) -> PyResult<PyExpr> {
     let mut e = unsafe { std::mem::transmute::<Expr<'_>, Expr<'static>>(a.into()) };
     e.set_name(name);
     Ok(e.to_py(None))
+}
+
+#[cfg(feature = "arw")]
+#[pyfunction]
+pub fn read_ipc(path: &str, columns: PyColSelect) -> PyResult<PyDataDict> {
+    use tears::StrError;
+    let dd = DataDict::read_ipc(path, columns.0).map_err(StrError::to_py)?;
+    Ok(PyDataDict {
+        dd,
+        obj_map: Default::default(),
+    })
+}
+
+#[cfg(feature = "arw")]
+#[pyfunction]
+pub fn scan_ipc(path: String, columns: PyColSelect) -> PyResult<PyDataDict> {
+    use tears::StrError;
+    let dd = DataDict::scan_ipc(path, columns.0).map_err(StrError::to_py)?;
+    Ok(PyDataDict {
+        dd,
+        obj_map: Default::default(),
+    })
 }

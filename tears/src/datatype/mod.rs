@@ -41,6 +41,7 @@ pub enum DataType {
     F64,
     I32,
     I64,
+    U8,
     U64,
     Usize,
     Str,
@@ -69,13 +70,13 @@ macro_rules! match_datatype_arm {
             #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize), $body)
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize), $body)
                 };
             }
             #[cfg(feature="option_dtype")]
             macro_rules! inner_macro {
                 () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize, OptF64, OptF32, OptI32, OptI64), $body)
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize, OptF64, OptF32, OptI32, OptI64), $body)
                 };
             }
             inner_macro!()
@@ -181,6 +182,7 @@ impl DataType {
 }
 
 impl_datatype!(Bool, bool);
+impl_datatype!(U8, u8);
 impl_datatype!(F32, f32);
 impl_datatype!(F64, f64);
 impl_datatype!(I32, i32);
@@ -252,7 +254,14 @@ impl GetNone for i64 {
 impl GetNone for bool {
     #[inline]
     fn none() -> Self {
-        panic!("Can not cast None to bool")
+        panic!("bool doesn't have None value")
+    }
+}
+
+impl GetNone for u8 {
+    #[inline]
+    fn none() -> Self {
+        panic!("u8 doesn't have None value")
     }
 }
 
@@ -557,6 +566,7 @@ impl_number!(
 pub trait BoolType {
     fn bool_(self) -> bool;
 }
+
 impl BoolType for bool {
     fn bool_(self) -> bool {
         self

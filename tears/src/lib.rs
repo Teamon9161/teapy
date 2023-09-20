@@ -24,10 +24,15 @@ pub mod datatype;
 #[cfg(feature = "lazy")]
 #[macro_use]
 pub mod lazy;
+
+#[cfg(feature = "arw")]
+mod arrow_io;
 // mod impls;
 pub mod util_trait;
 pub mod utils;
 
+#[cfg(feature = "arw")]
+pub use arrow_io::{read_ipc, ColSelect};
 pub(crate) use datatype::match_datatype_arm;
 // pub(crate) use crate::core::match_arbarray;
 #[cfg(feature = "option_dtype")]

@@ -549,8 +549,8 @@ impl<'a> Expr<'a> {
                 .map(|e| e.view_arr(ctx.as_ref()).unwrap())
                 .collect::<Vec<_>>();
             let out: ArrOk<'a> = match_arrok!(castable arr, a, {
-                let a = a.deref().no_dim0();
-                let a_view = a.view();
+                let a = a.deref();
+                let a_view = a.view().no_dim0();
                 let axis = a_view.norm_axis(axis);
                 let other = other_ref.into_par_iter().map(|o| {
                     let o: ArbArray<_> = o.deref().cast();
@@ -572,9 +572,8 @@ impl<'a> Expr<'a> {
                 .map(|e| e.view_arr(ctx.as_ref()).unwrap())
                 .collect::<Vec<_>>();
             let out: ArrOk<'a> = match_arrok!(castable arr, a, {
-                let a = a.deref().no_dim0();
-                let a_view = a.view();
-                // let axis = a_view.norm_axis(axis);
+                let a = a.deref();
+                let a_view = a.view().no_dim0();
                 let axis = if axis < 0 {
                     Axis(a_view.norm_axis(axis).index() + 1)
                 } else {

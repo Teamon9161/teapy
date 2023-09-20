@@ -1,7 +1,7 @@
 from numpy import nan
 
 from .array_func import *
-from .datadict import DataDict, from_pd
+from .datadict import DataDict, from_pd, read_ipc, scan_ipc
 from .expr import Expr, register
 from .mod_func import *
 from .teapy import arange

@@ -125,9 +125,10 @@ macro_rules! impl_from {
 
     };
 }
-#[cfg(feature = "option_dtype")]
+// #[cfg(feature = "option_dtype")]
 impl_from!(
     (Bool, bool),
+    (U8, u8),
     (F32, f32),
     (F64, f64),
     (I32, i32),
@@ -139,26 +140,30 @@ impl_from!(
     (TimeDelta, TimeDelta), //, (Str, &str)
     (OptUsize, OptUsize),
     (VecUsize, Vec<usize>),
+    #[cfg(feature = "option_dtype")]
     (OptF64, OptF64),
+    #[cfg(feature = "option_dtype")]
     (OptF32, OptF32),
+    #[cfg(feature = "option_dtype")]
     (OptI32, OptI32),
+    #[cfg(feature = "option_dtype")]
     (OptI64, OptI64)
 );
-#[cfg(not(feature = "option_dtype"))]
-impl_from!(
-    (Bool, bool),
-    (F32, f32),
-    (F64, f64),
-    (I32, i32),
-    (I64, i64),
-    (Usize, usize),
-    (VecUsize, Vec<usize>),
-    (Object, PyValue),
-    (String, String),
-    (DateTime, DateTime),
-    (TimeDelta, TimeDelta),
-    (OptUsize, OptUsize)
-);
+// #[cfg(not(feature = "option_dtype"))]
+// impl_from!(
+//     (Bool, bool),
+//     (F32, f32),
+//     (F64, f64),
+//     (I32, i32),
+//     (I64, i64),
+//     (Usize, usize),
+//     (VecUsize, Vec<usize>),
+//     (Object, PyValue),
+//     (String, String),
+//     (DateTime, DateTime),
+//     (TimeDelta, TimeDelta),
+//     (OptUsize, OptUsize)
+// );
 
 impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {
     fn from(arr: ArrD<&'a str>) -> Self {

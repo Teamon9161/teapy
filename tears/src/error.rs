@@ -42,8 +42,21 @@ impl<T> From<Vec<TpResult<T>>> for StrError {
     }
 }
 
+impl From<std::io::Error> for StrError {
+    fn from(e: std::io::Error) -> Self {
+        Self(Cow::Owned(e.to_string()))
+    }
+}
+
 impl StrError {
     pub fn to_py(self) -> PyErr {
         self.into()
+    }
+}
+
+#[cfg(feature = "arw")]
+impl From<arrow::error::Error> for StrError {
+    fn from(e: arrow::error::Error) -> Self {
+        Self(Cow::Owned(e.to_string()))
     }
 }

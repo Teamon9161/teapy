@@ -16,6 +16,9 @@ pub use pyfunc::{
     timedelta, where_py,
 };
 
+#[cfg(feature = "arw")]
+use pyfunc::{read_ipc, scan_ipc};
+
 use pyo3::prelude::{wrap_pyfunction, PyModule, PyResult};
 
 pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
@@ -37,5 +40,9 @@ pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_expr, m)?)?;
     m.add_function(wrap_pyfunction!(parse_expr_list, m)?)?;
     m.add_function(wrap_pyfunction!(context, m)?)?;
+    #[cfg(feature = "arw")]
+    m.add_function(wrap_pyfunction!(read_ipc, m)?)?;
+    #[cfg(feature = "arw")]
+    m.add_function(wrap_pyfunction!(scan_ipc, m)?)?;
     Ok(())
 }

@@ -1,5 +1,8 @@
 from .teapy import PyDataDict as _DataDict
-from .teapy import from_pandas, stack
+from .teapy import from_pandas
+from .teapy import read_ipc as __read_ipc
+from .teapy import scan_ipc as __scan_ipc
+from .teapy import stack
 
 
 def _new_with_dd(dd=None):
@@ -26,6 +29,16 @@ def construct(func):
 
 def from_pd(*args, **kwargs):
     dd = from_pandas(*args, **kwargs)
+    return _new_with_dd(dd)
+
+
+def read_ipc(path, columns=None):
+    dd = __read_ipc(str(path), columns=columns)
+    return _new_with_dd(dd)
+
+
+def scan_ipc(path, columns=None):
+    dd = __scan_ipc(str(path), columns=columns)
     return _new_with_dd(dd)
 
 
