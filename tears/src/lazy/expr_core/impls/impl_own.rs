@@ -733,7 +733,7 @@ pub fn corr<'a>(exprs: Vec<Expr<'a>>, method: CorrMethod, stable: bool) -> Expr<
                     let arrj = *unsafe{all_arr.get_unchecked(j)};
                     match_arrok!(numeric arri, arri, {
                         match_arrok!(numeric arrj, arrj, {
-                            arri.deref().view().to_dim1()?.corr_1d(&arrj.deref().view().to_dim1()?, method.clone(), stable)
+                            arri.deref().view().to_dim1()?.corr_1d(&arrj.deref().view().to_dim1()?, method, stable)
                         })
                     })
                 } else {

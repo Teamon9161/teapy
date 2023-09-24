@@ -184,12 +184,12 @@ impl DateTime {
 
     #[inline]
     pub fn from_timestamp_ns(ns: i64) -> Option<Self> {
-        let mut secs = ns / (NANOS_PER_SEC as i64);
+        let mut secs = ns / NANOS_PER_SEC;
         if ns < 0 {
             secs = secs.checked_sub(1)?;
         }
 
-        let nsecs = (ns % (NANOS_PER_SEC as i64)).abs();
+        let nsecs = (ns % NANOS_PER_SEC).abs();
         let nsecs = if nsecs == 0 && ns < 0 {
             secs += 1;
             0

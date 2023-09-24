@@ -112,7 +112,7 @@ impl<'a> Expr<'a> {
                     label.push(start);
                     start_vec.push(0);
                     for i in 0..ts.len() {
-                        let t = unsafe { ts.uget(i).clone() };
+                        let t = unsafe { *ts.uget(i) };
                         if t < start + duration.clone() {
                             continue;
                         } else {
@@ -124,13 +124,13 @@ impl<'a> Expr<'a> {
                 }
                 "right" => {
                     let mut start = ts.first().unwrap().duration_trunc(duration.clone());
-                    if start == ts.get(0).unwrap().clone() {
+                    if start == *ts.get(0).unwrap() {
                         start = start - duration.clone();
                     }
                     label.push(start);
                     start_vec.push(0);
                     for i in 0..ts.len() {
-                        let t = unsafe { ts.uget(i).clone() };
+                        let t = unsafe { *ts.uget(i) };
                         if (t <= start + duration.clone()) | (t == start) {
                             continue;
                         } else {
