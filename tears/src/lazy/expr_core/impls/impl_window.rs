@@ -75,7 +75,10 @@ impl<'a> Expr<'a> {
         let name = self.name().unwrap();
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?.deref();
-            let others_ref = others.iter().map(|e| e.view_arr(ctx.as_ref()).unwrap().deref()).collect_trusted();
+            let others_ref = others
+                .iter()
+                .map(|e| e.view_arr(ctx.as_ref()).unwrap().deref())
+                .collect_trusted();
             let others_name = others.iter().map(|e| e.name().unwrap()).collect_trusted();
             let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
             let roll_start_arr = roll_start.view().to_dim1()?;
@@ -88,37 +91,49 @@ impl<'a> Expr<'a> {
                 )
                 .into());
             }
-            let columns = std::iter::once(name.clone()).chain(others_name).collect::<Vec<_>>();
+            let columns = std::iter::once(name.clone())
+                .chain(others_name)
+                .collect::<Vec<_>>();
             let mut map: Option<Arc<HashMap<String, usize>>> = None;
             let agg_expr = agg_expr.flatten();
             let out: ArrOk<'a> = match_arrok!(arr, arr, {
                 let arr = arr.view().to_dim1()?;
                 let out = zip(roll_start_arr, 0..len)
-                .map(|(mut start, end)| {
-                    if start > end {
-                        start = end;  // the start idx should be inbound
-                    }
-                    let current_arr = arr.slice(s![start..end + 1]).wrap();
-                    let current_others: Vec<ArrOk> = others_ref.iter().map(|arr| arr.slice(s![start..=end])).collect_trusted();
-                    let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into()).chain(current_others.into_iter().map(|a| a.into())).collect::<Vec<_>>();
-                    let current_ctx = if map.is_some() {
-                        DataDict {
-                            data: exprs,
-                            map: map.clone().unwrap(),
+                    .map(|(mut start, end)| {
+                        if start > end {
+                            start = end; // the start idx should be inbound
                         }
-                    } else {
-                        let dd = DataDict::new(exprs, Some(columns.clone()));
-                        map = Some(dd.map.clone());
-                        dd
-                    };
-                    let out_e = agg_expr.context_clone();
-                    // this is safe as we don't return a view on the current context
-                    // into_owned is important here to guarantee the above
-                    let current_ctx: Arc<DataDict> = Arc::new(unsafe{std::mem::transmute(current_ctx)});
-                    let o = out_e.view_arr(Some(&current_ctx)).unwrap().deref().into_owned();
-                    o
-                })
-                .collect_trusted();
+                        let current_arr = arr.slice(s![start..end + 1]).wrap();
+                        let current_others: Vec<ArrOk> = others_ref
+                            .iter()
+                            .map(|arr| arr.slice(s![start..=end]))
+                            .collect_trusted();
+                        let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into())
+                            .chain(current_others.into_iter().map(|a| a.into()))
+                            .collect::<Vec<_>>();
+                        let current_ctx = if map.is_some() {
+                            DataDict {
+                                data: exprs,
+                                map: map.clone().unwrap(),
+                            }
+                        } else {
+                            let dd = DataDict::new(exprs, Some(columns.clone()));
+                            map = Some(dd.map.clone());
+                            dd
+                        };
+                        let out_e = agg_expr.context_clone();
+                        // this is safe as we don't return a view on the current context
+                        // into_owned is important here to guarantee the above
+                        let current_ctx: Arc<DataDict> =
+                            Arc::new(unsafe { std::mem::transmute(current_ctx) });
+                        let o = out_e
+                            .view_arr(Some(&current_ctx))
+                            .unwrap()
+                            .deref()
+                            .into_owned();
+                        o
+                    })
+                    .collect_trusted();
                 ArrOk::same_dtype_concat_1d(out)
             });
             Ok((out.into(), ctx.clone()))

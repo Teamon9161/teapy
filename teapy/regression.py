@@ -1,8 +1,7 @@
 from functools import partial
 
 import teapy as tp
-from teapy import nan
-from teapy import Expr, asexprs
+from teapy import Expr, asexprs, nan
 from teapy.teapy import get_newey_west_adjust_s
 
 

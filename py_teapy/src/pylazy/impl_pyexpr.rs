@@ -2138,13 +2138,20 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(groupby_info, other, method=CorrMethod::Pearson, stable=false))]
-    pub unsafe fn _group_by_time_corr(&self, groupby_info: &PyAny, other: &PyAny, method: CorrMethod, stable: bool) -> PyResult<Self> {
+    pub unsafe fn _group_by_time_corr(
+        &self,
+        groupby_info: &PyAny,
+        other: &PyAny,
+        method: CorrMethod,
+        stable: bool,
+    ) -> PyResult<Self> {
         let groupby_info = parse_expr_nocopy(groupby_info)?;
         let other = parse_expr_nocopy(other)?;
         let obj = groupby_info.obj();
         let obj2 = other.obj();
         let mut out = self.clone();
-        out.e.group_by_time_corr(other.e, groupby_info.e, method, stable);
+        out.e
+            .group_by_time_corr(other.e, groupby_info.e, method, stable);
         out.add_obj(obj).add_obj(obj2);
         Ok(out)
     }

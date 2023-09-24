@@ -9,7 +9,7 @@ mod unique;
 
 pub use context::Context;
 pub use datadict::{ColumnSelector, DataDict, GetMutOutput, GetOutput, SetInput};
-pub use expr_core::{Data, DropNaMethod, Expr, corr};
+pub use expr_core::{corr, Data, DropNaMethod, Expr};
 pub use groupby::{flatten, get_partition_size, groupby, groupby_par, prepare_groupby};
 pub use join::{join_left, JoinType};
 

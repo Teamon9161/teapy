@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::export::*;
-use crate::{TimeDelta, Data, Arr1, CollectTrustedToVec, lazy::DataDict, CorrMethod};
+use crate::{lazy::DataDict, Arr1, CollectTrustedToVec, CorrMethod, Data, TimeDelta};
 use ahash::HashMap;
 use ndarray::s;
 
@@ -65,7 +65,7 @@ macro_rules! impl_group_by_time_info_agg {
                                     let other_arr = other.slice(s![start..next_start]).wrap();
                                     current_arr.$func_1d(&other_arr, $($p),*)
                                 })
-                                
+
                             })
                             .collect_trusted();
                             Arr1::from_vec(out).to_dimd().into()
@@ -92,7 +92,7 @@ impl<'a> Expr<'a> {
     /// This func should return an array indicates the start of each group
     /// and a label array indicates the label of each group
     pub fn get_group_by_time_info<TD>(&mut self, duration: TD, closed: String) -> &mut Self
-    where 
+    where
         TD: Into<TimeDelta>,
     {
         let duration: TimeDelta = duration.into();
@@ -103,7 +103,7 @@ impl<'a> Expr<'a> {
             if ts.is_empty() {
                 return Ok((Vec::<usize>::with_capacity(0).into(), ctx));
             }
-            
+
             let mut label = vec![];
             let mut start_vec = vec![];
             match closed.to_lowercase().as_str() {
@@ -112,7 +112,7 @@ impl<'a> Expr<'a> {
                     label.push(start);
                     start_vec.push(0);
                     for i in 0..ts.len() {
-                        let t = unsafe{ ts.uget(i).clone() };
+                        let t = unsafe { ts.uget(i).clone() };
                         if t < start + duration.clone() {
                             continue;
                         } else {
@@ -121,7 +121,7 @@ impl<'a> Expr<'a> {
                             label.push(start);
                         }
                     }
-                },
+                }
                 "right" => {
                     let mut start = ts.first().unwrap().duration_trunc(duration.clone());
                     if start == ts.get(0).unwrap().clone() {
@@ -130,7 +130,7 @@ impl<'a> Expr<'a> {
                     label.push(start);
                     start_vec.push(0);
                     for i in 0..ts.len() {
-                        let t = unsafe{ ts.uget(i).clone() };
+                        let t = unsafe { ts.uget(i).clone() };
                         if (t <= start + duration.clone()) | (t == start) {
                             continue;
                         } else {
@@ -143,9 +143,9 @@ impl<'a> Expr<'a> {
                         }
                     }
                 }
-                _ => unimplemented!()
+                _ => unimplemented!(),
             }
-            start_vec.push(ts.len());  // the end of the array, this element is not the start of the group
+            start_vec.push(ts.len()); // the end of the array, this element is not the start of the group
             let label: ArrOk<'a> = Arr1::from_vec(label).to_dimd().into();
             let start_vec: ArrOk<'a> = Arr1::from_vec(start_vec).to_dimd().into();
             Ok((Data::ArrVec(vec![label, start_vec]), ctx))
@@ -155,16 +155,18 @@ impl<'a> Expr<'a> {
 
     #[allow(unreachable_patterns)]
     pub fn group_by_time(
-        &mut self, 
-        agg_expr: Expr<'a>, 
+        &mut self,
+        agg_expr: Expr<'a>,
         group_info: Expr<'a>,
         others: Vec<Expr<'a>>,
-    ) -> &mut Self
-    {
+    ) -> &mut Self {
         let name = self.name().unwrap();
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?.deref();
-            let others_ref = others.iter().map(|e| e.view_arr(ctx.as_ref()).unwrap().deref()).collect_trusted();
+            let others_ref = others
+                .iter()
+                .map(|e| e.view_arr(ctx.as_ref()).unwrap().deref())
+                .collect_trusted();
             let others_name = others.iter().map(|e| e.name().unwrap()).collect_trusted();
             let group_start = if let Ok(mut group_info) = group_info.view_arr_vec(ctx.as_ref()) {
                 group_info.pop().unwrap().deref().cast_usize()
@@ -172,40 +174,54 @@ impl<'a> Expr<'a> {
                 group_info.view_arr(ctx.as_ref())?.deref().cast_usize()
             };
             let group_start_view = group_start.view().to_dim1()?;
-            let columns = std::iter::once(name.clone()).chain(others_name).collect::<Vec<_>>();
+            let columns = std::iter::once(name.clone())
+                .chain(others_name)
+                .collect::<Vec<_>>();
             let mut map: Option<Arc<HashMap<String, usize>>> = None;
             let agg_expr = agg_expr.flatten();
             let out: ArrOk<'a> = match_arrok!(arr, arr, {
                 let arr = arr.view().to_dim1()?;
-                let out = group_start_view.as_slice().unwrap().windows(2)
-                .map(|v| {
-                    let (start, next_start) = (v[0], v[1]);
-                    let slice = s![start..next_start];
-                    let current_arr = arr.slice(slice).wrap();
-                    let current_others: Vec<ArrOk> = others_ref.iter().map(|arr| arr.slice(slice.clone())).collect_trusted();
-                    let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into()).chain(current_others.into_iter().map(|a| a.into())).collect::<Vec<_>>();
-                    let current_ctx = if map.is_some() {
-                        DataDict {
-                            data: exprs,
-                            map: map.clone().unwrap(),
-                        }
-                    } else {
-                        let dd = DataDict::new(exprs, Some(columns.clone()));
-                        map = Some(dd.map.clone());
-                        dd
-                    };
-                    let out_e = agg_expr.context_clone();
-                    // this is safe as we don't return a view on the current context
-                    // into_owned is important here to guarantee the above
-                    let current_ctx: Arc<DataDict> = Arc::new(unsafe{std::mem::transmute(current_ctx)});
-                    let o = out_e.view_arr(Some(&current_ctx)).unwrap().deref().into_owned();
-                    o
-                })
-                .collect_trusted();
+                let out = group_start_view
+                    .as_slice()
+                    .unwrap()
+                    .windows(2)
+                    .map(|v| {
+                        let (start, next_start) = (v[0], v[1]);
+                        let slice = s![start..next_start];
+                        let current_arr = arr.slice(slice).wrap();
+                        let current_others: Vec<ArrOk> = others_ref
+                            .iter()
+                            .map(|arr| arr.slice(slice.clone()))
+                            .collect_trusted();
+                        let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into())
+                            .chain(current_others.into_iter().map(|a| a.into()))
+                            .collect::<Vec<_>>();
+                        let current_ctx = if map.is_some() {
+                            DataDict {
+                                data: exprs,
+                                map: map.clone().unwrap(),
+                            }
+                        } else {
+                            let dd = DataDict::new(exprs, Some(columns.clone()));
+                            map = Some(dd.map.clone());
+                            dd
+                        };
+                        let out_e = agg_expr.context_clone();
+                        // this is safe as we don't return a view on the current context
+                        // into_owned is important here to guarantee the above
+                        let current_ctx: Arc<DataDict> =
+                            Arc::new(unsafe { std::mem::transmute(current_ctx) });
+                        let o = out_e
+                            .view_arr(Some(&current_ctx))
+                            .unwrap()
+                            .deref()
+                            .into_owned();
+                        o
+                    })
+                    .collect_trusted();
                 ArrOk::same_dtype_concat_1d(out)
             });
             Ok((out.into(), ctx.clone()))
-
         });
         self
     }

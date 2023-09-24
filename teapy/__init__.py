@@ -1,21 +1,15 @@
 # from numpy import nan
 
 from .array_func import *
-from .datadict import (
-    DataDict, 
-    from_pd, 
-    read_ipc, read_feather, 
-    scan_ipc, scan_feather
-)
+from .datadict import DataDict, from_pd, read_feather, read_ipc, scan_feather, scan_ipc
 from .expr import Expr, register
 from .mod_func import *
-from .teapy import nan
 from .teapy import arange
 from .teapy import calc_ret_single as _calc_ret_single
 from .teapy import calc_ret_single_with_spread as _calc_ret_single_with_spread
 from .teapy import concat
 from .teapy import context as ct
-from .teapy import eval_dicts, eval_exprs, expr_register, full, get_version
+from .teapy import eval_dicts, eval_exprs, expr_register, full, get_version, nan
 from .teapy import parse_expr as asexpr
 from .teapy import parse_expr_list as asexprs
 from .teapy import stack, timedelta

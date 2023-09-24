@@ -109,6 +109,7 @@ def test_rolling():
     expect5 = [1, 9, 9, 9, 5, 5, 5, 8, 1, 1, 5, 5, 6, 8, 8, 9]
     assert_allclose(res5.view, expect5)
 
+
 def test_group_by_time():
     time = tp.Expr(
         pd.date_range("2020-01-01 04:00:00", "2020-01-5 00:00:00", freq="4H").values
@@ -116,15 +117,14 @@ def test_group_by_time():
     value = tp.Expr(
         [5, 5, 9, 5, 8, 8, 2, 7, 3, 3, 8, 6, 4, 7, 8, 3, 1, 5, 3, 4, 4, 7, 9, 3]
     )
-    for closed in ['left', 'right']:
-        df = pd.DataFrame({
-            'time': time.view,
-            'value': value.view
-        })
-        df_pd = df.set_index('time').resample('12h', closed=closed).sum()
-        
-        label, v = value.groupby('12h', time_expr=time, closed=closed).agg(tp.ct(0).sum())
+    for closed in ["left", "right"]:
+        df = pd.DataFrame({"time": time.view, "value": value.view})
+        df_pd = df.set_index("time").resample("12h", closed=closed).sum()
+
+        label, v = value.groupby("12h", time_expr=time, closed=closed).agg(
+            tp.ct(0).sum()
+        )
         label = label.eview()
         v = v.eview()
-        assert_allclose(v, df_pd['value'])
+        assert_allclose(v, df_pd["value"])
         assert_series_equal(pd.Series(label), df_pd.index.to_series())

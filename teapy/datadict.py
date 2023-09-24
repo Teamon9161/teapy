@@ -6,6 +6,7 @@ from .teapy import stack
 
 name_prefix = "column_"
 
+
 def _new_with_dd(dd=None):
     if dd is None:
         # for inplace functions
@@ -42,7 +43,9 @@ def scan_ipc(path, columns=None):
     dd = __scan_ipc(str(path), columns=columns)
     return _new_with_dd(dd)
 
+
 read_feather, scan_feather = read_ipc, scan_ipc
+
 
 class DataDict:
     def __init__(self, data=None, columns=None, copy=False, **kwargs):
@@ -127,7 +130,7 @@ class DataDict:
             for c in subset:
                 dd[c] = dd[c].filter(~nan_mask)
             return None if inplace else dd
-        
+
     def filter(self, mask, inplace=False):
         dd = self if inplace else self.copy()
         idx = mask.mask_to_idx()
@@ -243,10 +246,10 @@ class DataDict:
         dd = self if inplace else self.copy()
         dd._select_on_axis_unchecked(idx, axis=0, inplace=True)
         return None if inplace else dd
-    
-    
+
     def groupby(self, by=None, time_col=None, closed="left", group=True):
         return GroupBy(self, by=by, time_col=time_col, closed=closed, group=group)
+
 
 class GroupBy:
     def __init__(self, dd, by=None, time_col=None, closed="left", group=True) -> None:
@@ -255,7 +258,7 @@ class GroupBy:
         self.time_col = time_col
         self.closed = closed
         self.group = group
-    
+
     def agg(self, exprs, **kwargs):
         if self.dd.is_empty():
             return self.dd
@@ -264,8 +267,10 @@ class GroupBy:
         columns = self.dd.columns
         others = self.dd[columns[1:]].raw_data
         if time_expr is not None:
-            label, data = e.groupby(by=self.by, time_expr=time_expr, closed=self.closed, others=others).agg(exprs)
-            
+            label, data = e.groupby(
+                by=self.by, time_expr=time_expr, closed=self.closed, others=others
+            ).agg(exprs)
+
             if self.group:
                 if not isinstance(data, list):
                     data = [data]

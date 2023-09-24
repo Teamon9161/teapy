@@ -6,9 +6,7 @@ use std::iter::zip;
 use std::sync::Arc;
 
 use crate::lazy::Expr;
-use crate::{
-    CollectTrustedToVec, Context, StrError, TpResult, CorrMethod
-};
+use crate::{CollectTrustedToVec, Context, CorrMethod, StrError, TpResult};
 
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;
@@ -184,8 +182,12 @@ impl<'a> DataDict<'a> {
         self.map = Arc::new(map);
     }
 
-    pub fn corr<'b>(&'b self, col: Option<ColumnSelector<'b>>, method: CorrMethod, stable: bool) -> Expr<'a> 
-    {   
+    pub fn corr<'b>(
+        &'b self,
+        col: Option<ColumnSelector<'b>>,
+        method: CorrMethod,
+        stable: bool,
+    ) -> Expr<'a> {
         use super::super::corr;
         let col: ColumnSelector<'_> = col.unwrap_or(ColumnSelector::All);
         let exprs: Vec<&Expr<'a>> = self.get(col).unwrap().into_exprs();
@@ -293,7 +295,8 @@ impl<'a> DataDict<'a> {
             ColumnSelector::NameOwned(col_name) => {
                 // self.get(col_name.clone().as_str().into())
                 if col_name.starts_with('^') & col_name.ends_with('$') {
-                    let re = Regex::new(col_name.as_str()).map_err(|_| StrError("Invalid regex!".into()))?;
+                    let re = Regex::new(col_name.as_str())
+                        .map_err(|_| StrError("Invalid regex!".into()))?;
                     return self.get(ColumnSelector::Regex(re));
                 }
                 let col_idx = *self.map.get(&col_name).ok_or_else(|| -> StrError {
@@ -304,7 +307,7 @@ impl<'a> DataDict<'a> {
                     .get(col_idx)
                     .expect("Select index of ot bound")
                     .into())
-            },
+            }
             ColumnSelector::Name(col_name) => {
                 if col_name.starts_with('^') & col_name.ends_with('$') {
                     let re = Regex::new(col_name).map_err(|_| StrError("Invalid regex!".into()))?;
@@ -361,14 +364,15 @@ impl<'a> DataDict<'a> {
             ColumnSelector::NameOwned(col_name) => {
                 // self.get_mut(col_name.as_str().into())
                 if col_name.starts_with('^') & col_name.ends_with('$') {
-                    let re = Regex::new(col_name.as_str()).map_err(|_| StrError("Invalid regex!".into()))?;
+                    let re = Regex::new(col_name.as_str())
+                        .map_err(|_| StrError("Invalid regex!".into()))?;
                     return self.get_mut(ColumnSelector::Regex(re));
                 }
                 let col_idx = *self.map.get(&col_name).ok_or_else(|| -> StrError {
                     format!("Column {col_name} doesn't exist!").into()
                 })?;
                 Ok(unsafe { self.data.get_unchecked_mut(col_idx).into() })
-            },
+            }
             ColumnSelector::Name(col_name) => {
                 if col_name.starts_with('^') & col_name.ends_with('$') {
                     let re = Regex::new(col_name).map_err(|_| StrError("Invalid regex!".into()))?;

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from .datadict import name_prefix
 from .teapy import PyExpr as Expr
 from .teapy import expr_register as _expr_register
 from .teapy import parse_expr_list as asexprs
-from .datadict import name_prefix
 
 Expr.where = Expr.where_
 
@@ -44,10 +44,13 @@ def left_join(self, right, left_other=None):
     else:
         return right.select(idx, check=False)
 
+
 def mask_to_idx(self):
     from .teapy import arange
+
     idx = arange(self.shape[0])
     return idx.filter(self)
+
 
 @register
 def rolling(
@@ -58,7 +61,7 @@ def rolling(
     offset=None,
     start_by="full",
     others=None,
-    by=None
+    by=None,
 ) -> ExprRolling:
     """
     window: int | duration, such as 1y, 2mo, 3d, 4h, 5m, 6s, or combine them
@@ -78,17 +81,13 @@ def rolling(
         offset=offset,
         start_by=start_by,
         others=others,
-        by=by
+        by=by,
     )
+
 
 @register
 def groupby(
-    self,
-    by=None,
-    time_expr=None,
-    info=None,
-    others=None,
-    closed="left"
+    self, by=None, time_expr=None, info=None, others=None, closed="left"
 ) -> ExprGroupBy:
     """
     window: int | duration, such as 1y, 2mo, 3d, 4h, 5m, 6s, or combine them
@@ -108,27 +107,28 @@ def groupby(
     )
 
 
-
 class ExprRollMixin:
-    
     def __init__(self, expr, window, time_expr=None, others=None, by=None):
         self.expr = expr
         self.time_expr = time_expr
         if by is not None:
             import warnings
-            warnings.warn("by will be deprecated in future release, please use time_expr instead")
+
+            warnings.warn(
+                "by will be deprecated in future release, please use time_expr instead"
+            )
             self.time_expr = by
-            
+
         self.window = window
         self.others = asexprs(others, copy=False) if others is not None else None
         self.name_auto = 0
         self.prepare()
-            
+
     def __get_name_auto(self):
         name = name_prefix + str(self.name_auto)
         self.name_auto += 1
         return name
-    
+
     def prepare(self):
         if self.expr.name is None:
             self.expr.alias(self.__get_name_auto(), inplace=True)
@@ -142,17 +142,24 @@ class ExprRollMixin:
                     self.others.alias(self.__get_name_auto(), inplace=True)
         return self.expr, self.others
 
-class ExprRolling(ExprRollMixin):
 
+class ExprRolling(ExprRollMixin):
     def __init__(
-        self, expr, window, time_expr=None, idx=None, offset=None, others=None, start_by="full", by=None
-    ):  
+        self,
+        expr,
+        window,
+        time_expr=None,
+        idx=None,
+        offset=None,
+        others=None,
+        start_by="full",
+        by=None,
+    ):
         super().__init__(expr, window, time_expr=time_expr, others=others, by=by)
         self.idx = idx
         self.offset = offset
         self.start_by = start_by
         self.idx = self.get_idx()
-
 
     def get_idx(self):
         if self.idx is None:
@@ -165,10 +172,11 @@ class ExprRolling(ExprRollMixin):
                         self.window, start_by=self.start_by
                     )
             else:
-                return self.time_expr._get_time_rolling_offset_idx(self.window, self.offset)
+                return self.time_expr._get_time_rolling_offset_idx(
+                    self.window, self.offset
+                )
         else:
             return self.idx
-
 
     def __getattr__(self, name):
         idx = self.idx
@@ -197,35 +205,41 @@ class ExprRolling(ExprRollMixin):
 
 
 class ExprGroupBy(ExprRollMixin):
-    def __init__(self, expr, by=None, time_expr=None, info=None, others=None, closed="left") -> None:
+    def __init__(
+        self, expr, by=None, time_expr=None, info=None, others=None, closed="left"
+    ) -> None:
         self.closed = closed
         self.info = info
         super().__init__(expr, by, time_expr=time_expr, others=others)
         self.info = self.get_info()
-        
+
     def get_info(self):
         if self.info is None:
             if isinstance(self.window, int):
                 raise NotImplementedError
             else:
-                return self.time_expr._get_time_groupby_info(self.window, closed=self.closed, split=True)
+                return self.time_expr._get_time_groupby_info(
+                    self.window, closed=self.closed, split=True
+                )
         else:
             return self.info
-    
-    
+
     def __getattr__(self, name):
         def wrap_func(*args, **kwargs):
-            return getattr(self.expr, f"_group_by_time_{name}")(self.info[1], *args, **kwargs)
+            return getattr(self.expr, f"_group_by_time_{name}")(
+                self.info[1], *args, **kwargs
+            )
+
         return wrap_func
-        
+
     def agg(self, agg_expr):
         label, start_idx = self.info
         if isinstance(agg_expr, (list, tuple)):
             return label, [
-                self.expr.groupby_time(
-                    ae, info=start_idx, others=self.others
-                )
+                self.expr.groupby_time(ae, info=start_idx, others=self.others)
                 for ae in agg_expr
             ]
         else:
-            return label, self.expr.group_by_time(agg_expr, group_info=start_idx, others=self.others)
+            return label, self.expr.group_by_time(
+                agg_expr, group_info=start_idx, others=self.others
+            )

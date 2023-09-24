@@ -137,14 +137,11 @@ def test_max():
     dd = DataDict(a=[1, 2, 3, 4], b=[3, 4, 5, 6])
     assert_allclose(dd.max(axis=-1).eview(), np.array([3, 4, 5, 6]))
     assert dd.max(axis=0)["a"].eview() == 4
-    
-    
+
+
 def test_corr():
-    for method in ['pearson', 'spearman']:
-        dd = DataDict({
-            'a': np.random.randn(100),
-            'b': np.random.randn(100)
-        })
+    for method in ["pearson", "spearman"]:
+        dd = DataDict({"a": np.random.randn(100), "b": np.random.randn(100)})
         df = dd.to_pd()
         assert_allclose(dd.corr(method=method).eview(), df.corr(method=method).values)
 

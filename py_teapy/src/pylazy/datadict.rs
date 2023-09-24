@@ -175,11 +175,11 @@ impl PyDataDict {
     }
 
     #[pyo3(signature=(method=CorrMethod::Pearson, cols=None, stable=false))]
-    pub fn corr(&self, method: CorrMethod, cols: Option<&PyAny>, stable: bool) -> PyExpr
-    {
+    pub fn corr(&self, method: CorrMethod, cols: Option<&PyAny>, stable: bool) -> PyExpr {
         let selector = ColumnSelector::from(cols);
         let out = self.dd.corr(Some(selector), method, stable);
-        out.to_py(None).add_obj_vec_into(self.obj_map.values().cloned().collect())
+        out.to_py(None)
+            .add_obj_vec_into(self.obj_map.values().cloned().collect())
     }
 
     #[pyo3(signature=(columns))]

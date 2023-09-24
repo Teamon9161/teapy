@@ -1,5 +1,7 @@
 use super::export::*;
-use crate::{ArbArray, Arr, Arr1, CollectTrustedToVec, DataType, FillMethod, Arr2, CorrMethod, ArrD};
+use crate::{
+    ArbArray, Arr, Arr1, Arr2, ArrD, CollectTrustedToVec, CorrMethod, DataType, FillMethod,
+};
 use ndarray::{Array1, Axis};
 use rayon::prelude::*;
 #[cfg(feature = "stat")]
@@ -717,7 +719,6 @@ impl<'a> Expr<'a> {
     }
 }
 
-
 pub fn corr<'a>(exprs: Vec<Expr<'a>>, method: CorrMethod, stable: bool) -> Expr<'a> {
     let mut out: Expr<'a> = Default::default();
     out.chain_f_ctx(move |(_, ctx)| {
@@ -742,7 +743,6 @@ pub fn corr<'a>(exprs: Vec<Expr<'a>>, method: CorrMethod, stable: bool) -> Expr<
                     corr_arr.uget_mut((i, j)).write(corr);
                     corr_arr.uget_mut((j, i)).write(corr);
                 }
-                
             }
         }
         let corr_arr: ArrD<f64> = unsafe { corr_arr.assume_init()}.to_dimd();
