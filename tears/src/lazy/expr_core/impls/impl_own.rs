@@ -1,5 +1,5 @@
 use super::export::*;
-use crate::{ArbArray, Arr, Arr1, CollectTrustedToVec, DataType, FillMethod};
+use crate::{ArbArray, Arr, Arr1, CollectTrustedToVec, DataType, FillMethod, Arr2, CorrMethod, ArrD};
 use ndarray::{Array1, Axis};
 use rayon::prelude::*;
 #[cfg(feature = "stat")]
@@ -715,4 +715,38 @@ impl<'a> Expr<'a> {
             });
         self
     }
+}
+
+
+pub fn corr<'a>(exprs: Vec<Expr<'a>>, method: CorrMethod, stable: bool) -> Expr<'a> {
+    let mut out: Expr<'a> = Default::default();
+    out.chain_f_ctx(move |(_, ctx)| {
+        // let exprs = exprs.iter().map(|v| (*v).clone()).collect_trusted();
+        let all_arr = exprs.par_iter().map(|e| e.view_arr(ctx.as_ref()).unwrap()).collect::<Vec<_>>();
+        let len = all_arr.len();
+        let mut corr_arr = Arr2::<f64>::uninit((len, len));
+        for i in 0..len {
+            for j in i..len {
+                let corr = if i != j {
+                    let arri = *unsafe{all_arr.get_unchecked(i)};
+                    let arrj = *unsafe{all_arr.get_unchecked(j)};
+                    match_arrok!(numeric arri, arri, {
+                        match_arrok!(numeric arrj, arrj, {
+                            arri.deref().view().to_dim1()?.corr_1d(&arrj.deref().view().to_dim1()?, method.clone(), stable)
+                        })
+                    })
+                } else {
+                    1.0
+                };
+                unsafe {
+                    corr_arr.uget_mut((i, j)).write(corr);
+                    corr_arr.uget_mut((j, i)).write(corr);
+                }
+                
+            }
+        }
+        let corr_arr: ArrD<f64> = unsafe { corr_arr.assume_init()}.to_dimd();
+        Ok((corr_arr.into(), ctx))
+    });
+    out
 }

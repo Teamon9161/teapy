@@ -1,9 +1,15 @@
-from numpy import nan
+# from numpy import nan
 
 from .array_func import *
-from .datadict import DataDict, from_pd, read_ipc, scan_ipc
+from .datadict import (
+    DataDict, 
+    from_pd, 
+    read_ipc, read_feather, 
+    scan_ipc, scan_feather
+)
 from .expr import Expr, register
 from .mod_func import *
+from .teapy import nan
 from .teapy import arange
 from .teapy import calc_ret_single as _calc_ret_single
 from .teapy import calc_ret_single_with_spread as _calc_ret_single_with_spread

@@ -629,7 +629,7 @@ macro_rules! impl_arrok_cast {
                         #[cfg(feature = "option_dtype")]
                         ArrOk::OptI64(e) => e.cast::<$T>(),
                         ArrOk::OptUsize(e) => e.cast::<$T>(),
-                        _ => unimplemented!("Cast to this dtype is unimplemented"),
+                        _ => unimplemented!("Cast to this dtype: {:?} from dtype: {:?} is unimplemented", <$T>::dtype(), self.dtype()),
                     }
                 }
             }

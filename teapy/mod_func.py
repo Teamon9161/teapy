@@ -1,5 +1,7 @@
-from .teapy import stack
+from .teapy import stack, PyDataDict
 
+def hcorr(exprs, method='pearson', stable=False):
+    return PyDataDict(exprs).corr(method=method, stable=stable)
 
 def hmax(exprs, par=False):
     """horizontal max"""

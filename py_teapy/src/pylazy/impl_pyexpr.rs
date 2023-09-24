@@ -2025,6 +2025,130 @@ impl PyExpr {
         Ok(out)
     }
 
+    #[pyo3(signature=(duration, closed="right".to_owned(), split=true))]
+    pub unsafe fn _get_time_groupby_info(
+        &self,
+        duration: &str,
+        closed: String,
+        split: bool,
+        py: Python,
+    ) -> PyResult<PyObject> {
+        let mut out = self.clone();
+        out.e.get_group_by_time_info(duration, closed);
+        if split {
+            let out = out
+                .e
+                .split_vec_base(2)
+                .into_iter()
+                .map(|e| e.to_py(self.obj()))
+                .collect_trusted();
+            Ok(out.into_py(py))
+        } else {
+            Ok(out.into_py(py))
+        }
+    }
+
+    #[pyo3(signature=(agg_expr, group_info, others=None))]
+    pub unsafe fn group_by_time(
+        &self,
+        agg_expr: &PyAny,
+        group_info: &PyAny,
+        others: Option<&PyAny>,
+    ) -> PyResult<Self> {
+        let agg_expr = parse_expr_nocopy(agg_expr)?;
+        let group_info = parse_expr_nocopy(group_info)?;
+        let others = if let Some(others) = others {
+            Some(parse_expr_list(others, false)?)
+        } else {
+            None
+        };
+        let obj1 = agg_expr.obj();
+        let obj2 = group_info.obj();
+        let others_obj_vec = if let Some(others) = &others {
+            others.iter().map(|e| e.obj()).collect_trusted()
+        } else {
+            vec![]
+        };
+        let others = if let Some(others) = others {
+            others.into_iter().map(|e| e.e).collect_trusted()
+        } else {
+            vec![]
+        };
+        let mut out = self.clone();
+        if let Some(name) = agg_expr.e.name() {
+            out.e.rename(name);
+        }
+        out.e.group_by_time(agg_expr.e, group_info.e, others);
+        out.add_obj(obj1).add_obj(obj2).add_obj_vec(others_obj_vec);
+        Ok(out)
+    }
+
+    #[pyo3(signature=(groupby_info, stable=false))]
+    pub unsafe fn _group_by_time_mean(&self, groupby_info: &PyAny, stable: bool) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_mean(groupby_info.e, stable);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info, stable=false))]
+    pub unsafe fn _group_by_time_sum(&self, groupby_info: &PyAny, stable: bool) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_sum(groupby_info.e, stable);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info, stable=false))]
+    pub unsafe fn _group_by_time_std(&self, groupby_info: &PyAny, stable: bool) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_std(groupby_info.e, stable);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info, stable=false))]
+    pub unsafe fn _group_by_time_var(&self, groupby_info: &PyAny, stable: bool) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_var(groupby_info.e, stable);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info))]
+    pub unsafe fn _group_by_time_min(&self, groupby_info: &PyAny) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_min(groupby_info.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info))]
+    pub unsafe fn _group_by_time_max(&self, groupby_info: &PyAny) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_max(groupby_info.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info, other, method=CorrMethod::Pearson, stable=false))]
+    pub unsafe fn _group_by_time_corr(&self, groupby_info: &PyAny, other: &PyAny, method: CorrMethod, stable: bool) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let other = parse_expr_nocopy(other)?;
+        let obj = groupby_info.obj();
+        let obj2 = other.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_corr(other.e, groupby_info.e, method, stable);
+        out.add_obj(obj).add_obj(obj2);
+        Ok(out)
+    }
+
     #[pyo3(signature=(window, offset))]
     #[cfg(feature = "window_func")]
     pub unsafe fn _get_time_rolling_offset_idx(

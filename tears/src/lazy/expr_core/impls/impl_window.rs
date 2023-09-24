@@ -91,7 +91,7 @@ impl<'a> Expr<'a> {
             let columns = std::iter::once(name.clone()).chain(others_name).collect::<Vec<_>>();
             let mut map: Option<Arc<HashMap<String, usize>>> = None;
             let agg_expr = agg_expr.flatten();
-            let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
+            let out: ArrOk<'a> = match_arrok!(arr, arr, {
                 let arr = arr.view().to_dim1()?;
                 let out = zip(roll_start_arr, 0..len)
                 .map(|(mut start, end)| {

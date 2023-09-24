@@ -14,8 +14,8 @@ use std::sync::Arc;
 #[derive(Default)]
 pub struct Expr<'a>(Arc<Mutex<ExprInner<'a>>>);
 
-impl Clone for Expr<'_> {
-    fn clone(&self) -> Self {
+impl<'a> Clone for Expr<'a> {
+    fn clone<'b>(&'b self) -> Expr<'a> {
         let name = self.name();
         let inner = ExprInner::new(Self(self.0.clone()).into(), name);
         Expr(Arc::new(Mutex::new(inner)))
@@ -103,6 +103,10 @@ impl<'a> Expr<'a> {
         e.set_name(name);
         e
     }
+
+    // pub fn clone_to_life<'b>(&self) -> Expr<'b>
+    // where:
+    //     {}
 
     #[inline]
     pub fn step_acc(&self) -> usize {

@@ -4,6 +4,7 @@ from .teapy import read_ipc as __read_ipc
 from .teapy import scan_ipc as __scan_ipc
 from .teapy import stack
 
+name_prefix = "column_"
 
 def _new_with_dd(dd=None):
     if dd is None:
@@ -41,6 +42,7 @@ def scan_ipc(path, columns=None):
     dd = __scan_ipc(str(path), columns=columns)
     return _new_with_dd(dd)
 
+read_feather, scan_feather = read_ipc, scan_ipc
 
 class DataDict:
     def __init__(self, data=None, columns=None, copy=False, **kwargs):
@@ -125,6 +127,12 @@ class DataDict:
             for c in subset:
                 dd[c] = dd[c].filter(~nan_mask)
             return None if inplace else dd
+        
+    def filter(self, mask, inplace=False):
+        dd = self if inplace else self.copy()
+        idx = mask.mask_to_idx()
+        dd._select_on_axis_unchecked(idx, axis=0, inplace=True)
+        return None if inplace else dd
 
     def mean(self, axis=-1, stable=False, par=False):
         if axis == -1:
@@ -203,8 +211,8 @@ class DataDict:
         dd._dd.apply(func, **kwargs)
         return None if inplace else dd
 
-    def rolling(self, window, dd, index=None, check=True, axis=0):
-        return Rolling(window, self._dd, index, check, axis)
+    # def rolling(self, window, index=None, check=True, axis=0):
+    #     return Rolling(window, self._dd, index, check, axis)
 
     def _select_on_axis(self, idx, axis=0, inplace=False):
         return self.apply(lambda e: e.select(idx, axis=axis), inplace=inplace)
@@ -235,73 +243,31 @@ class DataDict:
         dd = self if inplace else self.copy()
         dd._select_on_axis_unchecked(idx, axis=0, inplace=True)
         return None if inplace else dd
-
-    def groupby(self, by, axis=0, sort=True, par=False, reuse=False):
-        return GroupBy(self._dd, by, axis, sort, par, reuse=reuse)
-
-
-class Rolling:
-    def __init__(self, window, dd, index=None, check=True, axis=0) -> None:
-        """
-        window: rolling window, int or str
-        dd: PyDataDict
-        index: time index, if None then infer automatically
-        check: whether to check the length of each key is equal
-        axis: rolling on which axis
-        """
-        self.window = window
-        self._dd = dd
-        self.index = index
-        self.check = check
-        self.axis = axis
-
-    @construct
-    def apply(self, func, **kwargs):
-        if isinstance(self.window, str):
-            # rolling using a time duration
-            return self._dd.rolling_apply_by_time(
-                index=self.index,
-                duration=self.window,
-                axis=self.axis,
-                func=func,
-                check=self.check,
-                **kwargs,
-            )
-        else:
-            return self._dd.rolling_apply(
-                window=self.window,
-                axis=self.axis,
-                func=func,
-                check=self.check,
-                **kwargs,
-            )
-
+    
+    
+    def groupby(self, by=None, time_col=None, closed="left", group=True):
+        return GroupBy(self, by=by, time_col=time_col, closed=closed, group=group)
 
 class GroupBy:
-    def __init__(self, dd, by, axis=0, sort=True, par=False, reuse=False) -> None:
-        self._dd = dd
+    def __init__(self, dd, by=None, time_col=None, closed="left", group=True) -> None:
+        self.dd = dd
         self.by = by
-        self.axis = axis
-        self.sort = sort
-        self.par = par
-        self.reuse = reuse
-        self.groupby = None
-
-    @construct
-    def apply(self, func, **kwargs):
-        if not self.reuse:
-            out = self._dd.groupby_apply(
-                by=self.by,
-                axis=self.axis,
-                sort=self.sort,
-                par=self.par,
-                py_func=func,
-                **kwargs,
-            )
-        else:
-            if self.groupby is None:
-                self.groupby = self._dd.groupby(
-                    by=self.by, axis=self.axis, sort=self.sort, par=self.par
-                )
-            out = self.groupby.apply(func, **kwargs)
-        return out
+        self.time_col = time_col
+        self.closed = closed
+        self.group = group
+    
+    def agg(self, exprs, **kwargs):
+        if self.dd.is_empty():
+            return self.dd
+        time_expr = self.dd[self.time_col] if self.time_col is not None else None
+        e = self.dd[0]
+        columns = self.dd.columns
+        others = self.dd[columns[1:]].raw_data
+        if time_expr is not None:
+            label, data = e.groupby(by=self.by, time_expr=time_expr, closed=self.closed, others=others).agg(exprs)
+            
+            if self.group:
+                if not isinstance(data, list):
+                    data = [data]
+                data.append(label.alias(self.time_col))
+            return DataDict(data)

@@ -18,11 +18,11 @@ use crate::{Cast, GetNone, OptUsize};
 // use crate::{OptF32, OptF64, OptI32, OptI64};
 
 /// The number of nanoseconds in a microsecond.
-const NANOS_PER_MICRO: i32 = 1000;
+const NANOS_PER_MICRO: i64 = 1000;
 /// The number of nanoseconds in a millisecond.
-const NANOS_PER_MILLI: i32 = 1_000_000;
+const NANOS_PER_MILLI: i64 = 1_000_000;
 /// The number of nanoseconds in seconds.
-const NANOS_PER_SEC: i32 = 1_000_000_000;
+const NANOS_PER_SEC: i64 = 1_000_000_000;
 /// The number of microseconds per second.
 const MICROS_PER_SEC: i64 = 1_000_000;
 /// The number of milliseconds per second.
@@ -512,11 +512,11 @@ impl TimeDelta {
                 }
 
                 match unit.as_str() {
-                    "ns" => nsecs += n as i32,
-                    "us" => nsecs += n as i32 * NANOS_PER_MICRO,
-                    "ms" => nsecs += n as i32 * NANOS_PER_MILLI,
+                    "ns" => nsecs += n,
+                    "us" => nsecs += n * NANOS_PER_MICRO,
+                    "ms" => nsecs += n * NANOS_PER_MILLI,
                     "s" => secs += n,
-                    "m" => secs += SECS_PER_MINUTE,
+                    "m" => secs += n * SECS_PER_MINUTE,
                     "h" => secs += n * SECS_PER_HOUR,
                     "d" => secs += n * SECS_PER_DAY,
                     "w" => secs += n * SECS_PER_WEEK,
@@ -527,7 +527,7 @@ impl TimeDelta {
                 unit.clear();
             }
         }
-        let duration = Duration::seconds(secs) + Duration::nanoseconds(nsecs as i64);
+        let duration = Duration::seconds(secs) + Duration::nanoseconds(nsecs);
         TimeDelta {
             months,
             inner: duration,

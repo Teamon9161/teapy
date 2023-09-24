@@ -193,12 +193,12 @@ impl<'py> FromPyObject<'py> for PyColSelect<'py> {
             Ok(Self(tears::ColSelect::Null))
         } else if let Ok(idx) = ob.extract::<i32>() {
             Ok(Self(tears::ColSelect::Idx(vec![idx])))
-        } else if let Ok(name) = ob.extract::<&str>() {
-            Ok(Self(tears::ColSelect::Name(vec![name])))
+        } else if let Ok(name) = ob.extract::<String>() {
+            Ok(Self(tears::ColSelect::NameOwned(vec![name])))
         } else if let Ok(idx) = ob.extract::<Vec<i32>>() {
             Ok(Self(tears::ColSelect::Idx(idx)))
-        } else if let Ok(name) = ob.extract::<Vec<&str>>() {
-            Ok(Self(tears::ColSelect::Name(name)))
+        } else if let Ok(name) = ob.extract::<Vec<String>>() {
+            Ok(Self(tears::ColSelect::NameOwned(name)))
         } else {
             Err(PyValueError::new_err(
                 "Cannot extract a ColSelect object from the given object",

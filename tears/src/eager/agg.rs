@@ -54,6 +54,47 @@ impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
 }
 
 impl_reduce_nd!(
+    argmax,
+    #[inline]
+    pub fn argmax_1d(&self) -> i32
+    {T: Number,}
+    {
+        let mut max = T::min_();
+        let mut max_idx = -1;
+        let mut current_idx = 0;
+        self.apply(|v| {
+            if *v > max {
+                max = *v;
+                max_idx = current_idx;
+            }
+            current_idx += 1;
+        });
+        max_idx
+    }
+);
+
+impl_reduce_nd!(
+    argmin,
+    /// return -1 if all of the elements are NaN
+    #[inline]
+    pub fn argmin_1d(&self) -> i32
+    {T: Number,}
+    {
+        let mut min = T::max_();
+        let mut min_idx = -1;
+        let mut current_idx = 0;
+        self.apply(|v| {
+            if *v < min {
+                min = *v;
+                min_idx = current_idx;
+            }
+            current_idx += 1;
+        });
+        min_idx
+    }
+);
+
+impl_reduce_nd!(
     count_v,
     /// count a value of an array on a given axis
     #[inline]

@@ -6,9 +6,10 @@ use std::fmt::Debug;
 pub enum ColumnSelector<'a> {
     Index(i32),
     VecIndex(Vec<i32>),
-    VecName(Vec<&'a str>),
     Name(&'a str),
     NameOwned(String),
+    VecName(Vec<&'a str>),
+    VecNameOwned(Vec<String>),
     Regex(Regex),
     All,
 }
@@ -19,9 +20,10 @@ impl ColumnSelector<'_> {
         match self {
             Index(_) => None,
             VecIndex(_) => None,
-            VecName(_) => None,
             Name(name) => Some(name.to_string()),
             NameOwned(name) => Some(name.clone()),
+            VecName(_) => None,
+            VecNameOwned(_) => None,
             Regex(_) => None,
             All => None,
         }
@@ -64,6 +66,11 @@ impl<'a> From<&'a Vec<String>> for ColumnSelector<'a> {
     }
 }
 
+impl From<Vec<String>> for ColumnSelector<'_> {
+    fn from(name: Vec<String>) -> Self {
+        ColumnSelector::VecNameOwned(name)
+    }
+}
 impl<'a> From<&'a str> for ColumnSelector<'a> {
     fn from(name: &'a str) -> Self {
         ColumnSelector::Name(name)
@@ -78,11 +85,11 @@ impl From<String> for ColumnSelector<'_> {
 
 impl<'py> From<&'py PyAny> for ColumnSelector<'py> {
     fn from(select: &'py PyAny) -> Self {
-        if let Ok(select) = select.extract::<&'py str>() {
+        if let Ok(select) = select.extract::<String>() {
             select.into()
         } else if let Ok(select) = select.extract::<i32>() {
             select.into()
-        } else if let Ok(select) = select.extract::<Vec<&'py str>>() {
+        } else if let Ok(select) = select.extract::<Vec<String>>() {
             select.into()
         } else if let Ok(select) = select.extract::<Vec<i32>>() {
             select.into()

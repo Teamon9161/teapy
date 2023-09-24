@@ -1,12 +1,14 @@
-use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
-// use rayon::prelude::*;
+// use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+use rayon::prelude::*;
 use regex::Regex;
 use std::fmt::Debug;
 use std::iter::zip;
 use std::sync::Arc;
 
 use crate::lazy::Expr;
-use crate::{CollectTrustedToVec, Context, StrError, TpResult};
+use crate::{
+    CollectTrustedToVec, Context, StrError, TpResult, CorrMethod
+};
 
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;
@@ -182,6 +184,15 @@ impl<'a> DataDict<'a> {
         self.map = Arc::new(map);
     }
 
+    pub fn corr<'b>(&'b self, col: Option<ColumnSelector<'b>>, method: CorrMethod, stable: bool) -> Expr<'a> 
+    {   
+        use super::super::corr;
+        let col: ColumnSelector<'_> = col.unwrap_or(ColumnSelector::All);
+        let exprs: Vec<&Expr<'a>> = self.get(col).unwrap().into_exprs();
+        let exprs: Vec<Expr<'a>> = exprs.into_iter().cloned().collect::<Vec<_>>();
+        corr(exprs, method, stable)
+    }
+
     pub fn get_selector_out_name(&self, col: ColumnSelector) -> Vec<String> {
         // this logic should be the same with set
         match col {
@@ -202,7 +213,7 @@ impl<'a> DataDict<'a> {
                     vec![col_name.to_string()]
                 }
             }
-            ColumnSelector::NameOwned(name) => self.get_selector_out_name(name.into()),
+            ColumnSelector::NameOwned(name) => self.get_selector_out_name(name.as_str().into()),
             ColumnSelector::Regex(re) => self
                 .columns()
                 .into_iter()
@@ -220,8 +231,13 @@ impl<'a> DataDict<'a> {
                 .collect::<Vec<_>>(),
             ColumnSelector::VecName(name_vec) => name_vec
                 .into_iter()
-                .flat_map(|name| self.get_selector_out_name(name.into()))
+                .flat_map(|name| self.get_selector_out_name(ColumnSelector::Name(name)))
                 .collect::<Vec<_>>(),
+            ColumnSelector::VecNameOwned(name_vec) => self.get_selector_out_name(name_vec.iter().map(|s| s.as_str()).collect_trusted().into())
+            // name_vec
+            // .into_iter()
+            // .flat_map(|name| self.get_selector_out_name(ColumnSelector::NameOwned(name)))
+            // .collect::<Vec<_>>(),
         }
     }
 
@@ -264,7 +280,7 @@ impl<'a> DataDict<'a> {
         Ok(col_idx as usize)
     }
 
-    pub fn get(&self, col: ColumnSelector) -> TpResult<GetOutput<'a, '_>> {
+    pub fn get<'b>(&'b self, col: ColumnSelector<'b>) -> TpResult<GetOutput<'a, 'b>> {
         match col {
             ColumnSelector::Index(col_idx) => {
                 let col_idx = self.valid_idx(col_idx)?;
@@ -274,7 +290,21 @@ impl<'a> DataDict<'a> {
                     .expect("Select index of ot bound")
                     .into())
             }
-            ColumnSelector::NameOwned(col_name) => self.get(col_name.as_str().into()),
+            ColumnSelector::NameOwned(col_name) => {
+                // self.get(col_name.clone().as_str().into())
+                if col_name.starts_with('^') & col_name.ends_with('$') {
+                    let re = Regex::new(col_name.as_str()).map_err(|_| StrError("Invalid regex!".into()))?;
+                    return self.get(ColumnSelector::Regex(re));
+                }
+                let col_idx = *self.map.get(&col_name).ok_or_else(|| -> StrError {
+                    format!("Column {col_name} doesn't exist!").into()
+                })?;
+                Ok(self
+                    .data
+                    .get(col_idx)
+                    .expect("Select index of ot bound")
+                    .into())
+            },
             ColumnSelector::Name(col_name) => {
                 if col_name.starts_with('^') & col_name.ends_with('$') {
                     let re = Regex::new(col_name).map_err(|_| StrError("Invalid regex!".into()))?;
@@ -312,16 +342,33 @@ impl<'a> DataDict<'a> {
                     .collect::<Vec<_>>();
                 Ok(out.into())
             }
+            ColumnSelector::VecNameOwned(name_vec) => {
+                let out = name_vec
+                    .into_iter()
+                    .flat_map(|name| self.get(name.into()).unwrap().into_exprs())
+                    .collect::<Vec<_>>();
+                Ok(out.into())
+            }
         }
     }
 
-    pub fn get_mut(&mut self, col: ColumnSelector) -> TpResult<GetMutOutput<'a, '_>> {
+    pub fn get_mut<'b>(&'b mut self, col: ColumnSelector<'b>) -> TpResult<GetMutOutput<'a, 'b>> {
         match col {
             ColumnSelector::Index(col_idx) => {
                 let col_idx = self.valid_idx(col_idx)?;
                 Ok(unsafe { self.data.get_unchecked_mut(col_idx).into() })
             }
-            ColumnSelector::NameOwned(col_name) => self.get_mut(col_name.as_str().into()),
+            ColumnSelector::NameOwned(col_name) => {
+                // self.get_mut(col_name.as_str().into())
+                if col_name.starts_with('^') & col_name.ends_with('$') {
+                    let re = Regex::new(col_name.as_str()).map_err(|_| StrError("Invalid regex!".into()))?;
+                    return self.get_mut(ColumnSelector::Regex(re));
+                }
+                let col_idx = *self.map.get(&col_name).ok_or_else(|| -> StrError {
+                    format!("Column {col_name} doesn't exist!").into()
+                })?;
+                Ok(unsafe { self.data.get_unchecked_mut(col_idx).into() })
+            },
             ColumnSelector::Name(col_name) => {
                 if col_name.starts_with('^') & col_name.ends_with('$') {
                     let re = Regex::new(col_name).map_err(|_| StrError("Invalid regex!".into()))?;
@@ -376,6 +423,26 @@ impl<'a> DataDict<'a> {
                 Ok(out.into())
                 // unimplemented!("get_mut with VecName is not implemented yet!")
             }
+            ColumnSelector::VecNameOwned(vn) => {
+                // may be slow, todo: improve the performance
+                let out: Vec<&mut Expr> = self
+                    .data
+                    .iter_mut()
+                    .filter(|e| {
+                        let name = e.name().unwrap();
+                        vn.iter().any(|n| {
+                            if n.starts_with('^') & n.ends_with('$') {
+                                let re = Regex::new(n).unwrap();
+                                re.is_match(&name)
+                            } else {
+                                name == *n
+                            }
+                        })
+                    })
+                    .collect();
+                Ok(out.into())
+                // unimplemented!("get_mut with VecName is not implemented yet!")
+            }
         }
     }
 
@@ -392,6 +459,20 @@ impl<'a> DataDict<'a> {
                 self.insert_inplace(expr)
             }
             ColumnSelector::VecName(name_vec) => {
+                let exprs = expr.into_exprs();
+                let name_vec = name_vec
+                    .into_iter()
+                    .flat_map(|n| self.get_selector_out_name(n.into()))
+                    .collect::<Vec<_>>();
+                if name_vec.len() != exprs.len() {
+                    return Err("The number of expressions to set doesn't match the number of selected columns!".into());
+                }
+                for (col_name, expr) in zip(name_vec, exprs) {
+                    self.set(col_name.into(), expr.into())?
+                }
+                Ok(())
+            }
+            ColumnSelector::VecNameOwned(name_vec) => {
                 let exprs = expr.into_exprs();
                 let name_vec = name_vec
                     .into_iter()
