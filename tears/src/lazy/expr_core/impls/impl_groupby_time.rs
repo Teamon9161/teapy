@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::export::*;
-use crate::{lazy::DataDict, Arr1, CollectTrustedToVec, CorrMethod, Data, TimeDelta};
+use crate::{lazy::DataDict, Arr1, CollectTrustedToVec, CorrMethod, Data, DateTime, TimeDelta};
 use ahash::HashMap;
 use ndarray::s;
 
@@ -105,7 +105,13 @@ impl<'a> Expr<'a> {
             let arr = data.view_arr(ctx.as_ref())?.deref().cast_datetime_default();
             let ts = arr.view().to_dim1()?;
             if ts.is_empty() {
-                return Ok((Vec::<usize>::with_capacity(0).into(), ctx));
+                let label = Arr1::from_vec(Vec::<DateTime>::with_capacity(0))
+                    .to_dimd()
+                    .into();
+                let start_vec = Arr1::from_vec(Vec::<usize>::with_capacity(0))
+                    .to_dimd()
+                    .into();
+                return Ok((Data::ArrVec(vec![label, start_vec]), ctx));
             }
 
             let mut label = vec![];

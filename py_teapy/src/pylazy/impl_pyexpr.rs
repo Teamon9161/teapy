@@ -2186,6 +2186,7 @@ impl PyExpr {
         out.e.group_by_time_valid_last(groupby_info.e);
         Ok(out.add_obj_into(obj))
     }
+
     #[pyo3(signature=(groupby_info, other, method=CorrMethod::Pearson, stable=false))]
     pub unsafe fn _group_by_time_corr(
         &self,
