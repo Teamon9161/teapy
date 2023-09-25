@@ -124,8 +124,13 @@ impl From<i64> for DateTime {
 }
 
 impl GetNone for DateTime {
+    #[inline]
     fn none() -> Self {
         Self(None)
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        self.0.is_none()
     }
 }
 
@@ -670,8 +675,13 @@ impl From<&str> for TimeDelta {
 }
 
 impl GetNone for TimeDelta {
+    #[inline]
     fn none() -> Self {
         TimeDelta::nat()
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        self.is_nat()
     }
 }
 

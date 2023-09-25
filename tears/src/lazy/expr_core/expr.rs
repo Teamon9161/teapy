@@ -4,7 +4,7 @@ use super::expr_inner::{ExprInner, FuncOut};
 use super::FuncNode;
 use crate::{
     match_all, match_arrok, ArbArray, ArrD, ArrOk, ArrViewD, CollectTrustedToVec, Context,
-    GetDataType, OlsResult, TpResult,
+    GetDataType, GetNone, OlsResult, TpResult,
 };
 use parking_lot::Mutex;
 use std::fmt::Debug;
@@ -19,6 +19,16 @@ impl<'a> Clone for Expr<'a> {
         let name = self.name();
         let inner = ExprInner::new(Self(self.0.clone()).into(), name);
         Expr(Arc::new(Mutex::new(inner)))
+    }
+}
+
+impl<'a, T> From<Option<T>> for Expr<'a>
+where
+    T: ExprElement + GetNone + 'a,
+{
+    fn from(v: Option<T>) -> Self {
+        let v = v.unwrap_or_else(T::none);
+        v.into()
     }
 }
 

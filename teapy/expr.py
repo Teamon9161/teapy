@@ -236,7 +236,7 @@ class ExprGroupBy(ExprRollMixin):
         label, start_idx = self.info
         if isinstance(agg_expr, (list, tuple)):
             return label, [
-                self.expr.groupby_time(ae, info=start_idx, others=self.others)
+                self.expr.group_by_time(ae, group_info=start_idx, others=self.others)
                 for ae in agg_expr
             ]
         else:

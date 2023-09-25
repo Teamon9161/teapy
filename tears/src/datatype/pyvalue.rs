@@ -20,6 +20,9 @@ impl GetNone for PyValue {
     fn none() -> Self {
         PyValue(Python::with_gil(|py| py.None()))
     }
+    fn is_none(self) -> bool {
+        Python::with_gil(|py| self.0.as_ref(py).is_none())
+    }
 }
 
 impl PartialEq for PyValue {

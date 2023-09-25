@@ -100,6 +100,10 @@ macro_rules! define_option_dtype {
             fn none() -> Self {
                 Self(None)
             }
+            #[inline]
+            fn is_none(self) -> bool {
+                self.0.is_none()
+            }
         }
 
         impl ToPyObject for $typ {

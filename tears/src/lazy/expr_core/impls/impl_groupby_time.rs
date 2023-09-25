@@ -85,6 +85,10 @@ impl_group_by_time_info_agg!(group_by_time_mean, mean_1d(stable: bool));
 impl_group_by_time_info_agg!(group_by_time_sum, sum_1d(stable: bool));
 impl_group_by_time_info_agg!(group_by_time_std, std_1d(stable: bool));
 impl_group_by_time_info_agg!(group_by_time_var, var_1d(stable: bool));
+impl_group_by_time_info_agg!(group_by_time_first, first_unwrap());
+impl_group_by_time_info_agg!(group_by_time_last, last_unwrap());
+impl_group_by_time_info_agg!(group_by_time_valid_first, valid_first_1d());
+impl_group_by_time_info_agg!(group_by_time_valid_last, valid_last_1d());
 
 impl_group_by_time_info_agg!(in2 group_by_time_corr, corr_1d(method: CorrMethod, stable: bool));
 

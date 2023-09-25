@@ -8,6 +8,22 @@ impl<T, S> ArrBase<S, Ix1>
 where
     S: RawData<Elem = T>,
 {
+    pub fn first_unwrap(&self) -> T
+    where
+        S: Data,
+        T: Clone,
+    {
+        self.first().unwrap().clone()
+    }
+
+    pub fn last_unwrap(&self) -> T
+    where
+        S: Data,
+        T: Clone,
+    {
+        self.last().unwrap().clone()
+    }
+
     #[inline]
     pub fn apply_mut_on<F>(&mut self, mut f: F, start: usize, end: usize)
     where

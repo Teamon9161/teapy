@@ -259,20 +259,35 @@ class GroupBy:
         self.closed = closed
         self.group = group
 
-    def agg(self, exprs, **kwargs):
+    def agg(self, exprs=None, **kwargs):
         if self.dd.is_empty():
             return self.dd
         time_expr = self.dd[self.time_col] if self.time_col is not None else None
         e = self.dd[0]
         columns = self.dd.columns
         others = self.dd[columns[1:]].raw_data
-        if time_expr is not None:
-            label, data = e.groupby(
-                by=self.by, time_expr=time_expr, closed=self.closed, others=others
-            ).agg(exprs)
-
-            if self.group:
-                if not isinstance(data, list):
-                    data = [data]
-                data.append(label.alias(self.time_col))
-            return DataDict(data)
+        groupby_obj = e.groupby(
+            by=self.by, time_expr=time_expr, closed=self.closed, others=others
+        )
+        info = groupby_obj.info
+        data = []
+        if exprs is not None:
+            _, data_agg = groupby_obj.agg(exprs)
+            data.append(data_agg) if not isinstance(data_agg, list) else data.extend(
+                data_agg
+            )
+        if self.group:
+            data.append(info[0])
+        if len(kwargs):
+            data_direct = []
+            for k, v in kwargs.items():
+                if "(" in v and v.split("(")[0] in ["corr"]:
+                    v, other = v.split("(")
+                    other = other[:-1]
+                    data_direct.append(
+                        getattr(self.dd[k].groupby(info=info), v)(self.dd[other])
+                    )
+                else:
+                    data_direct.append(getattr(self.dd[k].groupby(info=info), v)())
+            data.extend(data_direct)
+        return DataDict(data)

@@ -1,5 +1,5 @@
 use super::super::export::*;
-use crate::BoolType;
+use crate::{BoolType, ExprElement, GetNone};
 
 #[derive(Copy, Clone)]
 pub enum QuantileMethod {
@@ -127,20 +127,51 @@ impl_reduce_nd!(
     }
 );
 
+// impl_reduce_nd!(
+//     first,
+//     /// first valid value
+//     #[inline]
+//     pub fn first_1d(&self) -> T
+//     {T: GetNone; Clone}
+//     {
+//         if self.len() == 0 {
+//             T::none()
+//         } else {
+//             unsafe {self.uget(0)}.clone()
+//         }
+//     }
+// );
+
+// impl_reduce_nd!(
+//     last,
+//     /// first valid value
+//     #[inline]
+//     pub fn last_1d(&self) -> T
+//     {T: GetNone; Clone}
+//     {
+//         let len = self.len();
+//         if len == 0 {
+//             T::none()
+//         } else {
+//             unsafe {self.uget(len-1)}.clone()
+//         }
+//     }
+// );
+
 impl_reduce_nd!(
     valid_first,
     /// first valid value
     #[inline]
     pub fn valid_first_1d(&self) -> T
-    {T: Number, f64: Cast<T>}
+    {T: GetNone; ExprElement}
     {
-        let out = f64::NAN;
+        // let out = f64::NAN;
         for v in self.iter() {
-            if v.notnan() {
-                return *v
+            if !v.clone().is_none() {
+                return v.clone()
             }
         }
-        out.cast()
+        T::none()
     }
 );
 
@@ -149,15 +180,15 @@ impl_reduce_nd!(
     /// last valid value
     #[inline]
     pub fn valid_last_1d(&self) -> T
-    {T: Number, f64: Cast<T>}
+    {T: GetNone; ExprElement}
     {
-        let out = f64::NAN;
+        // let out = f64::NAN;
         for v in self.iter().rev() {
-            if v.notnan() {
-                return *v
+            if !v.clone().is_none() {
+                return v.clone()
             }
         }
-        out.cast()
+        T::none()
     }
 );
 

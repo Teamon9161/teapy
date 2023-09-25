@@ -207,47 +207,84 @@ impl_datatype!(OptI64, OptI64);
 
 pub trait GetNone {
     fn none() -> Self;
+    #[allow(clippy::wrong_self_convention)]
+    fn is_none(self) -> bool;
 }
 
 impl GetNone for f64 {
+    #[inline]
     fn none() -> Self {
         f64::NAN
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        self.is_nan()
     }
 }
 
 impl GetNone for f32 {
+    #[inline]
     fn none() -> Self {
         f32::NAN
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        self.is_nan()
     }
 }
 
 impl GetNone for String {
+    #[inline]
     fn none() -> Self {
         "None".to_owned()
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        self == "None"
     }
 }
 
 impl GetNone for &str {
+    #[inline]
     fn none() -> Self {
         "None"
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        self == "None"
     }
 }
 
 impl GetNone for usize {
+    #[inline]
     fn none() -> Self {
-        0
+        unreachable!("dtype usize can not be None")
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        false
     }
 }
 
 impl GetNone for i32 {
+    #[inline]
     fn none() -> Self {
         unreachable!("dtype i32 can not be None")
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        false
     }
 }
 
 impl GetNone for i64 {
+    #[inline]
     fn none() -> Self {
         unreachable!("dtype i64 can not be None")
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        false
     }
 }
 
@@ -256,6 +293,10 @@ impl GetNone for bool {
     fn none() -> Self {
         panic!("bool doesn't have None value")
     }
+    #[inline]
+    fn is_none(self) -> bool {
+        false
+    }
 }
 
 impl GetNone for u8 {
@@ -263,11 +304,20 @@ impl GetNone for u8 {
     fn none() -> Self {
         panic!("u8 doesn't have None value")
     }
+    #[inline]
+    fn is_none(self) -> bool {
+        false
+    }
 }
 
 impl GetNone for Vec<usize> {
+    #[inline]
     fn none() -> Self {
         vec![]
+    }
+    #[inline]
+    fn is_none(self) -> bool {
+        self.is_empty()
     }
 }
 

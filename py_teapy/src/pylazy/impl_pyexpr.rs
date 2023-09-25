@@ -768,21 +768,35 @@ impl PyExpr {
         e
     }
 
-    #[pyo3(signature=(axis=0))]
     #[allow(unreachable_patterns)]
-    pub fn first(&self, axis: i32) -> Self {
+    pub fn first(&self) -> Self {
         let mut e = self.clone();
-        e.e.first(axis);
+        e.e.first();
         e
     }
 
-    #[pyo3(signature=(axis=0))]
     #[allow(unreachable_patterns)]
-    pub fn last(&self, axis: i32) -> Self {
+    pub fn last(&self) -> Self {
         let mut e = self.clone();
-        e.e.last(axis);
+        e.e.last();
         e
     }
+
+    // #[pyo3(signature=(axis=0))]
+    // #[allow(unreachable_patterns)]
+    // pub fn first(&self, axis: i32) -> Self {
+    //     let mut e = self.clone();
+    //     e.e.first(axis);
+    //     e
+    // }
+
+    // #[pyo3(signature=(axis=0))]
+    // #[allow(unreachable_patterns)]
+    // pub fn last(&self, axis: i32) -> Self {
+    //     let mut e = self.clone();
+    //     e.e.last(axis);
+    //     e
+    // }
 
     #[pyo3(signature=(axis=0, par=false))]
     pub fn valid_first(&self, axis: i32, par: bool) -> Self {
@@ -2137,6 +2151,41 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
+    #[pyo3(signature=(groupby_info))]
+    pub unsafe fn _group_by_time_first(&self, groupby_info: &PyAny) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_first(groupby_info.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info))]
+    pub unsafe fn _group_by_time_last(&self, groupby_info: &PyAny) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_last(groupby_info.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info))]
+    pub unsafe fn _group_by_time_valid_first(&self, groupby_info: &PyAny) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_valid_first(groupby_info.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(groupby_info))]
+    pub unsafe fn _group_by_time_valid_last(&self, groupby_info: &PyAny) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let obj = groupby_info.obj();
+        let mut out = self.clone();
+        out.e.group_by_time_valid_last(groupby_info.e);
+        Ok(out.add_obj_into(obj))
+    }
     #[pyo3(signature=(groupby_info, other, method=CorrMethod::Pearson, stable=false))]
     pub unsafe fn _group_by_time_corr(
         &self,

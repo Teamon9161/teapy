@@ -70,13 +70,31 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
-    pub fn first(&mut self, axis: i32) -> &mut Self {
-        self.index_axis(0i32.into(), axis)
+    #[allow(unreachable_patterns)]
+    pub fn first(&mut self) -> &mut Self {
+        // self.index_axis(0i32.into(), axis)
+        self.chain_f_ctx(move |(data, ctx)| {
+            let arr = data.into_arr(ctx.clone())?;
+            match_arrok!(arr, arr, {
+                let out = arr.view().first().cloned();
+                Ok((out.into(), ctx))
+            })
+        });
+        self
     }
 
     #[inline]
-    pub fn last(&mut self, axis: i32) -> &mut Self {
-        self.index_axis((-1i32).into(), axis)
+    #[allow(unreachable_patterns)]
+    pub fn last(&mut self) -> &mut Self {
+        // self.index_axis((-1i32).into(), axis)
+        self.chain_f_ctx(move |(data, ctx)| {
+            let arr = data.into_arr(ctx.clone())?;
+            match_arrok!(arr, arr, {
+                let out = arr.view().last().cloned();
+                Ok((out.into(), ctx))
+            })
+        });
+        self
     }
 
     /// Return a transposed view of the array.
