@@ -186,13 +186,14 @@ impl<'a> DataDict<'a> {
         &'b self,
         col: Option<ColumnSelector<'b>>,
         method: CorrMethod,
+        min_periods: usize,
         stable: bool,
     ) -> Expr<'a> {
         use super::super::corr;
         let col: ColumnSelector<'_> = col.unwrap_or(ColumnSelector::All);
         let exprs: Vec<&Expr<'a>> = self.get(col).unwrap().into_exprs();
         let exprs: Vec<Expr<'a>> = exprs.into_iter().cloned().collect::<Vec<_>>();
-        corr(exprs, method, stable)
+        corr(exprs, method, min_periods, stable)
     }
 
     pub fn get_selector_out_name(&self, col: ColumnSelector) -> Vec<String> {

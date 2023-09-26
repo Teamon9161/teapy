@@ -174,10 +174,16 @@ impl PyDataDict {
         self.obj_map = Default::default();
     }
 
-    #[pyo3(signature=(method=CorrMethod::Pearson, cols=None, stable=false))]
-    pub fn corr(&self, method: CorrMethod, cols: Option<&PyAny>, stable: bool) -> PyExpr {
+    #[pyo3(signature=(method=CorrMethod::Pearson, cols=None, min_periods=3, stable=false))]
+    pub fn corr(
+        &self,
+        method: CorrMethod,
+        cols: Option<&PyAny>,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyExpr {
         let selector = ColumnSelector::from(cols);
-        let out = self.dd.corr(Some(selector), method, stable);
+        let out = self.dd.corr(Some(selector), method, min_periods, stable);
         out.to_py(None)
             .add_obj_vec_into(self.obj_map.values().cloned().collect())
     }

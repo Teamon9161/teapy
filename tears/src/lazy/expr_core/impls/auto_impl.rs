@@ -113,18 +113,20 @@ auto_impl_view!(in1,
         count_nan, count_notnan, median, max, min, prod, cumprod, 
         valid_last, valid_first,
     ], (axis: i32, par: bool));
-auto_impl_view!(in1, [sum, mean, var, std, skew, kurt, cumsum], (stable: bool, axis: i32, par: bool));
+auto_impl_view!(in1, [sum, cumsum], (stable: bool, axis: i32, par: bool));
+auto_impl_view!(in1, [mean, var, std, skew, kurt], (min_periods: usize, stable: bool, axis: i32, par: bool));
+
 auto_impl_view!(in1, quantile, (q: f64, method: QuantileMethod, axis: i32, par: bool));
 auto_impl_view!(in1, rank, (pct: bool, rev: bool, axis: i32, par: bool));
 auto_impl_view!(in1, argsort, (rev: bool, axis: i32, par: bool));
 auto_impl_view!(in1, split_group, (group: usize, rev: bool, axis: i32, par: bool));
 auto_impl_view!(in1, [arg_partition, partition], (kth: usize, sort: bool, rev: bool, axis: i32, par: bool));
 
-auto_impl_viewmut!(in1, [zscore_inplace], (stable: bool, axis: i32, par: bool));
+auto_impl_viewmut!(in1, [zscore_inplace], (min_periods: usize, stable: bool, axis: i32, par: bool));
 auto_impl_viewmut!(in1, [winsorize_inplace], (method: WinsorizeMethod, method_params: Option<f64>, stable: bool, axis: i32, par: bool));
 
-auto_impl_view!(in2, [corr], (method: CorrMethod, stable: bool, axis: i32, par: bool));
-auto_impl_view!(in2, [cov], (stable: bool, axis: i32, par: bool));
+auto_impl_view!(in2, [corr], (method: CorrMethod, min_periods: usize, stable: bool, axis: i32, par: bool));
+auto_impl_view!(in2, [cov], (min_periods: usize, stable: bool, axis: i32, par: bool));
 
 // === window expression ===
 // window function without stable argument

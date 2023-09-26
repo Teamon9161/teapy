@@ -435,18 +435,18 @@ where
             out.len() == len,
             "length of output array must equal to length of the array"
         );
-        let _mean = self.mean_1d(false);
+        let mean = self.mean_1d(0, true);
         // within the first window
         for i in 0..window - 1 {
             let (v, vo) = unsafe { (self.uget(i), out.uget_mut(i)) };
             // no value should be removed in the first window
-            vo.write(f(v.f64() - _mean, f64::NAN));
+            vo.write(f(v.f64() - mean, f64::NAN));
         }
         // other windows
         for (start, end) in (window - 1..len).enumerate() {
             // new valid value
             let (v_rm, v, vo) = unsafe { (self.uget(start), self.uget(end), out.uget_mut(end)) };
-            let (v_rm, v) = (v_rm.f64() - _mean, v.f64() - _mean);
+            let (v_rm, v) = (v_rm.f64() - mean, v.f64() - mean);
             vo.write(f(v, v_rm));
         }
     }
@@ -476,20 +476,20 @@ where
             out.len() == len,
             "length of output array must equal to length of the array"
         );
-        let (_mean1, _mean2) = (self.mean_1d(false), other.mean_1d(false));
+        let (mean1, mean2) = (self.mean_1d(0, true), other.mean_1d(0, true));
         // within the first window
         for i in 0..window - 1 {
             let (v1, v2, vo) = unsafe { (self.uget(i), other.uget(i), out.uget_mut(i)) };
             // no value should be removed in the first window
-            vo.write(f(v1.f64() - _mean1, v2.f64() - _mean2, f64::NAN, f64::NAN));
+            vo.write(f(v1.f64() - mean1, v2.f64() - mean2, f64::NAN, f64::NAN));
         }
         // other windows
         for (start, end) in (window - 1..len).enumerate() {
             // new valid value
             let (v1_rm, v1, vo) = unsafe { (self.uget(start), self.uget(end), out.uget_mut(end)) };
             let (v2_rm, v2) = unsafe { (other.uget(start), other.uget(end)) };
-            let (v1_rm, v1) = (v1_rm.f64() - _mean1, v1.f64() - _mean1);
-            let (v2_rm, v2) = (v2_rm.f64() - _mean2, v2.f64() - _mean2);
+            let (v1_rm, v1) = (v1_rm.f64() - mean1, v1.f64() - mean1);
+            let (v2_rm, v2) = (v2_rm.f64() - mean2, v2.f64() - mean2);
             vo.write(f(v1, v2, v1_rm, v2_rm));
         }
     }

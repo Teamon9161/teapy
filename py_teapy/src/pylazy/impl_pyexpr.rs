@@ -314,24 +314,16 @@ impl PyExpr {
         self.e.step_acc()
     }
 
-    // #[getter]
-    // #[allow(unreachable_patterns)]
-    // pub fn step_acc(&self) -> usize {
-    //     match_exprs!(&self.inner, expr, { expr.step_acc() })
-    // }
-
     #[getter]
     #[allow(unreachable_patterns)]
     pub fn get_name(&self) -> Option<String> {
         self.e.name()
-        // match_exprs!(&self.inner, expr, { expr.name() })
     }
 
     #[setter]
     #[allow(unreachable_patterns)]
     pub fn set_name(&mut self, name: String) {
         self.e.rename(name)
-        // match_exprs!(&mut self.inner, expr, { expr.rename(name) })
     }
 
     #[pyo3(name = "copy")]
@@ -355,26 +347,6 @@ impl PyExpr {
         out.e.reshape(shape.e);
         Ok(out.add_obj_into(obj))
     }
-
-    // #[allow(unreachable_patterns)]
-    // pub fn strong_count(&mut self) -> usize {
-    //     match_exprs!(&self.inner, expr, { expr.strong_count() })
-    // }
-
-    // #[allow(unreachable_patterns)]
-    // pub fn weak_count(&mut self) -> usize {
-    //     match_exprs!(&self.inner, expr, { expr.weak_count() })
-    // }
-
-    // #[allow(unreachable_patterns)]
-    // pub fn ref_count(&mut self) -> usize {
-    //     match_exprs!(&self.inner, expr, { expr.ref_count() })
-    // }
-
-    // #[allow(unreachable_patterns)]
-    // pub fn hint_arr_type(&mut self) -> Self {
-    //     match_exprs!(&self.inner, expr, { expr.clone().hint_arr_type().into() })
-    // }
 
     pub fn __getattr__<'py>(
         self: PyRef<'py, Self>,
@@ -1064,16 +1036,17 @@ impl PyExpr {
         e
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false))]
-    pub fn mean(&self, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=1, stable=false, axis=0, par=false))]
+    pub fn mean(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.mean(stable, axis, par);
+        e.e.mean(min_periods, stable, axis, par);
         e
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false, _warning=true))]
+    #[pyo3(signature=(min_periods=3, stable=false, axis=0, par=false, _warning=true))]
     pub fn zscore(
         &self,
+        min_periods: usize,
         stable: bool,
         axis: i32,
         par: bool,
@@ -1088,7 +1061,7 @@ impl PyExpr {
         //     )?;
         // }
         let mut e = self.clone();
-        e.e.zscore_inplace(stable, axis, par);
+        e.e.zscore_inplace(min_periods, stable, axis, par);
         Ok(e)
     }
 
@@ -1109,31 +1082,31 @@ impl PyExpr {
         Ok(e)
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false))]
-    pub fn var(&self, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=1, stable=false, axis=0, par=false))]
+    pub fn var(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.var(stable, axis, par);
+        e.e.var(min_periods, stable, axis, par);
         e
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false))]
-    pub fn std(&self, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=2, stable=false, axis=0, par=false))]
+    pub fn std(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.std(stable, axis, par);
+        e.e.std(min_periods, stable, axis, par);
         e
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false))]
-    pub fn skew(&self, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=3, stable=false, axis=0, par=false))]
+    pub fn skew(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.skew(stable, axis, par);
+        e.e.skew(min_periods, stable, axis, par);
         e
     }
 
-    #[pyo3(signature=(stable=false, axis=0, par=false))]
-    pub fn kurt(&self, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=4, stable=false, axis=0, par=false))]
+    pub fn kurt(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.kurt(stable, axis, par);
+        e.e.kurt(min_periods, stable, axis, par);
         e
     }
 
@@ -1179,20 +1152,11 @@ impl PyExpr {
         e
     }
 
-    #[pyo3(signature=(other, stable=false, axis=0, par=false))]
-    pub unsafe fn cov(&self, other: &PyAny, stable: bool, axis: i32, par: bool) -> PyResult<Self> {
-        let other = parse_expr_nocopy(other)?;
-        let obj = other.obj();
-        let mut e = self.clone();
-        e.e.cov(other.e, stable, axis, par);
-        Ok(e.add_obj_into(obj))
-    }
-
-    #[pyo3(signature=(other, method=CorrMethod::Pearson, stable=false, axis=0, par=false))]
-    pub unsafe fn corr(
+    #[pyo3(signature=(other, min_periods=3, stable=false, axis=0, par=false))]
+    pub unsafe fn cov(
         &self,
         other: &PyAny,
-        method: CorrMethod,
+        min_periods: usize,
         stable: bool,
         axis: i32,
         par: bool,
@@ -1200,7 +1164,24 @@ impl PyExpr {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut e = self.clone();
-        e.e.corr(other.e, method, stable, axis, par);
+        e.e.cov(other.e, min_periods, stable, axis, par);
+        Ok(e.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(other, method=CorrMethod::Pearson, min_periods=3, stable=false, axis=0, par=false))]
+    pub unsafe fn corr(
+        &self,
+        other: &PyAny,
+        method: CorrMethod,
+        min_periods: usize,
+        stable: bool,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let obj = other.obj();
+        let mut e = self.clone();
+        e.e.corr(other.e, method, min_periods, stable, axis, par);
         Ok(e.add_obj_into(obj))
     }
 
@@ -2097,12 +2078,18 @@ impl PyExpr {
         Ok(out)
     }
 
-    #[pyo3(signature=(groupby_info, stable=false))]
-    pub unsafe fn _group_by_time_mean(&self, groupby_info: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(groupby_info, min_periods=1, stable=false))]
+    pub unsafe fn _group_by_time_mean(
+        &self,
+        groupby_info: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
         let groupby_info = parse_expr_nocopy(groupby_info)?;
         let obj = groupby_info.obj();
         let mut out = self.clone();
-        out.e.group_by_time_mean(groupby_info.e, stable);
+        out.e
+            .group_by_time_mean(groupby_info.e, min_periods, stable);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2115,21 +2102,31 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(groupby_info, stable=false))]
-    pub unsafe fn _group_by_time_std(&self, groupby_info: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(groupby_info, min_periods=2, stable=false))]
+    pub unsafe fn _group_by_time_std(
+        &self,
+        groupby_info: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
         let groupby_info = parse_expr_nocopy(groupby_info)?;
         let obj = groupby_info.obj();
         let mut out = self.clone();
-        out.e.group_by_time_std(groupby_info.e, stable);
+        out.e.group_by_time_std(groupby_info.e, min_periods, stable);
         Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(groupby_info, stable=false))]
-    pub unsafe fn _group_by_time_var(&self, groupby_info: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(groupby_info, min_periods=2, stable=false))]
+    pub unsafe fn _group_by_time_var(
+        &self,
+        groupby_info: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
         let groupby_info = parse_expr_nocopy(groupby_info)?;
         let obj = groupby_info.obj();
         let mut out = self.clone();
-        out.e.group_by_time_var(groupby_info.e, stable);
+        out.e.group_by_time_var(groupby_info.e, min_periods, stable);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2187,12 +2184,12 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(groupby_info, other, method=CorrMethod::Pearson, stable=false))]
-    pub unsafe fn _group_by_time_corr(
+    #[pyo3(signature=(groupby_info, other, min_periods=3, stable=false))]
+    pub unsafe fn _group_by_time_cov(
         &self,
         groupby_info: &PyAny,
         other: &PyAny,
-        method: CorrMethod,
+        min_periods: usize,
         stable: bool,
     ) -> PyResult<Self> {
         let groupby_info = parse_expr_nocopy(groupby_info)?;
@@ -2201,7 +2198,27 @@ impl PyExpr {
         let obj2 = other.obj();
         let mut out = self.clone();
         out.e
-            .group_by_time_corr(other.e, groupby_info.e, method, stable);
+            .group_by_time_cov(other.e, groupby_info.e, min_periods, stable);
+        out.add_obj(obj).add_obj(obj2);
+        Ok(out)
+    }
+
+    #[pyo3(signature=(groupby_info, other, method=CorrMethod::Pearson, min_periods=3, stable=false))]
+    pub unsafe fn _group_by_time_corr(
+        &self,
+        groupby_info: &PyAny,
+        other: &PyAny,
+        method: CorrMethod,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let groupby_info = parse_expr_nocopy(groupby_info)?;
+        let other = parse_expr_nocopy(other)?;
+        let obj = groupby_info.obj();
+        let obj2 = other.obj();
+        let mut out = self.clone();
+        out.e
+            .group_by_time_corr(other.e, groupby_info.e, method, min_periods, stable);
         out.add_obj(obj).add_obj(obj2);
         Ok(out)
     }
@@ -2219,12 +2236,17 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(roll_start, stable=false))]
-    pub unsafe fn _rolling_select_mean(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(roll_start, min_periods=1, stable=false))]
+    pub unsafe fn _rolling_select_mean(
+        &self,
+        roll_start: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_mean(roll_start.e, stable);
+        out.e.rolling_select_mean(roll_start.e, min_periods, stable);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2237,21 +2259,70 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(roll_start, stable=false))]
-    pub unsafe fn _rolling_select_std(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(roll_start, min_periods=2, stable=false))]
+    pub unsafe fn _rolling_select_std(
+        &self,
+        roll_start: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_std(roll_start.e, stable);
+        out.e.rolling_select_std(roll_start.e, min_periods, stable);
         Ok(out.add_obj_into(obj))
     }
 
-    #[pyo3(signature=(roll_start, stable=false))]
-    pub unsafe fn _rolling_select_var(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(roll_start, other, min_periods=2, stable=false))]
+    pub unsafe fn _rolling_select_cov(
+        &self,
+        roll_start: &PyAny,
+        other: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let other = parse_expr_nocopy(other)?;
+        let obj = roll_start.obj();
+        let obj2 = other.obj();
+        let mut out = self.clone();
+        out.e
+            .rolling_select_cov(other.e, roll_start.e, min_periods, stable);
+        out.add_obj(obj).add_obj(obj2);
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start, other, method=CorrMethod::Pearson, min_periods=2, stable=false))]
+    pub unsafe fn _rolling_select_corr(
+        &self,
+        roll_start: &PyAny,
+        other: &PyAny,
+        method: CorrMethod,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let other = parse_expr_nocopy(other)?;
+        let obj = roll_start.obj();
+        let obj2 = other.obj();
+        let mut out = self.clone();
+        out.e
+            .rolling_select_corr(other.e, roll_start.e, method, min_periods, stable);
+        out.add_obj(obj).add_obj(obj2);
+        Ok(out)
+    }
+
+    #[pyo3(signature=(roll_start, min_periods=2, stable=false))]
+    pub unsafe fn _rolling_select_var(
+        &self,
+        roll_start: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_var(roll_start.e, stable);
+        out.e.rolling_select_var(roll_start.e, min_periods, stable);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2341,128 +2412,5 @@ impl PyExpr {
     //             .add_obj_into(obj)
     //     });
     //     Ok(out)
-    // }
-
-    // #[pyo3(signature=(index, duration, func, axis=0, **py_kwargs))]
-    // pub unsafe fn rolling_apply_by_time(
-    //     &self,
-    //     index: &PyAny,
-    //     duration: &str,
-    //     func: &PyAny,
-    //     axis: i32,
-    //     py_kwargs: Option<&PyDict>,
-    //     py: Python,
-    // ) -> PyResult<PyObject> {
-    //     let index_expr = parse_expr_nocopy(index)?;
-    //     let mut rolling_idx = index_expr
-    //         .cast_datetime(None)?
-    //         .get_time_rolling_idx(duration, RollingTimeStartBy::Full);
-    //     rolling_idx = rolling_idx.eval(None)?.0;
-    //     let mut column_num = 0;
-    //     let mut output = rolling_idx
-    //         .view_arr()
-    //         .to_dim1()
-    //         .unwrap()
-    //         .into_iter()
-    //         .enumerate()
-    //         .map(|(end, start)| {
-    //             let pye = self.select_by_slice_eager(Some(axis), start, end, None);
-    //             let res = func
-    //                 .call((pye,), py_kwargs)
-    //                 .expect("Call python function error!");
-    //             let res = unsafe {
-    //                 parse_expr_list(res, false).expect("Can not parse fucntion return as Expr list")
-    //             };
-    //             column_num = res.len();
-    //             res
-    //         })
-    //         .collect_trusted();
-    //     let eval_res: Vec<_> = output
-    //         .par_iter_mut()
-    //         .flatten()
-    //         .map(|e| e.eval_inplace(None))
-    //         .collect();
-    //     if eval_res.iter().any(|e| e.is_err()) {
-    //         return Err(PyRuntimeError::new_err(
-    //             "Some of the expressions can't be evaluated",
-    //         ));
-    //     }
-    //     // we don't need to add object for `out_data` because we no longer need a reference of `index`.
-    //     let mut out_data: Vec<PyExpr> = (0..column_num)
-    //         .into_par_iter()
-    //         .map(|i| {
-    //             let group_vec = output
-    //                 .iter()
-    //                 .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
-    //                 .collect_trusted();
-    //             concat_expr(group_vec, axis).expect("concat expr error")
-    //         })
-    //         .collect();
-    //     if out_data.len() == 1 {
-    //         Ok(out_data.pop().unwrap().into_py(py))
-    //     } else {
-    //         Ok(out_data.into_py(py))
-    //     }
-    // }
-
-    // #[allow(unreachable_patterns)]
-    // #[pyo3(signature=(window, func, axis=0, **py_kwargs))]
-    // pub unsafe fn rolling_apply(
-    //     &mut self,
-    //     window: usize,
-    //     func: &PyAny,
-    //     axis: i32,
-    //     py_kwargs: Option<&PyDict>,
-    //     py: Python,
-    // ) -> PyResult<PyObject> {
-    //     if window == 0 {
-    //         return Err(PyValueError::new_err("Window should be greater than 0"));
-    //     }
-    //     let mut column_num = 0;
-    //     self.eval_inplace(None)?;
-    //     let axis_n = match_exprs!(&self.inner, expr, { expr.view_arr().norm_axis(axis) });
-    //     let length = match_exprs!(&self.inner, expr, {
-    //         expr.view_arr().shape()[axis_n.index()]
-    //     });
-    //     let mut output = zip(repeat(0).take(window - 1), 0..window - 1)
-    //         .chain((window - 1..length).enumerate())
-    //         .map(|(end, start)| {
-    //             let pye = self.select_by_slice_eager(Some(axis), start, end, None);
-    //             let res = func
-    //                 .call((pye,), py_kwargs)
-    //                 .expect("Call python function error!");
-    //             let res = unsafe {
-    //                 parse_expr_list(res, false).expect("Can not parse fucntion return as Expr list")
-    //             };
-    //             column_num = res.len();
-    //             res
-    //         })
-    //         .collect_trusted();
-    //     let eval_res: Vec<_> = output
-    //         .par_iter_mut()
-    //         .flatten()
-    //         .map(|e| e.eval_inplace(None))
-    //         .collect();
-    //     if eval_res.iter().any(|e| e.is_err()) {
-    //         return Err(PyRuntimeError::new_err(
-    //             "Some of the expressions can't be evaluated",
-    //         ));
-    //     }
-    //     // we don't need to add object for `out_data` because we no longer need a reference of `index`.
-    //     let mut out_data: Vec<PyExpr> = (0..column_num)
-    //         .into_par_iter()
-    //         .map(|i| {
-    //             let group_vec = output
-    //                 .iter()
-    //                 .map(|single_output_exprs| single_output_exprs.get(i).unwrap().no_dim0())
-    //                 .collect_trusted();
-    //             concat_expr(group_vec, axis).expect("Concat expr error")
-    //         })
-    //         .collect();
-    //     if out_data.len() == 1 {
-    //         Ok(out_data.pop().unwrap().into_py(py))
-    //     } else {
-    //         Ok(out_data.into_py(py))
-    //     }
     // }
 }

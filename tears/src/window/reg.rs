@@ -519,7 +519,7 @@ impl_map2_nd!(
                     let (vy, vx) = unsafe{(*self.uget(j), *x.uget(j))};
                     vy.f64() - alpha - beta * vx.f64()
                 }).collect_trusted();
-                let std = Arr1::from_vec(resid).std_1d(false);
+                let std = Arr1::from_vec(resid).std_1d(2, false);
                 unsafe{out.uget_mut(i).write(std)};
             } else {
                 unsafe{out.uget_mut(i).write(f64::NAN)};
@@ -543,7 +543,7 @@ impl_map2_nd!(
                     let (vy, vx) = unsafe{(*self.uget(j), *x.uget(j))};
                     vy.f64() - alpha - beta * vx.f64()
                 }).collect_trusted();
-                let std = Arr1::from_vec(resid).std_1d(false);
+                let std = Arr1::from_vec(resid).std_1d(2, false);
                 unsafe{out.uget_mut(end).write(std)};
             } else {
                 unsafe{out.uget_mut(end).write(f64::NAN)};
@@ -600,7 +600,7 @@ impl_map2_nd!(
                     let (vy, vx) = unsafe{(*self.uget(j), *x.uget(j))};
                     vy.f64() - alpha - beta * vx.f64()
                 }).collect_trusted();
-                let std = Arr1::from_vec(resid).skew_1d(false);
+                let std = Arr1::from_vec(resid).skew_1d(3, false);
                 unsafe{out.uget_mut(i).write(std)};
             } else {
                 unsafe{out.uget_mut(i).write(f64::NAN)};
@@ -624,7 +624,7 @@ impl_map2_nd!(
                     let (vy, vx) = unsafe{(*self.uget(j), *x.uget(j))};
                     vy.f64() - alpha - beta * vx.f64()
                 }).collect_trusted();
-                let std = Arr1::from_vec(resid).skew_1d(false);
+                let std = Arr1::from_vec(resid).skew_1d(3, false);
                 unsafe{out.uget_mut(end).write(std)};
             } else {
                 unsafe{out.uget_mut(end).write(f64::NAN)};

@@ -719,7 +719,12 @@ impl<'a> Expr<'a> {
     }
 }
 
-pub fn corr<'a>(exprs: Vec<Expr<'a>>, method: CorrMethod, stable: bool) -> Expr<'a> {
+pub fn corr<'a>(
+    exprs: Vec<Expr<'a>>,
+    method: CorrMethod,
+    min_periods: usize,
+    stable: bool,
+) -> Expr<'a> {
     let mut out: Expr<'a> = Default::default();
     out.chain_f_ctx(move |(_, ctx)| {
         // let exprs = exprs.iter().map(|v| (*v).clone()).collect_trusted();
@@ -733,7 +738,7 @@ pub fn corr<'a>(exprs: Vec<Expr<'a>>, method: CorrMethod, stable: bool) -> Expr<
                     let arrj = *unsafe{all_arr.get_unchecked(j)};
                     match_arrok!(numeric arri, arri, {
                         match_arrok!(numeric arrj, arrj, {
-                            arri.deref().view().to_dim1()?.corr_1d(&arrj.deref().view().to_dim1()?, method, stable)
+                            arri.deref().view().to_dim1()?.corr_1d(&arrj.deref().view().to_dim1()?, method, min_periods, stable)
                         })
                     })
                 } else {

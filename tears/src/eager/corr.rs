@@ -9,7 +9,7 @@ pub enum CorrMethod {
 impl_reduce2_nd!(
     cov,
     /// covariance of 2 array
-    pub fn cov_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, stable: bool) -> f64
+    pub fn cov_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, min_periods: usize, stable: bool) -> f64
     {where S2: Data<Elem = T2>, T: Number, T2: Number,}
     {
         assert_eq!(self.len(), other.len(), "Both arrays must be the same length when calculating covariance.");
@@ -24,7 +24,7 @@ impl_reduce2_nd!(
         } else {
             // Kahan summation, see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
             let (mut c_a, mut c_b, mut c_ab) = (0., 0., 0.);
-            let (mean_a, mean_b) = (self.mean_1d(false), other.mean_1d(false));
+            let (mean_a, mean_b) = (self.mean_1d(min_periods, true), other.mean_1d(min_periods, true));
             self.n_apply_valid_with(other, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);
@@ -32,6 +32,9 @@ impl_reduce2_nd!(
                 sum_ab = kh_sum(sum_ab, va * vb, &mut c_ab);
             })
         };
+        if n < min_periods {
+            return f64::NAN;
+        }
         if n >= 2 {
             (sum_ab - (sum_a * sum_b) / n.f64()) / (n - 1).f64()
         } else {
@@ -43,7 +46,7 @@ impl_reduce2_nd!(
 impl_reduce2_nd!(
     corr_pearson,
     /// Pearson correlation of 2 array
-    pub fn corr_pearson_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, stable: bool) -> f64
+    pub fn corr_pearson_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, min_periods: usize, stable: bool) -> f64
     {where S2: Data<Elem = T2>, T: Number, T2: Number,}
     {
         assert_eq!(self.len(), other.len(), "Both arrays must be the same length when calculating correlation.");
@@ -60,7 +63,7 @@ impl_reduce2_nd!(
         } else {
             // Kahan summation, see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
             let (mut c_a, mut c_a2, mut c_b, mut c_b2, mut c_ab) = (0., 0., 0., 0., 0.);
-            let (mean_a, mean_b) = (self.mean_1d(false), other.mean_1d(false));
+            let (mean_a, mean_b) = (self.mean_1d(min_periods, true), other.mean_1d(min_periods, true));
             self.n_apply_valid_with(other, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);
@@ -70,6 +73,9 @@ impl_reduce2_nd!(
                 sum_ab = kh_sum(sum_ab, va * vb, &mut c_ab);
             })
         };
+        if n < min_periods {
+            return f64::NAN;
+        }
         if n >= 2 {
             let n = n.f64();
             let mean_a = sum_a / n;
@@ -94,7 +100,7 @@ impl_reduce2_nd!(
 impl_reduce2_nd!(
     corr_spearman,
     /// Spearman correlation of 2 array
-    pub fn corr_spearman_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, stable: bool) -> f64
+    pub fn corr_spearman_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, min_periods: usize, stable: bool) -> f64
     {where S2: Data<Elem = T2>, T: Number, T2: Number,}
     {
         assert_eq!(self.len(), other.len(), "Both arrays must be the same length when calculating correlation.");
@@ -106,7 +112,7 @@ impl_reduce2_nd!(
         unsafe{
             let rank1 = rank1.assume_init();
             let rank2 = rank2.assume_init();
-            rank1.corr_pearson_1d(&rank2, stable)
+            rank1.corr_pearson_1d(&rank2, min_periods, stable)
         }
     }
 );
@@ -114,12 +120,12 @@ impl_reduce2_nd!(
 impl_reduce2_nd!(
     corr,
     /// correlation of 2 array
-    pub fn corr_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, method: CorrMethod, stable: bool) -> f64
+    pub fn corr_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, method: CorrMethod, min_periods: usize, stable: bool) -> f64
     {where S2: Data<Elem = T2>, T: Number, T2: Number,}
     {
         match method {
-            CorrMethod::Pearson => self.corr_pearson_1d(other, stable),
-            CorrMethod::Spearman => self.corr_spearman_1d(other, stable),
+            CorrMethod::Pearson => self.corr_pearson_1d(other, min_periods, stable),
+            CorrMethod::Spearman => self.corr_spearman_1d(other, min_periods, stable),
             // _ => panic!("Not supported method: {} in correlation", method),
         }
     }

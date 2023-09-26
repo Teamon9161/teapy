@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use super::export::*;
 use crate::lazy::DataDict;
-use crate::{Arr1, CollectTrustedToVec, TimeDelta};
+use crate::{Arr1, CollectTrustedToVec, CorrMethod, TimeDelta};
 use ahash::HashMap;
 use ndarray::s;
 
@@ -52,16 +52,63 @@ macro_rules! impl_rolling_by_startidx_agg {
             }
         }
     };
+    (in2 $func_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*)) => {
+        impl<'a> Expr<'a> {
+            pub fn $func_name(&mut self, other: Expr<'a>, roll_start: Expr<'a>  $(,$p:$ty)*) -> &mut Self
+            {
+                self.chain_f_ctx(
+                    move |(data, ctx)| {
+                        let arr = data.view_arr(ctx.as_ref())?.deref();
+                        let other = other.view_arr(ctx.as_ref())?.deref();
+                        let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
+                        let roll_start_arr = roll_start.view().to_dim1()?;
+                        let len = arr.len();
+                        if len != roll_start_arr.len() {
+                            return Err(format!(
+                                "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
+                                arr.len(),
+                                roll_start_arr.len()
+                            )
+                            .into());
+                        }
+
+                        let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
+                            let arr = arr.view().to_dim1()?;
+                            let out = zip(roll_start_arr, 0..len)
+                            .map(|(mut start, end)| {
+                                if start > end {
+                                    start = end;  // the start idx should be inbound
+                                }
+                                let current_arr = arr.slice(s![start..end + 1]).wrap();
+                                match_arrok!(numeric &other, other, {
+                                    let other = other.view().to_dim1().unwrap();
+                                    let other_arr = other.slice(s![start..end + 1]).wrap();
+                                    current_arr.$func_1d(&other_arr, $($p),*)
+                                })
+                            })
+                            .collect_trusted();
+                            Arr1::from_vec(out).to_dimd().into()
+                        });
+                        Ok((out.into(), ctx.clone()))
+                    }
+                );
+                self
+            }
+        }
+    };
 }
 
 impl_rolling_by_startidx_agg!(rolling_select_max, max_1d());
 impl_rolling_by_startidx_agg!(rolling_select_min, min_1d());
-impl_rolling_by_startidx_agg!(rolling_select_mean, mean_1d(stable: bool));
+impl_rolling_by_startidx_agg!(rolling_select_mean, mean_1d(min_periods: usize, stable: bool));
 impl_rolling_by_startidx_agg!(rolling_select_sum, sum_1d(stable: bool));
-impl_rolling_by_startidx_agg!(rolling_select_std, std_1d(stable: bool));
-impl_rolling_by_startidx_agg!(rolling_select_var, var_1d(stable: bool));
+impl_rolling_by_startidx_agg!(rolling_select_std, std_1d(min_periods: usize, stable: bool));
+impl_rolling_by_startidx_agg!(rolling_select_var, var_1d(min_periods: usize, stable: bool));
 impl_rolling_by_startidx_agg!(rolling_select_umax, sorted_unique_1d().max_1d());
 impl_rolling_by_startidx_agg!(rolling_select_umin, sorted_unique_1d().min_1d());
+
+impl_rolling_by_startidx_agg!(in2 rolling_select_cov, cov_1d(min_periods: usize, stable: bool));
+impl_rolling_by_startidx_agg!(in2 rolling_select_corr, corr_1d(method: CorrMethod, min_periods: usize, stable: bool));
 
 impl<'a> Expr<'a> {
     #[allow(unreachable_patterns)]

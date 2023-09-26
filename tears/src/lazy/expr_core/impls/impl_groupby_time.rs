@@ -61,8 +61,8 @@ macro_rules! impl_group_by_time_info_agg {
                                 let current_arr = arr.slice(s![start..next_start]).wrap();
                                 match_arrok!(numeric &other, other, {
                                     let other = other.view().to_dim1().unwrap();
-                                    debug_assert_eq!(current_arr.len(), other.len());
                                     let other_arr = other.slice(s![start..next_start]).wrap();
+                                    debug_assert_eq!(current_arr.len(), other_arr.len());
                                     current_arr.$func_1d(&other_arr, $($p),*)
                                 })
 
@@ -81,16 +81,17 @@ macro_rules! impl_group_by_time_info_agg {
 
 impl_group_by_time_info_agg!(group_by_time_max, max_1d());
 impl_group_by_time_info_agg!(group_by_time_min, min_1d());
-impl_group_by_time_info_agg!(group_by_time_mean, mean_1d(stable: bool));
+impl_group_by_time_info_agg!(group_by_time_mean, mean_1d(min_periods: usize, stable: bool));
 impl_group_by_time_info_agg!(group_by_time_sum, sum_1d(stable: bool));
-impl_group_by_time_info_agg!(group_by_time_std, std_1d(stable: bool));
-impl_group_by_time_info_agg!(group_by_time_var, var_1d(stable: bool));
+impl_group_by_time_info_agg!(group_by_time_std, std_1d(min_periods: usize, stable: bool));
+impl_group_by_time_info_agg!(group_by_time_var, var_1d(min_periods: usize, stable: bool));
 impl_group_by_time_info_agg!(group_by_time_first, first_unwrap());
 impl_group_by_time_info_agg!(group_by_time_last, last_unwrap());
 impl_group_by_time_info_agg!(group_by_time_valid_first, valid_first_1d());
 impl_group_by_time_info_agg!(group_by_time_valid_last, valid_last_1d());
 
-impl_group_by_time_info_agg!(in2 group_by_time_corr, corr_1d(method: CorrMethod, stable: bool));
+impl_group_by_time_info_agg!(in2 group_by_time_cov, cov_1d(min_periods: usize, stable: bool));
+impl_group_by_time_info_agg!(in2 group_by_time_corr, corr_1d(method: CorrMethod, min_periods: usize, stable: bool));
 
 impl<'a> Expr<'a> {
     /// This func should return an array indicates the start of each group

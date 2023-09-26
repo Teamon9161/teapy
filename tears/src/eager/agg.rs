@@ -356,18 +356,22 @@ impl_reduce_nd!(
     mean,
     /// mean of the array on a given axis
     #[inline]
-    pub fn mean_1d(&self, stable: bool) -> f64
+    pub fn mean_1d(&self, min_periods: usize, stable: bool) -> f64
     {T: Number,}
     {
         let(n, sum) = self.nsum_1d(stable);
-        sum.f64() / n.f64()
+        if n >= min_periods {
+            sum.f64() / n.f64()
+        } else {
+            f64::NAN
+        }
     }
 );
 
 impl_reduce_nd!(
     meanvar,
     /// mean and variance of the array on a given axis
-    pub fn meanvar_1d(&self, stable: bool) -> (f64, f64)
+    pub fn meanvar_1d(&self, min_periods: usize, stable: bool) -> (f64, f64)
     {T: Number,}
     {
         let (mut m1, mut m2) = (0., 0.);
@@ -377,6 +381,9 @@ impl_reduce_nd!(
                 m1 += v;
                 m2 += v * v;
             });
+            if n < min_periods {
+                return (f64::NAN, f64::NAN);
+            }
             let n_f64 = n.f64();
             m1 /= n_f64; // E(x)
             m2 /= n_f64; // E(x^2)
@@ -390,7 +397,7 @@ impl_reduce_nd!(
             }
         } else {
             // calculate mean of the array
-            let mean = self.mean_1d(false);
+            let mean = self.mean_1d(min_periods, true);
             if mean.isnan() {
                 return (f64::NAN, f64::NAN);
             }
@@ -402,6 +409,9 @@ impl_reduce_nd!(
                 m1 = kh_sum(m1, v, &mut c_v);
                 m2 = kh_sum(m2, v * v, &mut c_v2);
             });
+            if n < min_periods {
+                return (f64::NAN, f64::NAN);
+            }
             let n_f64 = n.f64();
             m1 /= n_f64; // E(x)
             m2 /= n_f64; // E(x^2)
@@ -420,10 +430,10 @@ impl_reduce_nd!(
 impl_reduce_nd!(
     var,
     /// variance of the array on a given axis
-    pub fn var_1d(&self, stable: bool) -> f64
+    pub fn var_1d(&self, min_periods: usize, stable: bool) -> f64
     {T: Number,}
     {
-        self.meanvar_1d(stable).1
+        self.meanvar_1d(min_periods, stable).1
     }
 );
 
@@ -431,10 +441,10 @@ impl_reduce_nd!(
     std,
     /// standard deviation of the array on a given axis
     #[inline]
-    pub fn std_1d(&self, stable: bool) -> f64
+    pub fn std_1d(&self, min_periods: usize, stable: bool) -> f64
     {T: Number,}
     {
-        self.var_1d(stable).sqrt()
+        self.var_1d(min_periods, stable).sqrt()
     }
 );
 
@@ -442,7 +452,7 @@ impl_reduce_nd!(
     skew,
     /// skewness of the array on a given axis
     #[inline]
-    pub fn skew_1d(&self, stable: bool) -> f64
+    pub fn skew_1d(&self, min_periods: usize, stable: bool) -> f64
     {T: Number,}
     {
         let (mut m1, mut m2, mut m3) = (0., 0., 0.);
@@ -456,7 +466,7 @@ impl_reduce_nd!(
             })
         } else {
             // calculate mean of the array
-            let mean = self.mean_1d(false);
+            let mean = self.mean_1d(min_periods, true);
             if mean.isnan() {
                 return f64::NAN;
             }
@@ -471,6 +481,9 @@ impl_reduce_nd!(
                 m3 = kh_sum(m3, v2 * v, &mut c_m3);
             })
         };
+        if n < min_periods {
+            return f64::NAN;
+        }
         let mut res = if n >= 3 {
             let n_f64 = n.f64();
             m1 /= n_f64; // Ex
@@ -499,7 +512,7 @@ impl_reduce_nd!(
     kurt,
     /// kurtosis of the array on a given axis
     #[inline]
-    pub fn kurt_1d(&self, stable: bool) -> f64
+    pub fn kurt_1d(&self, min_periods: usize, stable: bool) -> f64
     {T: Number,}
     {
         let (mut m1, mut m2, mut m3, mut m4) = (0., 0., 0., 0.);
@@ -514,7 +527,7 @@ impl_reduce_nd!(
             })
         } else {
             // calculate mean of the array
-            let mean = self.mean_1d(false);
+            let mean = self.mean_1d(min_periods, true);
             if mean.isnan() {
                 return f64::NAN;
             }
@@ -530,6 +543,9 @@ impl_reduce_nd!(
                 m4 = kh_sum(m4, v2 * v2, &mut c_m4);
             })
         };
+        if n < min_periods {
+            return f64::NAN;
+        }
         let mut res = if n >= 4 {
             let n_f64 = n.f64();
             m1 /= n_f64; // Ex
