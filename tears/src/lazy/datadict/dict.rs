@@ -15,7 +15,7 @@ use ahash::{HashMap, HashMapExt};
 #[cfg(feature = "arw")]
 use std::path::Path;
 
-static DATADICT_INIT_SIZE: usize = 10;
+// static DATADICT_INIT_SIZE: usize = 10;
 
 #[derive(Clone, Default)]
 pub struct DataDict<'a> {
@@ -36,8 +36,7 @@ impl<'a> DataDict<'a> {
     pub fn new(mut data: Vec<Expr<'a>>, columns: Option<Vec<String>>) -> Self {
         if let Some(columns) = columns {
             assert_eq!(data.len(), columns.len());
-            let mut column_map =
-                HashMap::<String, usize>::with_capacity(data.len().max(DATADICT_INIT_SIZE));
+            let mut column_map = HashMap::<String, usize>::with_capacity(data.len());
             for (col_name, i) in zip(columns, 0..data.len()) {
                 column_map.insert(col_name.clone(), i);
                 let expr = unsafe { data.get_unchecked_mut(i) };
@@ -73,6 +72,14 @@ impl<'a> DataDict<'a> {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn reproduce_map(&mut self) {
+        let mut map = HashMap::<String, usize>::with_capacity(self.len());
+        for (i, e) in self.data.iter().enumerate() {
+            map.insert(e.name().unwrap(), i);
+        }
+        self.map = Arc::new(map);
     }
 
     #[inline]
@@ -246,28 +253,29 @@ impl<'a> DataDict<'a> {
 
     /// drop some columns inplace, return the name of the dropped columns
     pub fn drop_inplace(&mut self, col: ColumnSelector) -> TpResult<Vec<String>> {
-        let col_name_vec = self.get_selector_out_name(col);
-        let map = Arc::get_mut(&mut self.map);
-        let mut drop_cols = Vec::with_capacity(col_name_vec.len());
-        if let Some(map) = map {
-            for col_name in &col_name_vec {
-                if map.remove(col_name).is_some() {
-                    drop_cols.push(col_name.clone());
-                }
-            }
-        } else {
-            let mut map = (*self.map).clone();
-            for col_name in &col_name_vec {
-                if map.remove(col_name).is_some() {
-                    drop_cols.push(col_name.clone());
-                }
-            }
-            self.map = Arc::new(map);
-        }
+        let drop_cols = self.get_selector_out_name(col);
+        // let map = Arc::get_mut(&mut self.map);
+        // let mut drop_cols = Vec::with_capacity(col_name_vec.len());
+        // if let Some(map) = map {
+        //     for col_name in &col_name_vec {
+        //         if map.remove(col_name).is_some() {
+        //             drop_cols.push(col_name.clone());
+        //         }
+        //     }
+        // } else {
+        //     let mut map = (*self.map).clone();
+        //     for col_name in &col_name_vec {
+        //         if map.remove(col_name).is_some() {
+        //             drop_cols.push(col_name.clone());
+        //         }
+        //     }
+        //     self.map = Arc::new(map);
+        // }
         self.data = self
             .data
-            .drain_filter(|e| !col_name_vec.contains(&e.name().unwrap()))
+            .drain_filter(|e| !drop_cols.contains(&e.name().unwrap()))
             .collect::<Vec<_>>();
+        self.reproduce_map();
         Ok(drop_cols)
     }
 
@@ -290,7 +298,7 @@ impl<'a> DataDict<'a> {
                 Ok(self
                     .data
                     .get(col_idx)
-                    .expect("Select index of ot bound")
+                    .unwrap_or_else(|| panic!("Select index: {:?} of ot bound", &col_idx))
                     .into())
             }
             ColumnSelector::NameOwned(col_name) => {

@@ -557,6 +557,34 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(signature=(name, inplace=false))]
+    #[allow(unreachable_patterns)]
+    pub fn suffix(&mut self, name: String, inplace: bool) -> Option<Self> {
+        let ori_name = self.e.name().unwrap();
+        if inplace {
+            self.e.rename(ori_name + &name);
+            None
+        } else {
+            let mut e = self.clone();
+            e.e.rename(ori_name + &name);
+            Some(e)
+        }
+    }
+
+    #[pyo3(signature=(name, inplace=false))]
+    #[allow(unreachable_patterns)]
+    pub fn prefix(&mut self, name: String, inplace: bool) -> Option<Self> {
+        let ori_name = self.e.ref_name().unwrap();
+        if inplace {
+            self.e.rename(name + ori_name);
+            None
+        } else {
+            let mut e = self.clone();
+            e.e.rename(name + ori_name);
+            Some(e)
+        }
+    }
+
     // pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
     //     match state.extract::<&pyo3::types::PyBytes>(py) {
     //         Ok(s) => {
@@ -1238,6 +1266,50 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(signature=(left_other, right, sort=true, rev=false, split=true))]
+    pub unsafe fn _get_outer_join_idx(
+        &self,
+        left_other: &PyAny,
+        right: &PyAny,
+        sort: bool,
+        rev: bool,
+        split: bool,
+        py: Python,
+    ) -> PyResult<PyObject> {
+        let left_other = if left_other.is_none() {
+            None
+        } else {
+            Some(parse_expr_list(left_other, false)?)
+        };
+        let right = parse_expr_list(right, false)?;
+        let obj_vec1 = left_other
+            .as_ref()
+            .map(|lo| lo.iter().map(|e| e.obj()).collect_trusted());
+        let obj_vec2 = right.iter().map(|e| e.obj()).collect_trusted();
+        let left_other = left_other.map(|lo| lo.into_iter().map(|e| e.e).collect_trusted());
+        let right = right.into_iter().map(|e| e.e).collect_trusted();
+        let len = right.len() + 2;
+        let mut out = self.clone();
+        out.e.get_outer_join_idx(left_other, right, sort, rev);
+        if let Some(obj_vec1) = obj_vec1 {
+            out.add_obj_vec(obj_vec1).add_obj_vec(obj_vec2);
+        } else {
+            out.add_obj_vec(obj_vec2);
+        }
+        if split {
+            let obj = out.obj();
+            let out = out
+                .e
+                .split_vec_base(len)
+                .into_iter()
+                .map(|e| e.to_py(obj.clone()))
+                .collect_trusted();
+            Ok(out.into_py(py))
+        } else {
+            Ok(out.into_py(py))
+        }
+    }
+
     #[cfg(feature = "window_func")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
     pub fn ts_argmin(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
@@ -1725,13 +1797,14 @@ impl PyExpr {
         let by = unsafe { parse_expr_list(by, false) }?;
         let obj_vec = by.iter().map(|e| e.obj()).collect_trusted();
         let by = by.into_iter().map(|e| e.e).collect_trusted();
-        let mut out = self.clone();
-        if !return_idx {
-            out.e.sort(by, rev);
+        if return_idx {
+            let out = Expr::get_sort_idx(by, rev);
+            Ok(out.to_py(None).add_obj_vec_into(obj_vec))
         } else {
-            out.e.get_sort_idx(by, rev);
+            let mut out = self.clone();
+            out.e.sort(by, rev);
+            Ok(out.add_obj_vec_into(obj_vec))
         }
-        Ok(out.add_obj_vec_into(obj_vec))
     }
 
     pub fn cast(&self, ty: &PyAny, py: Python) -> PyResult<Self> {

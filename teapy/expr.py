@@ -45,6 +45,11 @@ def left_join(self, right, left_other=None):
         return right.select(idx, check=False)
 
 
+# @register
+# def outer_join(self, right, left_other=None, sort=True, rev=False):
+#     out = self._get_outer_join_idx(left_other=left_other, right=right, sort=sort, rev=rev)
+
+
 def mask_to_idx(self):
     from .teapy import arange
 

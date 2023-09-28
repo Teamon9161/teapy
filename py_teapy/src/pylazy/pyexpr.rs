@@ -95,10 +95,11 @@ impl PyExpr {
     }
 
     #[inline]
-    pub fn add_obj_vec(&mut self, another: Vec<RefObj>) {
+    pub fn add_obj_vec(&mut self, another: Vec<RefObj>) -> &mut Self {
         for obj in another {
             self.add_obj(obj);
         }
+        self
     }
 
     #[inline]

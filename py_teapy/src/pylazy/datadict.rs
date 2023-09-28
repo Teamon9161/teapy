@@ -283,7 +283,13 @@ impl PyDataDict {
         let ori_name = self.get_selector_out_name(cs.clone());
         let eval_idx = ori_name
             .iter()
-            .map(|e| *self.dd.map.get(e).unwrap())
+            .map(|e| {
+                *self
+                    .dd
+                    .map
+                    .get(e)
+                    .expect(format!("Can not find the column: {:?}", e).as_str())
+            })
             .collect_trusted();
         self.dd.eval_inplace(cs, context).map_err(StrError::to_py)?;
 
@@ -365,23 +371,51 @@ impl PyDataDict {
         Ok(())
     }
 
-    #[pyo3(signature=(func, **py_kwargs))]
-    pub fn apply(&mut self, func: &PyAny, py_kwargs: Option<&PyDict>) -> PyResult<()> {
+    #[pyo3(signature=(func, exclude=None, **py_kwargs))]
+    pub fn apply(
+        &mut self,
+        func: &PyAny,
+        exclude: Option<Vec<&str>>,
+        py_kwargs: Option<&PyDict>,
+    ) -> PyResult<()> {
         if self.is_empty() {
             return Ok(());
         }
+        let ori_name = self.dd.columns_owned();
         let out_data = self
             .dd
             .data
             .iter()
             .map(|e| {
-                parse_expr_nocopy(
-                    func.call((e.clone().to_py(None),), py_kwargs)
-                        .expect("Call python function error!"),
-                )
-                .expect("Can not parse fucntion return as Expr")
+                if let Some(exclude) = &exclude {
+                    if !exclude.contains(&e.ref_name().unwrap()) {
+                        return parse_expr_nocopy(
+                            func.call((e.clone().to_py(None),), py_kwargs)
+                                .expect("Call python function error!"),
+                        )
+                        .expect("Can not parse function return as Expr");
+                    } else {
+                        e.clone().to_py(None)
+                    }
+                } else {
+                    return parse_expr_nocopy(
+                        func.call((e.clone().to_py(None),), py_kwargs)
+                            .expect("Call python function error!"),
+                    )
+                    .expect("Can not parse function return as Expr");
+                }
             })
             .collect_trusted();
+        let new_name = out_data
+            .iter()
+            .map(|e| e.e.name().unwrap())
+            .collect_trusted();
+        for (ori, new) in zip(ori_name, new_name) {
+            if ori != new {
+                self.update_ref_obj_name(ori.as_str(), new.as_str());
+                self.dd.update_column_map(ori, new)?
+            }
+        }
         let (rs_data, obj_map) = out_data.into_rs(None)?;
         self.add_obj_map(obj_map);
         self.dd.data = rs_data;

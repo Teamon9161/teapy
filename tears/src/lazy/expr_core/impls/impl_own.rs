@@ -1,12 +1,9 @@
 use super::export::*;
-use crate::{
-    ArbArray, Arr, Arr1, Arr2, ArrD, CollectTrustedToVec, CorrMethod, DataType, FillMethod,
-};
+use crate::{ArbArray, Arr, Arr1, Arr2, ArrD, CollectTrustedToVec, CorrMethod, FillMethod};
 use ndarray::{Array1, Axis};
 use rayon::prelude::*;
 #[cfg(feature = "stat")]
 use statrs::distribution::ContinuousCDF;
-use std::cmp::Ordering;
 
 #[derive(Clone)]
 pub enum DropNaMethod {
@@ -370,135 +367,15 @@ impl<'a> Expr<'a> {
     #[allow(unreachable_patterns)]
     pub fn select(&mut self, slc: Expr<'a>, axis: Expr<'a>, check: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
-            let slc_e = slc.clone();
-            let mut slc = slc_e.view_arr(ctx.as_ref())?.deref();
+            let slc = slc.view_arr(ctx.as_ref())?;
             let arr = data.view_arr(ctx.as_ref())?;
-            // let mut slc = slc.into_arr(ctx.clone())?;
-            if slc.ndim() > 1 {
-                return Err("The slice must be dim 0 or dim 1 when select on axis".into());
-            }
-            let axis_i32 = axis
+            let axis = axis
                 .view_arr(ctx.as_ref())?
                 .deref()
                 .cast_i32()
                 .into_owned()
                 .into_scalar()?;
-            let out: ArrOk<'a> = match_arrok!(arr, a, {
-                let a_view = a.view();
-                let axis = a_view.norm_axis(axis_i32);
-                let length = a_view.len_of(axis);
-                if matches!(&slc, ArrOk::OptUsize(_)) {
-                    // take opiton_usize
-                    let slc = slc.deref().cast_optusize();
-                    let slc_view = slc.view();
-                    match a_view.dtype() {
-                        DataType::I32 => {
-                            if slc_view.len() == 1 {
-                                unsafe { a_view.into_dtype::<i32>() }
-                                    .cast::<f64>()
-                                    .index_axis(axis, slc_view.to_dim1()?[0].unwrap())
-                                    .to_owned()
-                                    .wrap()
-                                    .into()
-                            } else {
-                                unsafe {
-                                    a_view
-                                        .into_dtype::<i32>()
-                                        .cast::<f64>()
-                                        .take_option_clone_unchecked(
-                                            slc_view.to_dim1()?,
-                                            axis.index() as i32,
-                                            false,
-                                        )
-                                }
-                                .into()
-                            }
-                        }
-                        DataType::I64 => {
-                            if slc_view.len() == 1 {
-                                unsafe { a_view.into_dtype::<i64>() }
-                                    .cast::<f64>()
-                                    .index_axis(axis, slc_view.to_dim1()?[0].unwrap())
-                                    .to_owned()
-                                    .wrap()
-                                    .into()
-                            } else {
-                                unsafe {
-                                    a_view
-                                        .into_dtype::<i64>()
-                                        .cast::<f64>()
-                                        .take_option_clone_unchecked(
-                                            slc_view.to_dim1()?,
-                                            axis.index() as i32,
-                                            false,
-                                        )
-                                }
-                                .into()
-                            }
-                        }
-                        _ => {
-                            if slc_view.len() == 1 {
-                                a_view
-                                    .index_axis(axis, slc_view.to_dim1()?[0].unwrap())
-                                    .to_owned()
-                                    .wrap()
-                                    .into()
-                            } else {
-                                unsafe {
-                                    a_view.take_option_clone_unchecked(
-                                        slc_view.to_dim1()?,
-                                        axis.index() as i32,
-                                        false,
-                                    )
-                                }
-                                .into()
-                            }
-                        }
-                    }
-                } else if matches!(&slc, ArrOk::Bool(_)) {
-                    let slc = slc.deref().cast_bool();
-                    let slc_view = slc.view();
-                    a_view.filter(&slc_view.to_dim1()?, axis_i32, false).into()
-                } else {
-                    if check {
-                        slc = match slc {
-                            ArrOk::I32(slc) => slc
-                                .view()
-                                .to_dim1()?
-                                .map(|s| a_view.ensure_index(*s, length))
-                                .to_dimd()
-                                .into(),
-                            ArrOk::I64(slc) => slc
-                                .view()
-                                .to_dim1()?
-                                .map(|s| a_view.ensure_index(*s as i32, length))
-                                .to_dimd()
-                                .into(),
-                            _ => slc,
-                        };
-                    }
-                    let slc = slc.cast_usize();
-                    let slc_view = slc.view();
-                    if slc_view.len() == 1 {
-                        a_view
-                            .index_axis(axis, slc_view.to_dim1()?[0])
-                            .to_owned()
-                            .wrap()
-                            .into()
-                    } else {
-                        if check {
-                            a_view
-                                .select(axis, &slc_view.to_dim1()?.as_slice().unwrap())
-                                .wrap()
-                                .into()
-                        } else {
-                            a_view
-                                .select_unchecked(axis, &slc_view.to_dim1()?.as_slice().unwrap())
-                                .into()
-                        }
-                    }
-                }
-            });
+            let out = arr.select(slc, axis, check)?;
             Ok((out.into(), ctx))
         });
         self
@@ -592,79 +469,23 @@ impl<'a> Expr<'a> {
         self
     }
 
-    pub fn get_sort_idx(&mut self, by: Vec<Expr<'a>>, rev: bool) -> &mut Self {
-        self.chain_f_ctx(move |(data, ctx)| {
-            let arr = data.view_arr(ctx.as_ref())?;
-            if arr.ndim() != 1 {
-                return Err("Currently only 1 dim Expr can be sorted".into());
-            }
-            let by_e = by.to_vec();
-            let by = by_e
+    pub fn get_sort_idx(by: Vec<Expr<'a>>, rev: bool) -> Expr<'a> {
+        let mut e: Expr<'a> = 0.into();
+        e.chain_f_ctx(move |(_data, ctx)| {
+            // let arr = data.view_arr(ctx.as_ref())?;
+            let by = by
                 .par_iter()
-                .map(|e| e.view_arr(ctx.as_ref()).unwrap().deref())
+                .map(|e| e.view_arr(ctx.as_ref()).unwrap())
                 .collect::<Vec<_>>();
-            let len = arr.len();
-            let mut idx = Vec::from_iter(0..len);
-            use ArrOk::*;
-            idx.sort_by(move |a, b| {
-                let mut order = Ordering::Equal;
-                for arr in by.iter() {
-                    let rtn = match &arr {
-                        String(_) | DateTime(_) | TimeDelta(_) => {
-                            match_arrok!(
-                                arr,
-                                arr,
-                                {
-                                    let key_view = arr
-                                        .view()
-                                        .to_dim1()
-                                        .expect("Currently only 1 dim array can be sort key");
-                                    let (va, vb) =
-                                        unsafe { (key_view.uget(*a), key_view.uget(*b)) };
-                                    if !rev {
-                                        va.cmp(vb)
-                                    } else {
-                                        va.cmp(vb).reverse()
-                                    }
-                                },
-                                String,
-                                DateTime
-                            )
-                        }
-                        _ => {
-                            match_arrok!(
-                                numeric arr,
-                                arr,
-                                {
-                                    let key_view = arr.view().to_dim1().expect(
-                                        "Currently only 1 dim array can be sort key",
-                                    );
-                                    let (va, vb) =
-                                        unsafe { (key_view.uget(*a), key_view.uget(*b)) };
-                                    if !rev {
-                                        va.nan_sort_cmp_stable(vb)
-                                    } else {
-                                        va.nan_sort_cmp_rev_stable(vb)
-                                    }
-                                }
-                            )
-                        }
-                    };
-                    if rtn != Ordering::Equal {
-                        order = rtn;
-                        break;
-                    }
-                }
-                order
-            });
+            let idx = ArrOk::get_sort_idx(&by, rev)?;
             Ok((Arr1::from_vec(idx).to_dimd().into(), ctx))
         });
-        self
+        e
     }
 
     pub fn sort(&mut self, by: Vec<Expr<'a>>, rev: bool) -> &mut Self {
-        let mut idx = self.clone();
-        idx.get_sort_idx(by, rev);
+        // let mut idx = self.clone();
+        let idx = Expr::get_sort_idx(by, rev);
         self.select(idx, 0.into(), false);
         self
     }

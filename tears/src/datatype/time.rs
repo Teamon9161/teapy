@@ -137,7 +137,8 @@ impl GetNone for DateTime {
 impl DateTime {
     #[inline]
     pub fn into_i64(self) -> i64 {
-        self.map_or(i64::MIN, |dt| dt.timestamp_micros())
+        // self.map_or(i64::MIN, |dt| dt.timestamp_micros())
+        self.map_or(i64::MIN, |dt| dt.timestamp_nanos())
     }
 
     #[inline]

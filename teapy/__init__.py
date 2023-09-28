@@ -20,6 +20,8 @@ __version__ = get_version()
 
 
 def eval(lazy_list):
+    if not isinstance(lazy_list, (tuple, list)):
+        lazy_list = [lazy_list]
     if len(lazy_list) == 0:
         return
     else:

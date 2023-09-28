@@ -288,7 +288,7 @@ where
         slc: ArrBase<S3, Ix1>,
     ) where
         T: Clone + GetNone,
-        S2: DataMut<Elem = T>,
+        S2: DataMut<Elem = MaybeUninit<T>>,
         S3: Data<Elem = OptUsize> + Send + Sync,
     {
         let value = slc
@@ -303,7 +303,9 @@ where
             .collect_trusted();
 
         let value_view = ArrView1::<_>::from_ref_vec(out.raw_dim(), &value);
-        out.apply_mut_with(&value_view, |vo, v| *vo = v.clone());
+        out.apply_mut_with(&value_view, |vo, v| {
+            vo.write(v.clone());
+        });
     }
 
     #[inline]
@@ -430,32 +432,33 @@ where
         let mut new_dim = self.raw_dim();
         new_dim.slice_mut()[axis.index()] = slc.len();
         let shape = new_dim.into_shape().set_f(f_flag);
-        let mut out = Arr::<T, D>::default(shape);
+        let mut out = Arr::<T, D>::uninit(shape);
         let mut out_wr = out.view_mut();
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.wrap()
                 .take_option_clone_1d_unchecked(out_1d, slc.view())
         });
-        out
+        unsafe { out.assume_init() }
+        // out
     }
 
-    /// Take value on a given axis and clone to a new array,
-    ///
-    /// if you want to along axis, select arbitrary subviews corresponding to indices and and
-    /// copy them into a new array, use select instead.
-    ///
-    /// This function is safe because the slice are checked.
-    pub fn take_clone<S2>(&self, slc: ArrBase<S2, Ix1>, axis: i32, par: bool) -> Arr<T, D>
-    where
-        T: Clone + Default + Debug + Send + Sync,
-        D: Dimension,
-        S2: Data<Elem = usize> + Send + Sync,
-    {
-        let axis = self.norm_axis(axis);
-        let max_idx = self.shape()[axis.index()] - 1;
-        assert!(slc.max_1d() <= max_idx, "The index to take is out of bound");
-        unsafe { self.take_clone_unchecked(slc, axis.index() as i32, par) }
-    }
+    // /// Take value on a given axis and clone to a new array,
+    // ///
+    // /// if you want to along axis, select arbitrary subviews corresponding to indices and and
+    // /// copy them into a new array, use select instead.
+    // ///
+    // /// This function is safe because the slice are checked.
+    // pub fn take_clone<S2>(&self, slc: ArrBase<S2, Ix1>, axis: i32, par: bool) -> Arr<T, D>
+    // where
+    //     T: Clone + Default + Debug + Send + Sync,
+    //     D: Dimension,
+    //     S2: Data<Elem = usize> + Send + Sync,
+    // {
+    //     let axis = self.norm_axis(axis);
+    //     let max_idx = self.shape()[axis.index()] - 1;
+    //     assert!(slc.max_1d() <= max_idx, "The index to take is out of bound");
+    //     unsafe { self.take_clone_unchecked(slc, axis.index() as i32, par) }
+    // }
 
     pub fn arg_partition(
         &self,

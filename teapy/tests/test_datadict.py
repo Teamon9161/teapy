@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from numpy.testing import assert_array_equal
 
 from teapy import DataDict, Expr
 from teapy.testing import assert_allclose, assert_allclose3
@@ -174,6 +175,13 @@ def test_join():
     rdd = DataDict({"right_on": ["b", "b", "c"], "vb": [10, 20, 30]})
     ldd.join(rdd, left_on="left_on", right_on="right_on", how="right", inplace=True)
     assert_allclose(rdd["va"].eview(), np.array([2, 2, 4]))
+
+    ldd = DataDict({"on": ["a", "b", "d", "c"], "va": [1, 2, 3, 4]})
+    rdd = DataDict({"on": ["b", "a", "e"], "vb": [10, 20, 30]})
+    dd = ldd.join(rdd, how="outer", on="on").eval(False)
+    assert_allclose(dd["va"].eview(), np.array([1, 2, 4, 3, np.nan]))
+    assert_allclose(dd["vb"].eview(), np.array([20, 10, np.nan, np.nan, 30]))
+    assert_array_equal(dd["on"].eview(), np.array(["a", "b", "c", "d", "e"]))
 
 
 # def test_groupby():

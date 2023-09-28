@@ -175,13 +175,26 @@ class DataDict:
             inplace=inplace,
         )
 
+    def exclude(self, cols):
+        if not isinstance(cols, (tuple, list)):
+            cols = [cols]
+        return DataDict([self[key] for key in self.columns if key not in cols])
+
     def with_columns(self, exprs, inplace=False):
         dd = self if inplace else self.copy()
         dd._dd.with_columns(exprs)
         return None if inplace else dd
 
     def join(
-        self, right, on=None, left_on=None, right_on=None, how="left", inplace=False
+        self,
+        right,
+        on=None,
+        left_on=None,
+        right_on=None,
+        how="left",
+        inplace=False,
+        sort=True,
+        rev=False,
     ):
         if on is not None:
             left_on = right_on = on
@@ -190,28 +203,47 @@ class DataDict:
                 self, left_on=right_on, right_on=left_on, how="left", inplace=inplace
             )
         else:
+            dd = self if inplace else self.copy()
             left_on = [left_on] if isinstance(left_on, (str, int)) else left_on
             right_on = [right_on] if isinstance(right_on, (str, int)) else right_on
+            left_keys = self[left_on].raw_data
+            right_keys = right[right_on].raw_data
+            left_other = left_keys[1:] if len(left_keys) > 1 else None
             if how == "left":
-                left_on = self[left_on].raw_data
-                right_on = right[right_on].raw_data
-                left_other = left_on[1:] if len(left_on) > 1 else None
-                idx = left_on[0]._get_left_join_idx(
-                    left_other=left_other, right=right_on
+                idx = left_keys[0]._get_left_join_idx(
+                    left_other=left_other, right=right_keys
                 )
-                dd = self if inplace else self.copy()
                 dd.with_columns(
-                    right._select_on_axis_unchecked(idx, 0).raw_data, inplace=True
+                    right.drop(right_on, inplace=False)
+                    ._select_on_axis_unchecked(idx, 0)
+                    .raw_data,
+                    inplace=True,
+                )
+                return None if inplace else dd
+            elif how == "outer":
+                *outer_keys, left_idx, right_idx = left_keys[0]._get_outer_join_idx(
+                    left_other=left_other, right=right_keys, sort=sort, rev=rev
+                )
+                dd.drop(left_on, inplace=True)
+                dd.apply(lambda e: e.select(left_idx, check=False), inplace=True)
+                dd.with_columns(outer_keys, inplace=True)
+                dd.with_columns(
+                    right.drop(right_on, inplace=False)
+                    ._select_on_axis_unchecked(right_idx, 0)
+                    .raw_data,
+                    inplace=True,
                 )
                 return None if inplace else dd
             else:
                 raise NotImplementedError(
-                    "Only left an right join is supported for now"
+                    "Only left | right | outer join is supported for now"
                 )
 
-    def apply(self, func, inplace=False, **kwargs):
+    def apply(self, func, inplace=False, exclude=None, **kwargs):
         dd = self if inplace else self.copy()
-        dd._dd.apply(func, **kwargs)
+        if isinstance(exclude, str):
+            exclude = [exclude]
+        dd._dd.apply(func, exclude=exclude, **kwargs)
         return None if inplace else dd
 
     # def rolling(self, window, index=None, check=True, axis=0):
@@ -281,13 +313,28 @@ class GroupBy:
         if len(kwargs):
             data_direct = []
             for k, v in kwargs.items():
+                import re
+
                 if "(" in v and v.split("(")[0] in ["corr"]:
-                    v, other = v.split("(")
-                    other = other[:-1]
-                    data_direct.append(
-                        getattr(self.dd[k].groupby(info=info), v)(self.dd[other])
-                    )
+                    pattern = r"\((.*?))"
+                    if "," in v:  # call function with args
+                        pattern = r"\((.*?),"
+                        eval_info = re.sub(
+                            pattern,
+                            "(self.dd['{}'],".format(re.findall(pattern, v)[0]),
+                            v,
+                        )
+                    else:
+                        pattern = r"\((.*?)\)"
+                        eval_info = re.sub(
+                            pattern,
+                            "(self.dd['{}'])".format(re.findall(pattern, v)[0]),
+                            v,
+                        )
                 else:
-                    data_direct.append(getattr(self.dd[k].groupby(info=info), v)())
+                    eval_info = v if "(" in v else v + "()"
+                data_direct.append(
+                    eval(f"self.dd['{k}'].groupby(info=info)." + eval_info)
+                )
             data.extend(data_direct)
         return DataDict(data)
