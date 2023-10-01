@@ -147,6 +147,11 @@ impl<'a> ArrOk<'a> {
     }
 
     #[allow(unreachable_patterns)]
+    pub fn prepare(&mut self) {
+        match_arrok!(self, a, { a.prepare() })
+    }
+
+    #[allow(unreachable_patterns)]
     #[inline]
     pub fn get_type(&self) -> &'static str {
         match_arrok!(self, a, { a.get_type() })
@@ -454,6 +459,22 @@ impl<'a> Cast<ArbArray<'a, Vec<usize>>> for ArrOk<'a> {
 macro_rules! impl_from_arrow {
     ($([$arrow_dt: ident, $arrow_array: ident, $real: ty]),*) => {
         impl<'a> ArrOk<'a> {
+            // pub fn from_arrow_vec(arr_vec: Vec<Box<dyn arrow::array::Array>>) -> ArrOk<'a> {
+            //     use arrow::datatypes::DataType as ArrowDT;
+            //     if arr_vec.is_empty() {
+            //         return Default::default()
+            //     }
+            //     let arr = &arr_vec[0];
+            //     match arr.data_type() {
+            //         $(ArrowDT::$arrow_dt => {
+            //             ArbArray::<'a, $real>::ArrowChunk(arr_vec).into()
+            //         }),*
+            //         ArrowDT::Int32 = > ArbArray::<'a, i32>::ArrowChunk(arr_vec).into(),
+            //         ArrowDT::Int64 = > ArbArray::<'a, i64>::ArrowChunk(arr_vec).into(),
+            //         _ => unimplemented!()
+            //     }
+            // }
+
             pub fn from_arrow(arr: Box<dyn arrow::array::Array>) -> ArrOk<'a> {
                 use arrow::datatypes::DataType as ArrowDT;
                 use crate::{ViewOnBase, GetNone, Number};
@@ -476,7 +497,6 @@ macro_rules! impl_from_arrow {
 
                     }),*
                     ArrowDT::Int32 => {
-                        // let a: &arrow::array::Int32Array = arr.as_primitive();
                         let a = arr.as_any().downcast_ref::<PrimitiveArray<i32>>().unwrap();
                         let data: &[i32] = a.values();
                         let nulls = a.validity();
@@ -493,7 +513,6 @@ macro_rules! impl_from_arrow {
 
                     },
                     ArrowDT::Int64 => {
-                        // let a: &arrow::array::Int64Array = arr.as_primitive();
                         let a = arr.as_any().downcast_ref::<PrimitiveArray<i64>>().unwrap();
                         let data: &[i64] = a.values();
                         let nulls = a.validity();
@@ -528,13 +547,11 @@ macro_rules! impl_from_arrow {
                     },
                     ArrowDT::Utf8 => {
                         // todo: remove unneeded clone here
-                        // let a: &arrow::array::StringArray = arr.as_string();
                         let a = arr.as_any().downcast_ref::<arrow::array::Utf8Array<i32>>().unwrap();
                         let data = a.into_iter().map(|s| s.map(|s| s.to_string()).unwrap_or_default()).collect_trusted();
                         Arr1::from_vec(data).to_dimd().into()
                     },
                     ArrowDT::LargeUtf8 => {
-                        // let a: &arrow::array::LargeStringArray = arr.as_string();
                         let a = arr.as_any().downcast_ref::<arrow::array::Utf8Array<i64>>().unwrap();
                         let data = a.into_iter().map(|s| s.map(|s| s.to_string()).unwrap_or_default()).collect_trusted();
                         Arr1::from_vec(data).to_dimd().into()
@@ -545,7 +562,6 @@ macro_rules! impl_from_arrow {
                         let a = arr.as_any().downcast_ref::<PrimitiveArray<i64>>().unwrap();
                         let data = match arw_unit {
                             TimeUnit::Second => {
-                                // let a: &arrow::array::TimestampSecondArray = arr.as_primitive();
                                 a.into_iter().map(|v| {
                                     if let Some(v) = v {
                                         DateTime::from_timestamp_opt(*v, 0)
@@ -555,7 +571,6 @@ macro_rules! impl_from_arrow {
                                 }).collect_trusted()
                             },
                             TimeUnit::Millisecond => {
-                                // let a: &arrow::array::TimestampMillisecondArray = arr.as_primitive();
                                 a.into_iter().map(|v| {
                                     if let Some(v) = v {
                                         DateTime::from_timestamp_ms(*v).unwrap_or_default()
@@ -565,7 +580,6 @@ macro_rules! impl_from_arrow {
                                 }).collect_trusted()
                             },
                             TimeUnit::Microsecond => {
-                                // let a: &arrow::array::TimestampMicrosecondArray = arr.as_primitive();
                                 a.into_iter().map(|v| {
                                     if let Some(v) = v {
                                         DateTime::from_timestamp_us(*v).unwrap_or_default()
@@ -575,7 +589,6 @@ macro_rules! impl_from_arrow {
                                 }).collect_trusted()
                             },
                             TimeUnit::Nanosecond => {
-                                // let a: &arrow::array::TimestampNanosecondArray = arr.as_primitive();
                                 a.into_iter().map(|v| {
                                     if let Some(v) = v {
                                         DateTime::from_timestamp_ns(*v).unwrap_or_default()
@@ -607,30 +620,13 @@ macro_rules! impl_arrok_cast {
             {
                 #[inline]
                 fn cast(self) -> ArbArray<'a, $T> {
-                    match self {
-                        ArrOk::U8(e) => e.cast::<$T>(),
-                        ArrOk::F32(e) => e.cast::<$T>(),
-                        ArrOk::F64(e) => e.cast::<$T>(),
-                        ArrOk::I32(e) => e.cast::<$T>(),
-                        ArrOk::I64(e) => e.cast::<$T>(),
-                        ArrOk::Bool(e) => e.cast::<i32>().cast::<$T>(),
-                        ArrOk::Usize(e) => e.cast::<$T>(),
-                        ArrOk::Str(e) => e.cast::<$T>(),
-                        ArrOk::String(e) => e.cast::<$T>(),
-                        // ArrOk::Object(e) => e.cast::<$T>(),
-                        ArrOk::DateTime(e) => e.cast::<i64>().cast::<$T>(),
-                        ArrOk::TimeDelta(e) => e.cast::<i64>().cast::<$T>(),
-                        #[cfg(feature = "option_dtype")]
-                        ArrOk::OptF64(e) => e.cast::<$T>(),
-                        #[cfg(feature = "option_dtype")]
-                        ArrOk::OptF32(e) => e.cast::<$T>(),
-                        #[cfg(feature = "option_dtype")]
-                        ArrOk::OptI32(e) => e.cast::<$T>(),
-                        #[cfg(feature = "option_dtype")]
-                        ArrOk::OptI64(e) => e.cast::<$T>(),
-                        ArrOk::OptUsize(e) => e.cast::<$T>(),
-                        _ => unimplemented!("Cast to this dtype: {:?} from dtype: {:?} is unimplemented", <$T>::dtype(), self.dtype()),
-                    }
+                    match_arrok!(self, a, { a.cast::<$T>() },
+                        U8, F32, F64, I32, I64, Usize, OptUsize, String, Str, DateTime, TimeDelta,
+                        #[cfg(feature = "option_dtype")] OptF32,
+                        #[cfg(feature = "option_dtype")] OptF64,
+                        #[cfg(feature = "option_dtype")] OptI32,
+                        #[cfg(feature = "option_dtype")] OptI64
+                    )
                 }
             }
 

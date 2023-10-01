@@ -115,7 +115,7 @@ impl Cast<TimeDelta> for TimeDelta {
 }
 
 impl_bool_cast!(f32, f64);
-impl_time_cast!(f32, f64, i32, u32, u64, usize, isize, bool, OptUsize);
+impl_time_cast!(f32, f64, i32, u8, u32, u64, usize, isize, bool, OptUsize);
 
 macro_rules! impl_option_numeric_cast {
     (@ $T: ty: $Real: ty => $(#[$cfg:meta])* impl $U: ty ) => {

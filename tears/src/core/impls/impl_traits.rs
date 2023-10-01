@@ -2,7 +2,7 @@
 
 #[cfg(feature = "option_dtype")]
 use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
-use crate::{DateTime, OptUsize, PyValue, TimeDelta, ViewOnBase};
+use crate::{DateTime, ExprElement, OptUsize, PyValue, TimeDelta, ViewOnBase};
 
 use crate::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
@@ -58,7 +58,7 @@ impl<T> From<T> for ArrD<T> {
     }
 }
 
-impl<T> From<T> for ArbArray<'_, T> {
+impl<T: ExprElement> From<T> for ArbArray<'_, T> {
     fn from(v: T) -> Self {
         let arr = arr0(v).wrap().to_dimd();
         arr.into()

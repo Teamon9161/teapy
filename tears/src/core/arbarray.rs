@@ -1,7 +1,8 @@
 use crate::{Cast, DataType, GetDataType, TpResult};
 
-use super::{ArrD, ArrViewD, ArrViewMutD, WrapNdarray};
+use super::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
 use ndarray::{s, Array, ArrayD, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::marker::PhantomPinned;
 use std::ops::Deref;
@@ -12,6 +13,8 @@ pub enum ArbArray<'a, T> {
     ViewMut(ArrViewMutD<'a, T>),
     Owned(ArrD<T>),
     ViewOnBase(Pin<Box<ViewOnBase<'a, T>>>),
+    #[cfg(feature = "arw")]
+    ArrowChunk(Vec<Box<dyn arrow::array::Array>>),
 }
 
 pub enum ViewBase<'a, T> {
@@ -105,6 +108,8 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
             ArbArray::ViewMut(a) => write!(f, "ArrayViewMut({a:#?})"),
             ArbArray::Owned(a) => write!(f, "ArrayOwned({a:#?})"),
             ArbArray::ViewOnBase(a) => write!(f, "ViewonBase({:#?})", a.view()),
+            #[cfg(feature = "arw")]
+            ArbArray::ArrowChunk(ac) => write!(f, "ArrowChunk({:#?})", ac),
         }
     }
 }
@@ -122,6 +127,7 @@ where
             ArbArray::ViewMut(arr_view) => arr_view.to_owned().serialize(serializer),
             ArbArray::Owned(arr) => arr.serialize(serializer),
             ArbArray::ViewOnBase(vb) => vb.view().to_owned().serialize(serializer),
+            ArbArray::ArrowChunk(_ac) => unreachable!("ArrowChunk is not serializable"),
         }
     }
 }
@@ -140,9 +146,17 @@ where
     }
 }
 
+#[cfg(not(feature = "arw"))]
 impl<'a, T: Default> Default for ArbArray<'a, T> {
     fn default() -> Self {
         ArbArray::Owned(Default::default())
+    }
+}
+
+#[cfg(feature = "arw")]
+impl<'a, T> Default for ArbArray<'a, T> {
+    fn default() -> Self {
+        ArbArray::ArrowChunk(vec![])
     }
 }
 
@@ -198,6 +212,13 @@ impl<'a, T> From<Pin<Box<ViewOnBase<'a, T>>>> for ArbArray<'a, T> {
     }
 }
 
+#[cfg(feature = "arw")]
+impl<'a, T> From<Vec<Box<dyn arrow::array::Array>>> for ArbArray<'a, T> {
+    fn from(arr: Vec<Box<dyn arrow::array::Array>>) -> Self {
+        ArbArray::ArrowChunk(arr)
+    }
+}
+
 impl<'a, T> ArbArray<'a, T> {
     // #[allow(unreachable_patterns)]
     pub fn raw_dim(&self) -> IxDyn {
@@ -210,6 +231,23 @@ impl<'a, T> ArbArray<'a, T> {
         T: GetDataType,
     {
         T::dtype()
+    }
+
+    pub fn prepare(&mut self)
+    where
+        ArrOk<'a>: Cast<Self>,
+    {
+        if let ArbArray::ArrowChunk(_) = &self {
+            let arrow_chunk = std::mem::take(self);
+            if let ArbArray::ArrowChunk(arrow_chunk) = arrow_chunk {
+                let arr_vec = arrow_chunk
+                    .into_par_iter()
+                    .map(|arr| ArrOk::from_arrow(arr))
+                    .collect::<Vec<_>>();
+                let arr = ArrOk::same_dtype_concat_1d(arr_vec);
+                *self = arr.cast()
+            }
+        }
     }
 
     #[allow(unreachable_patterns)]
@@ -243,6 +281,10 @@ impl<'a, T> ArbArray<'a, T> {
             ArbArray::ViewMut(view) => view.view().into(),
             ArbArray::Owned(arr) => arr.view().into(),
             ArbArray::ViewOnBase(vb) => vb.view().view().into(),
+            #[cfg(feature = "arw")]
+            ArbArray::ArrowChunk(_) => {
+                unreachable!("Can not deref ArrowChunk Array before rechunk")
+            }
         }
     }
 
@@ -290,6 +332,8 @@ impl<'a, T> ArbArray<'a, T> {
             ArbArray::ViewMut(_) => "ViewMut Array",
             ArbArray::View(_) => "View Array",
             ArbArray::ViewOnBase(_) => "View Array",
+            #[cfg(feature = "arw")]
+            ArbArray::ArrowChunk(_) => "ArrowChunk Array",
         }
     }
 
@@ -314,6 +358,7 @@ impl<'a, T> ArbArray<'a, T> {
     pub fn no_dim0(self) -> Self
     where
         T: Clone,
+        ArrOk<'a>: Cast<Self>,
     {
         if self.ndim() == 0 {
             ArbArray::Owned(self.into_owned().0.slice_move(s!(NewAxis)).wrap().to_dimd())
@@ -347,12 +392,19 @@ impl<'a, T> ArbArray<'a, T> {
     pub fn into_owned(self) -> ArrD<T>
     where
         T: Clone,
+        ArrOk<'a>: Cast<Self>,
     {
         match self {
             ArbArray::View(arr) => arr.to_owned(),
             ArbArray::ViewMut(arr) => arr.to_owned(),
             ArbArray::Owned(arr) => arr,
             ArbArray::ViewOnBase(vb) => vb.view().to_owned(),
+            #[cfg(feature = "arw")]
+            ArbArray::ArrowChunk(_) => {
+                let mut arr = self;
+                arr.prepare();
+                arr.into_owned()
+            }
         }
     }
 
@@ -368,20 +420,12 @@ impl<'a, T> ArbArray<'a, T> {
     pub fn try_to_owned_f(self) -> ArrD<T>
     where
         T: Clone,
+        ArrOk<'a>: Cast<Self>,
     {
         use crate::utils::vec_uninit;
         use std::mem::MaybeUninit;
         match self {
-            ArbArray::View(arr) => {
-                if arr.t().is_standard_layout() {
-                    arr.to_owned()
-                } else {
-                    let mut arr_f =
-                        Array::from_shape_vec(arr.shape().f(), vec_uninit(arr.len())).unwrap();
-                    arr_f.zip_mut_with(&arr, |out, v| *out = MaybeUninit::new(v.clone()));
-                    unsafe { arr_f.assume_init().wrap() }
-                }
-            }
+            ArbArray::View(arr) => arr.to_owned_f(),
             ArbArray::ViewMut(arr) => {
                 if arr.t().is_standard_layout() {
                     arr.to_owned()
@@ -393,9 +437,12 @@ impl<'a, T> ArbArray<'a, T> {
                 }
             }
             ArbArray::Owned(arr) => arr,
-            ArbArray::ViewOnBase(vb) => {
-                let arr = vb.view();
-                ArbArray::View(arr.view()).try_to_owned_f()
+            ArbArray::ViewOnBase(vb) => vb.view().to_owned_f(),
+            #[cfg(feature = "arw")]
+            ArbArray::ArrowChunk(_) => {
+                let mut arr = self;
+                arr.prepare();
+                arr.try_to_owned_f()
             }
         }
     }
@@ -408,6 +455,10 @@ impl<'a, T> ArbArray<'a, T> {
             ArbArray::ViewMut(arr) => arr.view(),
             ArbArray::Owned(arr) => arr.view(),
             ArbArray::ViewOnBase(vb) => vb.view().view(),
+            #[cfg(feature = "arw")]
+            ArbArray::ArrowChunk(_ac) => {
+                unreachable!("Can not view ArrowChunk Array before rechunk")
+            }
         }
     }
 
@@ -427,6 +478,10 @@ impl<'a, T> ArbArray<'a, T> {
                 let arr = vb.view().to_owned();
                 *self = ArbArray::Owned(arr);
                 self.viewmut()
+            }
+            #[cfg(feature = "arw")]
+            ArbArray::ArrowChunk(_ac) => {
+                unreachable!("Can not viewmut ArrowChunk Array before rechunk")
             }
         }
     }

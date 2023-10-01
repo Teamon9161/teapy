@@ -1,7 +1,12 @@
-use crate::TpResult;
+use std::mem::MaybeUninit;
+
+use crate::{utils::vec_uninit, ArrD, TpResult};
 
 use super::{ArrBase, WrapNdarray};
-use ndarray::{s, Dimension, Ix0, Ix1, Ix2, IxDyn, NewAxis, RawArrayView, StrideShape, ViewRepr};
+use ndarray::{
+    s, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, NewAxis, RawArrayView, ShapeBuilder, StrideShape,
+    ViewRepr,
+};
 
 pub type ArrView<'a, T, D> = ArrBase<ViewRepr<&'a T>, D>;
 pub type ArrView1<'a, T> = ArrView<'a, T, Ix1>;
@@ -82,6 +87,20 @@ impl<'a, T> ArrViewD<'a, T> {
             self.0.slice_move(s!(NewAxis)).wrap().to_dimd()
         } else {
             self
+        }
+    }
+
+    pub fn to_owned_f(&self) -> ArrD<T>
+    where
+        T: Clone,
+    {
+        if self.t().is_standard_layout() {
+            self.to_owned()
+        } else {
+            let mut arr_f =
+                Array::from_shape_vec(self.shape().f(), vec_uninit(self.len())).unwrap();
+            arr_f.zip_mut_with(self, |out, v| *out = MaybeUninit::new(v.clone()));
+            unsafe { arr_f.assume_init().wrap() }
         }
     }
 }

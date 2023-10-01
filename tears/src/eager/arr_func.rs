@@ -1142,7 +1142,7 @@ impl_map_inplace_nd!(
                 }
             },
             Sigma => {
-                    // default method is clip mean - 3 * std, mean + 3 * std
+                // default method is clip mean - 3 * std, mean + 3 * std
                 let method_params = method_params.unwrap_or(3.);
                 let (mean, var) = self.meanvar_1d(2, stable);
                 if mean.notnan() {

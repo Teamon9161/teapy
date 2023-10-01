@@ -119,7 +119,8 @@ impl From<i64> for DateTime {
         if dt == i64::MIN {
             return DateTime(None);
         }
-        DateTime::from_timestamp_us(dt).unwrap_or_default()
+        // DateTime::from_timestamp_us(dt).unwrap_or_default()
+        DateTime::from_timestamp_ns(dt).unwrap_or_default()
     }
 }
 
@@ -376,6 +377,24 @@ pub struct TimeDelta {
 impl Default for TimeDelta {
     fn default() -> Self {
         TimeDelta::nat()
+    }
+}
+
+impl Cast<String> for TimeDelta {
+    fn cast(self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+impl Cast<TimeDelta> for DateTime {
+    fn cast(self) -> TimeDelta {
+        unreachable!()
+    }
+}
+
+impl Cast<DateTime> for TimeDelta {
+    fn cast(self) -> DateTime {
+        unreachable!()
     }
 }
 

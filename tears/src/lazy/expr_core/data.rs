@@ -1,3 +1,5 @@
+use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+
 use super::{Expr, ExprElement, FuncNode};
 #[cfg(feature = "blas")]
 use crate::lazy::OlsResult;
@@ -106,6 +108,15 @@ impl<'a> Data<'a> {
             // so we assume that the array is owned
             // #[cfg(feature = "arw")]
             // Data::Arrow(_) => true,
+        }
+    }
+
+    pub fn prepare(&mut self) {
+        match self {
+            Data::Arr(arr) => arr.prepare(),
+            Data::ArrVec(arr_vec) => arr_vec.par_iter_mut().for_each(|arr| arr.prepare()),
+            Data::Expr(expr) => expr.prepare(),
+            _ => {}
         }
     }
 

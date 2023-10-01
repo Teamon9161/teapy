@@ -167,6 +167,9 @@ impl<'a> ExprInner<'a> {
             return Ok(self);
         }
 
+        // we don't need prepare to delay conversion as scan_ipc is enough
+        // to achieve this
+        // self.base.prepare();
         if ctx.is_none() || freeze {
             let mut data = std::mem::take(&mut self.base);
             for f in &self.nodes {
@@ -297,6 +300,12 @@ impl<'a> ExprInner<'a> {
     #[inline]
     pub fn init_base_is_context(&self) -> bool {
         self.base.init_base_is_context()
+    }
+
+    #[inline]
+    #[allow(dead_code)]
+    pub fn prepare(&mut self) {
+        self.base.prepare();
     }
 
     pub fn collect_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
