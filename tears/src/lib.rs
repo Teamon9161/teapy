@@ -46,7 +46,7 @@ pub use error::{StrError, TpResult};
 
 pub use iterators::{Iter, IterMut};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
-pub use utils::{kh_sum, EmptyNew};
+pub use utils::kh_sum;
 
 pub use lazy::expr_core::{Data, DropNaMethod, Expr, ExprElement};
 #[cfg(feature = "lazy")]

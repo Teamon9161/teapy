@@ -621,7 +621,7 @@ macro_rules! impl_arrok_cast {
                 #[inline]
                 fn cast(self) -> ArbArray<'a, $T> {
                     match_arrok!(self, a, { a.cast::<$T>() },
-                        U8, F32, F64, I32, I64, Usize, OptUsize, String, Str, DateTime, TimeDelta,
+                        U8, F32, F64, I32, I64, Usize, Bool, OptUsize, String, Str, DateTime, TimeDelta,
                         #[cfg(feature = "option_dtype")] OptF32,
                         #[cfg(feature = "option_dtype")] OptF64,
                         #[cfg(feature = "option_dtype")] OptI32,
