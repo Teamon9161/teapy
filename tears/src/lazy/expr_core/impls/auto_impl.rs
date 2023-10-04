@@ -50,7 +50,7 @@ macro_rules! auto_impl_viewmut {
                 self.chain_f_ctx(move |(data, ctx)| {
                     let mut arr = data.into_arr(ctx.clone())?;
                     match_arrok!(numeric &mut arr, a, {
-                        a.viewmut().$func($($p),*);
+                        a.view_mut().$func($($p),*);
                     });
                     Ok((arr.into(), ctx))
                 });

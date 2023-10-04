@@ -9,6 +9,7 @@ mod impl_own;
 mod impl_view;
 #[cfg(feature = "window_func")]
 mod impl_window;
+mod utils;
 
 pub use impl_own::{corr, DropNaMethod};
 #[cfg(feature = "window_func")]

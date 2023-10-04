@@ -130,7 +130,7 @@ def split_group(arr, axis=0, par=False):
 
 
 @impl_by_lazy("inplace")
-def fillna(arr, method="Ffill", value=None, axis=0, par=False, inplace=False):
+def fillna(arr, method="vfill", value=None, axis=0, par=False, inplace=False):
     pass
 
 

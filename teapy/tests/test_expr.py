@@ -23,6 +23,8 @@ def test_slice():
     assert e[-1].eview() == 8
     assert e[-3].eview() == 6
     assert_allclose(e[[-1, -2, -3, 1, 0]].eview(), a[[-1, -2, -3, 1, 0]])
+    e[0] = 100
+    assert_allclose(e.eview(), np.array([100, 2, 3, 4, 5, 6, 7, 8]))
 
 
 def test_unique():
@@ -71,34 +73,33 @@ def test_rolling():
         [5, 5, 9, 5, 8, 8, 2, 7, 3, 3, 8, 6, 4, 7, 8, 3, 1, 5, 3, 4, 4, 2, 4]
     )
 
-    # rolling vec_usize is not implemented currently
-    # res3 = value.rolling(by=time, window="3d", offset="1d").sum().eval()
-    # expect3 = [
-    #     5,
-    #     5,
-    #     9,
-    #     5,
-    #     8,
-    #     8,
-    #     7,
-    #     12,
-    #     12,
-    #     8,
-    #     16,
-    #     14,
-    #     11,
-    #     10,
-    #     11,
-    #     11,
-    #     7,
-    #     5,
-    #     7,
-    #     11,
-    #     12,
-    #     5,
-    #     5,
-    # ]
-    # assert_allclose(res3.view, expect3)
+    res3 = value.rolling(time_expr=time, window="3d", offset="1d").sum().eval()
+    expect3 = [
+        5,
+        5,
+        9,
+        5,
+        8,
+        8,
+        7,
+        12,
+        12,
+        8,
+        16,
+        14,
+        11,
+        10,
+        11,
+        11,
+        7,
+        5,
+        7,
+        11,
+        12,
+        5,
+        5,
+    ]
+    assert_allclose(res3.view, expect3)
 
     time = tp.Expr(pd.date_range("2020-01-01", "2020-05-05", freq="8d").values)
     value = tp.Expr([1, 9, 3, 1, 5, 4, 3, 8, 1, 1, 5, 2, 6, 8, 7, 9])

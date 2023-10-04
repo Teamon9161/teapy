@@ -114,7 +114,7 @@ impl<'a> Expr<'a> {
                     .unwrap()
             });
             match_arrok!(numeric &mut arr, a, {
-                a.viewmut().fillna_inplace(method, value, axis, par);
+                a.view_mut().fillna_inplace(method, value, axis, par);
             });
             Ok((arr.into(), ctx))
         });
@@ -137,7 +137,7 @@ impl<'a> Expr<'a> {
                 .into_owned()
                 .into_scalar()?;
             match_arrok!(numeric &mut arr, a, {
-                a.viewmut().clip_inplace(min, max, axis, par);
+                a.view_mut().clip_inplace(min, max, axis, par);
             });
             Ok((arr.into(), ctx))
         });

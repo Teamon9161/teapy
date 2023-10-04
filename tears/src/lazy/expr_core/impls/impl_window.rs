@@ -5,7 +5,7 @@ use super::export::*;
 use crate::lazy::DataDict;
 use crate::{Arr1, CollectTrustedToVec, CorrMethod, TimeDelta};
 use ahash::HashMap;
-use ndarray::s;
+use ndarray::{s, Axis};
 
 pub enum RollingTimeStartBy {
     Full,
@@ -13,7 +13,7 @@ pub enum RollingTimeStartBy {
 }
 
 macro_rules! impl_rolling_by_startidx_agg {
-    ($func_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*) $(.$func2: ident ($($p2: ident: $ty2: ty),*))*) => {
+    ($func_name: ident-$func1_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*) $(.$func2: ident ($($p2: ident: $ty2: ty),*))*) => {
         impl<'a> Expr<'a> {
             pub fn $func_name(&mut self, roll_start: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
             {
@@ -43,6 +43,40 @@ macro_rules! impl_rolling_by_startidx_agg {
                                 current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
                             })
                             .collect_trusted();
+                            Arr1::from_vec(out).to_dimd().into()
+                        });
+                        Ok((out.into(), ctx.clone()))
+                    }
+                );
+                self
+            }
+
+            pub fn $func1_name(&mut self, idxs: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
+            {
+                self.chain_f_ctx(
+                    move |(data, ctx)| {
+                        let arr = data.view_arr(ctx.as_ref())?.deref();
+                        let idxs = idxs.view_arr(ctx.as_ref())?.deref().cast_vecusize();
+                        let idxs_arr = idxs.view().to_dim1()?;
+                        let len = arr.len();
+                        if len != idxs_arr.len() {
+                            return Err(format!(
+                                "rolling_select_by_vecusize_agg: arr.len: {} != idxs_arr.len: {}",
+                                arr.len(),
+                                idxs_arr.len()
+                            )
+                            .into());
+                        }
+
+                        let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
+                            let arr = arr.view().to_dim1()?;
+                            let out = idxs_arr
+                                .into_iter()
+                                .map(|idx| {
+                                    let current_arr = arr.select_unchecked(Axis(0), &idx);
+                                    current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
+                                })
+                                .collect_trusted();
                             Arr1::from_vec(out).to_dimd().into()
                         });
                         Ok((out.into(), ctx.clone()))
@@ -98,14 +132,26 @@ macro_rules! impl_rolling_by_startidx_agg {
     };
 }
 
-impl_rolling_by_startidx_agg!(rolling_select_max, max_1d());
-impl_rolling_by_startidx_agg!(rolling_select_min, min_1d());
-impl_rolling_by_startidx_agg!(rolling_select_mean, mean_1d(min_periods: usize, stable: bool));
-impl_rolling_by_startidx_agg!(rolling_select_sum, sum_1d(stable: bool));
-impl_rolling_by_startidx_agg!(rolling_select_std, std_1d(min_periods: usize, stable: bool));
-impl_rolling_by_startidx_agg!(rolling_select_var, var_1d(min_periods: usize, stable: bool));
-impl_rolling_by_startidx_agg!(rolling_select_umax, sorted_unique_1d().max_1d());
-impl_rolling_by_startidx_agg!(rolling_select_umin, sorted_unique_1d().min_1d());
+impl_rolling_by_startidx_agg!(
+    rolling_select_max - rolling_select_by_vecusize_max,
+    max_1d()
+);
+impl_rolling_by_startidx_agg!(
+    rolling_select_min - rolling_select_by_vecusize_min,
+    min_1d()
+);
+impl_rolling_by_startidx_agg!(rolling_select_mean-rolling_select_by_vecusize_mean, mean_1d(min_periods: usize, stable: bool));
+impl_rolling_by_startidx_agg!(rolling_select_sum-rolling_select_by_vecusize_sum, sum_1d(stable: bool));
+impl_rolling_by_startidx_agg!(rolling_select_std-rolling_select_by_vecusize_std, std_1d(min_periods: usize, stable: bool));
+impl_rolling_by_startidx_agg!(rolling_select_var-rolling_select_by_vecusize_var, var_1d(min_periods: usize, stable: bool));
+impl_rolling_by_startidx_agg!(
+    rolling_select_umax - rolling_select_by_vecusize_umax,
+    sorted_unique_1d().max_1d()
+);
+impl_rolling_by_startidx_agg!(
+    rolling_select_umin - rolling_select_by_vecusize_umin,
+    sorted_unique_1d().min_1d()
+);
 
 impl_rolling_by_startidx_agg!(in2 rolling_select_cov, cov_1d(min_periods: usize, stable: bool));
 impl_rolling_by_startidx_agg!(in2 rolling_select_corr, corr_1d(method: CorrMethod, min_periods: usize, stable: bool));

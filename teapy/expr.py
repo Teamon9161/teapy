@@ -187,7 +187,7 @@ class ExprRolling(ExprRollMixin):
         idx = self.idx
 
         def wrap_func():
-            if idx.dtype != "Vec<Usize>":
+            if self.offset is None:
                 return getattr(self.expr, f"_rolling_select_{name}")(idx)
             else:
                 return getattr(self.expr, f"_rolling_select_by_vecusize_{name}")(idx)

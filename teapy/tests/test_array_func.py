@@ -286,6 +286,13 @@ def test_fillna():
         Expr(s, copy=True).fillna(value=fill_value).eview(),
         s.fillna(fill_value).values,
     )
+    # test ffill and bfill with value
+    assert_allclose(
+        tp.Expr(s.copy()).fillna("ffill", 0).eview(), [0, 5, 6, 733, 733, 34, 34, 34]
+    )
+    assert_allclose(
+        tp.Expr(s.copy()).fillna("bfill", 0).eview(), [5, 5, 6, 733, 34, 34, 0, 0]
+    )
     # test inplace
     tp.fillna(s, value=fill_value, inplace=True)
     assert_allclose(s, np.array([101, 5, 6, 733, 101, 34, 101, 101]))

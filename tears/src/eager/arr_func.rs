@@ -706,112 +706,6 @@ impl_map_nd!(
 );
 
 impl_map_nd!(
-    fillna,
-    pub fn fillna_1d<S2, T2>(&self, out: &mut ArrBase<S2, D>, method: FillMethod, value: Option<T2>) -> T
-    {
-        where
-        T: Number,
-        f64: Cast<T>,
-        T2: Cast<T>; Clone; Send; Sync
-    }
-    {
-        use FillMethod::*;
-        let method = if value.is_some() {
-            Vfill
-        } else {
-            method
-        };
-        match method {
-            Bfill | Ffill => {
-                let mut last_valid: Option<T> = None;
-                let mut f = |vo: &mut MaybeUninit<T>, v: &T| {
-                    if v.isnan() {
-                        if let Some(lv) = last_valid {
-                            vo.write(lv);
-                        } else {
-                            vo.write(f64::NAN.cast());
-                        }
-                    } else { // v is valid, update last_valid
-                        vo.write(*v);
-                        last_valid = Some(*v);
-                    }
-                };
-                if let Ffill = method {
-                    out.apply_mut_with(self, f)
-                } else {
-                    for (vo, v) in zip(out, self).rev() {
-                        f(vo, v);
-                    }
-                }
-            }
-            Vfill => {
-                let value = value.expect("Fill value must be pass when using value to fillna");
-                let value: T = value.cast();
-                out.apply_mut_with(self, |vo, v| if v.isnan() {
-                    vo.write(value);
-                } else {
-                    vo.write(*v);
-                });
-            }
-        }
-    }
-);
-
-// impl_map_nd!(
-//     winsorize,
-//     pub fn winsorize_1d<S2>(&self, out: &mut ArrBase<S2, D>, method: WinsorizeMethod, method_params: Option<f64>, stable: bool) -> T
-//     {
-//         where
-//         T: Number,
-//         f64: Cast<T>
-//     }
-//     {
-//         use WinsorizeMethod::*;
-//         match method {
-//             Quantile => {
-//                 // default method is clip 1% and 99% quantile
-//                 use super::QuantileMethod::*;
-//                 let method_params = method_params.unwrap_or(0.01);
-//                 let min = self.quantile_1d(method_params, Linear);
-//                 let max = self.quantile_1d(1. - method_params, Linear);
-//                 if min.notnan() && (min != max) {
-//                     self.clip_1d(out, min, max);
-//                 } else {
-//                     // elements in the given axis are all NaN or equal to a constant
-//                     self.clone_to_uninit(out);
-//                 }
-//             },
-//             Median => {
-//                 // default method is clip median - 3 * mad, median + 3 * mad
-//                 let method_params = method_params.unwrap_or(3.);
-//                 let median = self.median_1d();
-//                 if median.notnan() {
-//                     let mad = self.mapv(|v| (v.f64() - median).abs()).median_1d();
-//                     let min = median - method_params * mad;
-//                     let max = median + method_params * mad;
-//                     self.clip_1d(out, min, max);
-//                 } else {
-//                     self.clone_to_uninit(out);
-//                 }
-//             },
-//             Sigma => {
-//                     // default method is clip mean - 3 * std, mean + 3 * std
-//                 let method_params = method_params.unwrap_or(3.);
-//                 let (mean, var) = self.meanvar_1d(2, stable);
-//                 if mean.notnan() {
-//                     let std = var.sqrt();
-//                     let min = mean - method_params * std;
-//                     let max = mean + method_params * std;
-//                     self.clip_1d(out, min, max);
-//                 } else {
-//                     self.clone_to_uninit(out);
-//                 }
-//             }
-//         }
-//     }
-// );
-
-impl_map_nd!(
     argsort,
     pub fn argsort_1d<S2>(&self, out: &mut ArrBase<S2, D>, rev: bool) -> i32 {
         where
@@ -1025,18 +919,16 @@ impl_map_inplace_nd!(
     }
     {
         use FillMethod::*;
-        let method = if value.is_some() {
-            Vfill
-        } else {
-            method
-        };
         match method {
             Ffill | Bfill => {
                 let mut last_valid: Option<T> = None;
+                let value = value.map(|v| v.cast());
                 let mut f = |v: &mut T| {
                     if v.isnan() {
                         if let Some(lv) = last_valid {
                             *v = lv;
+                        } else if let Some(value) = &value {
+                            *v = *value;
                         }
                     } else { // v is valid, update last_valid
                         last_valid = Some(*v);

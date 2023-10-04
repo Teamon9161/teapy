@@ -1,4 +1,7 @@
+use ndarray::SliceInfoElem;
+
 use super::export::*;
+use super::utils::adjust_slice;
 use crate::ArbArray;
 
 impl<'a> Expr<'a> {
@@ -15,28 +18,27 @@ impl<'a> Expr<'a> {
             let mut arr = data.into_arr(ctx.clone())?;
             match_arrok!(&mut arr, a, {
                 let value: ArbArray<_> = value_arr.cast();
-                a.viewmut()
+                a.view_mut()
                     .put_mask(&mask_arr.view(), &value.view(), axis, par)?
             });
-            // use ArrOk::*;
-            // match &mut arr {
-            //     F64(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_f64().view(), axis, par)?,
-            //     F32(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_f32().view(), axis, par)?,
-            //     I64(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_i64().view(), axis, par)?,
-            //     I32(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_i32().view(), axis, par)?,
-            //     Usize(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_usize().view(), axis, par)?,
-            //     DateTime(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_datetime_default().view(), axis, par)?,
-            //     TimeDelta(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_timedelta().view(), axis, par)?,
-            //     Bool(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_bool().view(), axis, par)?,
-            //     String(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_string().view(), axis, par)?,
-            //     Str(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_str().view(), axis, par)?,
-            //     OptUsize(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_optusize().view(), axis, par)?,
-            //     #[cfg(feature="option_dtype")] OptI64(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_opti64().view(), axis, par)?,
-            //     #[cfg(feature="option_dtype")] OptI32(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_opti32().view(), axis, par)?,
-            //     #[cfg(feature="option_dtype")] OptF64(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_optf64().view(), axis, par)?,
-            //     #[cfg(feature="option_dtype")] OptF32(a) => a.viewmut().put_mask(&mask_arr.view(), &value_arr.cast_optf32().view(), axis, par)?,
-            //     _ => unimplemented!("put_mask not implemented for {:?}", arr.dtype()),
-            // }
+            Ok((arr.into(), ctx))
+        });
+        self
+    }
+
+    pub fn set_item_by_slice(&mut self, slc: Vec<SliceInfoElem>, value: Self) -> &mut Self {
+        self.chain_f_ctx(move |(data, ctx)| {
+            let value = value.view_arr(ctx.as_ref())?;
+            let mut arr = data.into_arr(ctx.clone())?;
+            let slc_info = adjust_slice(slc.clone(), arr.shape(), arr.ndim());
+            match_arrok!(castable &mut arr, arr, {
+                let mut arr_view_mut = arr.view_mut();
+                let mut arr_mut = arr_view_mut.slice_mut(slc_info).wrap().to_dimd();
+                match_arrok!(castable value, v, {
+                    let v = v.deref().cast();
+                    arr_mut.assign(&v.view());
+                })
+            });
             Ok((arr.into(), ctx))
         });
         self

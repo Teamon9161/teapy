@@ -1,8 +1,9 @@
-use ndarray::{IxDyn, SliceInfo, SliceInfoElem};
+use ndarray::SliceInfoElem;
 
 use super::export::*;
+use super::utils::adjust_slice;
 use crate::{ArrViewD, StrError, ViewOnBase};
-use std::{marker::PhantomData, mem::transmute};
+use std::mem::transmute;
 
 impl<'a> Expr<'a> {
     #[allow(unreachable_patterns)]
@@ -286,66 +287,7 @@ impl<'a> Expr<'a> {
     pub fn view_by_slice(&mut self, slc: Vec<SliceInfoElem>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
-            let shape = arr.shape();
-            let mut axis = 0;
-            let mut slc = slc.clone();
-            // adjust the slice info in order to make it compatible with ndarray
-            slc.iter_mut().for_each(|elem| {
-                match elem {
-                    SliceInfoElem::Slice { start, end, step } => {
-                        let len = shape[axis] as isize;
-                        // adjust when step is smaller than zero so the result when step < 0 is the same with numpy slice
-                        if *step < 0 {
-                            if *start < 0 {
-                                *start += len;
-                            }
-                            if end.is_some() {
-                                let mut _end = *end.as_ref().unwrap();
-                                if _end < 0 {
-                                    _end += len;
-                                } else if _end >= len {
-                                    _end = len;
-                                }
-                                if *start > _end {
-                                    if *start == len {
-                                        *end = Some(len);
-                                    } else {
-                                        *end = Some(*start + 1)
-                                    };
-                                    if _end >= len - 2 {
-                                        *start = len - 1;
-                                    } else {
-                                        *start = _end + 1;
-                                    }
-                                } else {
-                                    // if start < end and step < 0, we shouldn't slice anything
-                                    (*start, *end) = (0, Some(0));
-                                }
-                            }
-                        } else if let Some(_end) = end {
-                            if *_end >= len {
-                                *end = Some(len)
-                            }
-                        }
-                        axis += 1;
-                    }
-                    SliceInfoElem::Index(_) => axis += 1,
-                    _ => {}
-                }
-            });
-            let slc_len = slc.len();
-            if slc_len < arr.ndim() {
-                for _idx in slc_len..arr.ndim() {
-                    slc.push(SliceInfoElem::Slice {
-                        start: 0,
-                        end: None,
-                        step: 1,
-                    })
-                }
-            }
-            let slc_info = unsafe {
-                SliceInfo::new_unchecked(slc.as_slice(), PhantomData::<IxDyn>, PhantomData::<IxDyn>)
-            };
+            let slc_info = adjust_slice(slc.clone(), arr.shape(), arr.ndim());
             match_arrok!(arr, arr, {
                 let view = unsafe { transmute(arr.view().0.slice_move(slc_info).wrap()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();

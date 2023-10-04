@@ -462,7 +462,7 @@ impl<'a, T> ArbArray<'a, T> {
         }
     }
 
-    pub fn viewmut(&mut self) -> ArrViewMutD<'_, T>
+    pub fn view_mut(&mut self) -> ArrViewMutD<'_, T>
     where
         T: Clone,
     {
@@ -472,12 +472,12 @@ impl<'a, T> ArbArray<'a, T> {
             ArbArray::View(arr_view) => {
                 let arr = arr_view.to_owned();
                 *self = ArbArray::Owned(arr);
-                self.viewmut()
+                self.view_mut()
             }
             ArbArray::ViewOnBase(vb) => {
                 let arr = vb.view().to_owned();
                 *self = ArbArray::Owned(arr);
-                self.viewmut()
+                self.view_mut()
             }
             #[cfg(feature = "arw")]
             ArbArray::ArrowChunk(_ac) => {

@@ -112,6 +112,8 @@ impl PyExpr {
                         slc_vec.push(SliceInfoElem::Slice { start, end, step });
                     } else if obj.is_none() {
                         slc_vec.push(SliceInfoElem::NewAxis);
+                    } else if let Ok(idx) = obj.extract::<isize>() {
+                        slc_vec.push(SliceInfoElem::Index(idx))
                     } else {
                         no_slice_idx_vec.push(idx);
                         no_slice_slc_obj_vec.push(obj);
@@ -140,6 +142,45 @@ impl PyExpr {
             let obj = PyTuple::new(py, [obj]);
             self.__getitem__(obj.into(), py)
         }
+    }
+
+    pub fn __setitem__(&mut self, item: &PyAny, value: &PyAny) -> PyResult<()> {
+        use pyo3::types::{PySlice, PyTuple};
+        if let Ok(length) = item.len() {
+            let value = parse_expr_nocopy(value)?;
+            let value_ref = value.obj();
+            let mut slc_vec = Vec::with_capacity(length);
+            let obj_vec = item.extract::<Vec<&PyAny>>().unwrap();
+            for obj in obj_vec {
+                if let Ok(slc) = obj.extract::<&PySlice>() {
+                    let start = slc
+                        .getattr("start")?
+                        .extract::<Option<isize>>()?
+                        .unwrap_or(0);
+                    let end = slc.getattr("stop")?.extract::<Option<isize>>()?;
+                    let step = slc
+                        .getattr("step")?
+                        .extract::<Option<isize>>()?
+                        .unwrap_or(1);
+                    slc_vec.push(SliceInfoElem::Slice { start, end, step });
+                } else if obj.is_none() {
+                    slc_vec.push(SliceInfoElem::NewAxis)
+                } else if let Ok(idx) = obj.extract::<isize>() {
+                    slc_vec.push(SliceInfoElem::Index(idx))
+                } else {
+                    return Err(PyAttributeError::new_err(format!(
+                        "item must be slice or None, not {}",
+                        obj.get_type().name()?
+                    )));
+                }
+            }
+            self.e.set_item_by_slice(slc_vec, value.e);
+            self.add_obj(value_ref);
+        } else {
+            let item = PyTuple::new(value.py(), [item]);
+            self.__setitem__(item.into(), value)?;
+        }
+        Ok(())
     }
 
     #[pyo3(name="eval", signature=(inplace=false, context=None, freeze=true))]
@@ -1722,7 +1763,7 @@ impl PyExpr {
     }
 
     #[cfg(feature = "window_func")]
-    #[pyo3(signature=(method=FillMethod::Ffill, value=None, axis=0, par=false))]
+    #[pyo3(signature=(method=FillMethod::Vfill, value=None, axis=0, par=false))]
     pub fn fillna(
         &self,
         method: FillMethod,
@@ -2435,55 +2476,79 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
-    // #[pyo3(signature=(idxs))]
-    // pub unsafe fn _rolling_select_by_vecusize_sum(&self, idxs: &PyAny) -> PyResult<Self> {
-    //     let idxs = parse_expr_nocopy(idxs)?;
-    //     let obj = idxs.obj();
-    //     let out = match_exprs!(numeric & self.inner, e, {
-    //         e.clone()
-    //             .rolling_select_by_vecusize_sum(idxs.cast_vecusize()?)
-    //             .to_py(self.obj())
-    //             .add_obj_into(obj)
-    //     });
-    //     Ok(out)
-    // }
+    #[pyo3(signature=(idxs, stable=false))]
+    pub unsafe fn _rolling_select_by_vecusize_sum(
+        &self,
+        idxs: &PyAny,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_sum(idxs.e, stable);
+        Ok(out.add_obj_into(obj))
+    }
 
-    // #[pyo3(signature=(idxs))]
-    // pub unsafe fn _rolling_select_by_vecusize_mean(&self, idxs: &PyAny) -> PyResult<Self> {
-    //     let idxs = parse_expr_nocopy(idxs)?;
-    //     let obj = idxs.obj();
-    //     let out = match_exprs!(numeric & self.inner, e, {
-    //         e.clone()
-    //             .rolling_select_by_vecusize_mean(idxs.cast_vecusize()?)
-    //             .to_py(self.obj())
-    //             .add_obj_into(obj)
-    //     });
-    //     Ok(out)
-    // }
+    #[pyo3(signature=(idxs, min_periods=1, stable=false))]
+    pub unsafe fn _rolling_select_by_vecusize_mean(
+        &self,
+        idxs: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e
+            .rolling_select_by_vecusize_mean(idxs.e, min_periods, stable);
+        Ok(out.add_obj_into(obj))
+    }
 
-    // #[pyo3(signature=(idxs))]
-    // pub unsafe fn _rolling_select_by_vecusize_max(&self, idxs: &PyAny) -> PyResult<Self> {
-    //     let idxs = parse_expr_nocopy(idxs)?;
-    //     let obj = idxs.obj();
-    //     let out = match_exprs!(numeric & self.inner, e, {
-    //         e.clone()
-    //             .rolling_select_by_vecusize_max(idxs.cast_vecusize()?)
-    //             .to_py(self.obj())
-    //             .add_obj_into(obj)
-    //     });
-    //     Ok(out)
-    // }
+    #[pyo3(signature=(idxs, min_periods=1, stable=false))]
+    pub unsafe fn _rolling_select_by_vecusize_var(
+        &self,
+        idxs: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e
+            .rolling_select_by_vecusize_var(idxs.e, min_periods, stable);
+        Ok(out.add_obj_into(obj))
+    }
 
-    // #[pyo3(signature=(idxs))]
-    // pub unsafe fn _rolling_select_by_vecusize_min(&self, idxs: &PyAny) -> PyResult<Self> {
-    //     let idxs = parse_expr_nocopy(idxs)?;
-    //     let obj = idxs.obj();
-    //     let out = match_exprs!(numeric & self.inner, e, {
-    //         e.clone()
-    //             .rolling_select_by_vecusize_min(idxs.cast_vecusize()?)
-    //             .to_py(self.obj())
-    //             .add_obj_into(obj)
-    //     });
-    //     Ok(out)
-    // }
+    #[pyo3(signature=(idxs, min_periods=1, stable=false))]
+    pub unsafe fn _rolling_select_by_vecusize_std(
+        &self,
+        idxs: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e
+            .rolling_select_by_vecusize_std(idxs.e, min_periods, stable);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_max(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_max(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_min(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_min(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
 }
