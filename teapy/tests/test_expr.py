@@ -40,6 +40,10 @@ def test_unique():
     assert_allclose(e2, [1, 3, 4, 6])
     e3 = a.sorted_unique().eview()
     assert_allclose(e3, [2, 3, 4, 5])
+    
+def test_isin():
+    e = tp.Expr(['a', 'bd', 'sdf', 'bdfd', 'ab'])
+    assert e.filter(~e.is_in(['ab', 'a'])).eview().tolist() == ['bd', 'sdf', 'bdfd']
 
 
 def test_rolling():

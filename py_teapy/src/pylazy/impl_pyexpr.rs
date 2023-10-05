@@ -289,10 +289,8 @@ impl PyExpr {
             Default::default()
         };
         let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
-        // let mut expr = self.clone();
         self.e.eval_inplace(ct_rs.clone())?;
         let data = self.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
-        // let mut expr = self.e.clone();
         if matches!(&data, Data::ArrVec(_)) {
             if let Data::ArrVec(_) = data {
                 let arr_vec = data.view_arr_vec(ct_rs.as_ref()).map_err(StrError::to_py)?;

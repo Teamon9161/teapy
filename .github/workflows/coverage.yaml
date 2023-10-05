@@ -33,6 +33,11 @@ jobs:
           key: coverage-cargo-${{ matrix.os }}
         continue-on-error: true
 
+      - name: free disk space
+        run: |
+          make clean
+          df -h
+
       - name: Run coverage
         run: make coverage
 
