@@ -21,7 +21,6 @@ test:
 .PHONY: pytest-cov
 pytest-cov: venv  ## test with coverage report
 	@pytest teapy/tests \
-	# -n auto \
 	--cov=teapy \
 	--cov-report xml \
 	--import-mode=importlib
