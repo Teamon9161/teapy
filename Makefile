@@ -21,7 +21,7 @@ test:
 .PHONY: pytest-cov
 pytest-cov: venv  ## test with coverage report
 	@pytest teapy/tests \
-	-n auto \
+	# -n auto \
 	--cov=teapy \
 	--cov-report xml \
 	--import-mode=importlib
@@ -45,7 +45,8 @@ coverage: # rust and python coverage
 		cargo llvm-cov clean --workspace; \
 		maturin develop; \
 		$(MAKE) pytest-cov; \
-		cargo llvm-cov report --lcov --output-path coverage.lcov; \
+		cargo llvm-cov --no-run --lcov --output-path coverage.lcov; \
+		# cargo llvm-cov report --lcov --output-path coverage.lcov; \
 		"
 
 .PHONY: release_native
