@@ -53,5 +53,5 @@ jobs:
           make venv
           source venv/bin/activate
           maturin develop
-          make pytest
+          make test
           cargo clippy

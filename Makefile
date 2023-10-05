@@ -13,7 +13,7 @@ clean: ## clean useless folders
 	@cargo clean
 
 .PHONY: test
-test: 
+test: venv
 	@pytest -n auto
 	# @pytest -s
 
