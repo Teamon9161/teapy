@@ -44,8 +44,8 @@ coverage: # rust and python coverage
 		cargo llvm-cov clean --workspace; \
 		maturin develop; \
 		$(MAKE) pytest-cov; \
-		cargo llvm-cov --no-run --lcov --output-path coverage.lcov; \
-		# cargo llvm-cov report --lcov --output-path coverage.lcov; \
+		cargo llvm-cov report -- workspace --lcov --output-path coverage.lcov; \
+		# cargo llvm-cov report -p teapy tears pyteapy --lcov --output-path coverage.lcov; \
 		"
 
 .PHONY: release_native
