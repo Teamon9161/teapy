@@ -355,6 +355,13 @@ where
         self.mapv(|v| v.notnan())
     }
 
+    pub fn is_in(&self, other: &[T]) -> Arr<bool, D>
+    where
+        T: PartialEq,
+    {
+        self.map(|v| other.contains(v))
+    }
+
     pub fn filter<S2>(&self, mask: &ArrBase<S2, Ix1>, axis: i32, par: bool) -> Arr<T, D>
     where
         T: Default + Send + Sync + Clone,

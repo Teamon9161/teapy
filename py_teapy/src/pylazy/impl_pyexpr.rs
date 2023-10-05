@@ -640,6 +640,14 @@ impl PyExpr {
     //     Ok(PyBytes::new(py, &bincode::serialize(&self.foo).unwrap()).to_object(py))
     // }
 
+    pub fn is_in(&self, other: &PyAny) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e.is_in(other.e);
+        Ok(out.add_obj_into(obj))
+    }
+
     /// Returns the square root of a number.
     ///
     /// Returns NaN if self is a negative number other than -0.0.

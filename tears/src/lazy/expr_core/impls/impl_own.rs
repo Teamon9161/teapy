@@ -85,6 +85,20 @@ impl<'a> Expr<'a> {
         self
     }
 
+    pub fn is_in(&mut self, other: Expr<'a>) -> &mut Self {
+        self.chain_f_ctx(move |(data, ctx)| {
+            let arr = data.view_arr(ctx.as_ref())?;
+            let other = other.view_arr(ctx.as_ref())?;
+            let out = match_arrok!(castable arr, a, {
+                let other: ArbArray<_> = other.deref().cast();
+                let other_slc = other.view().to_dim1()?.to_slice().unwrap();
+                a.view().is_in(other_slc)
+            });
+            Ok((out.into(), ctx))
+        });
+        self
+    }
+
     #[allow(unreachable_patterns)]
     pub fn deep_copy(&mut self) -> &mut Self {
         self.chain_f_ctx(|(data, ctx)| {
