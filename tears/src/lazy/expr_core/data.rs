@@ -136,6 +136,32 @@ impl<'a> Data<'a> {
         }
     }
 
+    pub fn simplify_base(&mut self) {
+        if let Data::Expr(expr) = self {
+            if expr.strong_count() == 1 {
+                let base_expr = std::mem::take(expr);
+                let mut base_expr = base_expr.into_inner().unwrap().base;
+                base_expr.simplify_base();
+                *self = base_expr;
+            } else {
+                expr.simplify();
+            }
+        }
+    }
+
+    pub fn simplify_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
+        match self {
+            Data::Expr(expr) => {
+                if expr.strong_count() == 1 {
+                    expr.simplify_chain_nodes(nodes)
+                } else {
+                    nodes
+                }
+            }
+            _ => nodes,
+        }
+    }
+
     // get the all nodes of the expression
     pub fn collect_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
         match self {

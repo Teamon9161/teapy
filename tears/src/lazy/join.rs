@@ -207,16 +207,13 @@ pub fn join_outer<'a>(
     let hasher = TpBuildHasher::default();
     let (len, hasher, hashed_left_keys) = prepare_groupby(left_keys, Some(hasher));
     let (right_len, hasher, hashed_right_keys) = prepare_groupby(right_keys, Some(hasher));
-    let key_len = hashed_left_keys.len();
     let outer_capatiy = len.max(right_len);
-    // let mut output_left: Vec<OptUsize> = Vec::with_capacity(outer_capatiy);
-    // let mut output_right: Vec<OptUsize> = Vec::with_capacity(outer_capatiy);
     let mut outer_dict =
         TpHashMap::<u64, [OptUsize; 2]>::with_capacity_and_hasher(outer_capatiy, hasher);
     // the first element is the index of the key and the right table indicates the idx is left or right
     let mut key_idx = Vec::<(usize, bool, u64)>::with_capacity(outer_capatiy);
     // fast path for only one key
-    if key_len == 1 {
+    if hashed_left_keys.len() == 1 {
         let hashed_left_key = &hashed_left_keys[0];
         let hashed_right_key = hashed_right_keys.get(0).unwrap();
         for i in 0..len {

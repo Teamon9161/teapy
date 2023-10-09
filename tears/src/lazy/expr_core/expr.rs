@@ -114,6 +114,11 @@ impl<'a> Expr<'a> {
         e
     }
 
+    pub fn into_inner(self) -> Result<ExprInner<'a>, Self> {
+        let e = Arc::try_unwrap(self.0).map_err(Self)?;
+        Ok(e.into_inner())
+    }
+
     // pub fn clone_to_life<'b>(&self) -> Expr<'b>
     // where:
     //     {}
@@ -134,6 +139,10 @@ impl<'a> Expr<'a> {
 
     pub fn dtype(&self) -> String {
         self.lock().dtype()
+    }
+
+    pub fn strong_count(&self) -> usize {
+        Arc::strong_count(&self.0)
     }
 
     #[inline]
@@ -183,6 +192,15 @@ impl<'a> Expr<'a> {
             } else {
                 unreachable!("Arc::get_mut failed")
             }
+        }
+    }
+
+    #[inline]
+    pub fn simplify(&mut self) {
+        if let Some(e) = Arc::get_mut(&mut self.0) {
+            e.get_mut().simplify()
+        } else {
+            self.0.lock().simplify()
         }
     }
 
@@ -337,6 +355,11 @@ impl<'a> Expr<'a> {
     #[inline]
     pub fn get_chain_base(&self) -> Data<'a> {
         self.lock().get_chain_base()
+    }
+
+    #[inline]
+    pub fn simplify_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
+        self.lock().simplify_chain_nodes(nodes)
     }
 
     #[inline]

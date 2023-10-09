@@ -166,6 +166,7 @@ impl<'a> ExprInner<'a> {
             }
             return Ok(self);
         }
+        self.simplify();
 
         // we don't need prepare to delay conversion as scan_ipc is enough
         // to achieve this
@@ -298,6 +299,11 @@ impl<'a> ExprInner<'a> {
     }
 
     #[inline]
+    pub fn simplify_base(&mut self) {
+        self.base.simplify_base()
+    }
+
+    #[inline]
     pub fn init_base_is_context(&self) -> bool {
         self.base.init_base_is_context()
     }
@@ -318,6 +324,16 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    pub fn simplify_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
+        if !self.nodes.is_empty() {
+            let mut out = self.nodes.clone();
+            out.extend(nodes);
+            self.base.simplify_chain_nodes(out)
+        } else {
+            self.base.simplify_chain_nodes(nodes)
+        }
+    }
+
     pub fn flatten(&self) -> Self {
         let base = self.get_chain_base();
         let nodes = self.collect_chain_nodes(Vec::new());
@@ -327,5 +343,13 @@ impl<'a> ExprInner<'a> {
             nodes,
             ctx_ref: None,
         }
+    }
+
+    pub fn simplify(&mut self) {
+        // do not change the order of collect nodes and simplify base
+        // as simplify base may change the base type
+        let nodes = self.simplify_chain_nodes(Vec::new());
+        self.simplify_base();
+        self.nodes = nodes;
     }
 }

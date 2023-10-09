@@ -105,6 +105,13 @@ class DataDict:
         dd._dd.drop(cols)
         return None if inplace else dd
 
+    def simplify(self):
+        def simplify_f(e):
+            e.simplify()
+            return e
+
+        self.apply(simplify_f, inplace=True)
+
     @construct
     def select(self, exprs):
         return self._dd.select(exprs)
@@ -137,12 +144,31 @@ class DataDict:
         dd._select_on_axis_unchecked(idx, axis=0, inplace=True)
         return None if inplace else dd
 
-    def mean(self, axis=-1, stable=False, par=False):
+    def mean(self, axis=-1, stable=False, par=False, min_periods=1):
         if axis == -1:
-            return stack(self.raw_data, axis=axis).mean(axis=-1, stable=stable, par=par)
+            return stack(self.raw_data, axis=axis).mean(
+                axis=-1, stable=stable, par=par, min_periods=min_periods
+            )
         else:
             axis = axis + 1 if axis < 0 else axis
-            return self.apply(lambda e: e.mean(axis=axis, stable=stable, par=par))
+            return self.apply(
+                lambda e: e.mean(
+                    axis=axis, stable=stable, par=par, min_periods=min_periods
+                )
+            )
+
+    def std(self, axis=-1, stable=False, par=False, min_periods=3):
+        if axis == -1:
+            return stack(self.raw_data, axis=axis).std(
+                axis=-1, stable=stable, par=par, min_periods=min_periods
+            )
+        else:
+            axis = axis + 1 if axis < 0 else axis
+            return self.apply(
+                lambda e: e.std(
+                    axis=axis, stable=stable, par=par, min_periods=min_periods
+                )
+            )
 
     def sum(self, axis=-1, stable=False, par=False):
         if axis == -1:
@@ -195,12 +221,19 @@ class DataDict:
         inplace=False,
         sort=True,
         rev=False,
+        simplify=True,
+        eager=False,
     ):
         if on is not None:
             left_on = right_on = on
         if how == "right":
             return right.join(
-                self, left_on=right_on, right_on=left_on, how="left", inplace=inplace
+                self,
+                left_on=right_on,
+                right_on=left_on,
+                how="left",
+                inplace=inplace,
+                eager=eager,
             )
         else:
             dd = self if inplace else self.copy()
@@ -219,6 +252,10 @@ class DataDict:
                     .raw_data,
                     inplace=True,
                 )
+                if simplify:
+                    dd.simplify()
+                if eager:
+                    dd.eval(inplace=True)
                 return None if inplace else dd
             elif how == "outer":
                 *outer_keys, left_idx, right_idx = left_keys[0]._get_outer_join_idx(
@@ -233,6 +270,10 @@ class DataDict:
                     .raw_data,
                     inplace=True,
                 )
+                if simplify:
+                    dd.simplify()
+                if eager:
+                    dd.eval(inplace=True)
                 return None if inplace else dd
             else:
                 raise NotImplementedError(

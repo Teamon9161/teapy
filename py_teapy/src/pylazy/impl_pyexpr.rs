@@ -80,6 +80,10 @@ impl PyExpr {
         format!("{:?}", &self.e)
     }
 
+    pub fn simplify(&mut self) {
+        self.e.simplify()
+    }
+
     #[allow(unreachable_patterns)]
     pub unsafe fn __getitem__(&self, obj: &PyAny, py: Python) -> PyResult<Self> {
         use pyo3::types::{PyList, PySlice, PyTuple};
@@ -2103,6 +2107,49 @@ impl PyExpr {
     ) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.get_time_rolling_idx(duration, start_by);
+        Ok(out)
+    }
+
+    #[pyo3(signature=(others=None, sort=true, par=false))]
+    pub unsafe fn _get_groupby_idx(
+        &self,
+        others: Option<&PyAny>,
+        sort: bool,
+        par: bool,
+    ) -> PyResult<Self> {
+        let others = if let Some(others) = others {
+            parse_expr_list(others, false)?
+        } else {
+            vec![]
+        };
+        let others_obj_vec = others.iter().map(|e| e.obj()).collect_trusted();
+        let others = others.into_iter().map(|e| e.e).collect_trusted();
+        let mut out = self.clone();
+        out.e.get_groupby_idx(others, sort, par);
+        Ok(out.add_obj_vec_into(others_obj_vec))
+    }
+
+    #[pyo3(signature=(agg_expr, idxs, others=None))]
+    pub unsafe fn apply_with_vecusize(
+        &self,
+        agg_expr: &PyAny,
+        idxs: &PyAny,
+        others: Option<&PyAny>,
+    ) -> PyResult<Self> {
+        let agg_expr = parse_expr_nocopy(agg_expr)?;
+        let idxs = parse_expr_nocopy(idxs)?;
+        let others = if let Some(others) = others {
+            parse_expr_list(others, false)?
+        } else {
+            vec![]
+        };
+        let obj1 = agg_expr.obj();
+        let obj2 = idxs.obj();
+        let others_obj_vec = others.iter().map(|e| e.obj()).collect_trusted();
+        let others = others.into_iter().map(|e| e.e).collect_trusted();
+        let mut out = self.clone();
+        out.e.apply_with_vecusize(agg_expr.e, idxs.e, others);
+        out.add_obj(obj1).add_obj(obj2).add_obj_vec(others_obj_vec);
         Ok(out)
     }
 

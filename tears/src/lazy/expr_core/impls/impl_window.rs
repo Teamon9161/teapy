@@ -6,6 +6,7 @@ use crate::lazy::DataDict;
 use crate::{Arr1, CollectTrustedToVec, CorrMethod, TimeDelta};
 use ahash::HashMap;
 use ndarray::{s, Axis};
+use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
 pub enum RollingTimeStartBy {
     Full,
@@ -58,16 +59,6 @@ macro_rules! impl_rolling_by_startidx_agg {
                         let arr = data.view_arr(ctx.as_ref())?.deref();
                         let idxs = idxs.view_arr(ctx.as_ref())?.deref().cast_vecusize();
                         let idxs_arr = idxs.view().to_dim1()?;
-                        let len = arr.len();
-                        if len != idxs_arr.len() {
-                            return Err(format!(
-                                "rolling_select_by_vecusize_agg: arr.len: {} != idxs_arr.len: {}",
-                                arr.len(),
-                                idxs_arr.len()
-                            )
-                            .into());
-                        }
-
                         let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
                             let arr = arr.view().to_dim1()?;
                             let out = idxs_arr
@@ -169,9 +160,9 @@ impl<'a> Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?.deref();
             let others_ref = others
-                .iter()
+                .par_iter()
                 .map(|e| e.view_arr(ctx.as_ref()).unwrap().deref())
-                .collect_trusted();
+                .collect::<Vec<_>>();
             let others_name = others.iter().map(|e| e.name().unwrap()).collect_trusted();
             let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
             let roll_start_arr = roll_start.view().to_dim1()?;
