@@ -135,6 +135,11 @@ impl_rolling_by_startidx_agg!(rolling_select_mean-rolling_select_by_vecusize_mea
 impl_rolling_by_startidx_agg!(rolling_select_sum-rolling_select_by_vecusize_sum, sum_1d(stable: bool));
 impl_rolling_by_startidx_agg!(rolling_select_std-rolling_select_by_vecusize_std, std_1d(min_periods: usize, stable: bool));
 impl_rolling_by_startidx_agg!(rolling_select_var-rolling_select_by_vecusize_var, var_1d(min_periods: usize, stable: bool));
+impl_rolling_by_startidx_agg!(rolling_select_valid_first-rolling_select_by_vecusize_valid_first, valid_first_1d());
+impl_rolling_by_startidx_agg!(rolling_select_valid_last-rolling_select_by_vecusize_valid_last, valid_last_1d());
+impl_rolling_by_startidx_agg!(rolling_select_first-rolling_select_by_vecusize_first, first_unwrap());
+impl_rolling_by_startidx_agg!(rolling_select_last-rolling_select_by_vecusize_last, last_unwrap());
+
 impl_rolling_by_startidx_agg!(
     rolling_select_umax - rolling_select_by_vecusize_umax,
     sorted_unique_1d().max_1d()

@@ -2494,6 +2494,42 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_first(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_first(roll_start.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_last(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_last(roll_start.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_valid_first(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_valid_first(roll_start.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_valid_last(&self, roll_start: &PyAny) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_valid_last(roll_start.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(roll_start))]
     pub unsafe fn _rolling_select_min(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
@@ -2584,6 +2620,42 @@ impl PyExpr {
         let mut out = self.clone();
         out.e
             .rolling_select_by_vecusize_std(idxs.e, min_periods, stable);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_first(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_first(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_last(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_last(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_valid_first(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_valid_first(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_valid_last(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_valid_last(idxs.e);
         Ok(out.add_obj_into(obj))
     }
 

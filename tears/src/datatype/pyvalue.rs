@@ -5,6 +5,7 @@ use crate::ExprElement;
 use crate::{DataType, GetDataType, GetNone};
 use numpy::{Element, PyArrayDescr};
 use pyo3::{FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
+use serde::{Serialize, Serializer};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -31,15 +32,12 @@ impl PartialEq for PyValue {
     }
 }
 
-// impl Serialize for PyValue {
-//     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     {
-//         Python::with_gil(|py| {
-//             let obj = self.0.as_ref(py);
-//             serde_pickle::to_vec(&obj, Default::default())
-//         })
-//     }
-// }
+impl Serialize for PyValue {
+    fn serialize<S: Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+    {
+        unimplemented!("can not serialize PyObject")
+    }
+}
 
 impl ToPyObject for PyValue {
     fn to_object(&self, py: Python<'_>) -> PyObject {
