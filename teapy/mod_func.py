@@ -85,4 +85,4 @@ def get_align_frames_idx(dds, by, sort=True, rev=False, return_by=False):
         for i, idx in enumerate(out_idxs):
             out_idxs[i] = idx.select(left_idx, check=False).cast("opt<usize>")
         out_idxs.append(right_idx)
-    return out_idxs if not return_by else by0, out_idxs
+    return out_idxs if not return_by else (by0, out_idxs)

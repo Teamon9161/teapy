@@ -308,10 +308,10 @@ where
         }
         let arr_zip = Zip::from(self.lanes(axis)).and(out.lanes_mut(axis));
         if !par || (ndim == 1) {
-            // 非并行
+            // non-parallel
             arr_zip.for_each(|a, b| f(a.wrap(), b.wrap()));
         } else {
-            // 并行
+            // parallel
             arr_zip.par_for_each(|a, b| f(a.wrap(), b.wrap()));
         }
     }
@@ -346,10 +346,10 @@ where
             .and(out.lanes_mut(axis));
 
         if !par || (ndim == 1) {
-            // 非并行
+            // non-parallel
             arr_zip.for_each(|a, b, c| f(a.wrap(), b.wrap(), c.wrap()));
         } else {
-            // 并行
+            // parallel
             arr_zip.par_for_each(|a, b, c| f(a.wrap(), b.wrap(), c.wrap()));
         }
     }

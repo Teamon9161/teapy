@@ -3,7 +3,7 @@ use std::{fmt::Debug, hash::Hash};
 use ahash::RandomState;
 
 use super::super::{export::*, ArrView1, GetNone};
-use crate::{hash::TpHash, Cast, DateTime, OptUsize, TimeDelta};
+use crate::{hash::TpHash, ArrViewMut1, Cast, DateTime, OptUsize, TimeDelta};
 use rayon::prelude::*;
 // use super::groupby::CollectTrustedToVec;
 
@@ -455,11 +455,25 @@ where
         new_dim.slice_mut()[axis.index()] = slc.len();
         let shape = new_dim.into_shape().set_f(f_flag);
         let mut out = Arr::<T, D>::uninit(shape);
-        let mut out_wr = out.view_mut();
-        self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
+        let f = |x_1d: ArrView1<T>, out_1d: ArrViewMut1<MaybeUninit<T>>| {
             x_1d.wrap()
                 .take_option_clone_1d_unchecked(out_1d, slc.view())
-        });
+        };
+        // we should not use apply_along_axis here because it won't do anything when this axis is empty
+        let ndim = self.ndim();
+        if ndim == 1 {
+            let view = self.view().to_dim1().unwrap();
+            f(view, out.view_mut().to_dim1().unwrap());
+        } else {
+            let arr_zip = Zip::from(self.lanes(axis)).and(out.lanes_mut(axis));
+            if !par || (ndim == 1) {
+                // non-parallel
+                arr_zip.for_each(|a, b| f(a.wrap(), b.wrap()));
+            } else {
+                // parallel
+                arr_zip.par_for_each(|a, b| f(a.wrap(), b.wrap()));
+            }
+        }
         unsafe { out.assume_init() }
         // out
     }
