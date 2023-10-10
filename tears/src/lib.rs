@@ -1,5 +1,6 @@
 #![feature(let_chains)]
 #![feature(drain_filter)]
+#![feature(hash_raw_entry)]
 
 #[cfg(any(feature = "intel-mkl-system", feature = "intel-mkl-static"))]
 extern crate intel_mkl_src as _src;

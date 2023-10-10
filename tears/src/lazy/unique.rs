@@ -1,6 +1,7 @@
-use crate::hash::TpHashMap;
+// use crate::hash::TpHashMap;
 use crate::{match_all, match_arrok};
 use crate::{Arr1, ArrOk, CollectTrustedToVec, Expr};
+use ahash::AHashMap;
 use rayon::prelude::*;
 use std::collections::hash_map::Entry;
 
@@ -45,13 +46,14 @@ impl<'a> Expr<'a> {
                 })
                 .unwrap_or(vec![]);
             let others_ref = others.iter().collect::<Vec<_>>();
-            let (len, hasher, hashed_keys) = super::prepare_groupby(&others_ref, None);
+            let (len, hashed_keys) = super::prepare_groupby(&others_ref, false);
             let arr = arr.into_arr(ctx.clone())?;
             let arr_key = match_arrok!(hash arr, a, {a.view().to_dim1()?.tphash_1d()});
             let mut out_idx = Vec::with_capacity(len);
+            let hasher = ahash::RandomState::new();
             if &keep == "first" {
                 if hashed_keys.is_empty() {
-                    let mut map = TpHashMap::<u64, u8>::with_capacity_and_hasher(len, hasher);
+                    let mut map = AHashMap::<u64, u8>::with_capacity_and_hasher(len, hasher);
                     let len = arr_key.len();
                     for i in 0..len {
                         let entry = map.entry(unsafe { *arr_key.uget(i) });
@@ -61,7 +63,7 @@ impl<'a> Expr<'a> {
                         }
                     }
                 } else {
-                    let mut map = TpHashMap::<Vec<u64>, u8>::with_capacity_and_hasher(len, hasher);
+                    let mut map = AHashMap::<Vec<u64>, u8>::with_capacity_and_hasher(len, hasher);
                     for i in 0..len {
                         let tuple_keys = hashed_keys
                             .iter()
@@ -77,7 +79,7 @@ impl<'a> Expr<'a> {
                 }
             } else if &keep == "last" {
                 if hashed_keys.is_empty() {
-                    let mut map = TpHashMap::<u64, usize>::with_capacity_and_hasher(len, hasher);
+                    let mut map = AHashMap::<u64, usize>::with_capacity_and_hasher(len, hasher);
                     let hashed_key = &arr_key;
                     let len = hashed_key.len();
                     for i in 0..len {
@@ -97,7 +99,7 @@ impl<'a> Expr<'a> {
                     out_idx.sort_unstable()
                 } else {
                     let mut map =
-                        TpHashMap::<Vec<u64>, usize>::with_capacity_and_hasher(len, hasher);
+                        AHashMap::<Vec<u64>, usize>::with_capacity_and_hasher(len, hasher);
                     for i in 0..len {
                         let tuple_keys = hashed_keys
                             .iter()

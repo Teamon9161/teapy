@@ -1,14 +1,15 @@
 use ahash::RandomState;
 use once_cell::sync::Lazy;
-use std::{
-    collections::HashMap,
-    hash::{BuildHasherDefault, Hasher},
-};
+// use std::{
+//     collections::HashMap,
+//     hash::{BuildHasherDefault, Hasher},
+// };
+use std::hash::Hasher;
 
 use crate::{Cast, DateTime};
 
-pub type TpBuildHasher = BuildHasherDefault<TpHasher>;
-pub type TpHashMap<K, V> = HashMap<K, V, TpBuildHasher>;
+// pub type TpBuildHasher = BuildHasherDefault<TpHasher>;
+// pub type TpHashMap<K, V> = HashMap<K, V, TpBuildHasher>;
 static HASHER: Lazy<RandomState> =
     Lazy::new(|| RandomState::with_seeds(2313, 12515, 12545345, 1245));
 
@@ -23,6 +24,7 @@ impl Hasher for TpHasher {
         self.state
     }
 
+    #[inline]
     fn write(&mut self, bytes: &[u8]) {
         self.write_u64(HASHER.hash_one(bytes));
         // unimplemented!("hash arbitrary bytes is not supported")
@@ -35,7 +37,7 @@ impl Hasher for TpHasher {
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.write_u64(i as u64)
+        self.state = i as u64
     }
 
     #[inline]

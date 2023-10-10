@@ -48,16 +48,17 @@ pub trait CollectTrustedToVec: Iterator + TrustedLen {
     }
 }
 
-impl<T: Iterator + TrustedLen> CollectTrustedToVec for T {}
-unsafe impl<K, V> TrustedLen for std::collections::hash_map::IntoIter<K, V> {}
-unsafe impl<K, V> TrustedLen for std::collections::hash_map::IntoValues<K, V> {}
-unsafe impl<T, D> TrustedLen for crate::iterators::IntoIter<T, D> {}
+impl<T: Iterator + TrustedLen + Sized> CollectTrustedToVec for T {}
+unsafe impl<K, V: Sized> TrustedLen for std::collections::hash_map::IntoIter<K, V> {}
+unsafe impl<K, V: Sized> TrustedLen for std::collections::hash_map::IntoValues<K, V> {}
+unsafe impl<T: Sized, D> TrustedLen for crate::iterators::IntoIter<T, D> {}
 unsafe impl<T1, T2> TrustedLen for std::iter::Map<T1, T2> {}
-unsafe impl<'a, T1, T2> TrustedLen for std::collections::hash_map::Keys<'a, T1, T2> {}
-// unsafe impl<'a, T1, T2> TrustedLen
-//     for std::iter::Cloned<std::collections::hash_map::Keys<'a, T1, T2>>
-// {
-// }
+unsafe impl<'a, T1: Sized, T2: Sized> TrustedLen for std::collections::hash_map::Keys<'a, T1, T2> {}
+
+// // impl par iter
+// unsafe impl <T: Sized + Send + Sync> TrustedLen for rayon::slice::Iter<'_, T> {}
+// unsafe impl<T1: rayon::iter::ParallelIterator, T2> TrustedLen for rayon::iter::Map<T1, T2> {}
+
 unsafe impl<T: TrustedLen> TrustedLen for std::iter::Cloned<T> {}
 unsafe impl<T> TrustedLen for std::iter::Take<std::iter::Repeat<T>> {}
 unsafe impl<T> TrustedLen for std::ops::Range<T> {}

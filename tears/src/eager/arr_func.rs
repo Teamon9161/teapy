@@ -2,9 +2,9 @@ use std::{fmt::Debug, hash::Hash};
 
 use ahash::RandomState;
 
-use crate::{hash::TpHash, Cast, DateTime, OptUsize, TimeDelta};
-
 use super::super::{export::*, ArrView1, GetNone};
+use crate::{hash::TpHash, Cast, DateTime, OptUsize, TimeDelta};
+use rayon::prelude::*;
 // use super::groupby::CollectTrustedToVec;
 
 /// the method to use when fillna
@@ -234,6 +234,21 @@ where
         T: TpHash,
     {
         self.map(|v| v.hash())
+    }
+
+    /// Hash each element of the array.
+    #[inline]
+    pub fn tphash_par_1d(self) -> Arr1<u64>
+    where
+        T: TpHash + Send + Sync,
+    {
+        Arr1::from_vec(
+            self.as_slice()
+                .unwrap()
+                .into_par_iter()
+                .map(|v| v.hash())
+                .collect::<Vec<_>>(),
+        )
     }
 
     /// Remove NaN values in two 1d arrays.

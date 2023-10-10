@@ -1,7 +1,8 @@
+use ahash::AHashMap;
 use ndarray::Axis;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::hash::{TpBuildHasher, TpHash, TpHashMap};
+use crate::hash::TpHash;
 use crate::{match_all, match_arrok, ArrOk, Cast, Context, Data, TpResult};
 
 use super::super::{Arr1, CollectTrustedToVec, OptUsize};
@@ -140,15 +141,17 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
         right_keys.len(),
         "the number of columns given as join key should be equal"
     );
-    let hasher = TpBuildHasher::default();
-    let (len, hasher, hashed_left_keys) = prepare_groupby(left_keys, Some(hasher));
-    let (right_len, hasher, hashed_right_keys) = prepare_groupby(right_keys, Some(hasher));
+    // let hasher = TpBuildHasher::default();
+    let hasher = ahash::RandomState::new();
+    let (len, hashed_left_keys) = prepare_groupby(left_keys, false);
+    let (right_len, hashed_right_keys) = prepare_groupby(right_keys, false);
     let key_len = hashed_left_keys.len();
     let mut output: Vec<OptUsize> = Vec::with_capacity(len);
     // fast path for only one key
     if key_len == 1 {
         let hashed_right_key = hashed_right_keys.get(0).unwrap();
-        let mut group_dict_right = collect_hashmap_one_key(right_len, hasher, hashed_right_key);
+        let mut group_dict_right =
+            collect_hashmap_one_key(right_len, hasher, hashed_right_key, Some(right_len));
         let hashed_left_key = &hashed_left_keys[0];
         for i in 0..len {
             let hash = unsafe { *hashed_left_key.uget(i) };
@@ -168,7 +171,8 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
             }
         }
     } else {
-        let mut group_dict_right = collect_hashmap_keys(right_len, hasher, &hashed_right_keys);
+        let mut group_dict_right =
+            collect_hashmap_keys(right_len, hasher, &hashed_right_keys, Some(right_len));
         for i in 0..len {
             let tuple_left_keys = hashed_left_keys
                 .iter()
@@ -198,18 +202,19 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
 pub fn join_outer<'a>(
     left_keys: &[&ArrOk<'a>],
     right_keys: &[&ArrOk<'a>],
-) -> (Vec<(usize, bool, u64)>, TpHashMap<u64, [OptUsize; 2]>) {
+) -> (Vec<(usize, bool, u64)>, AHashMap<u64, [OptUsize; 2]>) {
     assert_eq!(
         left_keys.len(),
         right_keys.len(),
         "the number of columns given as join key should be equal"
     );
-    let hasher = TpBuildHasher::default();
-    let (len, hasher, hashed_left_keys) = prepare_groupby(left_keys, Some(hasher));
-    let (right_len, hasher, hashed_right_keys) = prepare_groupby(right_keys, Some(hasher));
+    // let hasher = TpBuildHasher::default();
+    let hasher = ahash::RandomState::new();
+    let (len, hashed_left_keys) = prepare_groupby(left_keys, false);
+    let (right_len, hashed_right_keys) = prepare_groupby(right_keys, false);
     let outer_capatiy = len.max(right_len);
     let mut outer_dict =
-        TpHashMap::<u64, [OptUsize; 2]>::with_capacity_and_hasher(outer_capatiy, hasher);
+        AHashMap::<u64, [OptUsize; 2]>::with_capacity_and_hasher(outer_capatiy, hasher);
     // the first element is the index of the key and the right table indicates the idx is left or right
     let mut key_idx = Vec::<(usize, bool, u64)>::with_capacity(outer_capatiy);
     // fast path for only one key

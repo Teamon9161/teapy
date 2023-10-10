@@ -1,14 +1,12 @@
+use super::super::export::*;
 use ahash::HashMap;
+use ahash::{AHashMap, RandomState};
 use ndarray::Axis;
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use super::super::export::*;
 #[cfg(feature = "lazy")]
 use crate::lazy::DataDict;
-use crate::{
-    hash::{TpBuildHasher, TpHash, TpHashMap},
-    match_all, match_arrok, Expr,
-};
+use crate::{hash::TpHash, match_all, match_arrok, Expr};
 use std::{collections::hash_map::Entry, sync::Arc};
 
 /// Get the partition size for parallel
@@ -43,14 +41,15 @@ pub fn flatten<T: Clone, R: AsRef<[T]>>(bufs: &[R], len: Option<usize>) -> Vec<T
     out
 }
 
-static GROUP_DICT_INIT_SIZE: usize = 512;
-static GROUP_VEC_INIT_SIZE: usize = 32;
+// static GROUP_DICT_INIT_SIZE: usize = 512;
+static GROUP_VEC_INIT_SIZE: usize = 16;
 
 pub fn prepare_groupby(
     keys: &[&ArrOk<'_>],
-    hasher: Option<TpBuildHasher>,
-) -> (usize, TpBuildHasher, Vec<Arr1<u64>>) {
-    let hasher = hasher.unwrap_or(TpBuildHasher::default());
+    // hasher: Option<TpBuildHasher>,
+    par: bool,
+) -> (usize, Vec<Arr1<u64>>) {
+    // let hasher = hasher.unwrap_or(TpBuildHasher::default());
     let hashed_keys = keys
         .iter()
         .map(|arr| {
@@ -59,16 +58,20 @@ pub fn prepare_groupby(
                 arr,
                 a,
                 {
-                    a.view()
+                    let a = a.view()
                         .to_dim1()
-                        .expect("groupby key should be dim1")
-                        .tphash_1d()
+                        .expect("groupby key should be dim1");
+                    if par {
+                        a.tphash_par_1d()
+                    } else {
+                        a.tphash_1d()
+                    }
                 }
             )
         })
         .collect::<Vec<_>>();
     if keys.is_empty() {
-        return (0, hasher, hashed_keys);
+        return (0, hashed_keys);
     }
     let len = hashed_keys[0].len();
     for key in &hashed_keys {
@@ -76,18 +79,27 @@ pub fn prepare_groupby(
             panic!("All of the groupby keys should have the same shape")
         }
     }
-    (len, hasher, hashed_keys)
+    (len, hashed_keys)
 }
 
 pub(super) fn collect_hashmap_one_key(
     len: usize,
-    hasher: TpBuildHasher,
+    hasher: RandomState,
     hashed_key: &Arr1<u64>,
-) -> TpHashMap<u64, (usize, Vec<usize>)> {
-    let mut group_dict = TpHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
-        GROUP_DICT_INIT_SIZE,
-        hasher,
-    );
+    size_hint: Option<usize>,
+) -> AHashMap<u64, (usize, Vec<usize>)> {
+    // ) -> TpHashMap<u64, (usize, Vec<usize>)> {
+    // let mut group_dict = TpHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
+    //     len,
+    //     hasher,
+    // );
+    let init_size = if let Some(size) = size_hint {
+        size
+    } else {
+        (len / 2).min(1)
+    };
+    let mut group_dict =
+        AHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(init_size, hasher);
     for i in 0..len {
         let hash = unsafe { *hashed_key.uget(i) };
         let entry = group_dict.entry(hash);
@@ -102,19 +114,36 @@ pub(super) fn collect_hashmap_one_key(
                 v.1.push(i);
             }
         }
+        // let entry = group_dict.raw_entry_mut().from_key_hashed_nocheck(hash, &hash);
+        // match entry {
+        //     RawEntryMut::Vacant(entry) => {
+        //         let mut group_idx_vec = Vec::with_capacity(GROUP_VEC_INIT_SIZE);
+        //         group_idx_vec.push(i);
+        //         entry.insert_hashed_nocheck(hash, hash, (i, group_idx_vec));
+        //         // entry.insert((i, group_idx_vec));
+        //     }
+        //     RawEntryMut::Occupied(mut entry) => {
+        //         let v = entry.get_mut();
+        //         v.1.push(i);
+        //     }
+        // }
     }
     group_dict
 }
 
 pub(super) fn collect_hashmap_keys(
     len: usize,
-    hasher: TpBuildHasher,
+    hasher: RandomState,
     hashed_keys: &[Arr1<u64>],
-) -> TpHashMap<u64, (usize, Vec<usize>)> {
-    let mut group_dict = TpHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
-        GROUP_DICT_INIT_SIZE,
-        hasher,
-    );
+    size_hint: Option<usize>,
+) -> AHashMap<u64, (usize, Vec<usize>)> {
+    let init_size = if let Some(size) = size_hint {
+        size
+    } else {
+        (len / 2).min(1)
+    };
+    let mut group_dict =
+        AHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(init_size, hasher);
     for i in 0..len {
         let tuple_keys = hashed_keys
             .iter()
@@ -137,13 +166,14 @@ pub(super) fn collect_hashmap_keys(
 }
 
 pub fn groupby(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
-    let (len, hasher, hashed_keys) = prepare_groupby(keys, None);
+    let (len, hashed_keys) = prepare_groupby(keys, false);
+    let hasher = RandomState::new();
     // fast path for only one key
     let mut vec = if hashed_keys.len() == 1 {
-        let group_dict = collect_hashmap_one_key(len, hasher, &hashed_keys[0]);
+        let group_dict = collect_hashmap_one_key(len, hasher, &hashed_keys[0], None);
         group_dict.into_values().collect_trusted()
     } else {
-        let group_dict = collect_hashmap_keys(len, hasher, &hashed_keys);
+        let group_dict = collect_hashmap_keys(len, hasher, &hashed_keys, None);
         group_dict.into_values().collect_trusted()
     };
     if sort {
@@ -162,7 +192,9 @@ pub fn groupby(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
 /// sort: whether to sort on index of the first value in each group
 pub fn groupby_par(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
     let n_partition = get_partition_size() as u64;
-    let (len, hasher, hashed_keys) = prepare_groupby(keys, None);
+    let (len, hashed_keys) = prepare_groupby(keys, true);
+    let hasher = RandomState::new();
+    let thread_init_size = (len / n_partition as usize).min(1);
     let mut out = (0..n_partition)
         .into_par_iter()
         .map(|thread| {
@@ -170,11 +202,10 @@ pub fn groupby_par(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> 
             // fast path for only one key
             if hashed_keys.len() == 1 {
                 let hashed_key = &hashed_keys[0];
-                let mut group_dict =
-                    TpHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
-                        GROUP_DICT_INIT_SIZE,
-                        hasher,
-                    );
+                let mut group_dict = AHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
+                    thread_init_size,
+                    hasher,
+                );
                 for i in 0..len {
                     let hash = unsafe { *hashed_key.uget(i) };
                     if partition_here(hash, thread, n_partition) {
@@ -200,11 +231,10 @@ pub fn groupby_par(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> 
                     group_dict.into_values().collect_trusted()
                 }
             } else {
-                let mut group_dict =
-                    TpHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
-                        GROUP_DICT_INIT_SIZE,
-                        hasher,
-                    );
+                let mut group_dict = AHashMap::<u64, (usize, Vec<usize>)>::with_capacity_and_hasher(
+                    thread_init_size,
+                    hasher,
+                );
                 for i in 0..len {
                     let tuple_keys = hashed_keys
                         .iter()

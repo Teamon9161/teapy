@@ -53,6 +53,10 @@ impl<T, D: Dimension> Arr<T, D> {
         Array::uninit(shape).wrap()
     }
 
+    pub fn into_raw_vec(self) -> Vec<T> {
+        self.0.into_raw_vec()
+    }
+
     // pub unsafe fn assume_init(&mut self: Arr<MaybeUninit<T>, D>) -> Arr<T, D>
     // {
     //     self.0.assume_init()
