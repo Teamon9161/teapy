@@ -13,7 +13,7 @@ impl<'a> ArrOk<'a> {
             let axis_ = a_view.norm_axis(axis);
             let length = a_view.len_of(axis_);
             if matches!(&slc, ArrOk::OptUsize(_)) {
-                // take opiton_usize
+                // take option_usize
                 let slc = slc.cast_optusize();
                 let slc_view = slc.view();
                 match a_view.dtype() {

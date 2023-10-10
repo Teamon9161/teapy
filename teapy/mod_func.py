@@ -67,7 +67,7 @@ def align_frames(dds, by, sort=True, rev=False, outer_df=False, with_by=True):
         ]
 
 
-def get_align_frames_idx(dds, by, sort=True, rev=False):
+def get_align_frames_idx(dds, by, sort=True, rev=False, return_by=False):
     from .teapy import arange
 
     if len(dds) <= 1:
@@ -75,7 +75,7 @@ def get_align_frames_idx(dds, by, sort=True, rev=False):
     if not isinstance(by, (list, tuple)):
         by = [by]
     by0 = dds[0][by].raw_data
-    out_idxs = [arange(dds[0].shape[0])]
+    out_idxs = [arange(by0[0].shape[0])]
     for i, rdd in enumerate(dds[1:]):
         # right_idx = arange(rdd.shape[0])
         left_other = by0[1:] if len(by) > 1 else None
@@ -83,6 +83,6 @@ def get_align_frames_idx(dds, by, sort=True, rev=False):
             left_other=left_other, right=rdd[by], sort=sort, rev=rev
         )
         for i, idx in enumerate(out_idxs):
-            out_idxs[i] = idx.select(left_idx, check=False)
+            out_idxs[i] = idx.select(left_idx, check=False).cast("opt<usize>")
         out_idxs.append(right_idx)
-    return out_idxs
+    return out_idxs if not return_by else by0, out_idxs

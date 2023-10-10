@@ -164,11 +164,19 @@ impl PyExpr {
             "datetime(ms)" => expr.e.cast_datetime(Some(TimeUnit::Millisecond)),
             "datetime(s)" => expr.e.cast_datetime(Some(TimeUnit::Second)),
             "timedelta" => expr.e.cast_timedelta(),
+            "optusize" | "option<usize>" | "opt<usize>" => expr.e.cast_optusize(),
             #[cfg(feature = "option_dtype")]
-            "option<f64>" => expr.e.cast_optf64(),
-            _ => Err(PyValueError::new_err(
-                "cast to type: {ty_name} is not implemented",
-            ))?,
+            "optf64" | "option<f64>" | "opt<f64>" => expr.e.cast_optf64(),
+            #[cfg(feature = "option_dtype")]
+            "opti64" | "option<i64>" | "opt<i64>" => expr.e.cast_opti64(),
+            #[cfg(feature = "option_dtype")]
+            "optf32" | "option<f32>" | "opt<f32>" => expr.e.cast_optf32(),
+            #[cfg(feature = "option_dtype")]
+            "opti32" | "option<i32>" | "opt<i32>" => expr.e.cast_optf64(),
+            _ => Err(PyValueError::new_err(format!(
+                "cast to type: {:?} is not implemented",
+                &ty_name
+            )))?,
         };
         Ok(expr)
     }

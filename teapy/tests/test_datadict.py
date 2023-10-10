@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from numpy.testing import assert_array_equal
 
-from teapy import DataDict, Expr
+from teapy import DataDict, Expr, get_align_frames_idx
 from teapy.testing import assert_allclose, assert_allclose3
 
 
@@ -182,6 +182,13 @@ def test_join():
     assert_allclose(dd["va"].eview(), np.array([1, 2, 4, 3, np.nan]))
     assert_allclose(dd["vb"].eview(), np.array([20, 10, np.nan, np.nan, 30]))
     assert_array_equal(dd["on"].eview(), np.array(["a", "b", "c", "d", "e"]))
+
+    by, idxs = get_align_frames_idx([ldd, rdd], by="on", return_by=True)
+    assert_allclose(ldd["va"].select(idxs[0]).eview(), np.array([1, 2, 4, 3, np.nan]))
+    assert_allclose(
+        rdd["vb"].select(idxs[1]).eview(), np.array([20, 10, np.nan, np.nan, 30])
+    )
+    assert_array_equal(by[0].eview(), np.array(["a", "b", "c", "d", "e"]))
 
 
 # def test_groupby():

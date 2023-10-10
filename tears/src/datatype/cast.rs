@@ -21,11 +21,32 @@ macro_rules! impl_numeric_cast {
             }
         }
     };
+    (@has_none_to_option $T: ty => $(#[$cfg:meta])* impl $U: ty: $O: ty ) => {
+        $(#[$cfg])*
+        impl Cast<$O> for $T
+        where
+            $T: GetNone,
+        {
+            #[inline] fn cast(self) -> $O {
+                if self.is_none() {
+                    return None.into();
+                } else {
+                    (self as $U).into()
+                }
+            }
+        }
+    };
     (@ $T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {$(
         impl_numeric_cast!(@ $T => impl $U);
         $(impl_numeric_cast!(@to_option $T => impl $U: $O);)?
     )*};
-    ($T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {
+
+    (@has_none $T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {$(
+        impl_numeric_cast!(@ $T => impl $U);
+        $(impl_numeric_cast!(@has_none_to_option $T => impl $U: $O);)?
+    )*};
+
+    (@common_impl $T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {
         impl Cast<String> for $T {
             #[inline] fn cast(self) -> String { self.to_string() }
         }
@@ -47,6 +68,45 @@ macro_rules! impl_numeric_cast {
         impl Cast<TimeDelta> for $T {
             #[inline] fn cast(self) -> TimeDelta { Cast::<i64>::cast(self).into() }
         }
+    };
+
+    (has_none $T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {
+        impl_numeric_cast!(@common_impl $T => { $( $U $(: $O)? ),* });
+        #[cfg(feature="option_dtype")]
+        impl_numeric_cast!(@has_none $T => { $( $U $(: $O)? ),* });
+        #[cfg(not(feature = "option_dtype"))]
+        impl_numeric_cast!(@ $T => { $( $U),* });
+        impl_numeric_cast!(@has_none $T => { u8, u16, u32, u64, usize: OptUsize });
+        #[cfg(not(feature = "option_dtype"))]
+        impl_numeric_cast!(@ $T => { i8, i16, i32, i64, isize });
+        #[cfg(feature="option_dtype")]
+        impl_numeric_cast!(@has_none $T => { i8, i16, i32: OptI32, i64: OptI64, isize });
+    };
+
+    ($T: ty => { $( $U: ty $(: $O: ty)? ),* } ) => {
+        impl_numeric_cast!(@common_impl $T => { $( $U $(: $O)? ),* });
+        // impl Cast<String> for $T {
+
+        //     #[inline] fn cast(self) -> String { self.to_string() }
+        // }
+        // impl Cast<bool> for $T {
+        //     #[inline] fn cast(self) -> bool {
+        //         let value = Cast::<i32>::cast(self);
+        //         if  value == 0_i32 {
+        //             false
+        //         } else if value == 1 {
+        //             true
+        //         } else {
+        //             panic!("can not cast {value:?} to bool")
+        //         }
+        //     }
+        // }
+        // impl Cast<DateTime> for $T {
+        //     #[inline] fn cast(self) -> DateTime { Cast::<i64>::cast(self).into() }
+        // }
+        // impl Cast<TimeDelta> for $T {
+        //     #[inline] fn cast(self) -> TimeDelta { Cast::<i64>::cast(self).into() }
+        // }
         #[cfg(feature="option_dtype")]
         impl_numeric_cast!(@ $T => { $( $U $(: $O)? ),* });
         #[cfg(not(feature = "option_dtype"))]
@@ -69,8 +129,8 @@ impl_numeric_cast!(u64 => { f32: OptF32, f64: OptF64 });
 impl_numeric_cast!(i64 => { f32: OptF32, f64: OptF64 });
 impl_numeric_cast!(usize => { f32: OptF32, f64: OptF64 });
 impl_numeric_cast!(isize => { f32: OptF32, f64: OptF64 });
-impl_numeric_cast!(f32 => { f32: OptF32, f64: OptF64 });
-impl_numeric_cast!(f64 => { f32: OptF32, f64: OptF64 });
+impl_numeric_cast!(has_none f32 => { f32: OptF32, f64: OptF64 });
+impl_numeric_cast!(has_none f64 => { f32: OptF32, f64: OptF64 });
 impl_numeric_cast!(char => { char });
 impl_numeric_cast!(bool => {});
 
