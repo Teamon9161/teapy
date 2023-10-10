@@ -33,8 +33,7 @@ impl PartialEq for PyValue {
 }
 
 impl Serialize for PyValue {
-    fn serialize<S: Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error>
-    {
+    fn serialize<S: Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error> {
         unimplemented!("can not serialize PyObject")
     }
 }
