@@ -45,7 +45,7 @@ macro_rules! match_all {
     ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($(#[$meta: meta])? $arm: ident),*) => {
         match $exprs {
             $($(#[$meta])? $enum::$arm($e) => $body,)*
-            _ => unimplemented!("Not supported dtype in match_exprs")
+            _ => unimplemented!("Not supported dtype")
         }
     };
 
@@ -86,13 +86,21 @@ macro_rules! match_arrok {
             #[cfg(feature = "option_dtype")] OptI64
         )
     };
-    (numeric2 $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, OptUsize, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
+    // (numeric2 $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, OptUsize, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
     (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};//, OptUsize, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
     (float $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64)};//, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64)};
     (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, String, Str, DateTime, Bool, U8)};
     (castable $($tt: tt)*) => {match_all!(
         ArrOk, $($tt)*,
         F32, F64, I32, I64, Usize, String, DateTime, Bool, OptUsize,
+        #[cfg(feature = "option_dtype")] OptF32,
+        #[cfg(feature = "option_dtype")] OptF64,
+        #[cfg(feature = "option_dtype")] OptI32,
+        #[cfg(feature = "option_dtype")] OptI64
+        )};
+    (nostr $($tt: tt)*) => {match_all!(
+        ArrOk, $($tt)*,
+        F32, F64, I32, I64, Usize, String, DateTime, TimeDelta, U8, Bool, OptUsize, VecUsize, Object,
         #[cfg(feature = "option_dtype")] OptF32,
         #[cfg(feature = "option_dtype")] OptF64,
         #[cfg(feature = "option_dtype")] OptI32,

@@ -49,6 +49,12 @@ macro_rules! impl_reduce_nd {
                 $($generic: $bound $(+ $other_bnd)*,)*
             {
                 let axis = $self.norm_axis(axis);
+                if $self.is_empty() || $self.len_of(axis) == 0 {
+                    return Arr1::from_vec(vec![]).to_dim::<D::Smaller>().unwrap();
+                }
+                if $self.ndim() == 1 {
+                    return ndarray::arr0($self.view().to_dim1().unwrap().$func_1d($($p),*)).wrap().to_dim::<D::Smaller>().unwrap();
+                }
                 if !par {
                     Zip::from($self.lanes(axis)).map_collect(move |lane| lane.wrap().$func_1d($($p.clone()),*)).into()
                 } else {
@@ -192,6 +198,12 @@ macro_rules! impl_reduce2_nd {
                 };
 
                 let axis = lhs.norm_axis(axis);
+                if lhs.is_empty() || lhs.len_of(axis) == 0 {
+                    return Arr1::from_vec(vec![]).to_dim::<<<D as DimMax<D2>>::Output as Dimension>::Smaller>().unwrap();
+                }
+                if lhs.ndim() == 1 {
+                    return ndarray::arr0(lhs.to_dim1().unwrap().$func_1d(&rhs.to_dim1().unwrap(), $($p),*)).wrap().to_dim::<<<D as DimMax<D2>>::Output as Dimension>::Smaller>().unwrap();
+                }
                 if !par {
                     Zip::from(lhs.lanes(axis)).and(rhs.lanes(axis)).map_collect(|lane1, lane2| lane1.wrap().$func_1d(&lane2.wrap() $(,$p.clone())*)).into()
                 } else {

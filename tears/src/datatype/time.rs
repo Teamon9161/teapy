@@ -130,7 +130,7 @@ impl GetNone for DateTime {
         Self(None)
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         self.0.is_none()
     }
 }
@@ -700,7 +700,7 @@ impl GetNone for TimeDelta {
         TimeDelta::nat()
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         self.is_nat()
     }
 }

@@ -340,17 +340,22 @@ class GroupBy:
         columns = self.dd.columns
         others = self.dd[columns[1:]].raw_data
         groupby_obj = e.groupby(
-            by=self.by, time_expr=time_expr, closed=self.closed, others=others
+            by=self.dd[self.by], time_expr=time_expr, closed=self.closed, others=others
         )
-        info = groupby_obj.info
+        info, type_ = groupby_obj.info, groupby_obj.type
         data = []
         if exprs is not None:
             _, data_agg = groupby_obj.agg(exprs)
             data.append(data_agg) if not isinstance(data_agg, list) else data.extend(
                 data_agg
             )
-        if self.group:
+        if self.group and type_ == "time":
             data.append(info[0])
+        else:
+            if not isinstance(self.by, (list, tuple)):
+                by = [self.by]
+            for g in by:
+                kwargs[g] = "first"
         if len(kwargs):
             data_direct = []
             for k, v in kwargs.items():
@@ -375,7 +380,7 @@ class GroupBy:
                 else:
                     eval_info = v if "(" in v else v + "()"
                 data_direct.append(
-                    eval(f"self.dd['{k}'].groupby(info=info)." + eval_info)
+                    eval(f"self.dd['{k}'].groupby(info=info, type_=type_)." + eval_info)
                 )
             data.extend(data_direct)
         return DataDict(data)

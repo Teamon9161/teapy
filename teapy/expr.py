@@ -67,6 +67,7 @@ def rolling(
     start_by="full",
     others=None,
     by=None,
+    type_=None,
 ) -> ExprRolling:
     """
     window: int | duration, such as 1y, 2mo, 3d, 4h, 5m, 6s, or combine them
@@ -78,6 +79,8 @@ def rolling(
         raise ValueError("window or idx must be specified")
     elif window is not None and idx is not None:
         raise ValueError("window and idx cannot be specified at the same time")
+    if idx is not None and type_ is None:
+        raise ValueError("type_ must be specified if idx is not None")
     return ExprRolling(
         self,
         window=window,
@@ -87,6 +90,7 @@ def rolling(
         start_by=start_by,
         others=others,
         by=by,
+        type_=type_,
     )
 
 
@@ -100,6 +104,7 @@ def groupby(
     closed="left",
     sort=True,
     par=False,
+    type_=None,
 ) -> ExprGroupBy:
     """
     window: int | duration, such as 1y, 2mo, 3d, 4h, 5m, 6s, or combine them
@@ -109,6 +114,8 @@ def groupby(
         raise ValueError("by or info must be specified")
     elif by is not None and info is not None:
         raise ValueError("by and info cannot be specified at the same time")
+    if info is not None and type_ is None:
+        raise ValueError("type_ must be specified if info is not None")
     return ExprGroupBy(
         self,
         by=by,
@@ -118,6 +125,7 @@ def groupby(
         closed=closed,
         sort=sort,
         par=par,
+        type_=type_,
     )
 
 
@@ -168,43 +176,59 @@ class ExprRolling(ExprRollMixin):
         others=None,
         start_by="full",
         by=None,
+        type_=None,
     ):
         super().__init__(expr, window, time_expr=time_expr, others=others, by=by)
+        self.type = type_
         self.idx = idx
         self.offset = offset
         self.start_by = start_by
+        self.get_type()
         self.idx = self.get_idx()
 
     def get_idx(self):
         if self.idx is None:
-            if self.offset is None:
-                if isinstance(self.window, int):
-                    return self.expr._get_fix_window_rolling_idx(self.window)
-                else:
-                    return self.time_expr._get_time_rolling_idx(
-                        self.window, start_by=self.start_by
-                    )
-            else:
+            if self.type == "fix":
+                return self.expr._get_fix_window_rolling_idx(self.window)
+            elif self.type == "time_start":
+                return self.time_expr._get_time_rolling_idx(
+                    self.window, start_by=self.start_by
+                )
+            elif self.type == "time_offset":
                 return self.time_expr._get_time_rolling_offset_idx(
                     self.window, self.offset
                 )
+            else:
+                raise ValueError
         else:
             return self.idx
+
+    def get_type(self):
+        if self.type is None:
+            if self.offset is None:
+                if isinstance(self.window, int):
+                    self.type = "fix"
+                else:
+                    self.type = "time_start"
+            else:
+                self.type = "time_offset"
 
     def __getattr__(self, name):
         idx = self.idx
 
         def wrap_func():
-            if self.offset is None:
+            if self.type in ["fix", "time_start"]:
                 return getattr(self.expr, f"_rolling_select_{name}")(idx)
-            else:
+            elif self.type == "time_offset":
                 return getattr(self.expr, f"_rolling_select_by_vecusize_{name}")(idx)
+            else:
+                raise ValueError
 
         return wrap_func
 
     def apply(self, agg_expr):
         idx = self.idx
-        if self.offset is None:
+        if self.type in ["fix", "time_start"]:
             if isinstance(agg_expr, (list, tuple)):
                 return [
                     self.expr.rolling_apply_with_start(
@@ -216,7 +240,7 @@ class ExprRolling(ExprRollMixin):
                 return self.expr.rolling_apply_with_start(
                     agg_expr, roll_start=idx, others=self.others
                 )
-        else:
+        elif self.type == "time_offset":
             if isinstance(agg_expr, (list, tuple)):
                 return [
                     self.expr.apply_with_vecusize(ae, idxs=idx, others=self.others)
@@ -226,6 +250,8 @@ class ExprRolling(ExprRollMixin):
                 return self.expr.apply_with_vecusize(
                     agg_expr, idxs=idx, others=self.others
                 )
+        else:
+            raise ValueError
 
 
 class ExprGroupBy(ExprRollMixin):
@@ -239,54 +265,67 @@ class ExprGroupBy(ExprRollMixin):
         closed="left",
         sort=True,
         par=False,
+        type_=None,
     ) -> None:
+        self.type = type_
         self.closed = closed
         self.info = info
         self.sort = sort
         self.par = par
         super().__init__(expr, by, time_expr=time_expr, others=others)
+        self.get_type()
         self.info = self.get_info()
+
+    def get_type(self):
+        if self.type is None:
+            if isinstance(self.window, int):
+                self.type = "unimplemented"
+            elif self.time_expr is not None and isinstance(self.window, str):
+                self.type = "time"
+            else:
+                self.type = "default"
 
     def get_info(self):
         if self.info is None:
-            if isinstance(self.window, int):
+            if self.type == "unimplemented":
                 # groupby fix step
                 raise NotImplementedError
-            else:
-                if self.time_expr is not None and isinstance(self.window, str):
-                    # groupby time
-                    return self.time_expr._get_time_groupby_info(
-                        self.window, closed=self.closed, split=True
-                    )
+            elif self.type == "time":
+                # groupby time
+                return self.time_expr._get_time_groupby_info(
+                    self.window, closed=self.closed, split=True
+                )
+            elif self.type == "default":
+                # groupby keys
+                if isinstance(self.window, list):
+                    key, other_keys = self.window[0], self.window[1:]
                 else:
-                    # groupby keys
-                    if isinstance(self.window, list):
-                        key, other_keys = self.window[0], self.window[1:]
-                    else:
-                        key, other_keys = self.window, None
-                    return key._get_groupby_idx(
-                        other_keys, sort=self.sort, par=self.par
-                    )
+                    key, other_keys = self.window, None
+                return key._get_groupby_idx(other_keys, sort=self.sort, par=self.par)
+            else:
+                raise ValueError
         else:
             return self.info
 
     def __getattr__(self, name):
         def wrap_func(*args, **kwargs):
-            if self.time_expr is not None and isinstance(self.window, str):
+            if self.type == "time":
                 return getattr(self.expr, f"_group_by_time_{name}")(
                     self.info[1], *args, **kwargs
                 )
-            elif isinstance(self.window, int):
+            elif self.type == "unimplemented":
                 raise NotImplementedError
-            else:
+            elif self.type == "default":
                 return getattr(self.expr, f"_rolling_select_by_vecusize_{name}")(
                     self.info, *args, **kwargs
                 )
+            else:
+                raise ValueError
 
         return wrap_func
 
     def agg(self, agg_expr):
-        if self.time_expr is not None and isinstance(self.window, str):
+        if self.type == "time":
             label, start_idx = self.info
             if isinstance(agg_expr, (list, tuple)):
                 return label, [
@@ -299,9 +338,9 @@ class ExprGroupBy(ExprRollMixin):
                 return label, self.expr.group_by_time(
                     agg_expr, group_info=start_idx, others=self.others
                 )
-        elif isinstance(self.window, int):
+        elif self.type == "unimplemented":
             raise NotImplementedError
-        else:
+        elif self.type == "default":
             if isinstance(agg_expr, (list, tuple)):
                 return [
                     self.expr.apply_with_vecusize(
@@ -313,3 +352,5 @@ class ExprGroupBy(ExprRollMixin):
                 return self.expr.apply_with_vecusize(
                     agg_expr, idxs=self.info, others=self.others
                 )
+        else:
+            raise ValueError

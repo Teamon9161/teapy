@@ -123,6 +123,74 @@ macro_rules! impl_rolling_by_startidx_agg {
     };
 }
 
+macro_rules! impl_rolling_by_startidx_agg_all_dtype {
+    ($func_name: ident-$func1_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*) $(.$func2: ident ($($p2: ident: $ty2: ty),*))*) => {
+        impl<'a> Expr<'a> {
+            #[allow(unreachable_patterns)]
+            pub fn $func_name(&mut self, roll_start: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
+            {
+                self.chain_f_ctx(
+                    move |(data, ctx)| {
+                        let arr = data.view_arr(ctx.as_ref())?.deref();
+                        let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
+                        let roll_start_arr = roll_start.view().to_dim1()?;
+                        let len = arr.len();
+                        if len != roll_start_arr.len() {
+                            return Err(format!(
+                                "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
+                                arr.len(),
+                                roll_start_arr.len()
+                            )
+                            .into());
+                        }
+
+                        let out: ArrOk<'a> = match_arrok!(nostr arr, arr, {
+                            let arr = arr.view().to_dim1()?;
+                            let out = zip(roll_start_arr, 0..len)
+                            .map(|(mut start, end)| {
+                                if start > end {
+                                    start = end;  // the start idx should be inbound
+                                }
+                                let current_arr = arr.slice(s![start..end + 1]).wrap();
+                                current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
+                            })
+                            .collect_trusted();
+                            Arr1::from_vec(out).to_dimd().into()
+                        });
+                        Ok((out.into(), ctx.clone()))
+                    }
+                );
+                self
+            }
+
+            #[allow(unreachable_patterns)]
+            pub fn $func1_name(&mut self, idxs: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
+            {
+                self.chain_f_ctx(
+                    move |(data, ctx)| {
+                        let arr = data.view_arr(ctx.as_ref())?.deref();
+                        let idxs = idxs.view_arr(ctx.as_ref())?.deref().cast_vecusize();
+                        let idxs_arr = idxs.view().to_dim1()?;
+                        let out: ArrOk<'a> = match_arrok!(nostr arr, arr, {
+                            let arr = arr.view().to_dim1()?;
+                            let out = idxs_arr
+                                .into_iter()
+                                .map(|idx| {
+                                    let current_arr = arr.select_unchecked(Axis(0), &idx);
+                                    current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
+                                })
+                                .collect_trusted();
+                            Arr1::from_vec(out).to_dimd().into()
+                        });
+                        Ok((out.into(), ctx.clone()))
+                    }
+                );
+                self
+            }
+        }
+    };
+}
+
 impl_rolling_by_startidx_agg!(
     rolling_select_max - rolling_select_by_vecusize_max,
     max_1d()
@@ -135,21 +203,21 @@ impl_rolling_by_startidx_agg!(rolling_select_mean-rolling_select_by_vecusize_mea
 impl_rolling_by_startidx_agg!(rolling_select_sum-rolling_select_by_vecusize_sum, sum_1d(stable: bool));
 impl_rolling_by_startidx_agg!(rolling_select_std-rolling_select_by_vecusize_std, std_1d(min_periods: usize, stable: bool));
 impl_rolling_by_startidx_agg!(rolling_select_var-rolling_select_by_vecusize_var, var_1d(min_periods: usize, stable: bool));
-impl_rolling_by_startidx_agg!(
+impl_rolling_by_startidx_agg_all_dtype!(
     rolling_select_valid_first - rolling_select_by_vecusize_valid_first,
     valid_first_1d()
 );
-impl_rolling_by_startidx_agg!(
+impl_rolling_by_startidx_agg_all_dtype!(
     rolling_select_valid_last - rolling_select_by_vecusize_valid_last,
     valid_last_1d()
 );
-impl_rolling_by_startidx_agg!(
+impl_rolling_by_startidx_agg_all_dtype!(
     rolling_select_first - rolling_select_by_vecusize_first,
-    first_unwrap()
+    first_1d()
 );
-impl_rolling_by_startidx_agg!(
+impl_rolling_by_startidx_agg_all_dtype!(
     rolling_select_last - rolling_select_by_vecusize_last,
-    last_unwrap()
+    last_1d()
 );
 
 impl_rolling_by_startidx_agg!(

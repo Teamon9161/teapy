@@ -13,7 +13,7 @@ clean: ## clean useless folders
 	@cargo clean
 
 .PHONY: test
-test: venv
+test:
 	@pytest -n auto
 	# @pytest -s
 
@@ -46,7 +46,7 @@ coverage: # rust and python coverage
 		maturin develop; \
 		$(MAKE) pytest-cov; \
 		# cargo llvm-cov report -- workspace --lcov --output-path coverage.lcov; \
-		cargo llvm-cov report -p teapy -p tears -p py_teapy --lcov --output-path coverage.lcov; \
+		cargo llvm-cov report -p tears -p py_teapy --lcov --output-path coverage.lcov; \
 		"
 
 .PHONY: release_native

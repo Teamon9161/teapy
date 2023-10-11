@@ -30,7 +30,9 @@ def eval(lazy_list):
         elif isinstance(lazy_list[0], DataDict):
             return eval_dicts(lazy_list, inplace=True)
         else:
-            raise ValueError("eval() only accept list of Expr or DataDict")
+            raise ValueError(
+                f"eval() only accept list of Expr or DataDict, but the type is {type(lazy_list[0])}"
+            )
 
 
 def calc_ret_single(

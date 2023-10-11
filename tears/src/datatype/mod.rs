@@ -208,7 +208,7 @@ impl_datatype!(OptI64, OptI64);
 pub trait GetNone {
     fn none() -> Self;
     #[allow(clippy::wrong_self_convention)]
-    fn is_none(self) -> bool;
+    fn is_none(&self) -> bool;
 }
 
 impl GetNone for f64 {
@@ -217,7 +217,7 @@ impl GetNone for f64 {
         f64::NAN
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         self.is_nan()
     }
 }
@@ -228,7 +228,7 @@ impl GetNone for f32 {
         f32::NAN
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         self.is_nan()
     }
 }
@@ -239,7 +239,7 @@ impl GetNone for String {
         "None".to_owned()
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         self == "None"
     }
 }
@@ -250,8 +250,8 @@ impl GetNone for &str {
         "None"
     }
     #[inline]
-    fn is_none(self) -> bool {
-        self == "None"
+    fn is_none(&self) -> bool {
+        *self == "None"
     }
 }
 
@@ -261,7 +261,7 @@ impl GetNone for usize {
         unreachable!("dtype usize can not be None")
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         false
     }
 }
@@ -272,7 +272,7 @@ impl GetNone for i32 {
         unreachable!("dtype i32 can not be None")
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         false
     }
 }
@@ -283,7 +283,7 @@ impl GetNone for i64 {
         unreachable!("dtype i64 can not be None")
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         false
     }
 }
@@ -294,7 +294,7 @@ impl GetNone for bool {
         panic!("bool doesn't have None value")
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         false
     }
 }
@@ -305,7 +305,7 @@ impl GetNone for u8 {
         panic!("u8 doesn't have None value")
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         false
     }
 }
@@ -316,7 +316,7 @@ impl GetNone for Vec<usize> {
         vec![]
     }
     #[inline]
-    fn is_none(self) -> bool {
+    fn is_none(&self) -> bool {
         self.is_empty()
     }
 }
@@ -331,6 +331,7 @@ impl<'a> GetDataType for &'a str {
 pub trait Number:
     Copy
     + Clone
+    + GetNone
     + Sized
     + Default
     + Num

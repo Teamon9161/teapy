@@ -111,7 +111,7 @@ auto_impl_view!(in1, [diff, pct_change], (n: i32, axis: i32, par: bool));
 auto_impl_view!(in1, 
     [
         count_nan, count_notnan, median, max, min, prod, cumprod, 
-        valid_last, valid_first,
+        valid_last, valid_first, first, last,
     ], (axis: i32, par: bool));
 auto_impl_view!(in1, [sum, cumsum], (stable: bool, axis: i32, par: bool));
 auto_impl_view!(in1, [mean, var, std, skew, kurt], (min_periods: usize, stable: bool, axis: i32, par: bool));

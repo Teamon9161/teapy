@@ -101,7 +101,7 @@ macro_rules! define_option_dtype {
                 Self(None)
             }
             #[inline]
-            fn is_none(self) -> bool {
+            fn is_none(&self) -> bool {
                 self.0.is_none()
             }
         }

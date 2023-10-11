@@ -39,6 +39,38 @@ macro_rules! impl_group_by_time_info_agg {
         }
     };
 
+    (all_dtype $func_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*) $(.$func2: ident ($($p2: ident: $ty2: ty),*))*) => {
+        impl<'a> Expr<'a> {
+            pub fn $func_name(&mut self, group_info: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
+            {
+                self.chain_f_ctx(
+                    move |(data, ctx)| {
+                        let arr = data.view_arr(ctx.as_ref())?.deref();
+                        let group_start = if let Ok(mut group_info) = group_info.view_arr_vec(ctx.as_ref()) {
+                            group_info.pop().unwrap().deref().cast_usize()
+                        } else {
+                            group_info.view_arr(ctx.as_ref())?.deref().cast_usize()
+                        };
+                        let group_start_view = group_start.view().to_dim1()?;
+                        let out: ArrOk<'a> = match_arrok!(nostr arr, arr, {
+                            let arr = arr.view().to_dim1()?;
+                            let out = group_start_view.as_slice().unwrap().windows(2)
+                            .map(|v| {
+                                let (start, next_start) = (v[0], v[1]);
+                                let current_arr = arr.slice(s![start..next_start]).wrap();
+                                current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
+                            })
+                            .collect_trusted();
+                            Arr1::from_vec(out).to_dimd().into()
+                        });
+                        Ok((out.into(), ctx.clone()))
+                    }
+                );
+                self
+            }
+        }
+    };
+
     (in2 $func_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*)) => {
         impl<'a> Expr<'a> {
             pub fn $func_name(&mut self, other: Expr<'a>, group_info: Expr<'a>  $(,$p:$ty)*) -> &mut Self
@@ -85,10 +117,10 @@ impl_group_by_time_info_agg!(group_by_time_mean, mean_1d(min_periods: usize, sta
 impl_group_by_time_info_agg!(group_by_time_sum, sum_1d(stable: bool));
 impl_group_by_time_info_agg!(group_by_time_std, std_1d(min_periods: usize, stable: bool));
 impl_group_by_time_info_agg!(group_by_time_var, var_1d(min_periods: usize, stable: bool));
-impl_group_by_time_info_agg!(group_by_time_first, first_unwrap());
-impl_group_by_time_info_agg!(group_by_time_last, last_unwrap());
-impl_group_by_time_info_agg!(group_by_time_valid_first, valid_first_1d());
-impl_group_by_time_info_agg!(group_by_time_valid_last, valid_last_1d());
+impl_group_by_time_info_agg!(all_dtype group_by_time_first, first_1d());
+impl_group_by_time_info_agg!(all_dtype group_by_time_last, last_1d());
+impl_group_by_time_info_agg!(all_dtype group_by_time_valid_first, valid_first_1d());
+impl_group_by_time_info_agg!(all_dtype group_by_time_valid_last, valid_last_1d());
 
 impl_group_by_time_info_agg!(in2 group_by_time_cov, cov_1d(min_periods: usize, stable: bool));
 impl_group_by_time_info_agg!(in2 group_by_time_corr, corr_1d(method: CorrMethod, min_periods: usize, stable: bool));
@@ -119,7 +151,7 @@ impl<'a> Expr<'a> {
             let mut start_vec = vec![];
             match closed.to_lowercase().as_str() {
                 "left" => {
-                    let mut start = ts.first().unwrap().duration_trunc(duration.clone());
+                    let mut start = ts.first_1d().duration_trunc(duration.clone());
                     label.push(start);
                     start_vec.push(0);
                     for i in 0..ts.len() {
@@ -134,7 +166,7 @@ impl<'a> Expr<'a> {
                     }
                 }
                 "right" => {
-                    let mut start = ts.first().unwrap().duration_trunc(duration.clone());
+                    let mut start = ts.first_1d().duration_trunc(duration.clone());
                     if start == *ts.get(0).unwrap() {
                         start = start - duration.clone();
                     }

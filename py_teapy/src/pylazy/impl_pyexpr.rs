@@ -819,17 +819,19 @@ impl PyExpr {
         e
     }
 
+    #[pyo3(signature=(axis=0, par=false))]
     #[allow(unreachable_patterns)]
-    pub fn first(&self) -> Self {
+    pub fn first(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.first();
+        e.e.first(axis, par);
         e
     }
 
+    #[pyo3(signature=(axis=0, par=false))]
     #[allow(unreachable_patterns)]
-    pub fn last(&self) -> Self {
+    pub fn last(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.last();
+        e.e.last(axis, par);
         e
     }
 

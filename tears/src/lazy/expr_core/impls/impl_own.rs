@@ -99,6 +99,34 @@ impl<'a> Expr<'a> {
         self
     }
 
+    // #[inline]
+    // #[allow(unreachable_patterns)]
+    // pub fn first_element(&mut self) -> &mut Self {
+    //     // self.index_axis(0i32.into(), axis)
+    //     self.chain_f_ctx(move |(data, ctx)| {
+    //         let arr = data.into_arr(ctx.clone())?;
+    //         match_arrok!(arr, arr, {
+    //             let out = arr.view().0.first().cloned();
+    //             Ok((out.into(), ctx))
+    //         })
+    //     });
+    //     self
+    // }
+
+    // #[inline]
+    // #[allow(unreachable_patterns)]
+    // pub fn last_element(&mut self) -> &mut Self {
+    //     // self.index_axis((-1i32).into(), axis)
+    //     self.chain_f_ctx(move |(data, ctx)| {
+    //         let arr = data.into_arr(ctx.clone())?;
+    //         match_arrok!(arr, arr, {
+    //             let out = arr.view().0.last().cloned();
+    //             Ok((out.into(), ctx))
+    //         })
+    //     });
+    //     self
+    // }
+
     #[allow(unreachable_patterns)]
     pub fn deep_copy(&mut self) -> &mut Self {
         self.chain_f_ctx(|(data, ctx)| {

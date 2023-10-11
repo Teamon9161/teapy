@@ -110,9 +110,9 @@ impl_reduce_nd!(
     /// count not NaN number of an array on a given axis
     #[inline]
     pub fn count_notnan_1d(&self) -> i32
-    {T: Number,}
+    {T: GetNone; Send; Sync,}
     {
-        self.count_by(|v| v.notnan())
+        self.count_by(|v| !v.is_none())
     }
 );
 
@@ -121,42 +121,43 @@ impl_reduce_nd!(
     /// count NaN number of an array on a given axis
     #[inline]
     pub fn count_nan_1d(&self) -> i32
-    {T: Number,}
+    {T: GetNone; Send; Sync,}
     {
-        self.count_by(|v| v.isnan())
+        self.count_by(|v| v.is_none())
     }
 );
 
-// impl_reduce_nd!(
-//     first,
-//     /// first valid value
-//     #[inline]
-//     pub fn first_1d(&self) -> T
-//     {T: GetNone; Clone}
-//     {
-//         if self.len() == 0 {
-//             T::none()
-//         } else {
-//             unsafe {self.uget(0)}.clone()
-//         }
-//     }
-// );
+impl_reduce_nd!(
+    first,
+    /// first valid value
+    #[inline]
+    pub fn first_1d(&self) -> T
+    {T: Clone; Send; Sync}
+    {
+        if self.len() == 0 {
+            unreachable!("first_1d should not be called on an empty array")
+        } else {
+            unsafe {self.uget(0)}.clone()
+        }
+    }
+);
 
-// impl_reduce_nd!(
-//     last,
-//     /// first valid value
-//     #[inline]
-//     pub fn last_1d(&self) -> T
-//     {T: GetNone; Clone}
-//     {
-//         let len = self.len();
-//         if len == 0 {
-//             T::none()
-//         } else {
-//             unsafe {self.uget(len-1)}.clone()
-//         }
-//     }
-// );
+impl_reduce_nd!(
+    last,
+    /// first valid value
+    #[inline]
+    pub fn last_1d(&self) -> T
+    {T: Clone; Send; Sync}
+    {
+        let len = self.len();
+        if len == 0 {
+            // T::none()
+            unreachable!("last_1d should not be called on an empty array")
+        } else {
+            unsafe {self.uget(len-1)}.clone()
+        }
+    }
+);
 
 impl_reduce_nd!(
     valid_first,
