@@ -1,9 +1,9 @@
 use crate::{Cast, DataType, GetDataType, TpResult};
 
 use super::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
-use ndarray::{s, Array, ArrayD, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
+use ndarray::{s, Array, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+// use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::marker::PhantomPinned;
 use std::ops::Deref;
 use std::pin::Pin;
@@ -114,37 +114,37 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
     }
 }
 
-impl<'a, T> Serialize for ArbArray<'a, T>
-where
-    T: Serialize + Clone,
-{
-    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
-    where
-        Se: Serializer,
-    {
-        match self {
-            ArbArray::View(arr_view) => arr_view.to_owned().serialize(serializer),
-            ArbArray::ViewMut(arr_view) => arr_view.to_owned().serialize(serializer),
-            ArbArray::Owned(arr) => arr.serialize(serializer),
-            ArbArray::ViewOnBase(vb) => vb.view().to_owned().serialize(serializer),
-            ArbArray::ArrowChunk(_ac) => unreachable!("ArrowChunk is not serializable"),
-        }
-    }
-}
+// impl<'a, T> Serialize for ArbArray<'a, T>
+// where
+//     T: Serialize + Clone,
+// {
+//     fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
+//     where
+//         Se: Serializer,
+//     {
+//         match self {
+//             ArbArray::View(arr_view) => arr_view.serialize(serializer),
+//             ArbArray::ViewMut(arr_view) => arr_view.serialize(serializer),
+//             ArbArray::Owned(arr) => arr.serialize(serializer),
+//             ArbArray::ViewOnBase(vb) => vb.view().serialize(serializer),
+//             ArbArray::ArrowChunk(_ac) => unreachable!("ArrowChunk is not serializable"),
+//         }
+//     }
+// }
 
-impl<'a, 'de, T> Deserialize<'de> for ArbArray<'a, T>
-where
-    T: Deserialize<'de> + Clone,
-{
-    fn deserialize<D>(deserializer: D) -> Result<ArbArray<'a, T>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Ok(ArbArray::<T>::Owned(
-            ArrayD::<T>::deserialize(deserializer)?.wrap(),
-        ))
-    }
-}
+// impl<'a, 'de, T> Deserialize<'de> for ArbArray<'a, T>
+// where
+//     T: Deserialize<'de> + Clone,
+// {
+//     fn deserialize<D>(deserializer: D) -> Result<ArbArray<'a, T>, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         Ok(ArbArray::<T>::Owned(
+//             ArrayD::<T>::deserialize(deserializer)?.wrap(),
+//         ))
+//     }
+// }
 
 #[cfg(not(feature = "arw"))]
 impl<'a, T: Default> Default for ArbArray<'a, T> {

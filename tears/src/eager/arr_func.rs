@@ -697,7 +697,12 @@ impl_map_nd!(
         } else if n > 0 {
             self.apply_window_to(out, n.unsigned_abs() as usize + 1, |v, v_rm| {
                 if let Some(v_rm) = v_rm {
-                    v.f64() / v_rm.f64() - 1.
+                    let v_rm = v_rm.f64();
+                    if v_rm != 0. {
+                        v.f64() / v_rm.f64() - 1.
+                    } else {
+                        f64::NAN
+                    }
                 } else {
                     f64::NAN
                 }
@@ -705,7 +710,12 @@ impl_map_nd!(
         } else {
             self.apply_revwindow_to(out, n.unsigned_abs() as usize + 1, |v, v_rm| {
                 if let Some(v_rm) = v_rm {
-                    v.f64() / v_rm.f64() - 1.
+                    let v_rm = v_rm.f64();
+                    if v_rm != 0. {
+                        v.f64() / v_rm.f64() - 1.
+                    } else {
+                        f64::NAN
+                    }
                 } else {
                     f64::NAN
                 }

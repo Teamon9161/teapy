@@ -3,6 +3,7 @@ use crate::{Arr, ArrView, ArrViewMut};
 use ndarray::Dimension;
 use num::{traits::AsPrimitive, Num, One, Zero};
 use pyo3::{FromPyObject, PyAny, PyResult, Python, ToPyObject};
+use serde::Serialize;
 use std::cmp::{Ordering, PartialOrd};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
 use std::str::FromStr;
@@ -40,7 +41,7 @@ macro_rules! define_option_dtype {
         define_option_dtype(impl_numeric $typ, $real);
     };
     ($typ: ident, $real: ty) => {
-        #[derive(Copy, Clone, Default)]
+        #[derive(Copy, Clone, Default, Serialize)]
         #[repr(transparent)]
         pub struct $typ(pub Option<$real>);
 

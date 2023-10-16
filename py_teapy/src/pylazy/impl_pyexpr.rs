@@ -5,7 +5,12 @@ use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use pyo3::{exceptions::PyAttributeError, pyclass::CompareOp, PyTraverseError, PyVisit};
+use pyo3::types::PyDict;
+use pyo3::{
+    exceptions::{PyAttributeError, PyTypeError},
+    pyclass::CompareOp,
+    PyTraverseError, PyVisit,
+};
 
 #[cfg(feature = "window_func")]
 use tears::lazy::RollingTimeStartBy;
@@ -32,9 +37,13 @@ pub fn expr_register(name: String, f: PyObject) -> PyResult<()> {
 #[allow(clippy::missing_safety_doc)]
 impl PyExpr {
     #[new]
-    #[pyo3(signature=(expr, name=None, copy=false))]
-    pub unsafe fn new(expr: &PyAny, name: Option<String>, copy: bool) -> PyResult<Self> {
-        let mut out = parse_expr(expr, copy)?;
+    #[pyo3(signature=(expr=None, name=None, copy=false))]
+    pub unsafe fn new(expr: Option<&PyAny>, name: Option<String>, copy: bool) -> PyResult<Self> {
+        let mut out = if let Some(expr) = expr {
+            parse_expr(expr, copy)?
+        } else {
+            Default::default()
+        };
         if let Some(name) = name {
             out.set_name(name);
         }
@@ -628,19 +637,45 @@ impl PyExpr {
         }
     }
 
-    // pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
-    //     match state.extract::<&pyo3::types::PyBytes>(py) {
-    //         Ok(s) => {
-    //             self.foo = bincode::deserialize(s.as_bytes()).unwrap();
-    //             Ok(())
-    //         }
-    //         Err(e) => Err(e),
-    //     }
-    // }
+    // #[classmethod]
+    pub fn __setstate__(&mut self, state: &PyAny) -> PyResult<()> {
+        if let Ok(state) = state.downcast::<PyDict>() {
+            let name = state
+                .get_item("name")
+                .unwrap()
+                .extract::<Option<String>>()?;
+            let arr = state.get_item("arr").unwrap();
+            if let Some(name) = name {
+                self.set_name(name);
+            }
+            let new_e = parse_expr_nocopy(arr)?;
+            let obj = new_e.obj();
+            self.e = new_e.e;
+            self.add_obj(obj);
+            Ok(())
+        } else {
+            Err(PyTypeError::new_err("state must be dict"))
+        }
 
-    // pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-    //     Ok(PyBytes::new(py, &bincode::serialize(&self.foo).unwrap()).to_object(py))
-    // }
+        // match state.extract::<&pyo3::types::PyBytes>(py) {
+        //     Ok(s) => {
+        //         let e: Expr<'static> = bincode::deserialize(s.as_bytes()).unwrap();
+        //         Ok(())
+        //     }
+        //     Err(e) => Err(e),
+        // }
+    }
+
+    #[pyo3(signature=())]
+    pub fn __getstate__(&mut self, py: Python) -> PyResult<PyObject> {
+        let name = self.e.name();
+        let arr = self.value(None, None, py)?;
+        let state = PyDict::new(py);
+        state.set_item("name", name)?;
+        state.set_item("arr", arr)?;
+        Ok(state.to_object(py))
+        // Ok(PyBytes::new(py, &bincode::serialize(&self.e).unwrap()).to_object(py))
+    }
 
     pub fn is_in(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;

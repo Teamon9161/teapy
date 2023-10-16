@@ -4,6 +4,7 @@ use regex::Regex;
 use std::fmt::Debug;
 use std::iter::zip;
 use std::sync::Arc;
+// use serde::Serialize;
 
 use crate::lazy::Expr;
 use crate::{CollectTrustedToVec, Context, CorrMethod, StrError, TpResult};

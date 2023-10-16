@@ -10,9 +10,21 @@ use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
+// use serde::Serialize;
 
 #[derive(Default)]
 pub struct Expr<'a>(Arc<Mutex<ExprInner<'a>>>);
+
+// impl<'a> Serialize for Expr<'a> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//         {
+//             let e = self.lock();
+//             let data = e.view_data(None).unwrap();
+//             data.serialize(serializer)
+//         }
+// }
 
 impl<'a> Clone for Expr<'a> {
     fn clone<'b>(&'b self) -> Expr<'a> {

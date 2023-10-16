@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .datadict import name_prefix
-from .teapy import PyExpr as Expr
+from .teapy import Expr
 from .teapy import expr_register as _expr_register
 from .teapy import parse_expr_list as asexprs
 
@@ -43,6 +43,16 @@ def left_join(self, right, left_other=None):
         return [r.select(idx, check=False) for r in right]
     else:
         return right.select(idx, check=False)
+
+
+@register
+def __getstate__(self):
+    return {"arr": self.value(), "name": self.name}
+
+
+@register
+def __setstate__(self, state):
+    return Expr(state["arr"], state.get("name"))
 
 
 # @register

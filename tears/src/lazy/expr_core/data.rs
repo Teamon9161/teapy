@@ -1,6 +1,7 @@
 use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 
 use super::{Expr, ExprElement, FuncNode};
+// use serde::Serialize;
 #[cfg(feature = "blas")]
 use crate::lazy::OlsResult;
 use crate::{lazy::ColumnSelector, ArrViewD, CollectTrustedToVec};

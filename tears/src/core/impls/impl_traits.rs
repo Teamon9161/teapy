@@ -6,6 +6,7 @@ use crate::{DateTime, ExprElement, OptUsize, PyValue, TimeDelta, ViewOnBase};
 
 use crate::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -188,8 +189,6 @@ impl<'a> From<Pin<Box<ViewOnBase<'a, &'a str>>>> for ArrOk<'a> {
         ArrOk::Str(arr.into())
     }
 }
-
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 impl<A, D, S> Serialize for ArrBase<S, D>
 where

@@ -1,6 +1,7 @@
 use super::Data;
 use crate::{ArbArray, ArrD, ArrOk, Context, ExprElement, OlsResult, TpResult};
 use std::{fmt::Debug, sync::Arc};
+// use serde::{Serialize, ser::SerializeStruct};
 
 #[derive(Default)]
 pub struct ExprInner<'a> {
@@ -12,6 +13,22 @@ pub struct ExprInner<'a> {
     // we can not change expression base in each context
     pub ctx_ref: Option<Data<'a>>,
 }
+
+// impl<'a> Serialize for ExprInner<'a> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where S: serde::Serializer
+//     {
+//         if !self.nodes.is_empty() {
+//             panic!("The expression must be evaluated before serialize!")
+//         }
+//         let mut state = serializer.serialize_struct("ExprInner", 4)?;
+//         state.serialize_field("base", &self.base)?;
+//         state.serialize_field("name", &self.name)?;
+//         state.serialize_field("nodes", &Vec::<usize>::with_capacity(0))?;
+//         state.serialize_field("ctx_ref", &self.ctx_ref)?;
+//         state.end()
+//     }
+// }
 
 impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
     fn from(arr: T) -> Self {

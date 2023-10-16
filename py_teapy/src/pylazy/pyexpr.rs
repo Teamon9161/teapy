@@ -12,7 +12,7 @@ use tears::{ExprElement, StrError, TimeUnit};
 
 pub type RefObj = Option<Vec<PyObject>>;
 
-#[pyclass(subclass)]
+#[pyclass(subclass, module = "teapy", name = "Expr")]
 #[derive(Clone, Default)]
 pub struct PyExpr {
     pub e: Expr<'static>,

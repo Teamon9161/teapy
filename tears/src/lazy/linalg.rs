@@ -1,5 +1,6 @@
 use super::super::core::{conjugate, LeastSquaresResult};
 use super::expr_core::Expr;
+// use serde::Serialize;
 use crate::{ArbArray, Arr1, Arr2, ArrD, ArrOk, ArrViewD, WrapNdarray};
 use ndarray::{Array1, Axis, Ix2, Slice};
 use std::sync::Arc;

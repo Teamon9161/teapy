@@ -1,8 +1,9 @@
 use pyo3::PyAny;
 use regex::Regex;
+use serde::Serialize;
 use std::fmt::Debug;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ColumnSelector<'a> {
     Index(i32),
     VecIndex(Vec<i32>),
@@ -10,6 +11,7 @@ pub enum ColumnSelector<'a> {
     NameOwned(String),
     VecName(Vec<&'a str>),
     VecNameOwned(Vec<String>),
+    #[serde(with = "serde_regex")]
     Regex(Regex),
     All,
 }

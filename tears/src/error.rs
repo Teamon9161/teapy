@@ -1,10 +1,12 @@
 use pyo3::{exceptions::PyValueError, prelude::PyErr};
-use std::{borrow::Cow, fmt::Display};
+use std::{borrow::Cow, error::Error, fmt::Display};
 
 pub type TpResult<T> = Result<T, StrError>;
 
 #[derive(Debug)]
 pub struct StrError(pub Cow<'static, str>);
+
+impl Error for StrError {}
 
 impl Display for StrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
