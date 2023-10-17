@@ -6,7 +6,7 @@ use numpy::{
     npyffi::NPY_DATETIMEUNIT,
 };
 use pyo3::prelude::*;
-use serde::{Deserialize, Serialize};
+// use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     hash::Hash,
@@ -48,7 +48,7 @@ const TIME_RULE_VEC: [&str; 9] = [
     "%d/%m/%YH%M%S",
 ];
 
-#[derive(Clone, Copy, Default, Hash, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Hash, Eq, PartialEq, PartialOrd)]
 pub struct DateTime(pub Option<NaiveDateTime>);
 
 impl std::fmt::Debug for DateTime {
@@ -139,7 +139,7 @@ impl DateTime {
     #[inline]
     pub fn into_i64(self) -> i64 {
         // self.map_or(i64::MIN, |dt| dt.timestamp_micros())
-        self.map_or(i64::MIN, |dt| dt.timestamp_nanos())
+        self.map_or(i64::MIN, |dt| dt.timestamp_nanos_opt().unwrap_or(i64::MIN))
     }
 
     #[inline]
@@ -297,7 +297,7 @@ impl DateTime {
             match T::UNIT {
                 NPY_FR_ms => dt.timestamp_millis().into(),
                 NPY_FR_us => dt.timestamp_micros().into(),
-                NPY_FR_ns => dt.timestamp_nanos().into(),
+                NPY_FR_ns => dt.timestamp_nanos_opt().unwrap_or(i64::MIN).into(),
                 _ => unreachable!(),
             }
         } else {
@@ -366,11 +366,11 @@ impl std::fmt::Debug for TimeUnit {
     }
 }
 
-#[serde_with::serde_as]
-#[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
+// #[serde_with::serde_as]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct TimeDelta {
     pub months: i32,
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    // #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub inner: Duration,
 }
 

@@ -216,7 +216,7 @@ impl PyExpr {
 
     #[pyo3(signature=(context=None))]
     pub fn view_in(
-        self: PyRefMut<Self>,
+        slf: PyRefMut<'_, Self>,
         context: Option<&PyAny>,
         py: Python,
     ) -> PyResult<PyObject> {
@@ -226,8 +226,8 @@ impl PyExpr {
             Default::default()
         };
         let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
-        let data = self.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
-        let container = unsafe { PyAny::from_borrowed_ptr(py, self.as_ptr()) };
+        let data = slf.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
+        let container = unsafe { PyAny::from_borrowed_ptr(py, slf.as_ptr()) };
         if matches!(&data, Data::ArrVec(_)) {
             if let Data::ArrVec(arr_vec) = data {
                 let out = arr_vec
@@ -271,9 +271,9 @@ impl PyExpr {
     }
 
     #[getter]
-    #[allow(unreachable_patterns)]
-    pub fn get_view(self: PyRefMut<Self>, py: Python) -> PyResult<PyObject> {
-        self.view_in(None, py)
+    pub fn get_view(slf: PyRefMut<'_, Self>, py: Python) -> PyResult<PyObject> {
+        // slf.view_in(None, py)
+        PyExpr::view_in(slf, None, py)
     }
 
     // #[allow(unreachable_patterns)]
@@ -401,7 +401,7 @@ impl PyExpr {
     }
 
     pub fn __getattr__<'py>(
-        self: PyRef<'py, Self>,
+        slc: PyRef<'py, Self>,
         attr: &'py str,
         py: Python<'py>,
     ) -> PyResult<&'py PyAny> {
@@ -411,7 +411,7 @@ impl PyExpr {
             let func = res.clone();
             let functools = py.import("functools")?;
             let partial = functools.getattr("partial")?;
-            partial.call1((func, self))
+            partial.call1((func, slc))
         } else {
             Err(PyAttributeError::new_err(format!(
                 "'PyExpr' object has no attribute {attr}"
@@ -643,8 +643,8 @@ impl PyExpr {
             let name = state
                 .get_item("name")
                 .unwrap()
-                .extract::<Option<String>>()?;
-            let arr = state.get_item("arr").unwrap();
+                .map(|v| v.extract::<String>().unwrap());
+            let arr = state.get_item("arr").unwrap().unwrap();
             if let Some(name) = name {
                 self.set_name(name);
             }

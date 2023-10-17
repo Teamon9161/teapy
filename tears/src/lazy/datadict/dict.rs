@@ -89,7 +89,6 @@ impl<'a> DataDict<'a> {
             .iter()
             .map(|e| e.name().unwrap())
             .collect_trusted()
-        // self.map.keys().cloned().collect_trusted()
     }
 
     #[inline]
@@ -99,7 +98,6 @@ impl<'a> DataDict<'a> {
             .iter()
             .map(|e| e.ref_name().unwrap())
             .collect_trusted()
-        // self.map.keys().map(|k| k.as_str()).collect_trusted()
     }
 
     #[cfg(feature = "arw")]
@@ -244,34 +242,15 @@ impl<'a> DataDict<'a> {
                 .into_iter()
                 .flat_map(|name| self.get_selector_out_name(ColumnSelector::Name(name)))
                 .collect::<Vec<_>>(),
-            ColumnSelector::VecNameOwned(name_vec) => self.get_selector_out_name(name_vec.iter().map(|s| s.as_str()).collect_trusted().into())
-            // name_vec
-            // .into_iter()
-            // .flat_map(|name| self.get_selector_out_name(ColumnSelector::NameOwned(name)))
-            // .collect::<Vec<_>>(),
+            ColumnSelector::VecNameOwned(name_vec) => self.get_selector_out_name(
+                name_vec.iter().map(|s| s.as_str()).collect_trusted().into(),
+            ),
         }
     }
 
     /// drop some columns inplace, return the name of the dropped columns
     pub fn drop_inplace(&mut self, col: ColumnSelector) -> TpResult<Vec<String>> {
         let drop_cols = self.get_selector_out_name(col);
-        // let map = Arc::get_mut(&mut self.map);
-        // let mut drop_cols = Vec::with_capacity(col_name_vec.len());
-        // if let Some(map) = map {
-        //     for col_name in &col_name_vec {
-        //         if map.remove(col_name).is_some() {
-        //             drop_cols.push(col_name.clone());
-        //         }
-        //     }
-        // } else {
-        //     let mut map = (*self.map).clone();
-        //     for col_name in &col_name_vec {
-        //         if map.remove(col_name).is_some() {
-        //             drop_cols.push(col_name.clone());
-        //         }
-        //     }
-        //     self.map = Arc::new(map);
-        // }
         self.data = self
             .data
             .drain_filter(|e| !drop_cols.contains(&e.name().unwrap()))
