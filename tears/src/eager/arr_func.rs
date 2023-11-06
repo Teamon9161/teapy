@@ -960,7 +960,7 @@ impl_map_inplace_nd!(
     pub fn fillna_inplace_1d<T2>(&mut self, method: FillMethod, value: Option<T2>)
     {
         where
-        T: Number,
+        T: GetNone; Clone; Send; Sync,
         T2: Cast<T>; Clone; Send; Sync
     }
     {
@@ -970,14 +970,14 @@ impl_map_inplace_nd!(
                 let mut last_valid: Option<T> = None;
                 let value = value.map(|v| v.cast());
                 let mut f = |v: &mut T| {
-                    if v.isnan() {
-                        if let Some(lv) = last_valid {
-                            *v = lv;
+                    if v.is_none() {
+                        if let Some(lv) = last_valid.as_ref() {
+                            *v = lv.clone();
                         } else if let Some(value) = &value {
-                            *v = *value;
+                            *v = value.clone();
                         }
                     } else { // v is valid, update last_valid
-                        last_valid = Some(*v);
+                        last_valid = Some(v.clone());
                     }
                 };
                 if let Ffill = method {
@@ -991,8 +991,8 @@ impl_map_inplace_nd!(
             Vfill => {
                 let value = value.expect("Fill value must be pass when using value to fillna");
                 let value: T = value.cast();
-                self.apply_mut(|v| if v.isnan() {
-                    *v = value
+                self.apply_mut(|v| if v.is_none() {
+                    *v = value.clone()
                 });
             }
         }

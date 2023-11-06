@@ -228,6 +228,10 @@ impl_rolling_by_startidx_agg!(
     rolling_select_umin - rolling_select_by_vecusize_umin,
     sorted_unique_1d().min_1d()
 );
+impl_rolling_by_startidx_agg!(
+    rolling_select_quantile - rolling_select_by_vecusize_quantile,
+    quantile_1d(q: f64, method: crate::QuantileMethod)
+);
 
 impl_rolling_by_startidx_agg!(in2 rolling_select_cov, cov_1d(min_periods: usize, stable: bool));
 impl_rolling_by_startidx_agg!(in2 rolling_select_corr, corr_1d(method: CorrMethod, min_periods: usize, stable: bool));

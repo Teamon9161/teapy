@@ -2072,6 +2072,9 @@ impl PyExpr {
     #[pyo3(signature=(other, axis=0))]
     pub unsafe fn concat_py(&self, other: &PyAny, axis: i32) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
+        if other.is_empty() {
+            return Ok(self.clone());
+        }
         let obj_vec = other.iter().map(|e| e.obj()).collect_trusted();
         let other = other.into_iter().map(|e| e.e).collect_trusted();
         let mut out = self.clone();
@@ -2083,6 +2086,9 @@ impl PyExpr {
     #[pyo3(signature=(other, axis=0))]
     pub unsafe fn stack_py(&self, other: &PyAny, axis: i32) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
+        if other.is_empty() {
+            return Ok(self.clone());
+        }
         let obj_vec = other.iter().map(|e| e.obj()).collect_trusted();
         let other = other.into_iter().map(|e| e.e).collect_trusted();
         let mut out = self.clone();
@@ -2602,6 +2608,20 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
+    #[pyo3(signature=(roll_start, q, method=QuantileMethod::Linear))]
+    pub unsafe fn _rolling_select_quantile(
+        &self,
+        roll_start: &PyAny,
+        q: f64,
+        method: QuantileMethod,
+    ) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let obj = roll_start.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_quantile(roll_start.e, q, method);
+        Ok(out.add_obj_into(obj))
+    }
+
     #[pyo3(signature=(idxs, stable=false))]
     pub unsafe fn _rolling_select_by_vecusize_sum(
         &self,
@@ -2711,6 +2731,20 @@ impl PyExpr {
         let obj = idxs.obj();
         let mut out = self.clone();
         out.e.rolling_select_by_vecusize_min(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[pyo3(signature=(idxs, q, method=QuantileMethod::Linear))]
+    pub unsafe fn _rolling_select_by_vecusize_quantile(
+        &self,
+        idxs: &PyAny,
+        q: f64,
+        method: QuantileMethod,
+    ) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_quantile(idxs.e, q, method);
         Ok(out.add_obj_into(obj))
     }
 }

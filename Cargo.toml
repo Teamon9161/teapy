@@ -6,7 +6,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.21"
+version = "0.4.22"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
@@ -14,7 +14,7 @@ license = "MIT"
 
 [package]
 name = "teapy"
-version = "0.4.21"
+version = "0.4.22"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
@@ -54,3 +54,6 @@ chrono = {version = "0.4.31", features = ["serde"]}
 
 [dependencies]
 py_teapy = {path = "./py_teapy", default-features = false}
+
+[profile.dev]
+incremental = true
