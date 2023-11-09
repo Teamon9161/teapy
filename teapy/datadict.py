@@ -113,8 +113,26 @@ class DataDict:
         self.apply(simplify_f, inplace=True)
 
     @construct
-    def select(self, exprs):
+    def select(self, exprs, **kwargs):
+        if not isinstance(exprs, list):
+            exprs = [exprs]
+        for i, e in enumerate(exprs):
+            if isinstance(e, str):
+                exprs[i] = self[e]
+        if len(kwargs):
+            for k, v in kwargs.items():
+                exprs.append(v.alias(k))
         return self._dd.select(exprs)
+
+    def with_columns(self, exprs, inplace=False, **kwargs):
+        dd = self if inplace else self.copy()
+        if not isinstance(exprs, list):
+            exprs = [exprs]
+        if len(kwargs):
+            for k, v in kwargs.items():
+                exprs.append(v.alias(k))
+        dd._dd.with_columns(exprs)
+        return None if inplace else dd
 
     def dropna(self, subset=None, how="all", inplace=False):
         if subset is None:
@@ -205,11 +223,6 @@ class DataDict:
         if not isinstance(cols, (tuple, list)):
             cols = [cols]
         return DataDict([self[key] for key in self.columns if key not in cols])
-
-    def with_columns(self, exprs, inplace=False):
-        dd = self if inplace else self.copy()
-        dd._dd.with_columns(exprs)
-        return None if inplace else dd
 
     def join(
         self,

@@ -226,15 +226,16 @@ class ExprRolling(ExprRollMixin):
     def __getattr__(self, name):
         idx = self.idx
 
-        def wrap_func():
+        def wrap_func(*args, **kwargs):
             if self.type in ["fix", "time_start"]:
-                return getattr(self.expr, f"_rolling_select_{name}")(idx)
+                return getattr(self.expr, f"_rolling_select_{name}")(idx, *args, **kwargs)
             elif self.type == "time_offset":
-                return getattr(self.expr, f"_rolling_select_by_vecusize_{name}")(idx)
+                return getattr(self.expr, f"_rolling_select_by_vecusize_{name}")(idx, *args, **kwargs)
             else:
                 raise ValueError
 
         return wrap_func
+
 
     def apply(self, agg_expr):
         idx = self.idx
