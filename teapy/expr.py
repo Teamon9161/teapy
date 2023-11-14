@@ -90,7 +90,8 @@ def rolling(
     elif window is not None and idx is not None:
         raise ValueError("window and idx cannot be specified at the same time")
     if idx is not None and type_ is None:
-        raise ValueError("type_ must be specified if idx is not None")
+        type_ = "start"  # default
+        # raise ValueError("type_ must be specified if idx is not None")
     return ExprRolling(
         self,
         window=window,
@@ -200,11 +201,11 @@ class ExprRolling(ExprRollMixin):
         if self.idx is None:
             if self.type == "fix":
                 return self.expr._get_fix_window_rolling_idx(self.window)
-            elif self.type == "time_start":
+            elif self.type in ["start", "time_start"]:
                 return self.time_expr._get_time_rolling_idx(
                     self.window, start_by=self.start_by
                 )
-            elif self.type == "time_offset":
+            elif self.type in ["offset", "time_offset"]:
                 return self.time_expr._get_time_rolling_offset_idx(
                     self.window, self.offset
                 )
@@ -219,27 +220,30 @@ class ExprRolling(ExprRollMixin):
                 if isinstance(self.window, int):
                     self.type = "fix"
                 else:
-                    self.type = "time_start"
+                    self.type = "start"
             else:
-                self.type = "time_offset"
+                self.type = "offset"
 
     def __getattr__(self, name):
         idx = self.idx
 
         def wrap_func(*args, **kwargs):
-            if self.type in ["fix", "time_start"]:
-                return getattr(self.expr, f"_rolling_select_{name}")(idx, *args, **kwargs)
-            elif self.type == "time_offset":
-                return getattr(self.expr, f"_rolling_select_by_vecusize_{name}")(idx, *args, **kwargs)
+            if self.type in ["fix", "time_start", "start"]:
+                return getattr(self.expr, f"_rolling_select_{name}")(
+                    idx, *args, **kwargs
+                )
+            elif self.type in ["offset", "time_offset"]:
+                return getattr(self.expr, f"_rolling_select_by_vecusize_{name}")(
+                    idx, *args, **kwargs
+                )
             else:
                 raise ValueError
 
         return wrap_func
 
-
     def apply(self, agg_expr):
         idx = self.idx
-        if self.type in ["fix", "time_start"]:
+        if self.type in ["fix", "start", "time_start"]:
             if isinstance(agg_expr, (list, tuple)):
                 return [
                     self.expr.rolling_apply_with_start(
@@ -251,7 +255,7 @@ class ExprRolling(ExprRollMixin):
                 return self.expr.rolling_apply_with_start(
                     agg_expr, roll_start=idx, others=self.others
                 )
-        elif self.type == "time_offset":
+        elif self.type in ["offset", "time_offset"]:
             if isinstance(agg_expr, (list, tuple)):
                 return [
                     self.expr.apply_with_vecusize(ae, idxs=idx, others=self.others)

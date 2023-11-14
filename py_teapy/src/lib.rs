@@ -5,6 +5,8 @@
 #[macro_use]
 pub mod from_py;
 
+pub use tears;
+
 #[cfg(feature = "lazy")]
 pub mod pylazy;
 
