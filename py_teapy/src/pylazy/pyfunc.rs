@@ -26,10 +26,17 @@ pub fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
 pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
     if let Ok(expr) = obj.extract::<PyExpr>() {
         Ok(expr)
-    } else if obj.get_type().name()? == "teapy.Expr" {
+    } else if obj.get_type().name()? == "Expr" {
         // For any crate that extends this crate
-        let cell: &PyCell<PyExpr> = PyTryFrom::try_from_unchecked(obj);
-        Ok(cell.try_borrow()?.clone())
+        let module_name = obj.getattr("__module__")?.extract::<&str>()?;
+        if module_name == "teapy" {
+            let cell: &PyCell<PyExpr> = PyTryFrom::try_from_unchecked(obj);
+            Ok(cell.try_borrow()?.clone())
+        } else {
+            Err(PyValueError::new_err(format!(
+                "Unknown Expr type from {module_name}"
+            )))
+        }
     } else if obj.get_type().name()? == "DataFrame" {
         // cast pandas.DataFrame or polars DataFrame to PyExpr
         let module_name = obj.getattr("__module__")?.extract::<&str>()?;
