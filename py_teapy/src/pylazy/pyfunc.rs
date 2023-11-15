@@ -385,6 +385,7 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
     }
 }
 
+#[cfg(feature = "concat")]
 #[pyfunction]
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
@@ -398,6 +399,7 @@ pub fn concat_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
     Ok(e1.add_obj_vec_into(obj_vec))
 }
 
+#[cfg(feature = "concat")]
 #[pyfunction]
 #[allow(clippy::missing_safety_doc)]
 #[pyo3(name="concat", signature=(exprs, axis=0))]
@@ -409,6 +411,7 @@ pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> 
     concat_expr(exprs, axis)
 }
 
+#[cfg(feature = "concat")]
 #[pyfunction]
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
@@ -422,6 +425,7 @@ pub fn stack_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
     Ok(e1.add_obj_vec_into(obj_vec))
 }
 
+#[cfg(feature = "concat")]
 #[pyfunction]
 #[allow(clippy::missing_safety_doc)]
 #[pyo3(name="stack", signature=(exprs, axis=0))]
@@ -475,6 +479,7 @@ pub fn eval_dicts(
     }
 }
 
+#[cfg(feature = "arr_func")]
 #[pyfunction]
 #[allow(clippy::missing_safety_doc, clippy::redundant_clone)]
 #[pyo3(name="where_", signature=(mask, expr, value, par=false))]
@@ -485,12 +490,14 @@ pub unsafe fn where_py(mask: &PyAny, expr: &PyAny, value: &PyAny, par: bool) -> 
     where_(expr.clone(), mask, value, par)
 }
 
+#[cfg(feature = "arr_func")]
 pub fn where_(mut expr: PyExpr, mask: PyExpr, value: PyExpr, par: bool) -> PyResult<PyExpr> {
     let obj_vec = vec![mask.obj(), value.obj()];
     expr.e.where_(mask.e, value.e, par);
     Ok(expr.add_obj_vec_into(obj_vec))
 }
 
+#[cfg(feature = "create")]
 #[pyfunction]
 #[allow(clippy::missing_safety_doc)]
 #[allow(unreachable_patterns)]
@@ -502,6 +509,7 @@ pub unsafe fn full(shape: &PyAny, value: &PyAny) -> PyResult<PyExpr> {
     Ok(out.add_obj_into(obj2))
 }
 
+#[cfg(feature = "create")]
 #[pyfunction]
 #[pyo3(signature=(start, end=None, step=None))]
 #[allow(unreachable_patterns, clippy::missing_safety_doc)]

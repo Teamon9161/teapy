@@ -1,8 +1,14 @@
+use crate::ArrOk;
+
+#[cfg(feature = "arr_func")]
 use crate::datatype::{DataType, Number};
-use crate::{match_all, match_arrok, ArrOk, TpResult, WrapNdarray};
+#[cfg(feature = "arr_func")]
+use crate::{match_all, match_arrok, TpResult, WrapNdarray};
+#[cfg(feature = "arr_func")]
 use std::cmp::Ordering;
 
 impl<'a> ArrOk<'a> {
+    #[cfg(all(feature = "arr_func", feature = "agg"))]
     #[allow(unreachable_patterns)]
     pub fn select(&self, slc: &Self, axis: i32, check: bool) -> TpResult<Self> {
         if slc.ndim() > 1 {
@@ -129,7 +135,7 @@ impl<'a> ArrOk<'a> {
         });
         Ok(out)
     }
-
+    #[cfg(feature = "arr_func")]
     pub fn get_sort_idx<'r>(by: &'r [&'r ArrOk<'a>], rev: bool) -> TpResult<Vec<usize>> {
         // if self.ndim() != 1 {
         //     return Err("Currently only 1 dim Expr can be sorted".into());

@@ -9,18 +9,27 @@ description = "Wrapper of NdArray"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["lazy", "window_func", "time", "blas", "arw", "option_dtype"]
-# default = []
+# default = ["lazy", "create", "groupby", "concat", "arr_func", "window_func", "time", "blas", "ops", "arw", "option_dtype"]
+default = []
 option_dtype = ["tea-dtype/option_dtype"]
 time = ["tea-dtype/time"]
-lazy = ["ops"]
-srd = ["tea-dtype/srd"]
-window_func = []
+lazy = []
+srd = ["tea-dtype/srd"] # Serialize, Deserialize
+
+window_func = ["method_1d", "agg", "arr_func"]  # rolling function
+agg = ["method_1d"]  # aggregate function
+arr_func = ["method_1d"]  # array function
+
 ops = []
-blas = ["ndarray/blas", "lazy", "stat", "lapack-sys", "intel-mkl"]
+groupby = ["agg", "arr_func"]
+create = [] # create Expr, like full, arange, etc.
+concat = []  # concat, stack, etc.
+blas = ["ndarray/blas", "agg", "lazy", "ops", "stat", "lapack-sys", "intel-mkl"]
 npy = ["ndarray-npy"]
 stat = ["statrs"]
 arw = ["arrow", "memmap"]
+
+method_1d = []
 
 # blas choices
 openblas  = ["openblas-static"]

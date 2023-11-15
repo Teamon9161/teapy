@@ -1,6 +1,12 @@
 use super::export::*;
-use crate::{datatype::Number, CorrMethod, QuantileMethod, WinsorizeMethod};
+use crate::datatype::Number;
 
+#[cfg(all(feature = "agg", feature = "arr_func"))]
+use crate::WinsorizeMethod;
+#[cfg(feature = "agg")]
+use crate::{CorrMethod, QuantileMethod};
+
+#[cfg(any(feature = "agg", feature = "arr_func"))]
 macro_rules! auto_impl_view {
     (in1, [$($func: ident),* $(,)?], $other: tt) => {
         $(auto_impl_view!(in1, $func, $other);)*
@@ -40,6 +46,7 @@ macro_rules! auto_impl_view {
     };
 }
 
+#[cfg(feature = "arr_func")]
 macro_rules! auto_impl_viewmut {
     (in1, [$($func: ident),* $(,)?], $other: tt) => {
         $(auto_impl_viewmut!(in1, $func, $other);)*
@@ -60,6 +67,7 @@ macro_rules! auto_impl_viewmut {
     };
 }
 
+#[cfg(feature = "arr_func")]
 macro_rules! auto_impl_f64_func {
     ([$($func: ident),* $(,)?], $other: tt) => {
         $(auto_impl_f64_func!($func, $other);)*
@@ -77,6 +85,7 @@ macro_rules! auto_impl_f64_func {
     };
 }
 
+#[cfg(feature = "arr_func")]
 auto_impl_f64_func!(
     [
         sqrt,
@@ -103,29 +112,47 @@ auto_impl_f64_func!(
     ],
     ()
 );
+#[cfg(feature = "arr_func")]
 auto_impl_f64_func!([log], (base: f64));
-
-auto_impl_view!(in1, [is_nan, not_nan, ndim], ());
+#[cfg(feature = "arr_func")]
+auto_impl_view!(in1, [is_nan, not_nan], ());
+#[cfg(feature = "agg")]
+auto_impl_view!(in1, [ndim], ());
 // auto_impl_view!(in1, [abs], (par: bool));
+#[cfg(feature = "arr_func")]
 auto_impl_view!(in1, [diff, pct_change], (n: i32, axis: i32, par: bool));
+#[cfg(feature = "agg")]
 auto_impl_view!(in1, 
     [
-        count_nan, count_notnan, median, max, min, prod, cumprod, 
+        count_nan, count_notnan, median, max, min, prod, 
         valid_last, valid_first, first, last,
     ], (axis: i32, par: bool));
-auto_impl_view!(in1, [sum, cumsum], (stable: bool, axis: i32, par: bool));
+#[cfg(feature = "arr_func")]
+auto_impl_view!(in1, [cumprod], (axis: i32, par: bool));
+#[cfg(feature = "arr_func")]
+auto_impl_view!(in1, [cumsum], (stable: bool, axis: i32, par: bool));
+#[cfg(feature = "agg")]
+auto_impl_view!(in1, [sum], (stable: bool, axis: i32, par: bool));
+
+#[cfg(feature = "agg")]
 auto_impl_view!(in1, [mean, var, std, skew, kurt], (min_periods: usize, stable: bool, axis: i32, par: bool));
-
+#[cfg(feature = "agg")]
 auto_impl_view!(in1, quantile, (q: f64, method: QuantileMethod, axis: i32, par: bool));
+#[cfg(all(feature = "arr_func", feature = "agg"))]
 auto_impl_view!(in1, rank, (pct: bool, rev: bool, axis: i32, par: bool));
+#[cfg(feature = "arr_func")]
 auto_impl_view!(in1, argsort, (rev: bool, axis: i32, par: bool));
+#[cfg(all(feature = "arr_func", feature = "agg"))]
 auto_impl_view!(in1, split_group, (group: usize, rev: bool, axis: i32, par: bool));
+#[cfg(all(feature = "arr_func", feature = "agg"))]
 auto_impl_view!(in1, [arg_partition, partition], (kth: usize, sort: bool, rev: bool, axis: i32, par: bool));
-
+#[cfg(all(feature = "arr_func", feature = "agg"))]
 auto_impl_viewmut!(in1, [zscore_inplace], (min_periods: usize, stable: bool, axis: i32, par: bool));
+#[cfg(all(feature = "agg", feature = "arr_func"))]
 auto_impl_viewmut!(in1, [winsorize_inplace], (method: WinsorizeMethod, method_params: Option<f64>, stable: bool, axis: i32, par: bool));
-
+#[cfg(feature = "agg")]
 auto_impl_view!(in2, [corr], (method: CorrMethod, min_periods: usize, stable: bool, axis: i32, par: bool));
+#[cfg(feature = "agg")]
 auto_impl_view!(in2, [cov], (min_periods: usize, stable: bool, axis: i32, par: bool));
 
 // === window expression ===

@@ -16,7 +16,9 @@ pub use traits::WrapNdarray;
 pub use view::{ArrView, ArrView1, ArrView2, ArrViewD};
 pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD};
 
-use crate::{datatype::GetDataType, export::*, Iter, IterMut, TpResult};
+use crate::{datatype::GetDataType, export::*, TpResult};
+#[cfg(feature = "method_1d")]
+use crate::{Iter, IterMut};
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeUnit};
 
@@ -433,6 +435,7 @@ where
         self.map(|v| v.to_string())
     }
 
+    #[cfg(feature = "method_1d")]
     pub fn iter(&self) -> Iter<'_, T, D>
     where
         D: Dim1,
@@ -441,6 +444,7 @@ where
         Iter::new(self)
     }
 
+    #[cfg(feature = "method_1d")]
     pub fn iter_mut(&mut self) -> IterMut<'_, T, D>
     where
         D: Dim1,

@@ -7,7 +7,10 @@ use std::sync::Arc;
 // use serde::Serialize;
 
 use crate::lazy::Expr;
-use crate::{CollectTrustedToVec, Context, CorrMethod, StrError, TpResult};
+use crate::{CollectTrustedToVec, Context, StrError, TpResult};
+
+#[cfg(feature = "agg")]
+use crate::CorrMethod;
 
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;
@@ -188,6 +191,7 @@ impl<'a> DataDict<'a> {
         self.map = Arc::new(map);
     }
 
+    #[cfg(feature = "agg")]
     pub fn corr<'b>(
         &'b self,
         col: Option<ColumnSelector<'b>>,
@@ -616,45 +620,4 @@ impl<'a> DataDict<'a> {
         }
         Ok(())
     }
-
-    // #[allow(unreachable_patterns)]
-    // pub fn select_on_axis(&self, slc: Vec<usize>, axis: Option<i32>) -> Self {
-    //     let mut out_data = Vec::<Exprs>::with_capacity(slc.len());
-    //     let axis = axis.unwrap_or(0);
-    //     let slc_expr: Expr<'a> = slc.into();
-    //     for expr in &self.data {
-    //         let mut e = expr.clone();
-    //         e.select(&slc_expr, &axis.into(), true);
-    //         out_data.push(e)
-    //         // out_data.push(match_exprs!(expr, e, {
-    //         //     e.clone()
-    //         //         .select_by_expr(slc_expr.clone(), axis.into())
-    //         //         .into()
-    //         // }))
-
-    //     }
-    //     DataDict {
-    //         data: out_data,
-    //         map: self.map.clone(),
-    //     }
-    // }
-
-    // #[allow(unreachable_patterns)]
-    // /// Safety
-    // ///
-    // /// The caller must ensure that the slice is valid.
-    // pub fn select_on_axis_unchecked(&self, slc: Vec<usize>, axis: Option<i32>) -> Self {
-    //     let mut out_data = Vec::<Exprs>::with_capacity(slc.len());
-    //     let axis = axis.unwrap_or(0);
-    //     let slc_expr: Expr<'a> = slc.into();
-    //     for expr in &self.data {
-    //         let mut e = expr.clone();
-    //         e.select(&slc_expr, &axis.into(), false);
-    //         out_data.push(e)
-    //     }
-    //     DataDict {
-    //         data: out_data,
-    //         map: self.map.clone(),
-    //     }
-    // }
 }

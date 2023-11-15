@@ -25,13 +25,26 @@ name = "teapy"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["lazy", "time", "window_func", "option_dtype", "blas", "arw"]
+default = ["lazy", "create", "groupby", "concat", "arr_func", "window_func", "time", "blas", "ops", "arw", "option_dtype", "agg"]
+
+# default = ["lazy", "agg", "arr_func"]
 time = ["py_teapy/time"]
 option_dtype = ["py_teapy/option_dtype"]
 lazy = ["py_teapy/lazy"]
+srd = ["py_teapy/srd"]
 window_func = ["py_teapy/window_func"]
+agg = ["py_teapy/agg"]
+arr_func = ["py_teapy/arr_func"]
+
+ops = ["py_teapy/ops"]
+groupby = ["py_teapy/groupby"]
+create = ["py_teapy/create"]
+concat = ["py_teapy/concat"]
 blas = ["py_teapy/blas"]
 arw = ["py_teapy/arw"]
+npy = ["py_teapy/npy"]
+stat = ["py_teapy/stat"]
+
 
 # [profile.release]
 # lto = true

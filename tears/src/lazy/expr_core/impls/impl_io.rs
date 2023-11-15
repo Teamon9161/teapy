@@ -1,5 +1,8 @@
+#[cfg(feature = "arw")]
 use super::super::expr_inner::ExprInner;
+#[cfg(feature = "arw")]
 use super::export::*;
+#[cfg(feature = "arw")]
 use std::path::Path;
 
 #[derive(Clone)]
@@ -27,6 +30,7 @@ impl From<String> for SingleCol<'_> {
     }
 }
 
+#[cfg(feature = "arw")]
 impl<'a> From<SingleCol<'a>> for crate::arrow_io::ColSelect<'a> {
     fn from(v: SingleCol<'a>) -> Self {
         match v {

@@ -3,9 +3,11 @@ use std::sync::Arc;
 use super::export::*;
 #[cfg(feature = "time")]
 use crate::datatype::{DateTime, TimeDelta};
+#[cfg(feature = "agg")]
+use crate::CorrMethod;
 #[cfg(feature = "time")]
 use crate::Data;
-use crate::{lazy::DataDict, Arr1, CollectTrustedToVec, CorrMethod};
+use crate::{lazy::DataDict, Arr1, CollectTrustedToVec};
 use ahash::HashMap;
 use ndarray::s;
 

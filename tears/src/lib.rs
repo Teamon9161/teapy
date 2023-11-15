@@ -18,6 +18,7 @@ mod eager;
 mod error;
 mod export;
 mod hash;
+#[cfg(feature = "method_1d")]
 mod iterators;
 mod macros;
 #[macro_use]
@@ -33,32 +34,28 @@ pub mod lazy;
 
 #[cfg(feature = "arw")]
 mod arrow_io;
-// mod impls;
 pub mod util_trait;
-// pub mod utils;
 
 pub use arropt::ArrToOpt;
 #[cfg(feature = "arw")]
 pub use arrow_io::{read_ipc, ColSelect};
-// pub(crate) use datatype::match_datatype_arm;
-// pub(crate) use crate::core::match_arbarray;
-// #[cfg(feature = "option_dtype")]
-// pub use datatype::{OptF32, OptF64, OptI32, OptI64};
-// pub use datatype::{
-//     BoolType, Cast, DataType, DateTime, GetDataType, GetNone, Number, OptUsize, PyValue, TimeDelta,
-//     TimeUnit, ArrToOpt,
-// };
 
-// pub use datatype::*;
-pub use eager::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
+#[cfg(feature = "arr_func")]
+pub use eager::FillMethod;
+#[cfg(all(feature = "agg", feature = "arr_func"))]
+pub use eager::WinsorizeMethod;
+#[cfg(feature = "agg")]
+pub use eager::{CorrMethod, QuantileMethod};
 pub use error::{StrError, TpResult};
-
+#[cfg(feature = "method_1d")]
 pub use iterators::{Iter, IterMut};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
 pub use utils::kh_sum;
 
+#[cfg(all(feature = "lazy", feature = "arr_func", feature = "agg"))]
+pub use lazy::expr_core::DropNaMethod;
 #[cfg(feature = "lazy")]
-pub use lazy::expr_core::{Data, DropNaMethod, Expr, ExprElement};
+pub use lazy::expr_core::{Data, Expr, ExprElement};
 #[cfg(feature = "lazy")]
 pub use lazy::Context;
 

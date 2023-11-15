@@ -3,7 +3,27 @@ use super::super::export::*;
 #[derive(Copy, Clone)]
 pub enum CorrMethod {
     Pearson,
+    #[cfg(feature = "arr_func")]
     Spearman,
+}
+
+impl<T, S> ArrBase<S, Ix1>
+where
+    S: Data<Elem = T>,
+{
+    /// Remove NaN values in two 1d arrays.
+    #[inline]
+    pub fn remove_nan2_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>) -> (Arr1<T>, Arr1<T2>)
+    where
+        T: Number,
+        S2: Data<Elem = T2>,
+        T2: Number,
+    {
+        let (out1, out2): (Vec<_>, Vec<_>) = zip(self, other)
+            .filter(|(v1, v2)| v1.notnan() & v2.notnan())
+            .unzip();
+        (Arr1::from_vec(out1), Arr1::from_vec(out2))
+    }
 }
 
 impl_reduce2_nd!(
@@ -97,6 +117,7 @@ impl_reduce2_nd!(
     }
 );
 
+#[cfg(feature = "arr_func")]
 impl_reduce2_nd!(
     corr_spearman,
     /// Spearman correlation of 2 array
@@ -125,7 +146,7 @@ impl_reduce2_nd!(
     {
         match method {
             CorrMethod::Pearson => self.corr_pearson_1d(other, min_periods, stable),
-            CorrMethod::Spearman => self.corr_spearman_1d(other, min_periods, stable),
+            #[cfg(feature="arr_func")] CorrMethod::Spearman => self.corr_spearman_1d(other, min_periods, stable),
             // _ => panic!("Not supported method: {} in correlation", method),
         }
     }

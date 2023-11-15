@@ -1,8 +1,12 @@
-use crate::{Arr, ArrBase, ArrView, StrError, TpResult, WrapNdarray};
+use crate::{Arr, ArrBase, ArrView, TpResult, WrapNdarray};
 
 // use crate::{Arr, ArrBase, ArrView, WrapNdarray};
-use ndarray::{Data, DataMut, DimMax, Dimension, IntoDimension, RawData, Zip};
+use ndarray::{Data, DimMax, Dimension, IntoDimension, RawData, Zip};
 // use std::fmt::Debug;
+#[cfg(all(feature = "agg", feature = "arr_func"))]
+use crate::StrError;
+#[cfg(all(feature = "agg", feature = "arr_func"))]
+use ndarray::DataMut;
 
 type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
 
@@ -197,6 +201,7 @@ impl<A, S, D: Dimension> ArrBase<S, D>
 where
     S: Data<Elem = A>,
 {
+    #[cfg(all(feature = "agg", feature = "arr_func"))]
     pub fn put_mask<S2, S3, D2, D3>(
         &mut self,
         mask: &ArrBase<S2, D2>,

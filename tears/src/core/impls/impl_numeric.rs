@@ -4,6 +4,7 @@ use ndarray::{Ix2, IxDyn, LinalgScalar};
 use num::traits::{abs, real::Real, Signed};
 use std::cmp::PartialOrd;
 
+#[cfg(feature = "ops")]
 macro_rules! impl_cmp {
     ($func: ident, $func_impl: expr $(,T: $trait1: path)? $(, T2: $trait2: path)?) => {
         pub fn $func<S2, D2, T2>(&self, rhs: &ArrBase<S2, D2>, par: bool) -> Arr<bool, <D as DimMax<D2>>::Output>
@@ -35,6 +36,7 @@ macro_rules! impl_cmp {
 
 }
 
+#[cfg(feature = "ops")]
 impl<T, S, D> ArrBase<S, D>
 where
     S: Data<Elem = T>,
@@ -53,6 +55,7 @@ where
     S: Data<Elem = T>,
     T: LinalgScalar,
 {
+    #[cfg(feature = "ops")]
     // #[allow(clippy::useless_conversion)]
     pub fn dot<S2>(&self, other: &ArrBase<S2, IxDyn>) -> TpResult<ArrD<T>>
     where
@@ -91,6 +94,7 @@ where
         // .into()
     }
 }
+#[cfg(feature = "arr_func")]
 macro_rules! impl_pow {
     ($T: ty) => {
         impl<'a, D> ArrView<'a, $T, D>
@@ -165,10 +169,14 @@ macro_rules! impl_pow {
         }
     };
 }
+#[cfg(feature = "arr_func")]
 impl_pow!(i32);
+#[cfg(feature = "arr_func")]
 impl_pow!(i64);
+#[cfg(feature = "arr_func")]
 impl_pow!(usize);
 
+#[cfg(feature = "arr_func")]
 impl<T, S, D> ArrBase<S, D>
 where
     S: Data<Elem = T>,

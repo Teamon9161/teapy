@@ -1,7 +1,9 @@
 use super::Data;
-use crate::{ArbArray, ArrD, ArrOk, Context, ExprElement, OlsResult, TpResult};
+use crate::{ArbArray, ArrD, ArrOk, Context, ExprElement, TpResult};
 use std::{fmt::Debug, sync::Arc};
 // use serde::{Serialize, ser::SerializeStruct};
+#[cfg(feature = "blas")]
+use crate::OlsResult;
 
 #[derive(Default)]
 pub struct ExprInner<'a> {

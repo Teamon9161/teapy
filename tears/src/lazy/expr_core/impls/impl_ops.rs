@@ -158,21 +158,25 @@ impl<'a> Add for Expr<'a> {
                     + rhs_arr.deref().cast_usize().view().0)
                     .wrap()
                     .into(),
+                #[cfg(feature = "arr_func")]
                 (String(_), String(_)) => arr
                     .cast_string()
                     .view()
                     .add_string(&rhs_arr.deref().cast_string().view())
                     .into(),
+                #[cfg(feature = "arr_func")]
                 (Str(_), String(_)) => arr
                     .cast_string()
                     .view()
                     .add_string(&rhs_arr.deref().cast_string().view())
                     .into(),
+                #[cfg(feature = "arr_func")]
                 (String(_), Str(_)) => arr
                     .cast_string()
                     .view()
                     .add_str(&rhs_arr.deref().cast_str().view())
                     .into(),
+                #[cfg(feature = "arr_func")]
                 (Str(_), Str(_)) => arr
                     .cast_string()
                     .view()

@@ -1,5 +1,8 @@
+#[cfg(feature = "option_dtype")]
 use crate::{Arr, ArrView, ArrViewMut};
+#[cfg(feature = "option_dtype")]
 use datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
+#[cfg(feature = "option_dtype")]
 use ndarray::Dimension;
 
 pub trait ArrToOpt {

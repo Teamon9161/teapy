@@ -1,11 +1,15 @@
 // use crate::hash::TpHashMap;
 use crate::{match_all, match_arrok};
 use crate::{Arr1, ArrOk, CollectTrustedToVec, Expr};
-use ahash::AHashMap;
 use rayon::prelude::*;
+
+#[cfg(feature = "groupby")]
+use ahash::AHashMap;
+#[cfg(feature = "groupby")]
 use std::collections::hash_map::Entry;
 
 impl<'a> Expr<'a> {
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn sorted_unique(&mut self) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -17,6 +21,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn get_sorted_unique_idx(&mut self, keep: String) -> &mut Self {
         self.chain_f_ctx(move |(arr, ctx)| {
@@ -35,6 +40,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "groupby")]
     pub fn get_unique_idx(&mut self, others: Option<Vec<Expr<'a>>>, keep: String) -> &mut Self {
         self.chain_f_ctx(move |(arr, ctx)| {
             let others = others

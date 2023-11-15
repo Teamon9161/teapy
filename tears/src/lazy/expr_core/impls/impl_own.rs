@@ -1,10 +1,19 @@
 use super::export::*;
-use crate::{ArbArray, Arr, Arr1, Arr2, ArrD, CollectTrustedToVec, CorrMethod, FillMethod};
-use ndarray::{Array1, Axis};
+#[cfg(feature = "create")]
+use crate::Arr;
+#[cfg(feature = "agg")]
+use crate::CorrMethod;
+#[cfg(feature = "arr_func")]
+use crate::FillMethod;
+use crate::{ArbArray, Arr1, Arr2, ArrD, CollectTrustedToVec};
+#[cfg(feature = "create")]
+use ndarray::Array1;
+use ndarray::Axis;
 use rayon::prelude::*;
 #[cfg(feature = "stat")]
 use statrs::distribution::ContinuousCDF;
 
+#[cfg(all(feature = "arr_func", feature = "agg"))]
 #[derive(Clone)]
 pub enum DropNaMethod {
     Any,
@@ -12,6 +21,7 @@ pub enum DropNaMethod {
 }
 
 impl<'a> Expr<'a> {
+    #[cfg(feature = "create")]
     #[allow(unreachable_patterns)]
     pub fn full(shape: &Expr<'a>, value: Expr<'a>) -> Expr<'a> {
         let mut e = shape.clone();
@@ -44,6 +54,7 @@ impl<'a> Expr<'a> {
         e
     }
 
+    #[cfg(feature = "create")]
     pub fn arange(start: Option<Expr<'a>>, end: &Expr<'a>, step: Option<Expr<'a>>) -> Expr<'a> {
         let mut e = end.clone();
         e.chain_f_ctx(move |(data, ctx)| {
@@ -72,6 +83,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "agg")]
     pub fn count_value(&mut self, value: Expr<'a>, axis: i32, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
@@ -85,6 +97,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn is_in(&mut self, other: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -137,6 +150,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn fillna(
         &mut self,
         method: FillMethod,
@@ -163,6 +177,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn clip(&mut self, min: Expr<'a>, max: Expr<'a>, axis: i32, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let mut arr = data.into_arr(ctx.clone())?;
@@ -186,6 +201,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn shift(
         &mut self,
         n: Expr<'a>,
@@ -211,6 +227,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "agg")]
     pub fn any(&mut self, axis: i32, par: bool) -> &mut Self {
         self.cast_bool().chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -222,6 +239,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "agg")]
     pub fn all(&mut self, axis: i32, par: bool) -> &mut Self {
         self.cast_bool().chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -233,6 +251,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn abs(&mut self) -> &mut Self {
         self.chain_f_ctx(|(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -243,6 +262,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn sign(&mut self) -> &mut Self {
         self.chain_f_ctx(|(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -253,6 +273,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn round(&mut self, precision: u32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?.cast_f64();
@@ -268,6 +289,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn pow(&mut self, n: Expr<'a>, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -300,7 +322,7 @@ impl<'a> Expr<'a> {
         self
     }
 
-    #[cfg(feature = "stat")]
+    #[cfg(all(feature = "stat", feature = "arr_func"))]
     pub fn t_cdf(&mut self, df: Expr<'a>, loc: Option<f64>, scale: Option<f64>) -> &mut Self {
         use statrs::distribution::StudentsT;
         self.chain_f_ctx(move |(data, ctx)| {
@@ -320,7 +342,7 @@ impl<'a> Expr<'a> {
         self
     }
 
-    #[cfg(feature = "stat")]
+    #[cfg(all(feature = "stat", feature = "arr_func"))]
     pub fn norm_cdf(&mut self, mean: Option<f64>, std: Option<f64>) -> &mut Self {
         use statrs::distribution::Normal;
         self.chain_f_ctx(move |(data, ctx)| {
@@ -332,7 +354,7 @@ impl<'a> Expr<'a> {
         self
     }
 
-    #[cfg(feature = "stat")]
+    #[cfg(all(feature = "stat", feature = "arr_func"))]
     pub fn f_cdf(&mut self, df1: Expr<'a>, df2: Expr<'a>) -> &mut Self {
         use statrs::distribution::FisherSnedecor;
         self.chain_f_ctx(move |(data, ctx)| {
@@ -356,6 +378,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(all(feature = "arr_func", feature = "agg"))]
     #[allow(unreachable_patterns)]
     pub fn filter(&mut self, mask: Expr<'a>, axis: Expr<'a>, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -375,6 +398,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(all(feature = "arr_func", feature = "agg"))]
     pub fn dropna(&mut self, axis: Expr<'a>, how: DropNaMethod, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -406,6 +430,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(all(feature = "arr_func", feature = "agg"))]
     #[allow(unreachable_patterns)]
     pub fn select(&mut self, slc: Expr<'a>, axis: Expr<'a>, check: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -422,7 +447,7 @@ impl<'a> Expr<'a> {
         });
         self
     }
-
+    #[cfg(feature = "arr_func")]
     pub fn where_(&mut self, mask: Expr<'a>, value: Expr<'a>, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -461,6 +486,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "concat")]
     pub fn concat(&mut self, other: Vec<Expr<'a>>, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -483,7 +509,7 @@ impl<'a> Expr<'a> {
         });
         self
     }
-
+    #[cfg(feature = "concat")]
     pub fn stack(&mut self, other: Vec<Expr<'a>>, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -510,7 +536,7 @@ impl<'a> Expr<'a> {
         });
         self
     }
-
+    #[cfg(feature = "arr_func")]
     pub fn get_sort_idx(by: Vec<Expr<'a>>, rev: bool) -> Expr<'a> {
         let mut e: Expr<'a> = 0.into();
         e.chain_f_ctx(move |(_data, ctx)| {
@@ -524,7 +550,7 @@ impl<'a> Expr<'a> {
         });
         e
     }
-
+    #[cfg(all(feature = "arr_func", feature = "agg"))]
     pub fn sort(&mut self, by: Vec<Expr<'a>>, rev: bool) -> &mut Self {
         // let mut idx = self.clone();
         let idx = Expr::get_sort_idx(by, rev);
@@ -545,7 +571,7 @@ impl<'a> Expr<'a> {
         out
     }
 
-    #[cfg(feature = "time")]
+    #[cfg(all(feature = "time", feature = "arr_func"))]
     pub fn strptime(&mut self, fmt: String) -> &mut Self {
         self.cast_string().chain_f_ctx(move |(data, ctx)| {
             let fmt = fmt.clone();
@@ -564,7 +590,7 @@ impl<'a> Expr<'a> {
         self
     }
 
-    #[cfg(feature = "time")]
+    #[cfg(all(feature = "time", feature = "arr_func"))]
     pub fn strftime(&mut self, fmt: Option<String>) -> &mut Self {
         self.cast_datetime_default()
             .chain_f_ctx(move |(data, ctx)| {
@@ -584,6 +610,7 @@ impl<'a> Expr<'a> {
     }
 }
 
+#[cfg(feature = "agg")]
 pub fn corr<'a>(
     exprs: Vec<Expr<'a>>,
     method: CorrMethod,

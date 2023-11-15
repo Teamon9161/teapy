@@ -2,6 +2,7 @@ use super::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
 use crate::datatype::{Cast, DataType, GetDataType};
 use crate::TpResult;
 use ndarray::{s, Array, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
+// #[cfg(feature="srd")]
 // use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "arw")]
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
@@ -83,22 +84,6 @@ impl<'a, T> ViewOnBase<'a, T> {
         };
         Box::pin(out)
     }
-
-    // /// Cast the dtype of the array without copy.
-    // ///
-    // /// # Safety
-    // ///
-    // /// The size of `T` and `T2` must be the same
-    // pub unsafe fn into_dtype<T2>(self) -> ViewOnBase<'a, T2> {
-    //     use std::mem;
-    //     if mem::size_of::<T>() == mem::size_of::<T2>() {
-    //         let out = mem::transmute_copy(&self);
-    //         mem::forget(self);
-    //         out
-    //     } else {
-    //         panic!("the size of new type is different when into_dtype")
-    //     }
-    // }
 }
 
 impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
@@ -115,6 +100,7 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
     }
 }
 
+// #[cfg(feature="srd")]
 // impl<'a, T> Serialize for ArbArray<'a, T>
 // where
 //     T: Serialize + Clone,
@@ -133,6 +119,7 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
 //     }
 // }
 
+// #[cfg(feature="srd")]
 // impl<'a, 'de, T> Deserialize<'de> for ArbArray<'a, T>
 // where
 //     T: Deserialize<'de> + Clone,

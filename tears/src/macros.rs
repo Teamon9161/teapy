@@ -15,6 +15,7 @@
 // }
 // pub(super) use define_n;
 
+#[cfg(feature = "agg")]
 /// Define a 1d reduce function that can only be applied to a 1d array, then auto define
 /// a function so that we can apply this function to a `ndarray`.
 macro_rules! impl_reduce_nd {
@@ -66,8 +67,10 @@ macro_rules! impl_reduce_nd {
 
     };
 }
+#[cfg(feature = "agg")]
 pub(super) use impl_reduce_nd;
 
+#[cfg(feature = "arr_func")]
 /// Define a 1d map function that can only be applied to a 1d array, then auto define
 /// a function so that we can apply this function to a `ndarray`.
 macro_rules! impl_map_nd {
@@ -155,8 +158,10 @@ macro_rules! impl_map_nd {
     //     }
     // };
 }
+#[cfg(feature = "arr_func")]
 pub(super) use impl_map_nd;
 
+#[cfg(feature = "agg")]
 /// Define a 1d function that can only be applied to two 1d arrays, then auto define
 /// a function so that we can apply this function to two `ndarray`.
 macro_rules! impl_reduce2_nd {
@@ -213,8 +218,10 @@ macro_rules! impl_reduce2_nd {
         }
     };
 }
+#[cfg(feature = "agg")]
 pub(super) use impl_reduce2_nd;
 
+#[cfg(feature = "window_func")]
 /// Define a 1d map function that can only be applied to two 1d arrays, then auto define
 /// a function so that we can apply this function to two `ndarray`.
 macro_rules! impl_map2_nd {
@@ -273,8 +280,10 @@ macro_rules! impl_map2_nd {
         }
     };
 }
+#[cfg(feature = "window_func")]
 pub(super) use impl_map2_nd;
 
+#[cfg(feature = "arr_func")]
 /// Define a 1d map inplace function that can only be applied to a 1d array, then auto define
 /// a function so that we can apply this function to a `ndarray`.
 macro_rules! impl_map_inplace_nd {
@@ -315,4 +324,5 @@ macro_rules! impl_map_inplace_nd {
         }
     };
 }
+#[cfg(feature = "arr_func")]
 pub(super) use impl_map_inplace_nd;

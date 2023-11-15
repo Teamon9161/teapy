@@ -5,6 +5,7 @@ use super::utils::adjust_slice;
 use crate::ArbArray;
 
 impl<'a> Expr<'a> {
+    #[cfg(all(feature = "arr_func", feature = "agg"))]
     #[allow(unreachable_patterns)]
     pub fn put_mask(&mut self, mask: Expr<'a>, value: Expr<'a>, axis: i32, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {

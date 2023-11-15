@@ -3,9 +3,10 @@ use super::expr_element::ExprElement;
 use super::expr_inner::{ExprInner, FuncOut};
 use super::FuncNode;
 use crate::datatype::{GetDataType, GetNone};
+#[cfg(feature = "blas")]
+use crate::OlsResult;
 use crate::{
-    match_all, match_arrok, ArbArray, ArrD, ArrOk, ArrViewD, CollectTrustedToVec, Context,
-    OlsResult, TpResult,
+    match_all, match_arrok, ArbArray, ArrD, ArrOk, ArrViewD, CollectTrustedToVec, Context, TpResult,
 };
 use parking_lot::Mutex;
 use std::fmt::Debug;

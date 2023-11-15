@@ -1,8 +1,17 @@
-use crate::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
 use pyo3::{FromPyObject, PyAny, PyResult};
 
-#[cfg(feature = "lazy")]
-use crate::lazy::{DropNaMethod, JoinType};
+#[cfg(feature = "agg")]
+use crate::{CorrMethod, QuantileMethod};
+
+#[cfg(feature = "arr_func")]
+use crate::FillMethod;
+#[cfg(all(feature = "agg", feature = "arr_func"))]
+use crate::WinsorizeMethod;
+
+#[cfg(all(feature = "lazy", feature = "arr_func", feature = "agg"))]
+use crate::lazy::DropNaMethod;
+#[cfg(all(feature = "lazy", feature = "groupby"))]
+use crate::lazy::JoinType;
 
 #[cfg(all(feature = "lazy", feature = "window_func"))]
 use pyo3::exceptions::PyValueError;
@@ -10,12 +19,14 @@ use pyo3::exceptions::PyValueError;
 #[cfg(all(feature = "lazy", feature = "window_func"))]
 use crate::lazy::RollingTimeStartBy;
 
+#[cfg(feature = "agg")]
 impl<'source> FromPyObject<'source> for CorrMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;
         let s = s.unwrap_or("pearson").to_lowercase();
         let out = match s.as_str() {
             "pearson" => CorrMethod::Pearson,
+            #[cfg(feature = "arr_func")]
             "spearman" => CorrMethod::Spearman,
             _ => panic!("Not supported method: {s} in correlation"),
         };
@@ -23,6 +34,7 @@ impl<'source> FromPyObject<'source> for CorrMethod {
     }
 }
 
+#[cfg(feature = "arr_func")]
 impl<'source> FromPyObject<'source> for FillMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;
@@ -37,6 +49,7 @@ impl<'source> FromPyObject<'source> for FillMethod {
     }
 }
 
+#[cfg(all(feature = "agg", feature = "arr_func"))]
 impl<'source> FromPyObject<'source> for WinsorizeMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;
@@ -51,6 +64,7 @@ impl<'source> FromPyObject<'source> for WinsorizeMethod {
     }
 }
 
+#[cfg(feature = "agg")]
 impl<'source> FromPyObject<'source> for QuantileMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;
@@ -66,7 +80,7 @@ impl<'source> FromPyObject<'source> for QuantileMethod {
     }
 }
 
-#[cfg(feature = "lazy")]
+#[cfg(all(feature = "lazy", feature = "groupby"))]
 impl<'source> FromPyObject<'source> for JoinType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;
@@ -82,7 +96,7 @@ impl<'source> FromPyObject<'source> for JoinType {
     }
 }
 
-#[cfg(feature = "lazy")]
+#[cfg(all(feature = "lazy", feature = "arr_func", feature = "agg"))]
 impl<'source> FromPyObject<'source> for DropNaMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let s: Option<&str> = ob.extract()?;

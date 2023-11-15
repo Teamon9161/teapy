@@ -634,6 +634,7 @@ impl BoolType for bool {
     }
 }
 
+#[cfg(feature = "option_dtype")]
 impl BoolType for OptBool {
     fn bool_(self) -> bool {
         self.unwrap()

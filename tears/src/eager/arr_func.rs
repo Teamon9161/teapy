@@ -21,6 +21,7 @@ pub enum FillMethod {
     Vfill,
 }
 
+#[cfg(feature = "agg")]
 #[derive(Copy, Clone)]
 pub enum WinsorizeMethod {
     Quantile,
@@ -115,6 +116,7 @@ where
 
     /// return -1 if there are not enough valid elements
     /// sort: whether to sort the result by the size of the element
+    #[cfg(feature = "agg")]
     pub fn arg_partition_1d<S2>(&self, mut out: ArrBase<S2, Ix1>, kth: usize, sort: bool, rev: bool)
     where
         T: Number,
@@ -187,6 +189,7 @@ where
     }
 
     /// sort: whether to sort the result by the size of the element
+    #[cfg(feature = "agg")]
     pub fn partition_1d<S2>(&self, mut out: ArrBase<S2, Ix1>, kth: usize, sort: bool, rev: bool)
     where
         T: Number,
@@ -252,20 +255,6 @@ where
                 .map(|v| v.hash())
                 .collect::<Vec<_>>(),
         )
-    }
-
-    /// Remove NaN values in two 1d arrays.
-    #[inline]
-    pub fn remove_nan2_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>) -> (Arr1<T>, Arr1<T2>)
-    where
-        T: Number,
-        S2: Data<Elem = T2>,
-        T2: Number,
-    {
-        let (out1, out2): (Vec<_>, Vec<_>) = zip(self, other)
-            .filter(|(v1, v2)| v1.notnan() & v2.notnan())
-            .unzip();
-        (Arr1::from_vec(out1), Arr1::from_vec(out2))
     }
 
     /// Take value on a given axis and clone to a new array, just work on 1d array
@@ -380,6 +369,7 @@ where
         self.map(|v| other.contains(v))
     }
 
+    #[cfg(feature = "agg")]
     pub fn filter<S2>(&self, mask: &ArrBase<S2, Ix1>, axis: i32, par: bool) -> Arr<T, D>
     where
         T: Default + Send + Sync + Clone,
@@ -499,6 +489,7 @@ where
     //     unsafe { self.take_clone_unchecked(slc, axis.index() as i32, par) }
     // }
 
+    #[cfg(feature = "agg")]
     pub fn arg_partition(
         &self,
         mut kth: usize,
@@ -527,6 +518,7 @@ where
         out
     }
 
+    #[cfg(feature = "agg")]
     pub fn partition(
         &self,
         mut kth: usize,
@@ -782,6 +774,7 @@ impl_map_nd!(
     }
 );
 
+#[cfg(feature = "agg")]
 impl_map_nd!(
     rank,
     /// rank the array in a given axis
@@ -940,6 +933,7 @@ impl_map_nd!(
     }
 );
 
+#[cfg(feature = "agg")]
 impl_map_nd!(
     split_group,
     /// Split values in several group by size.
@@ -1029,6 +1023,7 @@ impl_map_inplace_nd!(
     }
 );
 
+#[cfg(feature = "agg")]
 impl_map_inplace_nd!(
     zscore_inplace,
     /// Sandardize the array using zscore method on a given axis
@@ -1050,6 +1045,7 @@ impl_map_inplace_nd!(
     }
 );
 
+#[cfg(feature = "agg")]
 impl_map_inplace_nd!(
     winsorize_inplace,
     pub fn winsorize_inplace_1d(&mut self, method: WinsorizeMethod, method_params: Option<f64>, stable: bool)

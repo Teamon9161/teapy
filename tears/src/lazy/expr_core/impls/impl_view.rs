@@ -6,6 +6,7 @@ use crate::{ArrViewD, StrError, ViewOnBase};
 use std::mem::transmute;
 
 impl<'a> Expr<'a> {
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn index_axis(&mut self, index: Expr<'a>, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -26,7 +27,7 @@ impl<'a> Expr<'a> {
         });
         self
     }
-
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn reshape(&mut self, shape: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -70,6 +71,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     /// Return a transposed view of the array.
     #[allow(unreachable_patterns)]
     pub fn t(&mut self) -> &mut Self {
@@ -84,6 +86,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     /// Return a view of the diagonal elements of the array.
     ///
     /// The diagonal is simply the sequence indexed by
@@ -101,6 +104,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     /// Swap axes ax and bx.
     ///
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
@@ -125,6 +129,7 @@ impl<'a> Expr<'a> {
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
     ///
     /// i in the j-th place in the axes sequence means self's i-th axis becomes self.permuted_axes()'s j-th axis
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn permuted_axes(&mut self, axes: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -151,6 +156,7 @@ impl<'a> Expr<'a> {
     }
 
     /// Insert new array axis at axis and return the result.
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn insert_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -166,6 +172,7 @@ impl<'a> Expr<'a> {
     }
 
     /// Remove new array axis at axis and return the result.
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn remove_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -181,6 +188,7 @@ impl<'a> Expr<'a> {
     }
 
     /// broadcast to a given shape
+    #[cfg(feature = "arr_func")]
     #[allow(unreachable_patterns)]
     pub fn broadcast(&mut self, shape: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -229,12 +237,14 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn broadcast_with(&mut self, mut other: Expr<'a>) -> &mut Self {
         let shape = other.shape();
         self.broadcast(shape.clone());
         self
     }
 
+    #[cfg(feature = "arr_func")]
     pub fn if_then(&mut self, con: Expr<'a>, then: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
@@ -256,6 +266,7 @@ impl<'a> Expr<'a> {
 
     /// take values using slice
     #[allow(unreachable_patterns)]
+    #[cfg(feature = "arr_func")]
     pub fn view_by_slice(&mut self, slc: Vec<SliceInfoElem>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;

@@ -174,6 +174,7 @@ impl PyDataDict {
         self.obj_map = Default::default();
     }
 
+    #[cfg(feature = "agg")]
     #[pyo3(signature=(method=CorrMethod::Pearson, cols=None, min_periods=3, stable=false))]
     pub fn corr(
         &self,

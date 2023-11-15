@@ -6,4 +6,10 @@ pub(super) use pyo3::{prelude::*, types::PyDict, FromPyPointer};
 pub(super) use rayon::prelude::*;
 pub(super) use std::iter::zip;
 pub(super) use tears::CollectTrustedToVec;
-pub(super) use tears::{Arr1, CorrMethod, Expr, FillMethod, QuantileMethod, WrapNdarray};
+#[cfg(feature = "arr_func")]
+pub(super) use tears::FillMethod;
+// #[cfg(all(feature = "arr_func", feature = "agg"))]
+// pub(super) use tears::WinsorizeMethod;
+pub(super) use tears::{Arr1, Expr, WrapNdarray};
+#[cfg(feature = "agg")]
+pub(super) use tears::{CorrMethod, QuantileMethod};

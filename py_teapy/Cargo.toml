@@ -9,8 +9,18 @@ description = "Fash DataDict Library in Python"
 
 
 [features]
-default = ["lazy", "time", "window_func", "blas", "arw"]
+# default = ["lazy", "time", "window_func", "blas", "arw"]
+default = ["lazy", "create", "groupby", "concat", "arr_func", "window_func", "time", "blas", "arw", "option_dtype"]
+# default = []
 option_dtype = ["tears/option_dtype"]
+create = ["tears/create"]
+groupby = ["tears/groupby"]
+concat = ["tears/concat"]
+arr_func = ["tears/arr_func"]
+agg = ["tears/agg"]
+
+srd = ["tears/srd"]
+ops = ["tears/ops"]
 lazy = ["tears/lazy"]
 time = ["tears/time"]
 window_func = ["tears/window_func"]

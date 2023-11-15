@@ -417,6 +417,7 @@ where
     }
 
     /// calculate mean value first and minus mean value for each element.
+    #[cfg(feature = "agg")]
     #[inline]
     pub fn stable_apply_window_to<S2, F>(&self, out: &mut ArrBase<S2, Ix1>, window: usize, mut f: F)
     where
@@ -451,6 +452,7 @@ where
         }
     }
 
+    #[cfg(feature = "agg")]
     #[inline]
     pub fn stable_apply_window_with_to<S2, T2, S3, F>(
         &self,

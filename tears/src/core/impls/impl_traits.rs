@@ -10,6 +10,7 @@ use crate::ViewOnBase;
 
 use crate::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
+#[cfg(feature = "srd")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -133,7 +134,7 @@ macro_rules! impl_from {
 
     };
 }
-// #[cfg(feature = "option_dtype")]
+
 impl_from!(
     (Bool, bool),
     (U8, u8),
@@ -161,24 +162,6 @@ impl_from!(
     #[cfg(feature = "option_dtype")]
     (OptBool, OptBool)
 );
-// #[cfg(not(feature = "option_dtype"))]
-// impl_from!(
-//     (Bool, bool),
-//     (U8, u8),
-//     (F32, f32),
-//     (F64, f64),
-//     (I32, i32),
-//     (I64, i64),
-//     (Usize, usize),
-//     (VecUsize, Vec<usize>),
-//     (Object, PyValue),
-//     (String, String),
-//     #[cfg(feature="time")]
-//     (DateTime, DateTime),
-//     #[cfg(feature="time")]
-//     (TimeDelta, TimeDelta),
-//     (OptUsize, OptUsize)
-// );
 
 impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {
     fn from(arr: ArrD<&'a str>) -> Self {
@@ -204,6 +187,7 @@ impl<'a> From<Pin<Box<ViewOnBase<'a, &'a str>>>> for ArrOk<'a> {
     }
 }
 
+#[cfg(feature = "srd")]
 impl<A, D, S> Serialize for ArrBase<S, D>
 where
     A: Serialize,
@@ -218,6 +202,7 @@ where
     }
 }
 
+#[cfg(feature = "srd")]
 impl<'de, A, Di, S> Deserialize<'de> for ArrBase<S, Di>
 where
     A: Deserialize<'de>,
