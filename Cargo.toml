@@ -25,8 +25,8 @@ name = "teapy"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["lazy", "window_func", "option_dtype", "blas", "arw"]
-
+default = ["lazy", "time", "window_func", "option_dtype", "blas", "arw"]
+time = ["py_teapy/time"]
 option_dtype = ["py_teapy/option_dtype"]
 lazy = ["py_teapy/lazy"]
 window_func = ["py_teapy/window_func"]
