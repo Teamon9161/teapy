@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 
-#[cfg(feature = "lazy")]
-use crate::ExprElement;
+// #[cfg(feature = "lazy")]
+// use crate::ExprElement;
 use crate::{DataType, GetDataType, GetNone};
 use numpy::{Element, PyArrayDescr};
 use pyo3::{FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
+#[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
 
 #[derive(Clone)]
@@ -32,6 +33,7 @@ impl PartialEq for PyValue {
     }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for PyValue {
     fn serialize<S: Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error> {
         unimplemented!("can not serialize PyObject")
@@ -57,8 +59,8 @@ impl GetDataType for PyValue {
     }
 }
 
-#[cfg(feature = "lazy")]
-impl ExprElement for PyValue {}
+// #[cfg(feature = "lazy")]
+// impl ExprElement for PyValue {}
 
 unsafe impl Element for PyValue {
     const IS_COPY: bool = false;

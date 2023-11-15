@@ -9,9 +9,12 @@ description = "Wrapper of NdArray"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["lazy", "window_func", "blas", "arw"]
-option_dtype = []
+default = ["lazy", "window_func", "time", "blas", "arw", "option_dtype"]
+# default = []
+option_dtype = ["tea-dtype/option_dtype"]
+time = ["tea-dtype/time"]
 lazy = ["ops"]
+srd = ["tea-dtype/srd"]
 window_func = []
 ops = []
 blas = ["ndarray/blas", "lazy", "stat", "lapack-sys", "intel-mkl"]
@@ -30,6 +33,8 @@ intel-mkl-static = ["intel-mkl-src/mkl-static-lp64-seq"]
 intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
 
 [dependencies]
+tea-dtype = { path = "../tea-dtype", default-features = false}
+tea-utils = { path = "../tea-utils"}
 num = { workspace=true }
 regex = { workspace=true}
 once_cell = { workspace=true }

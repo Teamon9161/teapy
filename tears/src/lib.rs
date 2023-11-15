@@ -7,8 +7,13 @@ extern crate intel_mkl_src as _src;
 
 #[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
 extern crate openblas_src as _src;
+
+pub extern crate tea_dtype as datatype;
+pub extern crate tea_utils as utils;
+
 #[macro_use]
 mod core;
+mod arropt;
 mod eager;
 mod error;
 mod export;
@@ -21,7 +26,7 @@ mod from_py;
 #[cfg(feature = "window_func")]
 mod window;
 
-pub mod datatype;
+// pub mod datatype;
 #[cfg(feature = "lazy")]
 #[macro_use]
 pub mod lazy;
@@ -30,18 +35,21 @@ pub mod lazy;
 mod arrow_io;
 // mod impls;
 pub mod util_trait;
-pub mod utils;
+// pub mod utils;
 
+pub use arropt::ArrToOpt;
 #[cfg(feature = "arw")]
 pub use arrow_io::{read_ipc, ColSelect};
-pub(crate) use datatype::match_datatype_arm;
+// pub(crate) use datatype::match_datatype_arm;
 // pub(crate) use crate::core::match_arbarray;
-#[cfg(feature = "option_dtype")]
-pub use datatype::{ArrToOpt, OptF32, OptF64, OptI32, OptI64};
-pub use datatype::{
-    BoolType, Cast, DataType, DateTime, GetDataType, GetNone, Number, OptUsize, PyValue, TimeDelta,
-    TimeUnit,
-};
+// #[cfg(feature = "option_dtype")]
+// pub use datatype::{OptF32, OptF64, OptI32, OptI64};
+// pub use datatype::{
+//     BoolType, Cast, DataType, DateTime, GetDataType, GetNone, Number, OptUsize, PyValue, TimeDelta,
+//     TimeUnit, ArrToOpt,
+// };
+
+// pub use datatype::*;
 pub use eager::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
 pub use error::{StrError, TpResult};
 
@@ -49,6 +57,7 @@ pub use iterators::{Iter, IterMut};
 pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
 pub use utils::kh_sum;
 
+#[cfg(feature = "lazy")]
 pub use lazy::expr_core::{Data, DropNaMethod, Expr, ExprElement};
 #[cfg(feature = "lazy")]
 pub use lazy::Context;

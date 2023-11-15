@@ -1,9 +1,10 @@
 use pyo3::types::{PyList as PyList3, PyTuple};
 
-use tears::lazy::{ColumnSelector, Data, DataDict};
-use tears::{ArbArray, DateTime, TimeDelta};
-
 use super::super::from_py::{PyArrayOk, PyList};
+#[cfg(feature = "time")]
+use tears::datatype::{DateTime, TimeDelta};
+use tears::lazy::{ColumnSelector, Data, DataDict};
+use tears::ArbArray;
 // #[cfg(feature="datadict")]
 use super::datadict::{IntoPyDataDict, PyDataDict, PyVecExprToRs};
 use super::export::*;
@@ -16,6 +17,7 @@ pub fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
     unsafe { parse_expr(obj, false) }
 }
 
+#[cfg(feature = "time")]
 #[pyfunction]
 #[pyo3(signature=(obj, copy=false))]
 /// A util function to convert python object to PyExpr
@@ -128,6 +130,150 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
             }
         }
 
+        if copy {
+            // Ok(Exprs::new_from_owned(pyarr.to_owned_array().wrap(), None).into())
+            match_pyarray!(
+                pyarr,
+                arr,
+                { Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into()) },
+                F64,
+                F32,
+                I64,
+                I32,
+                Bool
+            )
+        } else {
+            match_pyarray!(
+                pyarr,
+                arr,
+                {
+                    let arr_res = arr.try_readwrite();
+                    if let Ok(mut arr) = arr_res {
+                        let arr_write = arr.as_array_mut();
+                        let arb_arr = ArbArray::ViewMut(arr_write.wrap());
+                        // safe when pyarray exists
+                        Ok(
+                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new(
+                                arb_arr, None,
+                            ))
+                            .to_py(Some(vec![obj.to_object(obj.py())])),
+                        )
+                    } else {
+                        let arr_read = arr.as_array();
+                        let arb_arr = ArbArray::View(arr_read.wrap());
+                        // safe when pyarray exists
+                        Ok(
+                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new(
+                                arb_arr, None,
+                            ))
+                            .to_py(Some(vec![obj.to_object(obj.py())])),
+                        )
+                    }
+                },
+                F64,
+                F32,
+                I64,
+                I32,
+                Bool
+            )
+        }
+    } else if let Ok(pylist) = obj.extract::<PyList>() {
+        match_pylist!(pylist, l, {
+            Ok(Expr::new_from_owned(Arr1::from_vec(l).to_dimd(), None).into())
+        })
+    } else if let Ok(val) = obj.extract::<i32>() {
+        Ok(Expr::new(val.into(), None).into())
+    } else if let Ok(val) = obj.extract::<f64>() {
+        Ok(Expr::new(val.into(), None).into())
+    } else if let Ok(val) = obj.extract::<String>() {
+        Ok(Expr::new(val.into(), None).into())
+    } else {
+        Err(PyValueError::new_err(format!(
+            "Not support this type of Pyobject {}",
+            obj.get_type()
+        )))
+    }
+}
+
+#[cfg(not(feature = "time"))]
+#[pyfunction]
+#[pyo3(signature=(obj, copy=false))]
+/// A util function to convert python object to PyExpr
+///
+/// copy: whether to copy numpy.ndarray when creating the PyExpr
+pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
+    if let Ok(expr) = obj.extract::<PyExpr>() {
+        Ok(expr)
+    } else if obj.get_type().name()? == "teapy.Expr" {
+        // For any crate that extends this crate
+        let cell: &PyCell<PyExpr> = PyTryFrom::try_from_unchecked(obj);
+        Ok(cell.try_borrow()?.clone())
+    } else if obj.get_type().name()? == "DataFrame" {
+        // cast pandas.DataFrame or polars DataFrame to PyExpr
+        let module_name = obj.getattr("__module__")?.extract::<&str>()?;
+        let module_name = module_name.split('.').next().unwrap();
+        if module_name == "pandas" {
+            let obj = obj.getattr("values")?;
+            return parse_expr(obj, copy);
+        } else if module_name == "polars" {
+            let kwargs = PyDict::new(obj.py());
+            kwargs.set_item("writable", false)?;
+            let obj = obj.getattr("to_numpy")?.call((), Some(kwargs))?;
+            return parse_expr(obj, copy);
+        } else {
+            return Err(PyValueError::new_err(format!(
+                "DataFrame of module {module_name} is not supported"
+            )));
+        }
+    } else if obj.get_type().name()? == "Series" {
+        // cast pandas.Series to PyExpr
+        let module_name = obj.getattr("__module__")?.extract::<&str>()?;
+        let module_name = module_name.split('.').next().unwrap();
+        if module_name == "pandas" {
+            let obj = obj.getattr("values")?;
+            return parse_expr(obj, copy);
+        } else if module_name == "polars" {
+            let kwargs = PyDict::new(obj.py());
+            kwargs.set_item("writable", false)?;
+            let obj = obj.getattr("to_numpy")?.call((), Some(kwargs))?;
+            return parse_expr(obj, copy);
+        } else {
+            return Err(PyValueError::new_err(format!(
+                "Series of module {module_name} is not supported"
+            )));
+        }
+    } else if let Ok(pyarr) = obj.extract::<PyArrayOk>() {
+        // cast numpy.ndarray to PyExpr
+        if pyarr.is_object() {
+            let arr = pyarr.into_object()?;
+            if copy {
+                let e: Expr<'static> = arr.to_owned_array().wrap().into();
+                return Ok(e.into());
+                // return Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into());
+            } else {
+                let arr_res = arr.try_readwrite();
+                if let Ok(mut arr) = arr_res {
+                    let arr_write = arr.as_array_mut();
+                    let arb_arr = ArbArray::ViewMut(arr_write.wrap());
+                    // This is only safe when the pyarray exists
+                    return Ok(std::mem::transmute::<Expr<'_>, Expr<'static>>(
+                        // Expr::new(arb_arr, None).into(),
+                        arb_arr.into(),
+                    )
+                    .to_py(Some(vec![obj.to_object(obj.py())])));
+                } else {
+                    // not writable
+                    let arr_read = arr.as_array();
+                    let arb_arr = ArbArray::View(arr_read.wrap());
+                    // This is only safe when the pyarray exists
+                    return Ok(std::mem::transmute::<Expr<'_>, Expr<'static>>(
+                        // Expr::new(arb_arr, None).into(),
+                        arb_arr.into(),
+                    )
+                    .to_py(Some(vec![obj.to_object(obj.py())])));
+                };
+            }
+        }
         if copy {
             // Ok(Exprs::new_from_owned(pyarr.to_owned_array().wrap(), None).into())
             match_pyarray!(
@@ -368,12 +514,14 @@ pub unsafe fn arange(start: &PyAny, end: Option<&PyAny>, step: Option<f64>) -> P
     }
 }
 
+#[cfg(feature = "time")]
 #[pyfunction]
 pub fn timedelta(rule: &str) -> PyExpr {
     let e: Expr<'static> = TimeDelta::parse(rule).into();
     e.into()
 }
 
+#[cfg(feature = "time")]
 #[pyfunction]
 pub fn datetime(s: &str, fmt: &str) -> PyResult<PyExpr> {
     let e: Expr<'static> = DateTime::parse(s, fmt)

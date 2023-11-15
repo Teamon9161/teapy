@@ -1,4 +1,5 @@
-use crate::{match_all, match_arrok, ArrOk, DataType, Number, TpResult, WrapNdarray};
+use crate::datatype::{DataType, Number};
+use crate::{match_all, match_arrok, ArrOk, TpResult, WrapNdarray};
 use std::cmp::Ordering;
 
 impl<'a> ArrOk<'a> {
@@ -140,7 +141,7 @@ impl<'a> ArrOk<'a> {
             let mut order = Ordering::Equal;
             for arr in by.iter() {
                 let rtn = match &arr {
-                    String(_) | DateTime(_) | TimeDelta(_) => {
+                    String(_) => {
                         match_arrok!(
                             arr,
                             arr,
@@ -156,8 +157,28 @@ impl<'a> ArrOk<'a> {
                                     va.cmp(vb).reverse()
                                 }
                             },
-                            String,
-                            DateTime
+                            String // DateTime
+                        )
+                    }
+                    #[cfg(feature = "time")]
+                    DateTime(_) | TimeDelta(_) => {
+                        match_arrok!(
+                            arr,
+                            arr,
+                            {
+                                let key_view = arr
+                                    .view()
+                                    .to_dim1()
+                                    .expect("Currently only 1 dim array can be sort key");
+                                let (va, vb) = unsafe { (key_view.uget(*a), key_view.uget(*b)) };
+                                if !rev {
+                                    va.cmp(vb)
+                                } else {
+                                    va.cmp(vb).reverse()
+                                }
+                            },
+                            DateTime,
+                            TimeDelta
                         )
                     }
                     _ => {

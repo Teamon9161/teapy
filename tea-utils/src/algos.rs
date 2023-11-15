@@ -1,4 +1,5 @@
-use super::super::macros::define_n;
+use super::define_n;
+
 use std::ops::{Add, Sub};
 /// Fast2sum is a floating-point algorithm for computing the exact
 /// round-off error in a floating-point addition operation.

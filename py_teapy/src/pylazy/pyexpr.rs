@@ -6,7 +6,12 @@ use std::fmt::Debug;
 use crate::from_py::PyContext;
 
 use super::export::*;
-use tears::{ExprElement, StrError, TimeUnit};
+use tears::StrError;
+
+#[cfg(feature = "time")]
+use tears::datatype::TimeUnit;
+#[cfg(feature = "lazy")]
+use tears::ExprElement;
 // #[cfg(feature = "option_dtype")]
 // use tears::{OptF32, OptF64, OptI32, OptI64};
 
@@ -158,11 +163,17 @@ impl PyExpr {
                 // Ok(self.clone().cast_string()?.to_py(self.obj()))
                 // }
             }
+            #[cfg(feature = "time")]
             "datetime" => expr.e.cast_datetime_default(),
+            #[cfg(feature = "time")]
             "datetime(ns)" => expr.e.cast_datetime(Some(TimeUnit::Nanosecond)),
+            #[cfg(feature = "time")]
             "datetime(us)" => expr.e.cast_datetime(Some(TimeUnit::Microsecond)),
+            #[cfg(feature = "time")]
             "datetime(ms)" => expr.e.cast_datetime(Some(TimeUnit::Millisecond)),
+            #[cfg(feature = "time")]
             "datetime(s)" => expr.e.cast_datetime(Some(TimeUnit::Second)),
+            #[cfg(feature = "time")]
             "timedelta" => expr.e.cast_timedelta(),
             "optusize" | "option<usize>" | "opt<usize>" => expr.e.cast_optusize(),
             #[cfg(feature = "option_dtype")]

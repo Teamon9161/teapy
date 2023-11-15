@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
 use super::export::*;
-use crate::{lazy::DataDict, Arr1, CollectTrustedToVec, CorrMethod, Data, DateTime, TimeDelta};
+#[cfg(feature = "time")]
+use crate::datatype::{DateTime, TimeDelta};
+#[cfg(feature = "time")]
+use crate::Data;
+use crate::{lazy::DataDict, Arr1, CollectTrustedToVec, CorrMethod};
 use ahash::HashMap;
 use ndarray::s;
 
@@ -128,6 +132,7 @@ impl_group_by_time_info_agg!(in2 group_by_time_corr, corr_1d(method: CorrMethod,
 impl<'a> Expr<'a> {
     /// This func should return an array indicates the start of each group
     /// and a label array indicates the label of each group
+    #[cfg(feature = "time")]
     pub fn get_group_by_time_info<TD>(&mut self, duration: TD, closed: String) -> &mut Self
     where
         TD: Into<TimeDelta>,

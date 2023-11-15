@@ -2,7 +2,7 @@ use super::export::*;
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Not, Sub};
 
 macro_rules! impl_cmp {
-    ($func: ident $(,$dtype: ident)*) => {
+    ($func: ident $(, $(#[$meta: meta])? $dtype: ident)*) => {
         impl<'a> Expr<'a> {
             pub fn $func(&mut self, rhs: Expr<'a>, par: bool) {
                 self.chain_f_ctx(move |(data, ctx)| {
@@ -25,42 +25,13 @@ macro_rules! impl_cmp {
                         let rhs_arr = rhs.view_arr(ctx.as_ref())?;
                         match (arr, rhs_arr) {
                             $(
-                                (ArrOk::$dtype(a), ArrOk::$dtype(r)) => {
+                                $(#[$meta])? (ArrOk::$dtype(a), ArrOk::$dtype(r)) => {
                                     a.view().$func(&r.view(), par)
                                 },
                             )*
                             _ => panic!("can not cmp this type of expression")
                         }
                     };
-                    // use ArrOk::*;
-                    // let out = match (&arr, &rhs_arr) {
-                    //     (F64(_), _) | (_, F64(_)) => {
-                    //         match_arrok!((arr, a, I32, I64, F32, F64, Usize), (rhs_arr, b, I32, I64, F32, F64, Usize), {
-                    //             (a.cast_f64().view().$func(&b.cast_f64().view(), par))
-                    //         })
-                    //     },
-                    //     (F32(_), _) | (_, F32(_)) => {
-                    //         match_arrok!((arr, a, I32, I64, F32, Usize), (rhs_arr, b, I32, I64, F32, Usize), {
-                    //             (a.cast_f32().view().$func(&b.cast_f32().view(), par))
-                    //         })
-                    //     },
-                    //     (I64(_), _) | (_, I64(_)) => {
-                    //         match_arrok!((arr, a, I64, I32, Bool, Usize), (rhs_arr, b, I64, I32, Bool, Usize), {
-                    //             (a.cast_i64().view().$func(&b.cast_i64().view(), par))
-                    //         })
-                    //     },
-                    //     (I32(_), _) | (_, I32(_)) => {
-                    //         match_arrok!((arr, a, I32, Bool, Usize), (rhs_arr, b, I32, Bool, Usize), {
-                    //             (a.cast_i32().view().$func(&b.cast_i32().view(), par))
-                    //         })
-                    //     },
-                    //     // (Object(e1), String(e2)) => e1.clone().object_to_string($py).map_err(StrError::to_py)?.$func(e2.clone(), false).to_py(obj).add_obj_into(obj2),
-                    //     // (String(e1), Object(e2)) => e1.clone().$func(e2.clone().object_to_string($py).map_err(StrError::to_py)?, false).to_py(obj).add_obj_into(obj2),
-                        // $(
-                        //     ($dtype(a), $dtype(r)) => a.view().$func(&r.view(), par),
-                        // )*
-                    //     _ => todo!()
-                    // };
                     Ok((out.into(), ctx))
                 });
             }
@@ -69,7 +40,7 @@ macro_rules! impl_cmp {
 }
 
 macro_rules! impl_dot {
-    ($func: ident $(,$dtype: ident)*) => {
+    ($func: ident $(, $(#[$meta: meta])? $dtype: ident)*) => {
         impl<'a> Expr<'a> {
             pub fn $func(&mut self, rhs: Expr<'a>) {
                 self.chain_f_ctx(move |(data, ctx)| {
@@ -92,43 +63,13 @@ macro_rules! impl_dot {
                         let rhs_arr = rhs.view_arr(ctx.as_ref())?;
                         match (arr, rhs_arr) {
                             $(
-                                (ArrOk::$dtype(a), ArrOk::$dtype(r)) => {
+                                $(#[$meta])? (ArrOk::$dtype(a), ArrOk::$dtype(r)) => {
                                     a.view().$func(&r.view())?.into()
                                 },
                             )*
                             _ => panic!("can not dot this type of expression")
                         }
                     };
-                    // let arr = data.into_arr(ctx.clone())?;
-                    // rhs.eval_inplace(ctx.clone())?;
-                    // let rhs_arr = rhs.into_arr(None)?;
-                    // use ArrOk::*;
-                    // let out = match (&arr, &rhs_arr) {
-                    //     (F64(_), _) | (_, F64(_)) => {
-                    //         match_arrok!((arr, a, I32, I64, F32, F64, Usize), (rhs_arr, b, I32, I64, F32, F64, Usize), {
-                    //             (a.cast_f64().view().$func(&b.cast_f64().view())?).into()
-                    //         })
-                    //     },
-                    //     (F32(_), _) | (_, F32(_)) => {
-                    //         match_arrok!((arr, a, I32, I64, F32, Usize), (rhs_arr, b, I32, I64, F32, Usize), {
-                    //             (a.cast_f32().view().$func(&b.cast_f32().view())?).into()
-                    //         })
-                    //     },
-                    //     (I64(_), _) | (_, I64(_)) => {
-                    //         match_arrok!((arr, a, I64, I32, Bool, Usize), (rhs_arr, b, I64, I32, Bool, Usize), {
-                    //             (a.cast_i64().view().$func(&b.cast_i64().view())?).into()
-                    //         })
-                    //     },
-                    //     (I32(_), _) | (_, I32(_)) => {
-                    //         match_arrok!((arr, a, I32, Bool, Usize), (rhs_arr, b, I32, Bool, Usize), {
-                    //             (a.cast_i32().view().$func(&b.cast_i32().view())?).into()
-                    //         })
-                    //     },
-                    //     $(
-                    //         ($dtype(a), $dtype(r)) => a.view().$func(&r.view())?.into(),
-                    //     )*
-                    //     _ => todo!()
-                    // };
                     Ok((out.into(), ctx))
                 })
             }
@@ -136,12 +77,56 @@ macro_rules! impl_dot {
     };
 }
 
-impl_cmp!(eq, DateTime, String, TimeDelta, Bool);
-impl_cmp!(ne, DateTime, String, TimeDelta, Bool);
-impl_cmp!(gt, DateTime, String, TimeDelta);
-impl_cmp!(ge, DateTime, String, TimeDelta);
-impl_cmp!(lt, DateTime, String, TimeDelta);
-impl_cmp!(le, DateTime, String, TimeDelta);
+impl_cmp!(
+    eq,
+    #[cfg(feature = "time")]
+    DateTime,
+    #[cfg(feature = "time")]
+    TimeDelta,
+    String,
+    Bool
+);
+impl_cmp!(
+    ne,
+    #[cfg(feature = "time")]
+    DateTime,
+    #[cfg(feature = "time")]
+    TimeDelta,
+    String,
+    Bool
+);
+impl_cmp!(
+    gt,
+    String,
+    #[cfg(feature = "time")]
+    DateTime,
+    #[cfg(feature = "time")]
+    TimeDelta
+);
+impl_cmp!(
+    ge,
+    String,
+    #[cfg(feature = "time")]
+    DateTime,
+    #[cfg(feature = "time")]
+    TimeDelta
+);
+impl_cmp!(
+    lt,
+    String,
+    #[cfg(feature = "time")]
+    DateTime,
+    #[cfg(feature = "time")]
+    TimeDelta
+);
+impl_cmp!(
+    le,
+    String,
+    #[cfg(feature = "time")]
+    DateTime,
+    #[cfg(feature = "time")]
+    TimeDelta
+);
 
 impl_dot!(dot);
 
@@ -193,6 +178,7 @@ impl<'a> Add for Expr<'a> {
                     .view()
                     .add_str(&rhs_arr.deref().cast_str().view())
                     .into(),
+                #[cfg(feature = "time")]
                 (DateTime(_), TimeDelta(_)) => arr
                     .cast_datetime_default()
                     .into_owned()
@@ -200,6 +186,7 @@ impl<'a> Add for Expr<'a> {
                     .add(rhs_arr.deref().cast_timedelta().view().0)
                     .wrap()
                     .into(),
+                #[cfg(feature = "time")]
                 (TimeDelta(_), DateTime(_)) => rhs_arr
                     .deref()
                     .cast_datetime_default()
@@ -208,6 +195,7 @@ impl<'a> Add for Expr<'a> {
                     .add(arr.cast_timedelta().view().0)
                     .wrap()
                     .into(),
+                #[cfg(feature = "time")]
                 (TimeDelta(_), TimeDelta(_)) => arr
                     .cast_timedelta()
                     .into_owned()
@@ -252,6 +240,7 @@ impl<'a> Sub for Expr<'a> {
                     - rhs_arr.deref().cast_usize().view().0)
                     .wrap()
                     .into(),
+                #[cfg(feature = "time")]
                 (DateTime(_), TimeDelta(_)) => arr
                     .cast_datetime_default()
                     .into_owned()
@@ -259,11 +248,13 @@ impl<'a> Sub for Expr<'a> {
                     .sub(rhs_arr.deref().cast_timedelta().view().0)
                     .wrap()
                     .into(),
+                #[cfg(feature = "time")]
                 (DateTime(_), DateTime(_)) => arr
                     .cast_datetime_default()
                     .view()
                     .sub_datetime(&(rhs_arr.deref().cast_datetime_default().view()), false)
                     .into(),
+                #[cfg(feature = "time")]
                 (TimeDelta(_), TimeDelta(_)) => arr
                     .cast_timedelta()
                     .into_owned()

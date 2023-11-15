@@ -5,7 +5,10 @@ use super::{Expr, ExprElement, FuncNode};
 #[cfg(feature = "blas")]
 use crate::lazy::OlsResult;
 use crate::{lazy::ColumnSelector, ArrViewD, CollectTrustedToVec};
-use crate::{ArbArray, ArrD, ArrOk, ArrViewMutD, Context, GetDataType, GetNone, TpResult};
+use crate::{ArbArray, ArrD, ArrOk, ArrViewMutD, Context, TpResult};
+use datatype::GetDataType;
+#[cfg(feature = "option_dtype")]
+use datatype::GetNone;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -306,6 +309,7 @@ impl<'a, T: ExprElement + 'a> From<T> for Data<'a> {
     }
 }
 
+#[cfg(feature = "option_dtype")]
 impl<'a, T> From<Option<T>> for Data<'a>
 where
     T: GetNone + ExprElement + 'a,

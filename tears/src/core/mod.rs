@@ -16,7 +16,9 @@ pub use traits::WrapNdarray;
 pub use view::{ArrView, ArrView1, ArrView2, ArrViewD};
 pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD};
 
-use crate::{export::*, DateTime, GetDataType, Iter, IterMut, TimeUnit, TpResult};
+use crate::{datatype::GetDataType, export::*, Iter, IterMut, TpResult};
+#[cfg(feature = "time")]
+use datatype::{DateTime, TimeDelta};
 
 use ndarray::{
     s, Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
@@ -403,6 +405,7 @@ where
     }
 
     /// Try to cast to datetime
+    #[cfg(feature = "time")]
     pub fn to_datetime(&self, unit: TimeUnit) -> TpResult<Arr<DateTime, D>>
     where
         T: Cast<i64> + GetDataType + Clone,
@@ -420,26 +423,6 @@ where
             TimeUnit::Second => Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0))),
             _ => Err("not support datetime unit".into()),
         }
-        // match T::dtype() {
-        //     DataType::DateTime => unsafe { Ok(self.to_owned().into_dtype::<DateTime>()) },
-        //     _ => {
-        //         match unit {
-        //             TimeUnit::Nanosecond => Ok(self.map(|v| {
-        //                 DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()
-        //             })),
-        //             TimeUnit::Microsecond => Ok(self.map(|v| {
-        //                 DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()
-        //             })),
-        //             TimeUnit::Millisecond => Ok(self.map(|v| {
-        //                 DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()
-        //             })),
-        //             TimeUnit::Second => {
-        //                 Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0)))
-        //             }
-        //             _ => Err("not support datetime unit".into()),
-        //         }
-        //     }
-        // }
     }
 
     /// Try to cast to string

@@ -1,8 +1,12 @@
-// use crate::arr::ArbArray;
-
+#[cfg(feature = "time")]
+use datatype::{DateTime, TimeDelta};
 #[cfg(feature = "option_dtype")]
-use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
-use crate::{DateTime, ExprElement, OptUsize, PyValue, TimeDelta, ViewOnBase};
+use datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
+use datatype::{OptUsize, PyValue};
+
+#[cfg(feature = "lazy")]
+use crate::ExprElement;
+use crate::ViewOnBase;
 
 use crate::export::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData};
@@ -59,6 +63,7 @@ impl<T> From<T> for ArrD<T> {
     }
 }
 
+#[cfg(feature = "lazy")]
 impl<T: ExprElement> From<T> for ArbArray<'_, T> {
     fn from(v: T) -> Self {
         let arr = arr0(v).wrap().to_dimd();
@@ -97,26 +102,28 @@ macro_rules! impl_from {
             //     }
             // }
 
-
+            $(#[$meta])?
             impl<'a> From<ArrD<$ty>> for ArrOk<'a> {
                 fn from(arr: ArrD<$ty>) -> Self {
                     ArrOk::$arm(arr.into())
                 }
             }
 
+            $(#[$meta])?
             impl<'a> From<ArrViewD<'a, $ty>> for ArrOk<'a> {
                 fn from(arr: ArrViewD<'a, $ty>) -> Self {
                     ArrOk::$arm(arr.into())
                 }
             }
 
+            $(#[$meta])?
             impl<'a> From<ArrViewMutD<'a, $ty>> for ArrOk<'a> {
                 fn from(arr: ArrViewMutD<'a, $ty>) -> Self {
                     ArrOk::$arm(arr.into())
                 }
             }
 
-
+            $(#[$meta])?
             impl<'a> From<Pin<Box<ViewOnBase<'a, $ty>>>> for ArrOk<'a> {
                 fn from(arr: Pin<Box<ViewOnBase<'a, $ty>>>) -> Self {
                     ArrOk::$arm(arr.into())
@@ -137,7 +144,9 @@ impl_from!(
     (Usize, usize),
     (Object, PyValue),
     (String, String),
+    #[cfg(feature = "time")]
     (DateTime, DateTime),
+    #[cfg(feature = "time")]
     (TimeDelta, TimeDelta), //, (Str, &str)
     (OptUsize, OptUsize),
     (VecUsize, Vec<usize>),
@@ -148,11 +157,14 @@ impl_from!(
     #[cfg(feature = "option_dtype")]
     (OptI32, OptI32),
     #[cfg(feature = "option_dtype")]
-    (OptI64, OptI64)
+    (OptI64, OptI64),
+    #[cfg(feature = "option_dtype")]
+    (OptBool, OptBool)
 );
 // #[cfg(not(feature = "option_dtype"))]
 // impl_from!(
 //     (Bool, bool),
+//     (U8, u8),
 //     (F32, f32),
 //     (F64, f64),
 //     (I32, i32),
@@ -161,7 +173,9 @@ impl_from!(
 //     (VecUsize, Vec<usize>),
 //     (Object, PyValue),
 //     (String, String),
+//     #[cfg(feature="time")]
 //     (DateTime, DateTime),
+//     #[cfg(feature="time")]
 //     (TimeDelta, TimeDelta),
 //     (OptUsize, OptUsize)
 // );

@@ -11,11 +11,12 @@ pub use impl_pyexpr::expr_register;
 pub use pyexpr::{ExprToPy, IntoPyExpr};
 pub use pyexpr::{PyExpr, RefObj};
 pub use pyfunc::{
-    arange, concat_expr, concat_expr_py, context, datetime, eval_dicts, eval_exprs, from_pandas,
-    full, get_newey_west_adjust_s, parse_expr, parse_expr_list, parse_expr_nocopy, stack_expr_py,
-    timedelta, where_py,
+    arange, concat_expr, concat_expr_py, context, eval_dicts, eval_exprs, from_pandas, full,
+    get_newey_west_adjust_s, parse_expr, parse_expr_list, parse_expr_nocopy, stack_expr_py,
+    where_py,
 };
-
+#[cfg(feature = "time")]
+pub use pyfunc::{datetime, timedelta};
 #[cfg(feature = "arw")]
 use pyfunc::{read_ipc, scan_ipc};
 
@@ -33,7 +34,9 @@ pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(where_py, m)?)?;
     m.add_function(wrap_pyfunction!(full, m)?)?;
     m.add_function(wrap_pyfunction!(arange, m)?)?;
+    #[cfg(feature = "time")]
     m.add_function(wrap_pyfunction!(datetime, m)?)?;
+    #[cfg(feature = "time")]
     m.add_function(wrap_pyfunction!(timedelta, m)?)?;
     m.add_function(wrap_pyfunction!(from_pandas, m)?)?;
     m.add_function(wrap_pyfunction!(get_newey_west_adjust_s, m)?)?;

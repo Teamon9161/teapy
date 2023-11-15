@@ -12,12 +12,13 @@ use pyo3::{
     PyTraverseError, PyVisit,
 };
 
-#[cfg(feature = "window_func")]
+#[cfg(all(feature = "window_func", feature = "time"))]
 use tears::lazy::RollingTimeStartBy;
 
-use tears::{
-    match_all, match_arrok, ArrOk, Data, DropNaMethod, StrError, TimeDelta, WinsorizeMethod,
-};
+use tears::{match_all, match_arrok, ArrOk, Data, DropNaMethod, StrError, WinsorizeMethod};
+
+#[cfg(feature = "time")]
+use tears::datatype::TimeDelta;
 
 // #[cfg(feature = "option_dtype")]
 // use tears::{OptF32, OptF64, OptI32, OptI64};
@@ -215,6 +216,7 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(context=None))]
+    #[cfg(feature = "time")]
     pub fn view_in(
         slf: PyRefMut<'_, Self>,
         context: Option<&PyAny>,
@@ -270,6 +272,58 @@ impl PyExpr {
         )
     }
 
+    #[pyo3(signature=(context=None))]
+    #[cfg(not(feature = "time"))]
+    pub fn view_in(
+        slf: PyRefMut<'_, Self>,
+        context: Option<&PyAny>,
+        py: Python,
+    ) -> PyResult<PyObject> {
+        let ct: PyContext<'static> = if let Some(context) = context {
+            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+        } else {
+            Default::default()
+        };
+        let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
+        let data = slf.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
+        let container = unsafe { PyAny::from_borrowed_ptr(py, slf.as_ptr()) };
+        if matches!(&data, Data::ArrVec(_)) {
+            if let Data::ArrVec(arr_vec) = data {
+                let out = arr_vec
+                    .iter()
+                    .map(|arr| {
+                        match_arrok!(pyelement arr, a, {
+                            unsafe{
+                                PyArray::borrow_from_array(&a.view().0, container)
+                                .no_dim0(py)
+                                .unwrap()
+                            }
+                        })
+                    })
+                    .collect_trusted();
+                return Ok(out.into_py(py));
+            }
+        }
+        let arr = data.view_arr(ct_rs.as_ref())?;
+        if matches!(arr, ArrOk::Str(_) | ArrOk::String(_)) {
+            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String);
+            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+        }
+        match_arrok!(
+            pyelement arr,
+            a,
+            {
+                unsafe {
+                    Ok(PyArray::borrow_from_array(
+                        &a.view().0,
+                        container,
+                    )
+                    .no_dim0(py)?)
+                }
+            }
+        )
+    }
+
     #[getter]
     pub fn get_view(slf: PyRefMut<'_, Self>, py: Python) -> PyResult<PyObject> {
         // slf.view_in(None, py)
@@ -290,6 +344,7 @@ impl PyExpr {
 
     #[allow(unreachable_patterns)]
     #[pyo3(signature=(unit=None, context=None))]
+    #[cfg(feature = "time")]
     pub fn value<'py>(
         &'py mut self,
         unit: Option<&'py str>,
@@ -346,6 +401,57 @@ impl PyExpr {
                 }
                 _ => unimplemented!("not support datetime unit"),
             }
+        }
+        match_arrok!(
+            pyelement arr,
+            a,
+            {
+                Ok(PyArray::from_owned_array(
+                    py,
+                    a.view().to_owned().0
+                )
+                .no_dim0(py)?)
+            }
+        )
+    }
+
+    #[allow(unreachable_patterns, unused_variables)]
+    #[pyo3(signature=(unit=None, context=None))]
+    #[cfg(not(feature = "time"))]
+    pub fn value<'py>(
+        &'py mut self,
+        unit: Option<&'py str>,
+        context: Option<&'py PyAny>,
+        py: Python<'py>,
+    ) -> PyResult<PyObject> {
+        let ct: PyContext<'static> = if let Some(context) = context {
+            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+        } else {
+            Default::default()
+        };
+        let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
+        self.e.eval_inplace(ct_rs.clone())?;
+        let data = self.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
+        if matches!(&data, Data::ArrVec(_)) {
+            if let Data::ArrVec(_) = data {
+                let arr_vec = data.view_arr_vec(ct_rs.as_ref()).map_err(StrError::to_py)?;
+                let out = arr_vec
+                    .into_iter()
+                    .map(|arr| {
+                        match_arrok!(pyelement arr, a, {
+                            PyArray::from_owned_array(py, a.view().to_owned().0)
+                            .no_dim0(py)
+                            .unwrap()
+                        })
+                    })
+                    .collect_trusted();
+                return Ok(out.into_py(py));
+            }
+        }
+        let arr = data.view_arr(ct_rs.as_ref())?;
+        if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_)) {
+            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String);
+            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
         }
         match_arrok!(
             pyelement arr,
@@ -2095,19 +2201,21 @@ impl PyExpr {
         out.e.stack(other, axis);
         Ok(out.add_obj_vec_into(obj_vec))
     }
-
+    #[cfg(feature = "time")]
     pub fn offset_by(&self, delta: &str) -> PyResult<Self> {
         let delta: Expr<'static> = TimeDelta::parse(delta).into();
         let out = self.clone();
         Ok((out.e + delta).to_py(self.obj()))
     }
 
+    #[cfg(feature = "time")]
     pub fn strptime(&self, fmt: String) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.strptime(fmt);
         Ok(out)
     }
 
+    #[cfg(feature = "time")]
     pub fn strftime(&self, fmt: Option<String>) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.strftime(fmt);
@@ -2142,7 +2250,7 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(duration, start_by=RollingTimeStartBy::Full))]
-    #[cfg(feature = "window_func")]
+    #[cfg(all(feature = "window_func", feature = "time"))]
     pub unsafe fn _get_time_rolling_idx(
         &self,
         duration: &str,
@@ -2231,6 +2339,7 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(duration, closed="right".to_owned(), split=true))]
+    #[cfg(feature = "time")]
     pub unsafe fn _get_time_groupby_info(
         &self,
         duration: &str,
@@ -2434,7 +2543,7 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(window, offset))]
-    #[cfg(feature = "window_func")]
+    #[cfg(all(feature = "window_func", feature = "time"))]
     pub unsafe fn _get_time_rolling_offset_idx(
         &self,
         window: &str,

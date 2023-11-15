@@ -23,7 +23,9 @@ impl_dtype_judge!(
     is_string -> String,
     is_str -> Str,
     is_bool -> Bool,
+    #[cfg(feature="time")]
     is_datetime -> DateTime,
+    #[cfg(feature="time")]
     is_timedelta -> TimeDelta,
     is_optusize -> OptUsize,
     is_object -> Object,

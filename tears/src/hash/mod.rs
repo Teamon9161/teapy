@@ -1,13 +1,10 @@
 use ahash::RandomState;
 use once_cell::sync::Lazy;
-// use std::{
-//     collections::HashMap,
-//     hash::{BuildHasherDefault, Hasher},
-// };
 use std::hash::Hasher;
 
-use crate::{Cast, DateTime};
-
+use datatype::Cast;
+#[cfg(feature = "time")]
+use datatype::DateTime;
 // pub type TpBuildHasher = BuildHasherDefault<TpHasher>;
 // pub type TpHashMap<K, V> = HashMap<K, V, TpBuildHasher>;
 static HASHER: Lazy<RandomState> =
@@ -93,8 +90,10 @@ macro_rules! impl_tphash {
 }
 
 impl_tphash!(uint u8, u16, u32, u64, usize);
-impl_tphash!(int i8, i16, i32, i64, isize, DateTime);
+impl_tphash!(int i8, i16, i32, i64, isize);
 impl_tphash!(default String, &str, Vec<u64>, [u64]);
+#[cfg(feature = "time")]
+impl_tphash!(int DateTime);
 
 impl TpHash for f64 {
     #[inline]

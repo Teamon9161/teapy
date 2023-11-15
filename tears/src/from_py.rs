@@ -1,9 +1,14 @@
-#[cfg(all(feature = "lazy", feature = "window_func"))]
-use crate::lazy::RollingTimeStartBy;
+use crate::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
+use pyo3::{FromPyObject, PyAny, PyResult};
+
 #[cfg(feature = "lazy")]
 use crate::lazy::{DropNaMethod, JoinType};
-use crate::{CorrMethod, FillMethod, QuantileMethod, WinsorizeMethod};
-use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyResult};
+
+#[cfg(all(feature = "lazy", feature = "window_func"))]
+use pyo3::exceptions::PyValueError;
+
+#[cfg(all(feature = "lazy", feature = "window_func"))]
+use crate::lazy::RollingTimeStartBy;
 
 impl<'source> FromPyObject<'source> for CorrMethod {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {

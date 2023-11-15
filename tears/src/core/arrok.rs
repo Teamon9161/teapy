@@ -3,16 +3,16 @@ use std::fmt::Debug;
 
 use super::arbarray::ArbArray;
 use super::view::ArrViewD;
-use crate::{
-    match_datatype_arm, Arr1, Cast, CollectTrustedToVec, DataType, DateTime, GetDataType, OptUsize,
-    PyValue, TimeDelta,
-};
+use crate::{Arr1, CollectTrustedToVec};
+use datatype::{match_datatype_arm, Cast, DataType, GetDataType, OptUsize, PyValue};
+#[cfg(feature = "time")]
+use datatype::{DateTime, TimeDelta};
 use ndarray::{Axis, IxDyn, SliceArg};
 
-#[cfg(feature = "option_dtype")]
-use crate::datatype::{OptF32, OptF64, OptI32, OptI64};
 #[cfg(feature = "arrow")]
 use crate::ArrView1;
+#[cfg(feature = "option_dtype")]
+use datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
 
 #[derive(Clone)]
 pub enum ArrOk<'a> {
@@ -27,9 +27,13 @@ pub enum ArrOk<'a> {
     String(ArbArray<'a, String>),
     Str(ArbArray<'a, &'a str>),
     Object(ArbArray<'a, PyValue>),
+    #[cfg(feature = "time")]
     DateTime(ArbArray<'a, DateTime>),
+    #[cfg(feature = "time")]
     TimeDelta(ArbArray<'a, TimeDelta>),
     VecUsize(ArbArray<'a, Vec<usize>>),
+    #[cfg(feature = "option_dtype")]
+    OptBool(ArbArray<'a, OptBool>),
     #[cfg(feature = "option_dtype")]
     OptF64(ArbArray<'a, OptF64>),
     #[cfg(feature = "option_dtype")]
@@ -55,14 +59,14 @@ macro_rules! match_all {
             #[cfg(feature="option_dtype")]
             macro_rules! inner_macro {
                 () => {
-                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, DateTime, TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptUsize)
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, #[cfg(feature="time")] DateTime, #[cfg(feature="time")] TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptBool, OptUsize)
                 };
             }
 
             #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, DateTime, TimeDelta, OptUsize, VecUsize)
+                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, #[cfg(feature="time")] DateTime, #[cfg(feature="time")] TimeDelta, OptUsize, VecUsize)
                 };
             }
             inner_macro!()
@@ -90,23 +94,29 @@ macro_rules! match_arrok {
     // (numeric2 $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, OptUsize, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
     (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};//, OptUsize, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
     (float $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64)};//, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64)};
-    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, String, Str, DateTime, Bool, U8)};
+    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8)};
     (castable $($tt: tt)*) => {match_all!(
         ArrOk, $($tt)*,
-        F32, F64, I32, I64, Usize, String, DateTime, Bool, OptUsize,
+        F32, F64, I32, I64, Usize, String,
+        Bool, OptUsize,
+        #[cfg(feature="time")] DateTime,
+        #[cfg(feature="time")] TimeDelta,
         #[cfg(feature = "option_dtype")] OptF32,
         #[cfg(feature = "option_dtype")] OptF64,
         #[cfg(feature = "option_dtype")] OptI32,
         #[cfg(feature = "option_dtype")] OptI64
-        )};
+    )};
     (nostr $($tt: tt)*) => {match_all!(
         ArrOk, $($tt)*,
-        F32, F64, I32, I64, Usize, String, DateTime, TimeDelta, U8, Bool, OptUsize, VecUsize, Object,
+        F32, F64, I32, I64, Usize, String, U8, Bool, OptUsize, VecUsize, Object,
+        #[cfg(feature="time")] DateTime,
+        #[cfg(feature="time")] TimeDelta,
+        #[cfg(feature = "option_dtype")] OptBool,
         #[cfg(feature = "option_dtype")] OptF32,
         #[cfg(feature = "option_dtype")] OptF64,
         #[cfg(feature = "option_dtype")] OptI32,
         #[cfg(feature = "option_dtype")] OptI64
-        )};
+    )};
     (pyelement $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, Bool, Object)};
     ($($tt: tt)*) => {match_all!(ArrOk, $($tt)*)};
 }
@@ -345,7 +355,9 @@ impl<'a> ArrOk<'a> {
                 std::mem::transmute::<_, ArrViewD<'_, &'_ str>>(arr.view()).into()
             },
             ArrOk::Object(arr) => arr.view().into(),
+            #[cfg(feature = "time")]
             ArrOk::DateTime(arr) => arr.view().into(),
+            #[cfg(feature = "time")]
             ArrOk::TimeDelta(arr) => arr.view().into(),
             ArrOk::VecUsize(arr) => arr.view().into(),
             #[cfg(feature = "option_dtype")]
@@ -356,6 +368,8 @@ impl<'a> ArrOk<'a> {
             ArrOk::OptI32(arr) => arr.view().into(),
             #[cfg(feature = "option_dtype")]
             ArrOk::OptI64(arr) => arr.view().into(),
+            #[cfg(feature = "option_dtype")]
+            ArrOk::OptBool(arr) => arr.view().into(),
             _ => unimplemented!("view is not implemented for this dtype"),
         }
         // match_arr!(&self, arr, { arr.view().into() })
@@ -409,6 +423,8 @@ impl_same_dtype_concat_1d!(
     OptI32,
     #[cfg(feature = "option_dtype")]
     OptI64,
+    #[cfg(feature = "option_dtype")]
+    OptBool,
     Bool,
     U8,
     F32,
@@ -420,7 +436,9 @@ impl_same_dtype_concat_1d!(
     String,
     Str,
     Object,
+    #[cfg(feature = "time")]
     DateTime,
+    #[cfg(feature = "time")]
     TimeDelta,
     VecUsize
 );
@@ -486,7 +504,7 @@ macro_rules! impl_from_arrow {
 
             pub fn from_arrow(arr: Box<dyn arrow::array::Array>) -> ArrOk<'a> {
                 use arrow::datatypes::DataType as ArrowDT;
-                use crate::{ViewOnBase, GetNone, Number};
+                use crate::{ViewOnBase, datatype::{GetNone, Number}};
                 use arrow::array::PrimitiveArray;
                 match arr.data_type() {
                     $(ArrowDT::$arrow_dt => {
@@ -565,6 +583,7 @@ macro_rules! impl_from_arrow {
                         let data = a.into_iter().map(|s| s.map(|s| s.to_string()).unwrap_or_default()).collect_trusted();
                         Arr1::from_vec(data).to_dimd().into()
                     }
+                    #[cfg(feature="time")]
                     ArrowDT::Timestamp(arw_unit, arw_tz) => {
                         use arrow::datatypes::TimeUnit;
                         assert!(arw_tz.is_none(), "Timezone is not supported yet");
@@ -616,6 +635,7 @@ macro_rules! impl_from_arrow {
     };
 }
 
+#[cfg(feature = "arw")]
 impl_from_arrow!(
     [Float32, Float32Array, f32],
     [Float64, Float64Array, f64] // [Int32, Int32Array, i32], [Int64, Int64Array, i64]
@@ -630,11 +650,14 @@ macro_rules! impl_arrok_cast {
                 #[inline]
                 fn cast(self) -> ArbArray<'a, $T> {
                     match_arrok!(self, a, { a.cast::<$T>() },
-                        U8, F32, F64, I32, I64, Usize, Bool, OptUsize, String, Str, DateTime, TimeDelta,
+                        U8, F32, F64, I32, I64, Usize, Bool, OptUsize, String, Str,
+                        #[cfg(feature="time")] DateTime,
+                        #[cfg(feature="time")] TimeDelta,
                         #[cfg(feature = "option_dtype")] OptF32,
                         #[cfg(feature = "option_dtype")] OptF64,
                         #[cfg(feature = "option_dtype")] OptI32,
-                        #[cfg(feature = "option_dtype")] OptI64
+                        #[cfg(feature = "option_dtype")] OptI64,
+                        #[cfg(feature = "option_dtype")] OptBool
                     )
                 }
             }
@@ -676,8 +699,10 @@ impl_arrok_cast!(
     usize: cast_usize,
     bool: cast_bool,
     String: cast_string,
+    #[cfg(feature="time")]
     DateTime: cast_datetime_default,
     OptUsize: cast_optusize,
+    #[cfg(feature="time")]
     TimeDelta: cast_timedelta,
     #[cfg(feature = "option_dtype")]
     OptF32: cast_optf32,
@@ -686,5 +711,8 @@ impl_arrok_cast!(
     #[cfg(feature = "option_dtype")]
     OptI32: cast_opti32,
     #[cfg(feature = "option_dtype")]
-    OptI64: cast_opti64
+    OptI64: cast_opti64,
+    #[cfg(feature = "option_dtype")]
+    OptBool: cast_optbool
+
 );

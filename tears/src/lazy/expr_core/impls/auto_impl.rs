@@ -1,5 +1,5 @@
 use super::export::*;
-use crate::{CorrMethod, Number, QuantileMethod, WinsorizeMethod};
+use crate::{datatype::Number, CorrMethod, QuantileMethod, WinsorizeMethod};
 
 macro_rules! auto_impl_view {
     (in1, [$($func: ident),* $(,)?], $other: tt) => {

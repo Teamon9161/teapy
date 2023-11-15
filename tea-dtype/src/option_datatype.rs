@@ -1,29 +1,24 @@
 use super::{kh_sum, GetNone, MulAdd, Number};
-use crate::{Arr, ArrView, ArrViewMut};
-use ndarray::Dimension;
 use num::{traits::AsPrimitive, Num, One, Zero};
 use pyo3::{FromPyObject, PyAny, PyResult, Python, ToPyObject};
+#[cfg(feature = "srd")]
 use serde::Serialize;
 use std::cmp::{Ordering, PartialOrd};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
 use std::str::FromStr;
-
-pub trait ArrToOpt {
-    type OutType;
-    fn to_opt(&self) -> Self::OutType;
-}
 
 macro_rules! impl_as_primitive_for_opt {
     ($ty: ty, $real: ty, $as_ty: ty) => {
         impl AsPrimitive<$as_ty> for $ty {
             #[inline]
             fn as_(self) -> $as_ty {
-                self.0.unwrap_or(<$real>::nan()) as $as_ty
+                self.0.unwrap_or(<$real>::none()) as $as_ty
             }
         }
     };
 }
 
+#[cfg(feature = "option_dtype")]
 macro_rules! impl_as_primitive_opt_for_opt {
     ($ty: ty, [$($as_ty: ty: $as_real: ty),*]) => {
         $(impl AsPrimitive<$as_ty> for $ty {
@@ -41,7 +36,8 @@ macro_rules! define_option_dtype {
         define_option_dtype(impl_numeric $typ, $real);
     };
     ($typ: ident, $real: ty) => {
-        #[derive(Copy, Clone, Default, Serialize)]
+        #[derive(Copy, Clone, Default)]
+        #[cfg_attr(feature="srd", derive(Serialize))]
         #[repr(transparent)]
         pub struct $typ(pub Option<$real>);
 
@@ -152,35 +148,6 @@ macro_rules! define_option_dtype {
             }
         }
 
-        impl<D: Dimension> ArrToOpt for Arr<$real, D>
-        {
-            type OutType = Arr<$typ, D>;
-            #[inline]
-            fn to_opt(&self) -> Self::OutType
-            {
-                self.map(|v| $typ(Some(*v)))
-            }
-        }
-
-        impl<'a, D: Dimension> ArrToOpt for ArrView<'a, $real, D>
-        {
-            type OutType = Arr<$typ, D>;
-            #[inline]
-            fn to_opt(&self) -> Self::OutType
-            {
-                self.map(|v| $typ(Some(*v)))
-            }
-        }
-
-        impl<'a, D: Dimension> ArrToOpt for ArrViewMut<'a, $real, D>
-        {
-            type OutType = Arr<$typ, D>;
-            #[inline]
-            fn to_opt(&self) -> Self::OutType
-            {
-                self.map(|v| $typ(Some(*v)))
-            }
-        }
     };
 
     (impl_numeric $typ: ident, $real: ty) => {
@@ -387,22 +354,46 @@ macro_rules! define_option_dtype {
         impl_as_primitive_for_opt!($typ, $real, i64);
         impl_as_primitive_for_opt!($typ, $real, i32);
         impl_as_primitive_for_opt!($typ, $real, usize);
+        // impl_as_primitive_for_opt!($typ, $real, bool);
     };
 }
 
-define_option_dtype!(OptF64, f64);
-define_option_dtype!(OptF32, f32);
-define_option_dtype!(OptI64, i64);
-define_option_dtype!(OptI32, i32);
 define_option_dtype!(OptUsize, usize);
-define_option_dtype!(OptBool, bool);
-
-define_option_dtype!(impl_numeric OptF64, f64);
-define_option_dtype!(impl_numeric OptF32, f32);
-define_option_dtype!(impl_numeric OptI64, i64);
-define_option_dtype!(impl_numeric OptI32, i32);
 define_option_dtype!(impl_numeric OptUsize, usize);
 
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(OptF64, f64);
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(OptF32, f32);
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(OptI64, i64);
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(OptI32, i32);
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(OptBool, bool);
+
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(impl_numeric OptF64, f64);
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(impl_numeric OptF32, f32);
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(impl_numeric OptI64, i64);
+#[cfg(feature = "option_dtype")]
+define_option_dtype!(impl_numeric OptI32, i32);
+
+#[cfg(feature = "option_dtype")]
+impl PartialEq for OptBool {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        match (self.0, other.0) {
+            (Some(a), Some(b)) => a.eq(&b),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+#[cfg(feature = "option_dtype")]
 impl_as_primitive_opt_for_opt!(
     OptF32,
     [
@@ -413,6 +404,7 @@ impl_as_primitive_opt_for_opt!(
         OptUsize: usize
     ]
 );
+#[cfg(feature = "option_dtype")]
 impl_as_primitive_opt_for_opt!(
     OptF64,
     [
@@ -423,6 +415,7 @@ impl_as_primitive_opt_for_opt!(
         OptUsize: usize
     ]
 );
+#[cfg(feature = "option_dtype")]
 impl_as_primitive_opt_for_opt!(
     OptI32,
     [
@@ -433,6 +426,7 @@ impl_as_primitive_opt_for_opt!(
         OptUsize: usize
     ]
 );
+#[cfg(feature = "option_dtype")]
 impl_as_primitive_opt_for_opt!(
     OptI64,
     [
@@ -443,6 +437,7 @@ impl_as_primitive_opt_for_opt!(
         OptUsize: usize
     ]
 );
+#[cfg(feature = "option_dtype")]
 impl_as_primitive_opt_for_opt!(
     OptUsize,
     [

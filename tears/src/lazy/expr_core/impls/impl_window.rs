@@ -3,8 +3,10 @@ use std::sync::Arc;
 
 use super::export::*;
 use crate::lazy::DataDict;
-use crate::{Arr1, CollectTrustedToVec, CorrMethod, TimeDelta};
+use crate::{Arr1, CollectTrustedToVec, CorrMethod};
 use ahash::HashMap;
+#[cfg(feature = "time")]
+use datatype::TimeDelta;
 use ndarray::{s, Axis};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
@@ -340,6 +342,7 @@ impl<'a> Expr<'a> {
         window
     }
 
+    #[cfg(feature = "time")]
     pub fn get_time_rolling_idx<TD: Into<TimeDelta>>(
         &mut self,
         duration: TD,
@@ -401,6 +404,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "time")]
     pub fn get_time_rolling_unique_idx<TD: Into<TimeDelta>>(&mut self, duration: TD) -> &mut Self {
         let duration: TimeDelta = duration.into();
         self.chain_f_ctx(move |(arr, ctx)| {
@@ -442,6 +446,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "time")]
     pub fn get_time_rolling_offset_idx<TD1: Into<TimeDelta>, TD2: Into<TimeDelta>>(
         &mut self,
         window: TD1,

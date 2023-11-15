@@ -1,4 +1,5 @@
 use super::super::export::*;
+use num::traits::MulAdd;
 
 impl_map_nd!(
     ts_reg,

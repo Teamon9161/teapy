@@ -1,5 +1,5 @@
 use super::super::export::*;
-use crate::{BoolType, ExprElement, GetNone};
+use crate::datatype::{BoolType, GetNone};
 
 #[derive(Copy, Clone)]
 pub enum QuantileMethod {
@@ -159,12 +159,13 @@ impl_reduce_nd!(
     }
 );
 
+// #[cfg(feature="lazy")]
 impl_reduce_nd!(
     valid_first,
     /// first valid value
     #[inline]
     pub fn valid_first_1d(&self) -> T
-    {T: GetNone; ExprElement}
+    {T: GetNone; Send; Sync; Clone}
     {
         // let out = f64::NAN;
         for v in self.iter() {
@@ -181,7 +182,7 @@ impl_reduce_nd!(
     /// last valid value
     #[inline]
     pub fn valid_last_1d(&self) -> T
-    {T: GetNone; ExprElement}
+    {T: GetNone; Send; Sync; Clone}
     {
         // let out = f64::NAN;
         for v in self.iter().rev() {

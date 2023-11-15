@@ -6,9 +6,9 @@ use numpy::{
     PyArray, PyArrayDyn,
 };
 use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
-use tears::{Context, PyValue};
 #[cfg(feature = "option_dtype")]
-use tears::{OptF64, OptI64};
+use tears::datatype::{OptF64, OptI64};
+use tears::{datatype::PyValue, Context};
 // #[cfg(feature="datadict")]
 use crate::pylazy::PyDataDict;
 use ahash::HashMap;

@@ -1,19 +1,19 @@
-/// define the compensation to use in kahan summation.
-#[cfg(feature = "window_func")]
-macro_rules! define_c {
-    ($($c: ident),*) => {
-        $(let $c = &mut 0.;)*
-    }
-}
-#[cfg(feature = "window_func")]
-pub(super) use define_c;
+// /// define the compensation to use in kahan summation.
+// #[cfg(feature = "window_func")]
+// macro_rules! define_c {
+//     ($($c: ident),*) => {
+//         $(let $c = &mut 0.;)*
+//     }
+// }
+// #[cfg(feature = "window_func")]
+// pub(super) use define_c;
 
-macro_rules! define_n {
-    ($($n: ident),*) => {
-        $(let $n = &mut 0usize;)*
-    }
-}
-pub(super) use define_n;
+// macro_rules! define_n {
+//     ($($n: ident),*) => {
+//         $(let $n = &mut 0usize;)*
+//     }
+// }
+// pub(super) use define_n;
 
 /// Define a 1d reduce function that can only be applied to a 1d array, then auto define
 /// a function so that we can apply this function to a `ndarray`.

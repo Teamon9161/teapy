@@ -1,38 +1,21 @@
-pub mod time;
-
 mod cast;
-#[cfg(feature = "option_dtype")]
 mod option_datatype;
 mod pyvalue;
 
 pub use cast::Cast;
-#[cfg(feature = "option_dtype")]
-pub use option_datatype::{ArrToOpt, OptF32, OptF64, OptI32, OptI64, OptUsize};
+pub use option_datatype::OptUsize;
 pub use pyvalue::PyValue;
-pub use time::{DateTime, TimeDelta, TimeUnit};
 
-use super::utils::kh_sum;
 use num::{traits::MulAdd, Num};
 use std::cmp::{Ordering, PartialOrd};
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
+use tea_utils::kh_sum;
 
-#[cfg(not(feature = "option_dtype"))]
-pub struct OptF32;
-#[cfg(not(feature = "option_dtype"))]
-pub struct OptF64;
-#[cfg(not(feature = "option_dtype"))]
-pub struct OptI32;
-#[cfg(not(feature = "option_dtype"))]
-pub struct OptI64;
-#[cfg(not(feature = "option_dtype"))]
-pub type OptUsize = Option<usize>;
-#[cfg(not(feature = "option_dtype"))]
+#[cfg(feature = "time")]
+pub use tea_time::{DateTime, TimeDelta, TimeUnit};
 
-impl GetNone for OptUsize {
-    fn none() -> Self {
-        None
-    }
-}
+#[cfg(feature = "option_dtype")]
+pub use option_datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum DataType {
@@ -47,7 +30,9 @@ pub enum DataType {
     Str,
     String,
     Object,
+    #[cfg(feature = "time")]
     DateTime,
+    #[cfg(feature = "time")]
     TimeDelta,
     // OpUsize,
     #[cfg(feature = "option_dtype")]
@@ -58,27 +43,39 @@ pub enum DataType {
     OptI32,
     #[cfg(feature = "option_dtype")]
     OptI64,
-    // #[cfg(feature = "option_dtype")]
+    #[cfg(feature = "option_dtype")]
+    OptBool,
     OptUsize,
     VecUsize,
 }
 
+#[macro_export]
 macro_rules! match_datatype_arm {
 
     (all $expr: expr, $v: ident, $other_enum: ident, $ty: ty, $body: tt) => {
         {
-            #[cfg(not(feature="option_dtype"))]
+            // #[cfg(not(feature="option_dtype"))]
             macro_rules! inner_macro {
                 () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize), $body)
+                    match_datatype_arm!($expr, $v, $other_enum, $ty, (
+                        Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str,
+                        #[cfg(feature="time")] DateTime,
+                        #[cfg(feature="time")] TimeDelta,
+                        OptUsize, VecUsize,
+                        #[cfg(feature="option_dtype")] OptF64,
+                        #[cfg(feature="option_dtype")] OptF32,
+                        #[cfg(feature="option_dtype")] OptI32,
+                        #[cfg(feature="option_dtype")] OptI64,
+                        #[cfg(feature="option_dtype")] OptBool
+                    ), $body)
                 };
             }
-            #[cfg(feature="option_dtype")]
-            macro_rules! inner_macro {
-                () => {
-                    match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize, OptF64, OptF32, OptI32, OptI64), $body)
-                };
-            }
+            // #[cfg(feature="option_dtype")]
+            // macro_rules! inner_macro {
+            //     () => {
+            //         match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize, OptF64, OptF32, OptI32, OptI64), $body)
+            //     };
+            // }
             inner_macro!()
         }
 
@@ -86,14 +83,14 @@ macro_rules! match_datatype_arm {
         // #[cfg(feature="option_dtype")]
         // match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize, OptF64, OptF32, OptI32, OptI64, OptUsize), $body);
     };
-    ($expr: expr, $v: ident, $other_enum: ident, $ty: ty, ($($arm: ident $(($arg: ident))?),*), $body: tt) => {
+    ($expr: expr, $v: ident, $other_enum: ident, $ty: ty, ($($(#[$meta: meta])? $arm: ident $(($arg: ident))?),*), $body: tt) => {
         match <$ty>::dtype() {
-            $(DataType::$arm $(($arg))? => {if let $other_enum::$arm($v) = $expr $body else {panic!("datatype mismatch {:?} {:?}", <$ty>::dtype(), $expr)}},)*
+             $($(#[$meta])? DataType::$arm $(($arg))? => {if let $other_enum::$arm($v) = $expr $body else {panic!("datatype mismatch {:?} {:?}", <$ty>::dtype(), $expr)}},)*
             _ => unreachable!()
         }
     };
 }
-pub(crate) use match_datatype_arm;
+// pub(crate) use match_datatype_arm;
 
 pub trait GetDataType: Send + Sync {
     // type Physical;
@@ -190,7 +187,9 @@ impl_datatype!(I64, i64);
 impl_datatype!(U64, u64);
 impl_datatype!(Usize, usize);
 impl_datatype!(String, String);
+#[cfg(feature = "time")]
 impl_datatype!(DateTime, DateTime);
+#[cfg(feature = "time")]
 impl_datatype!(TimeDelta, TimeDelta);
 
 impl_datatype!(OptUsize, OptUsize);
@@ -204,6 +203,8 @@ impl_datatype!(OptF32, OptF32);
 impl_datatype!(OptI32, OptI32);
 #[cfg(feature = "option_dtype")]
 impl_datatype!(OptI64, OptI64);
+#[cfg(feature = "option_dtype")]
+impl_datatype!(OptBool, OptBool);
 
 pub trait GetNone {
     fn none() -> Self;
@@ -255,38 +256,23 @@ impl GetNone for &str {
     }
 }
 
-impl GetNone for usize {
-    #[inline]
-    fn none() -> Self {
-        unreachable!("dtype usize can not be None")
-    }
-    #[inline]
-    fn is_none(&self) -> bool {
-        false
-    }
+macro_rules! impl_getnone {
+    (int $($T: ty),*) => {
+        $(
+            impl GetNone for $T {
+                #[inline]
+                fn none() -> Self {
+                    unreachable!("int dtype can not be None")
+                }
+                #[inline]
+                fn is_none(&self) -> bool {
+                    false
+                }
+            }
+        )*
+    };
 }
-
-impl GetNone for i32 {
-    #[inline]
-    fn none() -> Self {
-        unreachable!("dtype i32 can not be None")
-    }
-    #[inline]
-    fn is_none(&self) -> bool {
-        false
-    }
-}
-
-impl GetNone for i64 {
-    #[inline]
-    fn none() -> Self {
-        unreachable!("dtype i64 can not be None")
-    }
-    #[inline]
-    fn is_none(&self) -> bool {
-        false
-    }
-}
+impl_getnone!(int char, i8, i16, i32, i64, u8, u16, u32, u64, usize, isize);
 
 impl GetNone for bool {
     #[inline]
@@ -299,16 +285,16 @@ impl GetNone for bool {
     }
 }
 
-impl GetNone for u8 {
-    #[inline]
-    fn none() -> Self {
-        panic!("u8 doesn't have None value")
-    }
-    #[inline]
-    fn is_none(&self) -> bool {
-        false
-    }
-}
+// impl GetNone for u8 {
+//     #[inline]
+//     fn none() -> Self {
+//         panic!("u8 doesn't have None value")
+//     }
+//     #[inline]
+//     fn is_none(&self) -> bool {
+//         false
+//     }
+// }
 
 impl GetNone for Vec<usize> {
     #[inline]
@@ -318,6 +304,30 @@ impl GetNone for Vec<usize> {
     #[inline]
     fn is_none(&self) -> bool {
         self.is_empty()
+    }
+}
+
+#[cfg(feature = "time")]
+impl GetNone for DateTime {
+    #[inline]
+    fn none() -> Self {
+        Self(None)
+    }
+    #[inline]
+    fn is_none(&self) -> bool {
+        self.0.is_none()
+    }
+}
+
+#[cfg(feature = "time")]
+impl GetNone for TimeDelta {
+    #[inline]
+    fn none() -> Self {
+        TimeDelta::nat()
+    }
+    #[inline]
+    fn is_none(&self) -> bool {
+        self.is_nat()
     }
 }
 
@@ -621,5 +631,11 @@ pub trait BoolType {
 impl BoolType for bool {
     fn bool_(self) -> bool {
         self
+    }
+}
+
+impl BoolType for OptBool {
+    fn bool_(self) -> bool {
+        self.unwrap()
     }
 }

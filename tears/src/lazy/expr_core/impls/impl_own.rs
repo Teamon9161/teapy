@@ -545,6 +545,7 @@ impl<'a> Expr<'a> {
         out
     }
 
+    #[cfg(feature = "time")]
     pub fn strptime(&mut self, fmt: String) -> &mut Self {
         self.cast_string().chain_f_ctx(move |(data, ctx)| {
             let fmt = fmt.clone();
@@ -563,6 +564,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "time")]
     pub fn strftime(&mut self, fmt: Option<String>) -> &mut Self {
         self.cast_datetime_default()
             .chain_f_ctx(move |(data, ctx)| {

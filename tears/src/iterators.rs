@@ -1,5 +1,5 @@
-use super::datatype::Number;
 use super::{ArrBase, Dim1};
+use crate::datatype::Number;
 use ndarray::{Axis, Data, DataMut};
 use std::iter::{ExactSizeIterator, FusedIterator, IntoIterator, Iterator};
 use std::marker::PhantomData;

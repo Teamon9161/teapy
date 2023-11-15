@@ -1,5 +1,7 @@
 use super::export::*;
-use crate::{DataType, TimeUnit};
+use datatype::DataType;
+#[cfg(feature = "time")]
+use datatype::TimeUnit;
 use pyo3::Python;
 
 macro_rules! impl_cast {
@@ -31,14 +33,16 @@ impl_cast!(
     cast_usize: Usize,
     cast_string: String,
     cast_bool: Bool,
-    cast_datetime_default: DateTime,
-    cast_timedelta: TimeDelta,
+    #[cfg(feature="time")] cast_datetime_default: DateTime,
+    #[cfg(feature="time")] cast_timedelta: TimeDelta,
     cast_optusize: OptUsize,
     cast_vecusize: VecUsize,
     #[cfg(feature = "option_dtype")] cast_optf32: OptF32,
     #[cfg(feature = "option_dtype")] cast_optf64: OptF64,
     #[cfg(feature = "option_dtype")] cast_opti32: OptI32,
     #[cfg(feature = "option_dtype")] cast_opti64: OptI64,
+    #[cfg(feature = "option_dtype")] cast_optbool: OptBool,
+
 
 );
 
@@ -67,6 +71,7 @@ impl<'a> Expr<'a> {
         self
     }
 
+    #[cfg(feature = "time")]
     pub fn cast_datetime(&mut self, unit: Option<TimeUnit>) -> &mut Self {
         if let Some(unit) = unit {
             self.chain_f_ctx(move |(arr, ctx)| {

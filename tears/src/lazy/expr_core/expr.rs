@@ -2,9 +2,10 @@ use super::data::Data;
 use super::expr_element::ExprElement;
 use super::expr_inner::{ExprInner, FuncOut};
 use super::FuncNode;
+use crate::datatype::{GetDataType, GetNone};
 use crate::{
     match_all, match_arrok, ArbArray, ArrD, ArrOk, ArrViewD, CollectTrustedToVec, Context,
-    GetDataType, GetNone, OlsResult, TpResult,
+    OlsResult, TpResult,
 };
 use parking_lot::Mutex;
 use std::fmt::Debug;

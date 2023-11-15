@@ -3,9 +3,9 @@ use ndarray::Axis;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::hash::TpHash;
-use crate::{match_all, match_arrok, ArrOk, Cast, Context, Data, TpResult};
+use crate::{datatype::Cast, match_all, match_arrok, ArrOk, Context, Data, TpResult};
 
-use super::super::{Arr1, CollectTrustedToVec, OptUsize};
+use super::super::{datatype::OptUsize, Arr1, CollectTrustedToVec};
 use super::groupby::{collect_hashmap_keys, collect_hashmap_one_key, prepare_groupby};
 use super::Expr;
 use std::collections::hash_map::Entry;

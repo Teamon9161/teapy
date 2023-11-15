@@ -2,8 +2,11 @@ use std::{fmt::Debug, hash::Hash};
 
 use ahash::RandomState;
 
-use super::super::{export::*, ArrView1, GetNone};
-use crate::{hash::TpHash, ArrViewMut1, Cast, DateTime, OptUsize, TimeDelta};
+use crate::export::*;
+use crate::{hash::TpHash, ArrView1, ArrViewMut1};
+use datatype::{Cast, GetNone, OptUsize};
+#[cfg(feature = "time")]
+use datatype::{DateTime, TimeDelta};
 use rayon::prelude::*;
 // use super::groupby::CollectTrustedToVec;
 
@@ -1116,11 +1119,13 @@ where
             .wrap()
     }
 
+    #[cfg(feature = "time")]
     pub fn strptime(&self, fmt: String) -> Arr<DateTime, D> {
         self.map(|s| DateTime::parse(s, fmt.as_str()).unwrap_or_default())
     }
 }
 
+#[cfg(feature = "time")]
 impl<S, D> ArrBase<S, D>
 where
     S: Data<Elem = DateTime>,

@@ -5,7 +5,7 @@ use crate::pylazy::{parse_expr_nocopy, PyExpr};
 // use ahash::{HashMap, HashMapExt};
 use ndarray::Zip;
 use pyo3::{pyfunction, FromPyObject, PyAny, PyResult};
-use tears::{match_all, match_arrok, Arr1, ArrOk, Number, WrapNdarray};
+use tears::{datatype::Number, match_all, match_arrok, Arr1, ArrOk, WrapNdarray};
 
 pub enum CommisionType {
     Percent,

@@ -9,9 +9,10 @@ description = "Fash DataDict Library in Python"
 
 
 [features]
-default = ["lazy", "window_func", "blas", "arw"]
+default = ["lazy", "time", "window_func", "blas", "arw"]
 option_dtype = ["tears/option_dtype"]
 lazy = ["tears/lazy"]
+time = ["tears/time"]
 window_func = ["tears/window_func"]
 blas = ["tears/blas", "lazy", "stat"]
 npy = ["tears/npy"]

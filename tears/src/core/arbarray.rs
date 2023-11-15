@@ -1,9 +1,10 @@
-use crate::{Cast, DataType, GetDataType, TpResult};
-
 use super::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
+use crate::datatype::{Cast, DataType, GetDataType};
+use crate::TpResult;
 use ndarray::{s, Array, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 // use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(feature = "arw")]
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::marker::PhantomPinned;
 use std::ops::Deref;
 use std::pin::Pin;
@@ -233,6 +234,11 @@ impl<'a, T> ArbArray<'a, T> {
         T::dtype()
     }
 
+    #[cfg(not(feature = "arw"))]
+    #[inline]
+    pub fn prepare(&mut self) {}
+
+    #[cfg(feature = "arw")]
     pub fn prepare(&mut self)
     where
         ArrOk<'a>: Cast<Self>,
