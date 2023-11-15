@@ -161,7 +161,7 @@ impl<'a> ArrOk<'a> {
                         )
                     }
                     #[cfg(feature = "time")]
-                    DateTime(_) | TimeDelta(_) => {
+                    DateTime(_) => {
                         match_arrok!(
                             arr,
                             arr,
@@ -177,8 +177,8 @@ impl<'a> ArrOk<'a> {
                                     va.cmp(vb).reverse()
                                 }
                             },
-                            DateTime,
-                            TimeDelta
+                            DateTime
+                            // TimeDelta
                         )
                     }
                     _ => {

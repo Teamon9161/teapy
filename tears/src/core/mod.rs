@@ -18,7 +18,7 @@ pub use viewmut::{ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD};
 
 use crate::{datatype::GetDataType, export::*, Iter, IterMut, TpResult};
 #[cfg(feature = "time")]
-use datatype::{DateTime, TimeDelta};
+use datatype::{DateTime, TimeUnit};
 
 use ndarray::{
     s, Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,

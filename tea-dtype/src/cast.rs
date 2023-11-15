@@ -307,7 +307,7 @@ impl_bool_cast!(OptF32, OptF64);
 impl_option_numeric_cast!(OptBool: bool => {});
 
 #[cfg(all(feature = "option_dtype", feature = "time"))]
-impl_time_cast!(OptF32, OptF64, OptI32, OptI64);
+impl_time_cast!(OptF32, OptF64, OptI32, OptI64, OptBool);
 
 macro_rules! impl_cast_from_string {
     ($($T: ty),*) => {
