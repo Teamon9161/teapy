@@ -177,8 +177,7 @@ impl<'a> ArrOk<'a> {
                                     va.cmp(vb).reverse()
                                 }
                             },
-                            DateTime
-                            // TimeDelta
+                            DateTime // TimeDelta
                         )
                     }
                     _ => {
