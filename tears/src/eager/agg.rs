@@ -144,7 +144,7 @@ impl_reduce_nd!(
 
 impl_reduce_nd!(
     last,
-    /// first valid value
+    /// last valid value
     #[inline]
     pub fn last_1d(&self) -> T
     {T: Clone; Send; Sync}
@@ -453,7 +453,6 @@ impl_reduce_nd!(
 impl_reduce_nd!(
     skew,
     /// skewness of the array on a given axis
-    #[inline]
     pub fn skew_1d(&self, min_periods: usize, stable: bool) -> f64
     {T: Number,}
     {
@@ -513,7 +512,6 @@ impl_reduce_nd!(
 impl_reduce_nd!(
     kurt,
     /// kurtosis of the array on a given axis
-    #[inline]
     pub fn kurt_1d(&self, min_periods: usize, stable: bool) -> f64
     {T: Number,}
     {

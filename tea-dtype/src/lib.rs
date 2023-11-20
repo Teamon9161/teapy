@@ -30,11 +30,12 @@ pub enum DataType {
     Str,
     String,
     Object,
+    OptUsize,
+    VecUsize,
     #[cfg(feature = "time")]
     DateTime,
     #[cfg(feature = "time")]
     TimeDelta,
-    // OpUsize,
     #[cfg(feature = "option_dtype")]
     OptF64,
     #[cfg(feature = "option_dtype")]
@@ -45,8 +46,6 @@ pub enum DataType {
     OptI64,
     #[cfg(feature = "option_dtype")]
     OptBool,
-    OptUsize,
-    VecUsize,
 }
 
 #[macro_export]
@@ -59,9 +58,9 @@ macro_rules! match_datatype_arm {
                 () => {
                     match_datatype_arm!($expr, $v, $other_enum, $ty, (
                         Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str,
+                        OptUsize, VecUsize,
                         #[cfg(feature="time")] DateTime,
                         #[cfg(feature="time")] TimeDelta,
-                        OptUsize, VecUsize,
                         #[cfg(feature="option_dtype")] OptF64,
                         #[cfg(feature="option_dtype")] OptF32,
                         #[cfg(feature="option_dtype")] OptI32,
@@ -70,18 +69,8 @@ macro_rules! match_datatype_arm {
                     ), $body)
                 };
             }
-            // #[cfg(feature="option_dtype")]
-            // macro_rules! inner_macro {
-            //     () => {
-            //         match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str, DateTime, TimeDelta, OptUsize, VecUsize, OptF64, OptF32, OptI32, OptI64), $body)
-            //     };
-            // }
             inner_macro!()
         }
-
-        // match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize), $body);
-        // #[cfg(feature="option_dtype")]
-        // match_datatype_arm!($expr, $v, $other_enum, $ty, (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize, OptF64, OptF32, OptI32, OptI64, OptUsize), $body);
     };
     ($expr: expr, $v: ident, $other_enum: ident, $ty: ty, ($($(#[$meta: meta])? $arm: ident $(($arg: ident))?),*), $body: tt) => {
         match <$ty>::dtype() {
@@ -187,13 +176,13 @@ impl_datatype!(I64, i64);
 impl_datatype!(U64, u64);
 impl_datatype!(Usize, usize);
 impl_datatype!(String, String);
+impl_datatype!(OptUsize, OptUsize);
+impl_datatype!(VecUsize, Vec<usize>);
+
 #[cfg(feature = "time")]
 impl_datatype!(DateTime, DateTime);
 #[cfg(feature = "time")]
 impl_datatype!(TimeDelta, TimeDelta);
-
-impl_datatype!(OptUsize, OptUsize);
-impl_datatype!(VecUsize, Vec<usize>);
 
 #[cfg(feature = "option_dtype")]
 impl_datatype!(OptF64, OptF64);
@@ -285,16 +274,6 @@ impl GetNone for bool {
     }
 }
 
-// impl GetNone for u8 {
-//     #[inline]
-//     fn none() -> Self {
-//         panic!("u8 doesn't have None value")
-//     }
-//     #[inline]
-//     fn is_none(&self) -> bool {
-//         false
-//     }
-// }
 
 impl GetNone for Vec<usize> {
     #[inline]
@@ -420,7 +399,7 @@ pub trait Number:
         Cast::<usize>::cast(self)
     }
 
-    /// create a value of type T using a value of type U using `AsPrimitive`
+    /// create a value of type T using a value of type U using `Cast`
     #[inline(always)]
     fn fromas<U>(v: U) -> Self
     where
@@ -430,7 +409,7 @@ pub trait Number:
         v.to::<Self>()
     }
 
-    /// cast self to another dtype using `AsPrimitive`
+    /// cast self to another dtype using `Cast`
     #[inline(always)]
     fn to<T: Number>(self) -> T
     where

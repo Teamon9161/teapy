@@ -10,22 +10,22 @@ extern crate openblas_src as _src;
 
 pub extern crate tea_dtype as datatype;
 pub extern crate tea_utils as utils;
+pub extern crate tea_error as error;
+#[cfg(feature="groupby")]
+pub extern crate tea_hash as hash;
 
 #[macro_use]
 mod core;
 mod arropt;
 mod eager;
-mod error;
+// mod error;
 mod export;
-mod hash;
+// mod hash;
 #[cfg(feature = "method_1d")]
 mod iterators;
 mod macros;
 #[macro_use]
 mod from_py;
-
-#[cfg(feature = "window_func")]
-mod window;
 
 // pub mod datatype;
 #[cfg(feature = "lazy")]
@@ -34,8 +34,6 @@ pub mod lazy;
 
 #[cfg(feature = "arw")]
 mod arrow_io;
-pub mod util_trait;
-
 pub use arropt::ArrToOpt;
 #[cfg(feature = "arw")]
 pub use arrow_io::{read_ipc, ColSelect};
@@ -49,8 +47,7 @@ pub use eager::{CorrMethod, QuantileMethod};
 pub use error::{StrError, TpResult};
 #[cfg(feature = "method_1d")]
 pub use iterators::{Iter, IterMut};
-pub use util_trait::{CollectTrusted, CollectTrustedToVec, TrustedLen};
-pub use utils::kh_sum;
+pub use utils::{kh_sum, CollectTrusted, CollectTrustedToVec, TrustedLen};
 
 #[cfg(all(feature = "lazy", feature = "arr_func", feature = "agg"))]
 pub use lazy::expr_core::DropNaMethod;

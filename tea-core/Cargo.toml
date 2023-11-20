@@ -1,0 +1,44 @@
+[package]
+name = "tea-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["extend", "ops"]
+extend = ["option_dtype", "time"]
+option_dtype = ["tea-dtype/option_dtype"]
+method_1d = []
+time = ["tea-dtype/time"]
+ops = []
+srd = ["tea-dtype/srd"]
+blas = ["ndarray/blas", "ops", "statrs", "lapack-sys", "intel-mkl"]
+
+
+# blas choices
+openblas  = ["openblas-static"]
+intel-mkl = ["intel-mkl-static"]
+
+openblas-static = ["openblas-src/static"]
+openblas-system = ["openblas-src/system"]
+
+intel-mkl-static = ["intel-mkl-src/mkl-static-lp64-seq"]
+intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
+
+[dependencies]
+tea-dtype = { path = "../tea-dtype"}
+tea-utils = { path = "../tea-utils"}
+tea-error = { path = "../tea-error", default-features = false }
+ndarray = { workspace = true, features=['rayon', 'serde'] }
+num = { workspace = true }
+rayon = { workspace = true }
+libc = { workspace=true }
+
+pyo3 = { workspace = true, features = ["extension-module", "abi3-py38", "macros", "serde"]}
+lapack-sys = { version="0.14.0", optional=true }
+intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }
+openblas-src = { version = "0.10.4", optional = true, default-features = false, features = ["cblas"] }
+statrs = { version = "0.16", optional=true }

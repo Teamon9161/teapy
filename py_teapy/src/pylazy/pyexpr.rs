@@ -1,8 +1,4 @@
 use std::fmt::Debug;
-// use std::ops::Deref;
-
-// use ndarray::{Slice, SliceInfoElem};
-
 use crate::from_py::PyContext;
 
 use super::export::*;
@@ -10,7 +6,6 @@ use tears::StrError;
 
 #[cfg(feature = "time")]
 use tears::datatype::TimeUnit;
-#[cfg(feature = "lazy")]
 use tears::ExprElement;
 // #[cfg(feature = "option_dtype")]
 // use tears::{OptF32, OptF64, OptI32, OptI64};
@@ -118,7 +113,7 @@ impl PyExpr {
     //     self.eval_inplace(context, freeze)?;
     //     Ok(self)
     // }
-
+    
     #[allow(unreachable_patterns)]
     pub fn eval_inplace(&mut self, context: Option<&PyAny>, freeze: bool) -> PyResult<()> {
         let ct: PyContext<'static> = if let Some(context) = context {
@@ -151,18 +146,7 @@ impl PyExpr {
             "usize" | "uint" => expr.e.cast_usize(),
             "bool" => expr.e.cast_bool(),
             "object" => expr.e.cast_object_eager(py).map_err(StrError::to_py)?,
-            "str" => {
-                expr.e.cast_string()
-                // if self.is_object() {
-                //     Ok(self
-                //         .clone()
-                //         .cast_object()?
-                //         .object_to_string(py)?
-                //         .to_py(self.obj()))
-                // } else {
-                // Ok(self.clone().cast_string()?.to_py(self.obj()))
-                // }
-            }
+            "str" => expr.e.cast_string(),
             #[cfg(feature = "time")]
             "datetime" => expr.e.cast_datetime_default(),
             #[cfg(feature = "time")]

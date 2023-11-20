@@ -11,23 +11,26 @@ description = "Wrapper of NdArray"
 [features]
 # default = ["lazy", "create", "groupby", "concat", "arr_func", "window_func", "time", "blas", "ops", "arw", "option_dtype"]
 default = []
-option_dtype = ["tea-dtype/option_dtype"]
-time = ["tea-dtype/time"]
-lazy = []
+extend = ["lazy", "time", "option_dtype"]  # need for extend Expr
+
+lazy = []  # core structs such as Expr, DataDict, etc.
+
+option_dtype = ["tea-dtype/option_dtype"]  # Option DataType
+time = ["tea-dtype/time", "tea-hash/time"]  # Datetime Support
 srd = ["tea-dtype/srd"] # Serialize, Deserialize
 
 window_func = ["method_1d", "agg", "arr_func"]  # rolling function
 agg = ["method_1d"]  # aggregate function
 arr_func = ["method_1d"]  # array function
 
-ops = []
-groupby = ["agg", "arr_func"]
+ops = []  # arithmetic, comparison, etc.
+groupby = ["agg", "arr_func"]  # groupby, join, unique, etc.
 create = [] # create Expr, like full, arange, etc.
 concat = []  # concat, stack, etc.
 blas = ["ndarray/blas", "agg", "lazy", "ops", "stat", "lapack-sys", "intel-mkl"]
 npy = ["ndarray-npy"]
 stat = ["statrs"]
-arw = ["arrow", "memmap"]
+arw = ["arrow", "memmap", "tea-error/arw"]
 
 method_1d = []
 
@@ -44,6 +47,8 @@ intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
 [dependencies]
 tea-dtype = { path = "../tea-dtype", default-features = false}
 tea-utils = { path = "../tea-utils"}
+tea-hash = { path = "../tea-hash"}
+tea-error = { path = "../tea-error"}
 num = { workspace=true }
 regex = { workspace=true}
 once_cell = { workspace=true }
@@ -62,7 +67,6 @@ intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }
 openblas-src = { version = "0.10.4", optional = true, default-features = false, features = ["cblas"] }
 statrs = { version = "0.16", optional=true }
 ndarray-npy = { version = "0.8.1", optional=true }
-# arrow = {version = "46.0", optional = true, default-features = false, features = ["ipc"]}
-arrow = {package = "arrow2", version = "0.18.0", optional = true, default-features = false, features = ["io_ipc", "io_ipc_compression"]}
+arrow = {workspace = true, optional = true, default-features = false, features = ["io_ipc", "io_ipc_compression"]}
 memmap = { package = "memmap2", version = "0.9.0", optional = true }
 # serde_regex = "1.1"

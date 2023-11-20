@@ -1,0 +1,29 @@
+[package]
+name = "tea-lazy"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["extend", "ops"]
+extend = ["option_dtype", "time"]
+
+# groupby = []
+arw = ["tea-io/arw"]  # todo! impl read_ipc in tea-io
+option_dtype = ["tea-core/option_dtype"]
+ops = ["tea-core/ops"]
+time = ["tea-core/time"]
+blas = ["tea-core/blas", "tea-core/method_1d"]
+
+[dependencies]
+tea-core = { path = "../tea-core" }
+tea-io = { path = "../tea-io", optional=true, default-features=false }
+pyo3 = { workspace = true, features = ["extension-module", "abi3-py38", "macros", "serde"]}
+ahash = { workspace = true, features = ["std", "runtime-rng"]}
+rayon = { workspace = true }
+regex = { workspace = true }
+parking_lot = { workspace = true }
+ndarray = { workspace = true, features=['rayon', 'serde']}

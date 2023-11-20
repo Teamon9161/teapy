@@ -63,8 +63,6 @@ macro_rules! impl_reduce_nd {
                 }
             }
         }
-
-
     };
 }
 #[cfg(feature = "agg")]

@@ -27,11 +27,11 @@ pub enum ArrOk<'a> {
     String(ArbArray<'a, String>),
     Str(ArbArray<'a, &'a str>),
     Object(ArbArray<'a, PyValue>),
+    VecUsize(ArbArray<'a, Vec<usize>>),
     #[cfg(feature = "time")]
     DateTime(ArbArray<'a, DateTime>),
     #[cfg(feature = "time")]
     TimeDelta(ArbArray<'a, TimeDelta>),
-    VecUsize(ArbArray<'a, Vec<usize>>),
     #[cfg(feature = "option_dtype")]
     OptBool(ArbArray<'a, OptBool>),
     #[cfg(feature = "option_dtype")]
@@ -55,21 +55,32 @@ macro_rules! match_all {
     };
 
     ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
-        {
-            #[cfg(feature="option_dtype")]
-            macro_rules! inner_macro {
-                () => {
-                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, #[cfg(feature="time")] DateTime, #[cfg(feature="time")] TimeDelta, VecUsize, OptF32, OptF64, OptI32, OptI64, OptBool, OptUsize)
-                };
-            }
+        {   
+            match_all!(
+                $enum, $exprs, $e, $body, 
+                F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, OptUsize, VecUsize, 
+                #[cfg(feature="time")] DateTime, 
+                #[cfg(feature="time")] TimeDelta, 
+                #[cfg(feature="option_dtype")] OptF32, 
+                #[cfg(feature="option_dtype")] OptF64, 
+                #[cfg(feature="option_dtype")] OptI32, 
+                #[cfg(feature="option_dtype")] OptI64, 
+                #[cfg(feature="option_dtype")] OptBool
+            )
+            // #[cfg(feature="option_dtype")]
+            // macro_rules! inner_macro {
+            //     () => {
+            //         match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, OptUsize, VecUsize, #[cfg(feature="time")] DateTime, #[cfg(feature="time")] TimeDelta, OptF32, OptF64, OptI32, OptI64, OptBool)
+            //     };
+            // }
 
-            #[cfg(not(feature="option_dtype"))]
-            macro_rules! inner_macro {
-                () => {
-                    match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, #[cfg(feature="time")] DateTime, #[cfg(feature="time")] TimeDelta, OptUsize, VecUsize)
-                };
-            }
-            inner_macro!()
+            // #[cfg(not(feature="option_dtype"))]
+            // macro_rules! inner_macro {
+            //     () => {
+            //         match_all!($enum, $exprs, $e, $body, F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, #[cfg(feature="time")] DateTime, #[cfg(feature="time")] TimeDelta, OptUsize, VecUsize)
+            //     };
+            // }
+            // inner_macro!()
         }
 
     };
@@ -278,7 +289,6 @@ impl<'a> ArrOk<'a> {
             a,
             ArrOk,
             T,
-            // (Bool, F32, F64, I32, I64, Usize, Object, String, Str, DateTime, TimeDelta, OpUsize, OpF64),
             { a.as_mut_ptr() as *mut T }
         )
     }
@@ -328,16 +338,6 @@ impl<'a> ArrOk<'a> {
         }
     }
 
-    // /// create an array view of ArrOk.
-    // ///
-    // /// # Safety
-    // ///
-    // /// T must be the correct dtype and the data of the
-    // /// array view must exist.
-    // #[allow(unreachable_patterns)]
-    // pub unsafe fn view<T>(&self) -> ArrViewD<'_, T> {
-    //     match_arrok!(self, arr, { arr.view().into_dtype::<T>() })
-    // }
 
     #[allow(unreachable_patterns)]
     #[inline]
@@ -355,11 +355,11 @@ impl<'a> ArrOk<'a> {
                 std::mem::transmute::<_, ArrViewD<'_, &'_ str>>(arr.view()).into()
             },
             ArrOk::Object(arr) => arr.view().into(),
+            ArrOk::VecUsize(arr) => arr.view().into(),
             #[cfg(feature = "time")]
             ArrOk::DateTime(arr) => arr.view().into(),
             #[cfg(feature = "time")]
             ArrOk::TimeDelta(arr) => arr.view().into(),
-            ArrOk::VecUsize(arr) => arr.view().into(),
             #[cfg(feature = "option_dtype")]
             ArrOk::OptF64(arr) => arr.view().into(),
             #[cfg(feature = "option_dtype")]
@@ -376,6 +376,7 @@ impl<'a> ArrOk<'a> {
     }
 }
 
+#[cfg(any(feature="window_func", feature="groupby"))]
 macro_rules! impl_same_dtype_concat_1d {
     ($($(#[$meta: meta])? $arm: ident),*) => {
         impl<'a> ArrOk<'a> {
@@ -414,7 +415,24 @@ macro_rules! impl_same_dtype_concat_1d {
     };
 }
 
+#[cfg(any(feature="window_func", feature="groupby"))]
 impl_same_dtype_concat_1d!(
+    Bool,
+    U8,
+    F32,
+    F64,
+    I32,
+    I64,
+    Usize,
+    String,
+    Str,
+    Object,
+    OptUsize,
+    VecUsize,
+    #[cfg(feature = "time")]
+    DateTime,
+    #[cfg(feature = "time")]
+    TimeDelta,
     #[cfg(feature = "option_dtype")]
     OptF32,
     #[cfg(feature = "option_dtype")]
@@ -424,33 +442,9 @@ impl_same_dtype_concat_1d!(
     #[cfg(feature = "option_dtype")]
     OptI64,
     #[cfg(feature = "option_dtype")]
-    OptBool,
-    Bool,
-    U8,
-    F32,
-    F64,
-    I32,
-    I64,
-    Usize,
-    OptUsize,
-    String,
-    Str,
-    Object,
-    #[cfg(feature = "time")]
-    DateTime,
-    #[cfg(feature = "time")]
-    TimeDelta,
-    VecUsize
+    OptBool
 );
 
-// impl<'a> ToOwned for ArrOk<'a> {
-//     type Owned = ArrOk<'a>;
-//     #[allow(unreachable_patterns)]
-//     #[inline]
-//     fn to_owned(&self) -> Self::Owned {
-//         match_arrok!(self, a, { a.to_owned().into() })
-//     }
-// }
 
 impl<'a> Cast<ArbArray<'a, &'a str>> for ArrOk<'a> {
     #[inline]

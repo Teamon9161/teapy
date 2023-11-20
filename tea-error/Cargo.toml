@@ -1,0 +1,15 @@
+[package]
+name = "tea-error"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = []
+arw = ["arrow"]
+
+[dependencies]
+pyo3 = { workspace = true }
+arrow = { workspace = true, optional = true}

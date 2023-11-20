@@ -1,0 +1,29 @@
+[package]
+name = "tea-ext"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["rolling", "agg", "map", "create", "lazy_time"]
+agg = []  # aggregate functions
+map = []  # map functions
+rolling = ["num"]  # rolling functions
+lazy = ["tea-lazy"]
+time = ["tea-core/time"]
+lazy_time = ["lazy", "time", "tea-lazy/time"]
+create = []
+# groupby = []
+concat = []
+
+[dependencies]
+tea-core = { path = "../tea-core", features=["method_1d"] }
+tea-lazy = { path = "../tea-lazy", optional=true, default-features = false}
+tea-macros = { path = "../tea-macros" }
+ndarray = {workspace=true, features=['rayon', 'serde']}
+paste = { workspace = true }
+rayon = { workspace = true }
+num = { workspace = true, optional = true}

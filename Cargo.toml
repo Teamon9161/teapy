@@ -1,6 +1,10 @@
 [workspace]
 
 members = [
+    "tea-macros",
+    "tea-ext",
+    "tea-core",
+    "tea-lazy",
     "tears",
     "py_teapy"
 ]
@@ -27,7 +31,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["lazy", "create", "groupby", "concat", "arr_func", "window_func", "time", "blas", "ops", "arw", "option_dtype", "agg"]
 
-# default = ["lazy", "agg", "arr_func"]
+# default = ["lazy", "groupby"]
 time = ["py_teapy/time"]
 option_dtype = ["py_teapy/option_dtype"]
 lazy = ["py_teapy/lazy"]
@@ -53,6 +57,7 @@ stat = ["py_teapy/stat"]
 num = "0.4"
 libc = "0.2"
 rayon = "1.5"
+paste = "1.0"
 ahash = { version = "0.8", features = ["std", "runtime-rng"]}
 once_cell = "1.18"
 regex = "1"
@@ -63,7 +68,7 @@ numpy = "0.20.0"
 pyo3 = {version = "0.20.0", features = ["extension-module", "abi3-py38", "macros", "serde"]}
 parking_lot = "0.12"
 chrono = {version = "0.4.31", features = ["serde"]}
-
+arrow = {package = "arrow2", version = "0.18.0", default-features = false, features = ["io_ipc", "io_ipc_compression"]}
 
 [dependencies]
 py_teapy = {path = "./py_teapy", default-features = false}

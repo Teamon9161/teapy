@@ -1,0 +1,17 @@
+[package]
+name = "tea-hash"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["time"]
+time = ["tea-dtype/time"]
+
+[dependencies]
+tea-dtype = {path = "../tea-dtype"}
+ahash = {workspace = true}
+once_cell = {workspace = true}
+

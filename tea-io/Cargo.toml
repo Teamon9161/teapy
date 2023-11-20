@@ -1,0 +1,14 @@
+[package]
+name = "tea-io"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+arw = ["arrow"]
+
+[dependencies]
+arrow = {workspace=true, optional = true}

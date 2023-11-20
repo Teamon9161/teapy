@@ -1,14 +1,31 @@
-*.pyc
-*.pyd
-.DS_Store
-.hypothesis/
-.vscode/
-.pytest_cache/
-**/__pycache__
-target/
-data/
+# python generated files
+__pycache__/
+*.py[ocd]
+build/
+dist/
 wheels/
+*.egg-info
+
+# virtualenv
+.venv/
 venv/
+
+# pytest
+.hypothesis/
+.pytest_cache/
+
+# cache and ide
+.vscode/
+.DS_Store
+**/__pycache__
+
+# Rust/Cargo generated files
+target/
 Cargo.lock
+
+# data
+data/
+
+# backup
 **/*_bak.rs
 

@@ -3,7 +3,9 @@ use std::{fmt::Debug, hash::Hash};
 use ahash::RandomState;
 
 use crate::export::*;
-use crate::{hash::TpHash, ArrView1, ArrViewMut1};
+use crate::{ArrView1, ArrViewMut1};
+#[cfg(feature="groupby")]
+use crate::hash::TpHash;
 use datatype::{Cast, GetNone, OptUsize};
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeDelta};
@@ -234,6 +236,7 @@ where
     }
 
     /// Hash each element of the array.
+    #[cfg(feature="groupby")]
     #[inline]
     pub fn tphash_1d(self) -> Arr1<u64>
     where
@@ -243,6 +246,7 @@ where
     }
 
     /// Hash each element of the array.
+    #[cfg(feature="groupby")]
     #[inline]
     pub fn tphash_par_1d(self) -> Arr1<u64>
     where
