@@ -1,5 +1,5 @@
-use crate::prelude::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
 use crate::datatype::{Cast, DataType, GetDataType};
+use crate::prelude::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
 use error::TpResult;
 use ndarray::{s, Array, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
 // #[cfg(feature="srd")]
@@ -415,8 +415,8 @@ impl<'a, T> ArbArray<'a, T> {
         T: Clone,
         ArrOk<'a>: Cast<Self>,
     {
-        use utils::vec_uninit;
         use std::mem::MaybeUninit;
+        use utils::vec_uninit;
         match self {
             ArbArray::View(arr) => arr.to_owned_f(),
             ArbArray::ViewMut(arr) => {

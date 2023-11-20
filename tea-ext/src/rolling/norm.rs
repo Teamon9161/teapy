@@ -1,12 +1,11 @@
-use ndarray::{Data, DataMut, ShapeBuilder, Dimension, Ix1};
-use std::cmp::min;
-use std::mem::MaybeUninit;
 use core::prelude::*;
 use core::utils::define_c;
+use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
+use std::cmp::min;
+use std::mem::MaybeUninit;
 
 #[arr_map_ext]
-impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D>
-{
+impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D> {
     fn ts_stable<SO>(
         &self,
         out: &mut ArrBase<SO, Ix1>,
@@ -14,15 +13,17 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D>
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum2 = 0.;
@@ -100,15 +101,17 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D>
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum2 = 0.;
@@ -185,15 +188,17 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D>
         window: usize,
         min_periods: usize,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut max: T = T::min_();
         let mut max_idx = 0;

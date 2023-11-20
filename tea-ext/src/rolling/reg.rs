@@ -1,13 +1,12 @@
 use core::prelude::*;
 use core::utils::define_c;
-use ndarray::{Data, DataMut, ShapeBuilder, Dimension, Ix1};
+use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
+use num::traits::MulAdd;
 use std::cmp::min;
 use std::mem::MaybeUninit;
-use num::traits::MulAdd;
 
 #[arr_map_ext]
-impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
-{
+impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
     fn ts_reg<SO>(
         &self,
         out: &mut ArrBase<SO, Ix1>,
@@ -15,7 +14,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
@@ -24,7 +23,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum_xt = 0.;
@@ -41,7 +42,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     let slope = (n_f64 * sum_xt - sum_t * sum) / divisor;
                     let intercept = sum_t.mul_add(-slope, sum) / n_f64;
@@ -70,7 +71,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     let slope = (n_f64 * sum_xt - sum_t * sum) / divisor;
                     let intercept = sum_t.mul_add(-slope, sum) / n_f64;
@@ -97,7 +98,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
@@ -106,7 +107,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum_xt = 0.;
@@ -123,11 +126,11 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     let slope = (n_f64 * sum_xt - sum_t * sum) / divisor;
                     let intercept = sum_t.mul_add(-slope, sum) / n_f64;
-                    slope.mul_add((n+1).f64(), intercept)
+                    slope.mul_add((n + 1).f64(), intercept)
                 } else {
                     f64::NAN
                 };
@@ -152,11 +155,11 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     let slope = (n_f64 * sum_xt - sum_t * sum) / divisor;
                     let intercept = sum_t.mul_add(-slope, sum) / n_f64;
-                    slope.mul_add((n+1).f64(), intercept)
+                    slope.mul_add((n + 1).f64(), intercept)
                 } else {
                     f64::NAN
                 };
@@ -179,7 +182,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
@@ -188,7 +191,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum_xt = 0.;
@@ -205,7 +210,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     (n_f64 * sum_xt - sum_t * sum) / divisor
                 } else {
@@ -232,7 +237,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     (n_f64 * sum_xt - sum_t * sum) / divisor
                 } else {
@@ -257,7 +262,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
@@ -266,7 +271,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum_xt = 0.;
@@ -283,7 +290,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     let slope = (n_f64 * sum_xt - sum_t * sum) / divisor;
                     sum_t.mul_add(-slope, sum) / n_f64
@@ -311,7 +318,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
                     let n_f64 = n.f64();
                     let nn_add_n = n.mul_add(n, n);
                     let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
-                                                        // denominator of slope
+                                                       // denominator of slope
                     let divisor = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6. - sum_t.powi(2);
                     let slope = (n_f64 * sum_xt - sum_t * sum) / divisor;
                     sum_t.mul_add(-slope, sum) / n_f64
@@ -329,13 +336,10 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D>
             })
         }
     }
-
 }
 
-
 #[arr_map2_ext]
-impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D>
-{
+impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
     // fn ts_regx_beta_1d<S2, D2, T2, SO>(
     //     &self,
     //     x: &ArrBase<S2, D2>,
@@ -344,14 +348,14 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D>
     //     min_periods: usize,
     //     stable: bool,
     // ) -> f64
-    // where 
+    // where
     //     SO: DataMut<Elem = MaybeUninit<f64>>,
     //     S2: Data<Elem = T2>,
     //     D2: Dimension,
     //     D: DimMax<D2>,
     //     T: Number,
     //     T2: Number,
-    // {   
+    // {
     //     let arr = self.as_dim1();
     //     let x1 = x.as_dim1();
     //     let window = min(arr.len(), window);
@@ -427,14 +431,14 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D>
     //     min_periods: usize,
     //     stable: bool,
     // ) -> f64
-    // where 
+    // where
     //     SO: DataMut<Elem = MaybeUninit<f64>>,
     //     S2: Data<Elem = T2>,
     //     D2: Dimension,
     //     D: DimMax<D2>,
     //     T: Number,
     //     T2: Number,
-    // {   
+    // {
     //     let arr = self.as_dim1();
     //     let x1 = x.as_dim1();
     //     let window = min(arr.len(), window);
@@ -511,14 +515,14 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D>
     //     window: usize,
     //     min_periods: usize,
     // ) -> f64
-    // where 
+    // where
     //     SO: DataMut<Elem = MaybeUninit<f64>>,
     //     S2: Data<Elem = T2>,
     //     D2: Dimension,
     //     D: DimMax<D2>,
     //     T: Number,
     //     T2: Number,
-    // {   
+    // {
     //     let arr = self.as_dim1();
     //     let x1 = x.as_dim1();
     //     let window = min(arr.len(), window);
@@ -597,14 +601,14 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D>
     //     window: usize,
     //     min_periods: usize,
     // ) -> f64
-    // where 
+    // where
     //     SO: DataMut<Elem = MaybeUninit<f64>>,
     //     S2: Data<Elem = T2>,
     //     D2: Dimension,
     //     D: DimMax<D2>,
     //     T: Number,
     //     T2: Number,
-    // {   
+    // {
     //     let arr = self.as_dim1();
     //     let x1 = x.as_dim1();
     //     let window = min(arr.len(), window);

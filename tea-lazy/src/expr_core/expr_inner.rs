@@ -1,6 +1,6 @@
 use super::Data;
-use core::prelude::{ArbArray, ArrD, ArrOk, TpResult};
 use crate::{Context, ExprElement};
+use core::prelude::{ArbArray, ArrD, ArrOk, TpResult};
 use std::{fmt::Debug, sync::Arc};
 // use serde::{Serialize, ser::SerializeStruct};
 #[cfg(feature = "blas")]

@@ -1,41 +1,38 @@
-mod impl_string;
-mod impl_inplace;
 mod impl_1d;
 mod impl_arrok;
+mod impl_inplace;
+mod impl_string;
 
 #[cfg(feature = "lazy")]
 mod impl_lazy;
-#[cfg(feature="time")]
+#[cfg(feature = "time")]
 mod impl_time;
 
-pub use impl_string::StringExt;
-pub use impl_inplace::{InplaceExt, FillMethod};
 pub use impl_1d::MapExt1d;
 pub use impl_arrok::ArrOkExt;
+pub use impl_inplace::{FillMethod, InplaceExt};
+pub use impl_string::StringExt;
 
-#[cfg(feature="lazy")]
-pub use impl_lazy::*;
 #[cfg(feature = "agg")]
 pub use impl_inplace::WinsorizeMethod;
-#[cfg(feature="time")]
+#[cfg(feature = "lazy")]
+pub use impl_lazy::*;
+#[cfg(feature = "time")]
 pub use impl_time::TimeExt;
 
 use core::prelude::*;
-use ndarray::{Data, DataMut, ShapeBuilder, Dimension, Zip, Ix1};
+use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder, Zip};
 use std::{fmt::Debug, mem::MaybeUninit};
 
-#[cfg(feature="groupby")]
-use ahash::RandomState;
-#[cfg(feature="groupby")]
-use std::hash::Hash;
-#[cfg(feature="groupby")]
+#[cfg(feature = "groupby")]
 use crate::hash::TpHash;
-
-
+#[cfg(feature = "groupby")]
+use ahash::RandomState;
+#[cfg(feature = "groupby")]
+use std::hash::Hash;
 
 #[ext_trait]
 impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
-    
     fn is_nan(&self) -> ArrD<bool>
     where
         T: GetNone,
@@ -158,7 +155,6 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         // out
     }
 
-
     pub fn put_mask<SO, S3, D2, D3>(
         &mut self,
         mask: &ArrBase<SO, D2>,
@@ -264,14 +260,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
-    fn partition(
-        &self,
-        mut kth: usize,
-        sort: bool,
-        rev: bool,
-        axis: i32,
-        par: bool,
-    ) -> ArrD<T>
+    fn partition(&self, mut kth: usize, sort: bool, rev: bool, axis: i32, par: bool) -> ArrD<T>
     where
         T: Number + Send + Sync,
         D: Dimension,
@@ -294,8 +283,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
 }
 
 #[arr_map_ext]
-impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
-{
+impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     fn cumsum<SO>(&self, out: &mut ArrBase<SO, Ix1>, stable: bool) -> T
     where
         SO: DataMut<Elem = MaybeUninit<T>>,
@@ -343,7 +331,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
     fn argsort<SO>(&self, out: &mut ArrBase<SO, Ix1>, rev: bool) -> i32
     where
         SO: DataMut<Elem = MaybeUninit<i32>>,
-        T: Number
+        T: Number,
     {
         let arr = self.as_dim1();
         assert!(out.len() >= arr.len());
@@ -354,12 +342,22 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
         }); // set elements of out array
         if !rev {
             out.sort_unstable_by(|a, b| {
-                let (va, vb) = unsafe { (*arr.uget((a.assume_init_read()) as usize), *arr.uget((b.assume_init_read()) as usize)) }; // safety: out不超过self的长度
+                let (va, vb) = unsafe {
+                    (
+                        *arr.uget((a.assume_init_read()) as usize),
+                        *arr.uget((b.assume_init_read()) as usize),
+                    )
+                }; // safety: out不超过self的长度
                 va.nan_sort_cmp(&vb)
             });
         } else {
             out.sort_unstable_by(|a, b| {
-                let (va, vb) = unsafe { (*arr.uget((a.assume_init_read()) as usize), *arr.uget((b.assume_init_read()) as usize)) }; // safety: out不超过self的长度
+                let (va, vb) = unsafe {
+                    (
+                        *arr.uget((a.assume_init_read()) as usize),
+                        *arr.uget((b.assume_init_read()) as usize),
+                    )
+                }; // safety: out不超过self的长度
                 va.nan_sort_cmp_rev(&vb)
             });
         }
@@ -370,8 +368,8 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
     fn rank<SO>(&self, out: &mut ArrBase<SO, Ix1>, pct: bool, rev: bool) -> f64
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
-        T: Number
-    {   
+        T: Number,
+    {
         let arr = self.as_dim1();
         let len = arr.len();
         assert!(
@@ -383,7 +381,9 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
         } else if len == 1 {
             // safety: out.len() == self.len() == 1
             // unsafe { *out.uget_mut(0) = 1. };
-            return unsafe { out.uget_mut(0).write(1.); };
+            return unsafe {
+                out.uget_mut(0).write(1.);
+            };
         }
         // argsort at first
         let mut idx_sorted = Arr1::from_iter(0..len);
@@ -401,7 +401,9 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
 
         // if the smallest value is nan then all the elements are nan
         if unsafe { *arr.uget(*idx_sorted.uget(0)) }.isnan() {
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut repeat_num = 1usize;
         let mut nan_flag = false;
@@ -519,8 +521,6 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
                 }
             }
         }
-
-        
     }
 
     /// Split values in several group by size.
@@ -528,13 +528,13 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
     fn split_group<SO>(&self, out: &mut ArrBase<SO, Ix1>, group: usize, rev: bool) -> i32
     where
         SO: DataMut<Elem = MaybeUninit<i32>>,
-        T: Number
-    {   
+        T: Number,
+    {
         let arr = self.as_dim1();
         let valid_count = arr.count_notnan_1d();
         let mut rank = Arr1::<f64>::uninit(arr.raw_dim());
         arr.rank_1d(&mut rank, false, rev);
-        let rank = unsafe{rank.assume_init()};
+        let rank = unsafe { rank.assume_init() };
         out.apply_mut_with(&rank, |vo, v| {
             vo.write(((*v * group.f64()) / valid_count.f64()).ceil() as i32);
         })
@@ -543,16 +543,20 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
     fn pct_change<SO>(&self, out: &mut ArrBase<SO, Ix1>, n: i32) -> f64
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
-        T: Number
-    {   
+        T: Number,
+    {
         if self.is_empty() {
             return;
         }
         let arr = self.as_dim1();
         if n == 0 {
-            out.apply_mut_with(arr, |vo, _| {vo.write(0.);});
-        } else if n.unsigned_abs() as usize > arr.len() -1 {
-            out.apply_mut_with(arr, |vo, _| {vo.write(f64::NAN);});
+            out.apply_mut_with(arr, |vo, _| {
+                vo.write(0.);
+            });
+        } else if n.unsigned_abs() as usize > arr.len() - 1 {
+            out.apply_mut_with(arr, |vo, _| {
+                vo.write(f64::NAN);
+            });
         } else if n > 0 {
             arr.apply_window_to(out, n.unsigned_abs() as usize + 1, |v, v_rm| {
                 if let Some(v_rm) = v_rm {
@@ -581,7 +585,4 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D>
             });
         }
     }
-
-
 }
-

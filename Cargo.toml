@@ -1,10 +1,10 @@
 [workspace]
 
 members = [
-    "tea-macros",
-    "tea-ext",
-    "tea-core",
-    "tea-lazy",
+    # "tea-macros",
+    # "tea-ext",
+    # "tea-core",
+    # "tea-lazy",
     "tears",
     "py_teapy"
 ]

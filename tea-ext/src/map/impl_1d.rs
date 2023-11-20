@@ -1,7 +1,7 @@
 use core::prelude::*;
 use core::utils::CollectTrustedToVec;
 use ndarray::{Data, DataMut, Ix1};
-use std::{fmt::Debug, mem::MaybeUninit, iter::zip};
+use std::{fmt::Debug, iter::zip, mem::MaybeUninit};
 
 #[ext_trait]
 impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
@@ -10,7 +10,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
     fn dropna_1d(self) -> Arr1<T>
     where
         T: GetNone,
-    {   
+    {
         Arr1::from_iter(self.into_iter().filter(|v| !v.is_none()))
     }
 
@@ -217,7 +217,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
     }
 
     /// Hash each element of the array.
-    #[cfg(feature="groupby")]
+    #[cfg(feature = "groupby")]
     #[inline]
     fn tphash_par_1d(self) -> Arr1<u64>
     where

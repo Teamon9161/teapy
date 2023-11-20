@@ -1,11 +1,9 @@
+use super::*;
 use core::prelude::*;
 use std::cmp::Ordering;
-use super::*;
 
 #[ext_trait]
-impl<'a> ArrOkExt for ArrOk<'a> 
-{
-
+impl<'a> ArrOkExt for ArrOk<'a> {
     #[allow(unreachable_patterns)]
     fn select(&self, slc: &Self, axis: i32, check: bool) -> TpResult<ArrOk<'a>> {
         if slc.ndim() > 1 {

@@ -1,8 +1,8 @@
-#[cfg(feature = "option_dtype")]
-use core::datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
 #[cfg(feature = "time")]
 use core::datatype::{DateTime, TimeDelta};
 use core::datatype::{GetDataType, OptUsize, PyValue};
+#[cfg(feature = "option_dtype")]
+use core::datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
 use std::fmt::Debug;
 
 pub trait ExprElement: GetDataType + Default + Sync + Send + Debug {}

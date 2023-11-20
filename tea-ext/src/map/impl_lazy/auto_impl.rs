@@ -42,13 +42,12 @@ auto_impl_map_view!(
     in1, [split_group], (group: usize, rev: bool, axis: i32, par: bool);
     in1, [arg_partition, partition], (kth: usize, sort: bool, rev: bool, axis: i32, par: bool);
     float, [
-        sqrt, cbrt, ln, ln_1p, log2, log10, exp, exp2, exp_m1, 
-        acos, asin, atan, sin, cos, tan, ceil, floor, fract, 
+        sqrt, cbrt, ln, ln_1p, log2, log10, exp, exp2, exp_m1,
+        acos, asin, atan, sin, cos, tan, ceil, floor, fract,
         trunc, is_finite, is_infinite,
     ], ();
     float, [log], (base: f64);
 );
-
 
 auto_impl_map_viewmut!(
     in1, [zscore], (min_periods: usize, stable: bool, axis: i32, par: bool);

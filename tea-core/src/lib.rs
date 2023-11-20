@@ -1,40 +1,39 @@
 pub extern crate tea_dtype as datatype;
-pub extern crate tea_utils as utils;
 pub extern crate tea_error as error;
+pub extern crate tea_utils as utils;
 
 #[macro_use]
 mod macros;
 mod arbarray;
 mod arrok;
 mod impls;
+#[cfg(feature = "method_1d")]
+mod iterators;
 mod own;
 mod traits;
 mod view;
 mod viewmut;
-#[cfg(feature = "method_1d")]
-mod iterators;
 
 pub mod prelude;
 
-pub use traits::WrapNdarray;
-#[cfg(feature="method_1d")]
-use iterators::{Iter, IterMut};
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeUnit};
+#[cfg(feature = "method_1d")]
+use iterators::{Iter, IterMut};
+pub use traits::WrapNdarray;
 
 use ndarray::{
     s, Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
-    NewAxis, RawData, RemoveAxis, ShapeBuilder, SliceArg, Zip, RawDataMut,
+    NewAxis, RawData, RawDataMut, RemoveAxis, ShapeBuilder, SliceArg, Zip,
 };
 
-
+use datatype::{Cast, DataType, GetDataType, PyValue};
+use error::TpResult;
 use num::Zero;
+use prelude::{Arr, Arr1, ArrView, ArrView1, ArrViewMut, ArrViewMut1};
 use pyo3::{Python, ToPyObject};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-use std::{fmt::Debug, sync::Arc, mem::MaybeUninit, iter::zip};
-use prelude::{ArrView, ArrViewMut, ArrView1, ArrViewMut1, Arr, Arr1};
-use datatype::{DataType, GetDataType, Cast, PyValue};
-use error::TpResult;
+use std::{fmt::Debug, iter::zip, mem::MaybeUninit, sync::Arc};
 
 #[cfg(feature = "npy")]
 use ndarray_npy::{write_npy, WritableElement, WriteNpyError};
@@ -184,7 +183,7 @@ where
     #[inline]
     pub fn try_as_dim1(&self) -> TpResult<&ArrBase<S, Ix1>> {
         if self.ndim() == 1 {
-            Ok(unsafe{std::mem::transmute(self)})
+            Ok(unsafe { std::mem::transmute(self) })
         } else {
             Err("The array is not dim1".into())
         }
@@ -196,11 +195,12 @@ where
     }
 
     #[inline]
-    pub fn try_as_dim1_mut(&mut self) -> TpResult<&mut ArrBase<S, Ix1>> 
-    where S: RawDataMut
+    pub fn try_as_dim1_mut(&mut self) -> TpResult<&mut ArrBase<S, Ix1>>
+    where
+        S: RawDataMut,
     {
         if self.ndim() == 1 {
-            Ok(unsafe{std::mem::transmute(self)})
+            Ok(unsafe { std::mem::transmute(self) })
         } else {
             Err("The array is not dim1".into())
         }
@@ -208,7 +208,8 @@ where
 
     #[inline]
     pub fn as_dim1_mut(&mut self) -> &mut ArrBase<S, Ix1>
-    where S: RawDataMut
+    where
+        S: RawDataMut,
     {
         self.try_as_dim1_mut().unwrap()
     }

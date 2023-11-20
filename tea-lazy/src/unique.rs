@@ -1,7 +1,10 @@
 // use crate::hash::TpHashMap;
-use core::{match_all, match_arrok};
-use core::{prelude::{Arr1, ArrOk}, utils::CollectTrustedToVec};
 use crate::Expr;
+use core::{match_all, match_arrok};
+use core::{
+    prelude::{Arr1, ArrOk},
+    utils::CollectTrustedToVec,
+};
 use rayon::prelude::*;
 
 #[cfg(feature = "groupby")]

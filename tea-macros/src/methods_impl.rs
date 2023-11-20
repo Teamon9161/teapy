@@ -1,8 +1,11 @@
-use quote::quote;
 use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
 
-pub(crate) fn reduce_nd_method(fn_1d_sig: &syn::Signature, params: Vec<Box<syn::Pat>>, _ty_1d: Option<Box<syn::Type>>) -> TokenStream2
-{   
+pub(crate) fn reduce_nd_method(
+    fn_1d_sig: &syn::Signature,
+    params: Vec<Box<syn::Pat>>,
+    _ty_1d: Option<Box<syn::Type>>,
+) -> TokenStream2 {
     let fn_1d_name = &fn_1d_sig.ident;
     quote! {
         {
@@ -22,8 +25,11 @@ pub(crate) fn reduce_nd_method(fn_1d_sig: &syn::Signature, params: Vec<Box<syn::
     }
 }
 
-pub(crate) fn reduce2_nd_method(fn_1d_sig: &syn::Signature, mut params: Vec<Box<syn::Pat>>, _ty_1d: Option<Box<syn::Type>>) -> TokenStream2
-{   
+pub(crate) fn reduce2_nd_method(
+    fn_1d_sig: &syn::Signature,
+    mut params: Vec<Box<syn::Pat>>,
+    _ty_1d: Option<Box<syn::Type>>,
+) -> TokenStream2 {
     let fn_1d_name = &fn_1d_sig.ident;
     let other = params[0].clone();
     params.drain(0..1); // remove rhs parameter of method 1d
@@ -53,11 +59,14 @@ pub(crate) fn reduce2_nd_method(fn_1d_sig: &syn::Signature, mut params: Vec<Box<
     }
 }
 
-pub(crate) fn inplace_nd_method(fn_1d_sig: &syn::Signature, params: Vec<Box<syn::Pat>>, _ty_1d: Option<Box<syn::Type>>) -> TokenStream2
-{   
+pub(crate) fn inplace_nd_method(
+    fn_1d_sig: &syn::Signature,
+    params: Vec<Box<syn::Pat>>,
+    _ty_1d: Option<Box<syn::Type>>,
+) -> TokenStream2 {
     let fn_1d_name = &fn_1d_sig.ident;
     quote! {
-        {   
+        {
             let axis = self.norm_axis(axis);
             let ndim = self.ndim();
             if ndim == 1 {
@@ -72,8 +81,11 @@ pub(crate) fn inplace_nd_method(fn_1d_sig: &syn::Signature, params: Vec<Box<syn:
     }
 }
 
-pub(crate) fn map_nd_method(fn_1d_sig: &syn::Signature, mut params: Vec<Box<syn::Pat>>, ty_1d: Option<Box<syn::Type>>) -> TokenStream2
-{   
+pub(crate) fn map_nd_method(
+    fn_1d_sig: &syn::Signature,
+    mut params: Vec<Box<syn::Pat>>,
+    ty_1d: Option<Box<syn::Type>>,
+) -> TokenStream2 {
     let ty = ty_1d.unwrap();
     let fn_1d_name = &fn_1d_sig.ident;
     params.drain(0..1); // remove out parameter of method 1d
@@ -100,9 +112,11 @@ pub(crate) fn map_nd_method(fn_1d_sig: &syn::Signature, mut params: Vec<Box<syn:
     }
 }
 
-
-pub(crate) fn map2_nd_method(fn_1d_sig: &syn::Signature, mut params: Vec<Box<syn::Pat>>, ty_1d: Option<Box<syn::Type>>) -> TokenStream2
-{   
+pub(crate) fn map2_nd_method(
+    fn_1d_sig: &syn::Signature,
+    mut params: Vec<Box<syn::Pat>>,
+    ty_1d: Option<Box<syn::Type>>,
+) -> TokenStream2 {
     let ty = ty_1d.unwrap();
     let fn_1d_name = &fn_1d_sig.ident;
     let other = params[0].clone();
@@ -134,9 +148,6 @@ pub(crate) fn map2_nd_method(fn_1d_sig: &syn::Signature, mut params: Vec<Box<syn
                 });
             }
             unsafe{out.assume_init()}.to_dimd()
-        } 
+        }
     }
 }
-
-
-    

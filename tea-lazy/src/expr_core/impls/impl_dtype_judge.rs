@@ -1,6 +1,6 @@
 // use super::export::*;
-use core::prelude::*;
 use crate::Expr;
+use core::prelude::*;
 
 macro_rules! impl_dtype_judge {
     ($($(#[$meta: meta])? $func: ident -> $arm: ident),* $(,)?) => {

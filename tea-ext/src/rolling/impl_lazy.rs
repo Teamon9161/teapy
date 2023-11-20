@@ -3,17 +3,16 @@
 // use crate::auto_impl_view;
 // use super::*;
 
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 use lazy::Expr;
 
-
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 macro_rules! auto_impl_rolling_view {
     (
         $(in1, [$($func: ident),* $(,)?], $other: tt);*
         $(;in2, [$($func2: ident),* $(,)?], $other2: tt)*
         $(;)?
-        
+
     ) => {
         #[ext_trait]
         impl<'a> ExprRollingExt for Expr<'a> {

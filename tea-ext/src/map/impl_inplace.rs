@@ -23,12 +23,11 @@ pub enum WinsorizeMethod {
     Sigma,
 }
 
-
 #[arr_inplace_ext]
 impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<S, D> {
-    
     pub fn shift(&mut self, n: i32, fill: Option<T>)
-    where T: GetNone + Clone
+    where
+        T: GetNone + Clone,
     {
         if self.is_empty() || (n == 0) {
             return;
@@ -72,7 +71,8 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     }
 
     pub fn diff(&mut self, n: i32, fill: Option<T>)
-    where T: GetNone + Clone + std::ops::Sub<T, Output=T>,
+    where
+        T: GetNone + Clone + std::ops::Sub<T, Output = T>,
     {
         if self.is_empty() || (n == 0) {
             return;
@@ -91,7 +91,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                     let src = read(arr.uget(i - n_usize));
                     let v = arr.uget_mut(i);
                     // let tmp = read(v);
-                    *v = read(v)- src;
+                    *v = read(v) - src;
                 }
             }
             // Fill the first n elements with fill
@@ -136,7 +136,8 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                         } else if let Some(value) = &value {
                             *v = value.clone();
                         }
-                    } else { // v is valid, update last_valid
+                    } else {
+                        // v is valid, update last_valid
                         last_valid = Some(v.clone());
                     }
                 };
@@ -151,8 +152,10 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
             Vfill => {
                 let value = value.expect("Fill value must be pass when using value to fillna");
                 let value: T = value.cast();
-                arr.apply_mut(|v| if v.is_none() {
-                    *v = value.clone()
+                arr.apply_mut(|v| {
+                    if v.is_none() {
+                        *v = value.clone()
+                    }
                 });
             }
         }
@@ -186,8 +189,8 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     fn zscore(&mut self, min_periods: usize, stable: bool)
     where
         T: Number,
-        f64: Cast<T>
-    {   
+        f64: Cast<T>,
+    {
         use crate::agg::AggExtNd;
         let arr = self.as_dim1_mut();
         let (mean, var) = arr.meanvar_1d(min_periods, stable);
@@ -204,10 +207,10 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     fn winsorize(&mut self, method: WinsorizeMethod, method_params: Option<f64>, stable: bool)
     where
         T: Number,
-        f64: Cast<T>
+        f64: Cast<T>,
     {
-        use WinsorizeMethod::*;
         use crate::agg::AggExtNd;
+        use WinsorizeMethod::*;
         let arr = self.as_dim1_mut();
         match method {
             Quantile => {
@@ -219,7 +222,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                 if min.notnan() && (min != max) {
                     arr.clip_1d(min, max);
                 }
-            },
+            }
             Median => {
                 // default method is clip median - 3 * mad, median + 3 * mad
                 let method_params = method_params.unwrap_or(3.);
@@ -230,7 +233,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                     let max = median + method_params * mad;
                     arr.clip_1d(min, max);
                 }
-            },
+            }
             Sigma => {
                 // default method is clip mean - 3 * std, mean + 3 * std
                 let method_params = method_params.unwrap_or(3.);
@@ -241,11 +244,10 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                     let max = mean + method_params * std;
                     arr.clip_1d(min, max);
                 }
-            },
+            }
         }
     }
 }
-    
 
 #[cfg(test)]
 mod tests {

@@ -1,20 +1,19 @@
 use core::prelude::*;
 // use ndarray::{Data, Dimension, Zip};
-use rayon::prelude::*;
 use super::*;
+use rayon::prelude::*;
 // use crate::auto_impl_view;
 
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 use lazy::Expr;
 
-
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 macro_rules! auto_impl_agg_view {
     (
         $(in1, [$($func: ident),* $(,)?], $other: tt);*
         $(;in2, [$($func2: ident),* $(,)?], $other2: tt)*
         $(;)?
-        
+
     ) => {
         #[ext_trait]
         impl<'a> AutoExprAggExt for Expr<'a> {
@@ -24,10 +23,10 @@ macro_rules! auto_impl_agg_view {
     };
 }
 
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 auto_impl_agg_view!(
     in1, [
-        argmax, argmin, count_nan, count_notnan, median, 
+        argmax, argmin, count_nan, count_notnan, median,
         max, min, prod, first, last, valid_first, valid_last
     ],
     (axis: i32, par: bool);
@@ -40,8 +39,7 @@ auto_impl_agg_view!(
 );
 
 #[ext_trait]
-impl<'a> ExprAggExt for Expr<'a>
-{
+impl<'a> ExprAggExt for Expr<'a> {
     fn len(&mut self) -> &mut Self {
         self.chain_f_ctx(|(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;

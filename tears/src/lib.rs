@@ -9,10 +9,10 @@ extern crate intel_mkl_src as _src;
 extern crate openblas_src as _src;
 
 pub extern crate tea_dtype as datatype;
-pub extern crate tea_utils as utils;
 pub extern crate tea_error as error;
-#[cfg(feature="groupby")]
+#[cfg(feature = "groupby")]
 pub extern crate tea_hash as hash;
+pub extern crate tea_utils as utils;
 
 #[macro_use]
 mod core;

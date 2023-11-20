@@ -1,6 +1,5 @@
-#[cfg(feature="arw")]
+#[cfg(feature = "arw")]
 use arrow::datatypes::Schema;
-
 
 pub enum ColSelect<'a> {
     Idx(Vec<i32>),
@@ -20,7 +19,7 @@ impl<T> From<Option<T>> for ColSelect<'_> {
 }
 
 impl<'a> ColSelect<'a> {
-    #[cfg(feature="arw")]
+    #[cfg(feature = "arw")]
     pub fn into_proj(self, schema: &Schema) -> TpResult<Option<Vec<usize>>> {
         match self {
             ColSelect::Idx(idx) => {

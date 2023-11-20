@@ -1,6 +1,6 @@
+use crate::Expr;
 use core::prelude::*;
 use core::{match_all, match_arrok};
-use crate::Expr;
 use pyo3::Python;
 
 macro_rules! impl_cast {

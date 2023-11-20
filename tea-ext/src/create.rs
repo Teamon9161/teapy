@@ -1,10 +1,9 @@
 use core::prelude::*;
-use ndarray::Array1;
 use lazy::Expr;
+use ndarray::Array1;
 
 #[ext_trait]
-impl<'a> CreateExt for Expr<'a>
-{
+impl<'a> CreateExt for Expr<'a> {
     #[allow(unreachable_patterns)]
     pub fn full(shape: &Expr<'a>, value: Expr<'a>) -> Expr<'a> {
         let mut e = shape.clone();
@@ -55,5 +54,4 @@ impl<'a> CreateExt for Expr<'a>
         });
         e
     }
-
 }

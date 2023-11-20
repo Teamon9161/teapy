@@ -4,8 +4,8 @@ extern crate test;
 
 use test::Bencher;
 
-use tea_ext::InplaceExt;
 use tea_core::prelude::*;
+use tea_ext::InplaceExt;
 
 #[bench]
 fn bench_shift_left(b: &mut Bencher) {

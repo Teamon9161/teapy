@@ -82,7 +82,7 @@ impl<T, D> Iterator for IntoIter<T, D> {
         if self.ptr == self.end {
             None
         } else {
-            let v = Some(unsafe{std::ptr::read(self.ptr)});
+            let v = Some(unsafe { std::ptr::read(self.ptr) });
             // let v = Some(unsafe { *self.ptr });
             self.ptr = unsafe { self.ptr.add(self.stride) };
             v
@@ -109,7 +109,7 @@ impl<T, D> DoubleEndedIterator for IntoIter<T, D> {
             None
         } else {
             self.end = unsafe { self.end.sub(self.stride) };
-            Some(unsafe{std::ptr::read(self.end)})
+            Some(unsafe { std::ptr::read(self.end) })
         }
     }
 }

@@ -1,27 +1,28 @@
 use core::prelude::*;
 use core::utils::{define_c, kh_sum};
-use ndarray::{Data, DataMut, ShapeBuilder, Dimension, Ix1};
+use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
 use std::cmp::min;
 use std::mem::MaybeUninit;
 
 #[arr_map_ext]
-impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D>
-{
-    fn ts_sum<SO> (
+impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D> {
+    fn ts_sum<SO>(
         &self,
         out: &mut ArrBase<SO, Ix1>,
         window: usize,
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut n = 0;
@@ -66,14 +67,16 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut n = 0;
@@ -126,14 +129,16 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         // 错位相减核心公式：
         // q_x(t) = 1 * new_element - alpha(q_x(t-1 without 1st element)) - 1st element * oma ^ (n-1)
@@ -192,14 +197,16 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum_xt = 0.;
@@ -260,14 +267,16 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
 
         let window = min(self.len(), window);
@@ -312,37 +321,38 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             // Welford's method for the online variance-calculation
             // using Kahan summation
             // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-            self.as_dim1().stable_apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
-                    n += 1;
-                    let delta = kh_sum(v, -mean, c1);
-                    mean += delta / n.f64();
-                    let delta2 = kh_sum(v, -mean, c3);
-                    sum2 += delta * delta2;
-                };
-                let res = if n >= min_periods {
-                    let n_f64 = n.f64();
-                    let var = sum2 / n_f64;
-                    // var肯定大于等于0，否则只能是精度问题
-                    if var > 1e-14 {
-                        (var * n_f64 / (n - 1).f64()).sqrt()
+            self.as_dim1()
+                .stable_apply_window_to(out, window, |v, v_rm| {
+                    if v.notnan() {
+                        n += 1;
+                        let delta = kh_sum(v, -mean, c1);
+                        mean += delta / n.f64();
+                        let delta2 = kh_sum(v, -mean, c3);
+                        sum2 += delta * delta2;
+                    };
+                    let res = if n >= min_periods {
+                        let n_f64 = n.f64();
+                        let var = sum2 / n_f64;
+                        // var肯定大于等于0，否则只能是精度问题
+                        if var > 1e-14 {
+                            (var * n_f64 / (n - 1).f64()).sqrt()
+                        } else {
+                            0.
+                        }
                     } else {
-                        0.
-                    }
-                } else {
-                    f64::NAN
-                };
-                if v_rm.notnan() {
-                    n -= 1;
-                    if n > 0 {
-                        let delta = kh_sum(v_rm, -mean, c2);
-                        mean -= delta / n.f64();
-                        let delta2 = kh_sum(v_rm, -mean, c4);
-                        sum2 -= delta * delta2;
-                    }
-                };
-                res
-            })
+                        f64::NAN
+                    };
+                    if v_rm.notnan() {
+                        n -= 1;
+                        if n > 0 {
+                            let delta = kh_sum(v_rm, -mean, c2);
+                            mean -= delta / n.f64();
+                            let delta2 = kh_sum(v_rm, -mean, c4);
+                            sum2 -= delta * delta2;
+                        }
+                    };
+                    res
+                })
         }
     }
 
@@ -353,14 +363,16 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum2 = 0.;
@@ -403,37 +415,38 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             // Welford's method for the online variance-calculation
             // using Kahan summation
             // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-            self.as_dim1().stable_apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
-                    n += 1;
-                    let delta = kh_sum(v, -mean, c1);
-                    mean += delta / n.f64();
-                    let delta2 = kh_sum(v, -mean, c3);
-                    sum2 += delta * delta2;
-                };
-                let res = if n >= min_periods {
-                    let n_f64 = n.f64();
-                    let var = sum2 / n_f64;
-                    // var肯定大于等于0，否则只能是精度问题
-                    if var > 1e-14 {
-                        var * n_f64 / (n - 1).f64()
+            self.as_dim1()
+                .stable_apply_window_to(out, window, |v, v_rm| {
+                    if v.notnan() {
+                        n += 1;
+                        let delta = kh_sum(v, -mean, c1);
+                        mean += delta / n.f64();
+                        let delta2 = kh_sum(v, -mean, c3);
+                        sum2 += delta * delta2;
+                    };
+                    let res = if n >= min_periods {
+                        let n_f64 = n.f64();
+                        let var = sum2 / n_f64;
+                        // var肯定大于等于0，否则只能是精度问题
+                        if var > 1e-14 {
+                            var * n_f64 / (n - 1).f64()
+                        } else {
+                            0.
+                        }
                     } else {
-                        0.
-                    }
-                } else {
-                    f64::NAN
-                };
-                if v_rm.notnan() {
-                    n -= 1;
-                    if n > 0 {
-                        let delta = kh_sum(v_rm, -mean, c2);
-                        mean -= delta / n.f64();
-                        let delta2 = kh_sum(v_rm, -mean, c4);
-                        sum2 -= delta * delta2;
-                    }
-                };
-                res
-            })
+                        f64::NAN
+                    };
+                    if v_rm.notnan() {
+                        n -= 1;
+                        if n > 0 {
+                            let delta = kh_sum(v_rm, -mean, c2);
+                            mean -= delta / n.f64();
+                            let delta2 = kh_sum(v_rm, -mean, c4);
+                            sum2 -= delta * delta2;
+                        }
+                    };
+                    res
+                })
         }
     }
 
@@ -444,16 +457,17 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
-
         let min_periods = min_periods.max(3);
         let window = min(self.len(), window);
         if (window < min_periods) | (window < 3) {
             // 如果滚动窗口是1或2则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum2 = 0.;
@@ -501,41 +515,42 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             });
         } else {
             define_c!(c1, c2, c3, c4, c5, c6);
-            self.as_dim1().stable_apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
-                    n += 1;
-                    sum.kh_sum(v, c1);
-                    let v2 = v * v;
-                    sum2.kh_sum(v2, c2);
-                    sum3.kh_sum(v2 * v, c3);
-                };
-                let res = if n >= min_periods {
-                    let n_f64 = n.f64();
-                    let mut var = sum2 / n_f64;
-                    let mut mean = sum / n_f64;
-                    var -= mean.powi(2);
-                    if var <= 1e-14 {
-                        // 标准差为0， 则偏度为0
-                        0.
+            self.as_dim1()
+                .stable_apply_window_to(out, window, |v, v_rm| {
+                    if v.notnan() {
+                        n += 1;
+                        sum.kh_sum(v, c1);
+                        let v2 = v * v;
+                        sum2.kh_sum(v2, c2);
+                        sum3.kh_sum(v2 * v, c3);
+                    };
+                    let res = if n >= min_periods {
+                        let n_f64 = n.f64();
+                        let mut var = sum2 / n_f64;
+                        let mut mean = sum / n_f64;
+                        var -= mean.powi(2);
+                        if var <= 1e-14 {
+                            // 标准差为0， 则偏度为0
+                            0.
+                        } else {
+                            let std = var.sqrt(); // std
+                            let res = sum3 / n_f64; // Ex^3
+                            mean /= std; // mean / std
+                            let adjust = (n * (n - 1)).f64().sqrt() / (n - 2).f64();
+                            adjust * (res / std.powi(3) - 3. * mean - mean.powi(3))
+                        }
                     } else {
-                        let std = var.sqrt(); // std
-                        let res = sum3 / n_f64; // Ex^3
-                        mean /= std; // mean / std
-                        let adjust = (n * (n - 1)).f64().sqrt() / (n - 2).f64();
-                        adjust * (res / std.powi(3) - 3. * mean - mean.powi(3))
-                    }
-                } else {
-                    f64::NAN
-                };
-                if v_rm.notnan() {
-                    n -= 1;
-                    sum.kh_sum(-v_rm, c4);
-                    let v_rm2 = v_rm * v_rm;
-                    sum2.kh_sum(-v_rm2, c5);
-                    sum3.kh_sum(-v_rm2 * v_rm, c6);
-                };
-                res
-            })
+                        f64::NAN
+                    };
+                    if v_rm.notnan() {
+                        n -= 1;
+                        sum.kh_sum(-v_rm, c4);
+                        let v_rm2 = v_rm * v_rm;
+                        sum2.kh_sum(-v_rm2, c5);
+                        sum3.kh_sum(-v_rm2 * v_rm, c6);
+                    };
+                    res
+                })
         }
     }
 
@@ -546,7 +561,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         min_periods: usize,
         stable: bool,
     ) -> f64
-    where 
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
@@ -554,7 +569,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let window = min(self.len(), window);
         if (window < min_periods) | (window < 4) {
             // 如果滚动窗口是小于4则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut sum = 0.;
         let mut sum2 = 0.;
@@ -610,65 +627,63 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             });
         } else {
             define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
-            self.as_dim1().stable_apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
-                    n += 1;
-                    sum.kh_sum(v, c1);
-                    let v2 = v * v;
-                    sum2.kh_sum(v2, c2);
-                    sum3.kh_sum(v2 * v, c3);
-                    sum4.kh_sum(v2 * v2, c4);
-                };
-                let res = if n >= min_periods {
-                    let n_f64 = n.f64();
-                    let mut var = sum2 / n_f64;
-                    let mean = sum / n_f64;
-                    var -= mean.powi(2);
-                    if var <= 1e-14 {
-                        // 标准差为0， 则峰度为0
-                        0.
-                    } else {
+            self.as_dim1()
+                .stable_apply_window_to(out, window, |v, v_rm| {
+                    if v.notnan() {
+                        n += 1;
+                        sum.kh_sum(v, c1);
+                        let v2 = v * v;
+                        sum2.kh_sum(v2, c2);
+                        sum3.kh_sum(v2 * v, c3);
+                        sum4.kh_sum(v2 * v2, c4);
+                    };
+                    let res = if n >= min_periods {
                         let n_f64 = n.f64();
-                        let var2 = var * var; // var^2
-                        let ex4 = sum4 / n_f64; // Ex^4
-                        let ex3 = sum3 / n_f64; // Ex^3
-                        let mean2_var = mean * mean / var; // (mean / std)^2
-                        let out = (ex4 - 4. * mean * ex3) / var2
-                            + 6. * mean2_var
-                            + 3. * mean2_var.powi(2);
-                        1. / ((n - 2) * (n - 3)).f64()
-                            * ((n.pow(2) - 1).f64() * out - (3 * (n - 1).pow(2)).f64())
-                    }
-                } else {
-                    f64::NAN
-                };
-                if v_rm.notnan() {
-                    n -= 1;
-                    sum.kh_sum(-v_rm, c5);
-                    let v_rm2 = v_rm * v_rm;
-                    sum2.kh_sum(-v_rm2, c6);
-                    sum3.kh_sum(-v_rm2 * v_rm, c7);
-                    sum4.kh_sum(-v_rm2 * v_rm2, c8);
-                };
-                res
-            })
+                        let mut var = sum2 / n_f64;
+                        let mean = sum / n_f64;
+                        var -= mean.powi(2);
+                        if var <= 1e-14 {
+                            // 标准差为0， 则峰度为0
+                            0.
+                        } else {
+                            let n_f64 = n.f64();
+                            let var2 = var * var; // var^2
+                            let ex4 = sum4 / n_f64; // Ex^4
+                            let ex3 = sum3 / n_f64; // Ex^3
+                            let mean2_var = mean * mean / var; // (mean / std)^2
+                            let out = (ex4 - 4. * mean * ex3) / var2
+                                + 6. * mean2_var
+                                + 3. * mean2_var.powi(2);
+                            1. / ((n - 2) * (n - 3)).f64()
+                                * ((n.pow(2) - 1).f64() * out - (3 * (n - 1).pow(2)).f64())
+                        }
+                    } else {
+                        f64::NAN
+                    };
+                    if v_rm.notnan() {
+                        n -= 1;
+                        sum.kh_sum(-v_rm, c5);
+                        let v_rm2 = v_rm * v_rm;
+                        sum2.kh_sum(-v_rm2, c6);
+                        sum3.kh_sum(-v_rm2 * v_rm, c7);
+                        sum4.kh_sum(-v_rm2 * v_rm2, c8);
+                    };
+                    res
+                })
         }
     }
 
-    fn ts_prod<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+    fn ts_prod<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut prod = 1.;
         let mut zero_num = 0;
@@ -705,20 +720,17 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         });
     }
 
-    fn ts_prod_mean<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+    fn ts_prod_mean<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
     {
         let window = min(self.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut prod = 1.;
         let mut zero_num = 0;

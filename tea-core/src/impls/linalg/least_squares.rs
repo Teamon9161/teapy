@@ -1,7 +1,7 @@
 use super::{transpose, transpose_over, MatrixLayout};
 use crate::{
-    utils::{vec_uninit, VecAssumeInit},
     prelude::{Arr, Arr1, Arr2, ArrD, ArrView1, ArrView2, StrError, TpResult, WrapNdarray},
+    utils::{vec_uninit, VecAssumeInit},
 };
 use lapack_sys::dgelsd_;
 use ndarray::{s, Axis, Ix0, ShapeBuilder};

@@ -1,30 +1,26 @@
 mod auto_impl;
 mod impl_view;
-#[cfg(feature="stat")]
+#[cfg(feature = "stat")]
 mod stat;
-#[cfg(feature="time")]
+#[cfg(feature = "time")]
 mod time;
 
-pub use auto_impl::{AutoExprMapExt, AutoExprInplaceExt};
+pub use auto_impl::{AutoExprInplaceExt, AutoExprMapExt};
 pub use impl_view::ExprViewExt;
-#[cfg(feature="stat")]
+#[cfg(feature = "stat")]
 pub use stat::ExprStatExt;
-#[cfg(feature="time")]
+#[cfg(feature = "time")]
 pub use time::ExprTimeExt;
 
-use ndarray::{Axis, SliceInfoElem};
+use super::super::*;
 use core::prelude::*;
-use rayon::prelude::*;
 use core::utils::CollectTrustedToVec;
-use lazy::{Expr, adjust_slice};
-use super::super::*;  // use map trait of ArrBase
-
-
-
+use lazy::{adjust_slice, Expr};
+use ndarray::{Axis, SliceInfoElem};
+use rayon::prelude::*; // use map trait of ArrBase
 
 #[ext_trait]
-impl<'a> ExprInplaceExt for Expr<'a> 
-{
+impl<'a> ExprInplaceExt for Expr<'a> {
     #[allow(unreachable_patterns)]
     pub fn put_mask(&mut self, mask: Expr<'a>, value: Expr<'a>, axis: i32, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -46,13 +42,7 @@ impl<'a> ExprInplaceExt for Expr<'a>
         self
     }
 
-    fn shift(
-        &mut self,
-        n: Expr<'a>,
-        fill: Option<Expr<'a>>,
-        axis: i32,
-        par: bool,
-    ) -> &mut Self {
+    fn shift(&mut self, n: Expr<'a>, fill: Option<Expr<'a>>, axis: i32, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let mut arr = data.into_arr(ctx.clone())?;
             let n = n.view_arr(ctx.as_ref())?.deref().cast_i32().into_owned().into_scalar()?;
@@ -74,14 +64,7 @@ impl<'a> ExprInplaceExt for Expr<'a>
         self
     }
 
-    
-    fn diff(
-        &mut self,
-        n: Expr<'a>,
-        fill: Option<Expr<'a>>,
-        axis: i32,
-        par: bool,
-    ) -> &mut Self {
+    fn diff(&mut self, n: Expr<'a>, fill: Option<Expr<'a>>, axis: i32, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let mut arr = data.into_arr(ctx.clone())?;
             let n = n.view_arr(ctx.as_ref())?.deref().cast_i32().into_owned().into_scalar()?;
@@ -121,7 +104,6 @@ impl<'a> ExprInplaceExt for Expr<'a>
         self
     }
 
-    
     fn fillna(
         &mut self,
         method: FillMethod,
@@ -179,8 +161,7 @@ pub enum DropNaMethod {
 }
 
 #[ext_trait]
-impl<'a> ExprMapExt for Expr<'a> 
-{
+impl<'a> ExprMapExt for Expr<'a> {
     fn is_in(&mut self, other: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
@@ -449,5 +430,4 @@ impl<'a> ExprMapExt for Expr<'a>
         });
         out
     }
-
 }

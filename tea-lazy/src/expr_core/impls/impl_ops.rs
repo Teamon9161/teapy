@@ -1,5 +1,5 @@
-use core::prelude::*;
 use crate::Expr;
+use core::prelude::*;
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Not, Sub};
 
 macro_rules! impl_cmp {

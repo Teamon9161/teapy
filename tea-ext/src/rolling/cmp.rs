@@ -1,26 +1,22 @@
 use core::prelude::*;
-use ndarray::{Data, DataMut, ShapeBuilder, Dimension, Ix1};
+use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
 use std::cmp::min;
 use std::mem::MaybeUninit;
 
 #[arr_map_ext]
-impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
-{
-    fn ts_argmin<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
+    fn ts_argmin<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut min: T = T::max_();
         let mut min_idx = 0usize;
@@ -34,7 +30,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
             if v < min {
                 (min, min_idx) = (v, i);
             }
-            let out = unsafe {out.uget_mut(i)};
+            let out = unsafe { out.uget_mut(i) };
             if n >= min_periods {
                 out.write((min_idx + 1).f64());
             } else {
@@ -75,21 +71,18 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
         }
     }
 
-    fn ts_argmax<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+    fn ts_argmax<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut max: T = T::min_();
         let mut max_idx = 0usize;
@@ -103,7 +96,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
             if v > max {
                 (max, max_idx) = (v, i);
             }
-            let out = unsafe {out.uget_mut(i)};
+            let out = unsafe { out.uget_mut(i) };
             if n >= min_periods {
                 out.write((max_idx + 1).f64());
             } else {
@@ -144,21 +137,18 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
         }
     }
 
-    fn ts_min<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+    fn ts_min<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut min: T = T::max_();
         let mut min_idx = 0usize;
@@ -172,7 +162,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
             if v < min {
                 (min, min_idx) = (v, i);
             }
-            let out = unsafe {out.uget_mut(i)};
+            let out = unsafe { out.uget_mut(i) };
             if n >= min_periods {
                 out.write(min.f64());
             } else {
@@ -213,21 +203,18 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
         }
     }
 
-    fn ts_max<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+    fn ts_max<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut max: T = T::min_();
         let mut max_idx = 0usize;
@@ -241,13 +228,12 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
             if v > max {
                 (max, max_idx) = (v, i);
             }
-            let out = unsafe {out.uget_mut(i)};
+            let out = unsafe { out.uget_mut(i) };
             if n >= min_periods {
                 out.write(max.f64());
             } else {
                 out.write(f64::NAN);
             };
-
         }
         for (start, end) in (window - 1..arr.len()).enumerate() {
             // 安全性：start和end不会超过self和out的长度
@@ -283,21 +269,18 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
         }
     }
 
-    fn ts_rank<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+    fn ts_rank<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut n = 0usize;
         for i in 0..window - 1 {
@@ -360,21 +343,18 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D>
         }
     }
 
-    fn ts_rank_pct<SO>(
-        &self,
-        out: &mut ArrBase<SO, Ix1>,
-        window: usize,
-        min_periods: usize,
-    ) -> f64
-    where 
+    fn ts_rank_pct<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
+    {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
         if window < min_periods {
             // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {v.write(f64::NAN);});
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
         }
         let mut n = 0usize;
         for i in 0..window - 1 {

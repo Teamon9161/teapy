@@ -2,15 +2,15 @@ use super::data::Data;
 use super::expr_element::ExprElement;
 use super::expr_inner::{ExprInner, FuncOut};
 use super::FuncNode;
-use core::datatype::{GetDataType, GetNone};
 use crate::Context;
 #[cfg(feature = "blas")]
 use crate::OlsResult;
+use core::datatype::{GetDataType, GetNone};
 use core::{
-    match_all, match_arrok, 
-    prelude::{ArbArray, ArrD, ArrOk, ArrViewD}, 
-    utils::CollectTrustedToVec, 
     error::TpResult,
+    match_all, match_arrok,
+    prelude::{ArbArray, ArrD, ArrOk, ArrViewD},
+    utils::CollectTrustedToVec,
 };
 use parking_lot::Mutex;
 use std::fmt::Debug;

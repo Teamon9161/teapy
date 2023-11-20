@@ -1,10 +1,9 @@
-use lazy::Expr;
-use core::prelude::*;
 use super::super::{StringExt, TimeExt};
+use core::prelude::*;
+use lazy::Expr;
 
 #[ext_trait]
 impl<'a> ExprTimeExt for Expr<'a> {
-
     fn strptime(&mut self, fmt: String) -> &mut Self {
         self.cast_string().chain_f_ctx(move |(data, ctx)| {
             let fmt = fmt.clone();

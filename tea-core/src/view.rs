@@ -1,6 +1,9 @@
 use std::mem::MaybeUninit;
 
-use crate::{utils::vec_uninit, prelude::{ArrD, TpResult}};
+use crate::{
+    prelude::{ArrD, TpResult},
+    utils::vec_uninit,
+};
 
 use super::prelude::{ArrBase, WrapNdarray};
 use ndarray::{

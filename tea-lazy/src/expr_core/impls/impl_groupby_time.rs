@@ -203,7 +203,7 @@ impl<'a> Expr<'a> {
         self
     }
 
-    #[cfg(feature="groupby")]
+    #[cfg(feature = "groupby")]
     #[allow(unreachable_patterns)]
     pub fn group_by_time(
         &mut self,

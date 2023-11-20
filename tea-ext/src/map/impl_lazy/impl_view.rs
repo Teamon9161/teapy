@@ -1,12 +1,10 @@
-use lazy::{Expr, adjust_slice};
-use ndarray::SliceInfoElem;
 use core::prelude::*;
+use lazy::{adjust_slice, Expr};
+use ndarray::SliceInfoElem;
 use std::mem::transmute;
-
 
 #[ext_trait]
 impl<'a> ExprViewExt for Expr<'a> {
-
     #[allow(unreachable_patterns)]
     fn index_axis(&mut self, index: Expr<'a>, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -71,7 +69,6 @@ impl<'a> ExprViewExt for Expr<'a> {
         self
     }
 
-    
     /// Return a transposed view of the array.
     #[allow(unreachable_patterns)]
     fn t(&mut self) -> &mut Self {
@@ -86,7 +83,6 @@ impl<'a> ExprViewExt for Expr<'a> {
         self
     }
 
-    
     /// Return a view of the diagonal elements of the array.
     ///
     /// The diagonal is simply the sequence indexed by
@@ -104,7 +100,6 @@ impl<'a> ExprViewExt for Expr<'a> {
         self
     }
 
-    
     /// Swap axes ax and bx.
     ///
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
@@ -155,7 +150,7 @@ impl<'a> ExprViewExt for Expr<'a> {
     }
 
     /// Insert new array axis at axis and return the result.
-    
+
     #[allow(unreachable_patterns)]
     fn insert_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -171,7 +166,7 @@ impl<'a> ExprViewExt for Expr<'a> {
     }
 
     /// Remove new array axis at axis and return the result.
-    
+
     #[allow(unreachable_patterns)]
     fn remove_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -187,7 +182,7 @@ impl<'a> ExprViewExt for Expr<'a> {
     }
 
     /// broadcast to a given shape
-    
+
     #[allow(unreachable_patterns)]
     fn broadcast(&mut self, shape: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -244,7 +239,6 @@ impl<'a> ExprViewExt for Expr<'a> {
         self
     }
 
-    
     fn if_then(&mut self, con: Expr<'a>, then: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;

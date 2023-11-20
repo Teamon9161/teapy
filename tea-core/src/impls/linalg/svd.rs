@@ -1,8 +1,8 @@
 use super::{into_matrix, MatrixLayout};
 use crate::TpResult;
 use crate::{
-    utils::{vec_uninit, VecAssumeInit},
     prelude::{Arr1, ArrD},
+    utils::{vec_uninit, VecAssumeInit},
 };
 use lapack_sys::dgesvd_;
 use libc::c_char;

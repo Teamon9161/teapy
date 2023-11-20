@@ -7,7 +7,10 @@ use std::sync::Arc;
 // use serde::Serialize;
 
 use crate::{Context, Expr};
-use core::{utils::CollectTrustedToVec, error::{StrError, TpResult}};
+use core::{
+    error::{StrError, TpResult},
+    utils::CollectTrustedToVec,
+};
 
 #[cfg(feature = "agg")]
 use crate::CorrMethod;

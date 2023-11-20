@@ -1,7 +1,10 @@
 // use super::export::*;
-use core::{prelude::{ArbArray, Arr1, Arr2, ArrD, ArrOk}, utils::CollectTrustedToVec};
-use core::{match_all, match_arrok};
 use crate::Expr;
+use core::{match_all, match_arrok};
+use core::{
+    prelude::{ArbArray, Arr1, Arr2, ArrD, ArrOk},
+    utils::CollectTrustedToVec,
+};
 
 #[cfg(feature = "create")]
 use crate::Arr;

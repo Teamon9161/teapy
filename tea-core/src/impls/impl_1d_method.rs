@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use ndarray::{Ix1, RawData, Data, DataMut};
+use ndarray::{Data, DataMut, Ix1, RawData};
 use std::cmp::Ordering;
 use std::mem::MaybeUninit;
 use std::ops::Add;
@@ -452,7 +452,6 @@ where
         }
     }
 
-    
     #[inline]
     pub fn stable_apply_window_with_to<S2, T2, S3, F>(
         &self,

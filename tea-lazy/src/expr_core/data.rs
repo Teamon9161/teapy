@@ -4,7 +4,7 @@ use super::{Expr, ExprElement, FuncNode};
 // use serde::Serialize;
 #[cfg(feature = "blas")]
 use crate::OlsResult;
-use crate::{Context, ColumnSelector};
+use crate::{ColumnSelector, Context};
 // use core::prelude::{ArrViewD, ArbArray, ArrD, ArrOk, ArrViewMutD, GetDataType, TpResult, CollectTrustedToVec};
 // #[cfg(feature = "option_dtype")]
 // use core::prelude::GetNone;

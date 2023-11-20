@@ -9,7 +9,6 @@ mod corr;
 #[cfg(feature = "window_func")]
 mod window;
 
-
 #[cfg(feature = "agg")]
 pub use agg::QuantileMethod;
 #[cfg(feature = "arr_func")]
@@ -18,4 +17,3 @@ pub use arr_func::FillMethod;
 pub use arr_func::WinsorizeMethod;
 #[cfg(feature = "agg")]
 pub use corr::CorrMethod;
-

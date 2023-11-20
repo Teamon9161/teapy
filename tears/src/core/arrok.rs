@@ -55,16 +55,16 @@ macro_rules! match_all {
     };
 
     ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
-        {   
+        {
             match_all!(
-                $enum, $exprs, $e, $body, 
-                F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, OptUsize, VecUsize, 
-                #[cfg(feature="time")] DateTime, 
-                #[cfg(feature="time")] TimeDelta, 
-                #[cfg(feature="option_dtype")] OptF32, 
-                #[cfg(feature="option_dtype")] OptF64, 
-                #[cfg(feature="option_dtype")] OptI32, 
-                #[cfg(feature="option_dtype")] OptI64, 
+                $enum, $exprs, $e, $body,
+                F32, F64, I32, I64, U8, Bool, Usize, Str, String, Object, OptUsize, VecUsize,
+                #[cfg(feature="time")] DateTime,
+                #[cfg(feature="time")] TimeDelta,
+                #[cfg(feature="option_dtype")] OptF32,
+                #[cfg(feature="option_dtype")] OptF64,
+                #[cfg(feature="option_dtype")] OptI32,
+                #[cfg(feature="option_dtype")] OptI64,
                 #[cfg(feature="option_dtype")] OptBool
             )
             // #[cfg(feature="option_dtype")]
@@ -338,7 +338,6 @@ impl<'a> ArrOk<'a> {
         }
     }
 
-
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn view(&self) -> ArrOk<'_> {
@@ -376,7 +375,7 @@ impl<'a> ArrOk<'a> {
     }
 }
 
-#[cfg(any(feature="window_func", feature="groupby"))]
+#[cfg(any(feature = "window_func", feature = "groupby"))]
 macro_rules! impl_same_dtype_concat_1d {
     ($($(#[$meta: meta])? $arm: ident),*) => {
         impl<'a> ArrOk<'a> {
@@ -415,7 +414,7 @@ macro_rules! impl_same_dtype_concat_1d {
     };
 }
 
-#[cfg(any(feature="window_func", feature="groupby"))]
+#[cfg(any(feature = "window_func", feature = "groupby"))]
 impl_same_dtype_concat_1d!(
     Bool,
     U8,
@@ -444,7 +443,6 @@ impl_same_dtype_concat_1d!(
     #[cfg(feature = "option_dtype")]
     OptBool
 );
-
 
 impl<'a> Cast<ArbArray<'a, &'a str>> for ArrOk<'a> {
     #[inline]

@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use crate::from_py::PyContext;
+use std::fmt::Debug;
 
 use super::export::*;
 use tears::StrError;
@@ -113,7 +113,7 @@ impl PyExpr {
     //     self.eval_inplace(context, freeze)?;
     //     Ok(self)
     // }
-    
+
     #[allow(unreachable_patterns)]
     pub fn eval_inplace(&mut self, context: Option<&PyAny>, freeze: bool) -> PyResult<()> {
         let ct: PyContext<'static> = if let Some(context) = context {

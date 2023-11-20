@@ -1,4 +1,4 @@
-#![feature(drain_filter)]  // need in DataDict drop_inplace
+#![feature(drain_filter)] // need in DataDict drop_inplace
 
 extern crate tea_core as core;
 
@@ -21,7 +21,7 @@ pub use datadict::{ColumnSelector, DataDict, GetMutOutput, GetOutput, SetInput};
 pub use expr_core::corr;
 #[cfg(all(feature = "arr_func", feature = "agg"))]
 pub use expr_core::DropNaMethod;
-pub use expr_core::{Data, Expr, ExprElement, FuncNode, FuncOut, adjust_slice};
+pub use expr_core::{adjust_slice, Data, Expr, ExprElement, FuncNode, FuncOut};
 
 #[cfg(feature = "groupby")]
 pub use groupby::{flatten, get_partition_size, groupby, groupby_par, prepare_groupby};

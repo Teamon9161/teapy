@@ -1,5 +1,5 @@
-use ndarray::SliceInfoElem;
 use crate::Expr;
+use ndarray::SliceInfoElem;
 // use super::export::*;
 use super::utils::adjust_slice;
 use core::prelude::{ArrViewD, StrError, ViewOnBase};

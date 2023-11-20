@@ -2485,7 +2485,7 @@ impl PyExpr {
         }
     }
 
-    #[cfg(all(feature = "agg", feature="groupby"))]
+    #[cfg(all(feature = "agg", feature = "groupby"))]
     #[pyo3(signature=(agg_expr, group_info, others=None))]
     pub unsafe fn group_by_time(
         &self,

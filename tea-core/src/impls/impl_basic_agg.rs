@@ -1,7 +1,7 @@
 use crate::impl_reduce_nd;
-use datatype::{GetNone, Number, BoolType};
-use crate::prelude::{ArrBase, Arr1, ArrD, WrapNdarray};
-use ndarray::{Data, Ix1, Dimension, RemoveAxis, Zip};
+use crate::prelude::{Arr1, ArrBase, ArrD, WrapNdarray};
+use datatype::{BoolType, GetNone, Number};
+use ndarray::{Data, Dimension, Ix1, RemoveAxis, Zip};
 
 impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
     /// sum of the array on a given axis, return valid_num n and the sum of the array
@@ -113,7 +113,6 @@ impl_reduce_nd!(
         }
     }
 );
-
 
 impl_reduce_nd!(
     count_v,

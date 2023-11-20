@@ -1,17 +1,15 @@
 pub use crate::{
-    ArrBase, 
-    Dim1,
-    match_all, match_arrok,
-    arrok::ArrOk, 
-    arbarray::{ArbArray, ViewOnBase}, 
+    arbarray::{ArbArray, ViewOnBase},
+    arrok::ArrOk,
+    match_all, match_arrok, ArrBase, Dim1,
 };
 
 pub use super::own::{Arr, Arr1, Arr2, ArrD};
+pub use super::traits::WrapNdarray;
 pub use super::view::{ArrView, ArrView1, ArrView2, ArrViewD};
 pub use super::viewmut::{ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD};
-pub use super::traits::WrapNdarray;
-pub use datatype::{Cast, GetDataType, DataType, GetNone, Number, BoolType, OptUsize};
-pub use error::{TpResult, StrError};
+pub use datatype::{BoolType, Cast, DataType, GetDataType, GetNone, Number, OptUsize};
+pub use error::{StrError, TpResult};
 
 #[cfg(feature = "blas")]
 pub use super::impls::{conjugate, replicate, LeastSquaresResult};

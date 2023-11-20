@@ -1,6 +1,6 @@
 use core::prelude::*;
 use core::utils::kh_sum;
-use ndarray::{Data, Dimension, Zip, Ix1, DimMax};
+use ndarray::{Data, DimMax, Dimension, Ix1, Zip};
 use std::iter::zip;
 
 #[derive(Copy, Clone)]
@@ -31,14 +31,18 @@ impl<T, S: Data<Elem = T>> Agg2Ext1d for ArrBase<S, Ix1> {
 impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
     /// covariance of 2 array
     fn cov<S2, D2, T2>(&self, other: &ArrBase<S2, D2>, min_periods: usize, stable: bool) -> f64
-    where 
-        S2: Data<Elem = T2>, 
+    where
+        S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number, 
-        T2: Number
+        T: Number,
+        T2: Number,
     {
-        assert_eq!(self.len(), other.len(), "Both arrays must be the same length when calculating covariance.");
+        assert_eq!(
+            self.len(),
+            other.len(),
+            "Both arrays must be the same length when calculating covariance."
+        );
         let (mut sum_a, mut sum_b, mut sum_ab) = (0., 0., 0.);
         let arr = self.as_dim1();
         let other_arr = other.as_dim1();
@@ -52,7 +56,10 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         } else {
             // Kahan summation, see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
             let (mut c_a, mut c_b, mut c_ab) = (0., 0., 0.);
-            let (mean_a, mean_b) = (arr.mean_1d(min_periods, true), other_arr.mean_1d(min_periods, true));
+            let (mean_a, mean_b) = (
+                arr.mean_1d(min_periods, true),
+                other_arr.mean_1d(min_periods, true),
+            );
             arr.n_apply_valid_with(other_arr, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);
@@ -70,15 +77,24 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         }
     }
 
-    fn corr_pearson<S2, D2, T2>(&self, other: &ArrBase<S2, D2>, min_periods: usize, stable: bool) -> f64
-    where 
-        S2: Data<Elem = T2>, 
+    fn corr_pearson<S2, D2, T2>(
+        &self,
+        other: &ArrBase<S2, D2>,
+        min_periods: usize,
+        stable: bool,
+    ) -> f64
+    where
+        S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number, 
-        T2: Number
+        T: Number,
+        T2: Number,
     {
-        assert_eq!(self.len(), other.len(), "Both arrays must be the same length when calculating correlation.");
+        assert_eq!(
+            self.len(),
+            other.len(),
+            "Both arrays must be the same length when calculating correlation."
+        );
         let (mut sum_a, mut sum2_a, mut sum_b, mut sum2_b, mut sum_ab) = (0., 0., 0., 0., 0.);
         let arr = self.as_dim1();
         let other_arr = other.as_dim1();
@@ -94,7 +110,10 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         } else {
             // Kahan summation, see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
             let (mut c_a, mut c_a2, mut c_b, mut c_b2, mut c_ab) = (0., 0., 0., 0., 0.);
-            let (mean_a, mean_b) = (arr.mean_1d(min_periods, true), other_arr.mean_1d(min_periods, true));
+            let (mean_a, mean_b) = (
+                arr.mean_1d(min_periods, true),
+                other_arr.mean_1d(min_periods, true),
+            );
             arr.n_apply_valid_with(other_arr, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);
@@ -128,16 +147,25 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
     }
 
     #[cfg(feature = "arr_func")]
-    fn corr_spearman<S2, D2, T2>(&self, other: &ArrBase<S2, D2>, min_periods: usize, stable: bool) -> f64
-    where 
-        S2: Data<Elem = T2>, 
+    fn corr_spearman<S2, D2, T2>(
+        &self,
+        other: &ArrBase<S2, D2>,
+        min_periods: usize,
+        stable: bool,
+    ) -> f64
+    where
+        S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number, 
-        T2: Number
-    {   
+        T: Number,
+        T2: Number,
+    {
         use crate::MapExtNd;
-        assert_eq!(self.len(), other.len(), "Both arrays must be the same length when calculating correlation.");
+        assert_eq!(
+            self.len(),
+            other.len(),
+            "Both arrays must be the same length when calculating correlation."
+        );
         let (arr1, arr2) = self.as_dim1().remove_nan2_1d(other.as_dim1());
         let mut rank1 = Arr1::<f64>::uninit(arr1.raw_dim());
         let mut rank2 = Arr1::<f64>::uninit(arr2.raw_dim());
@@ -150,17 +178,24 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         }
     }
 
-    fn corr<S2, D2, T2>(&self, other: &ArrBase<S2, D2>, method: CorrMethod, min_periods: usize, stable: bool) -> f64
-    where 
-        S2: Data<Elem = T2>, 
+    fn corr<S2, D2, T2>(
+        &self,
+        other: &ArrBase<S2, D2>,
+        method: CorrMethod,
+        min_periods: usize,
+        stable: bool,
+    ) -> f64
+    where
+        S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number, 
-        T2: Number
+        T: Number,
+        T2: Number,
     {
         match method {
             CorrMethod::Pearson => self.corr_pearson_1d(other, min_periods, stable),
-            #[cfg(feature="arr_func")] CorrMethod::Spearman => self.corr_spearman_1d(other, min_periods, stable),
+            #[cfg(feature = "arr_func")]
+            CorrMethod::Spearman => self.corr_spearman_1d(other, min_periods, stable),
             // _ => panic!("Not supported method: {} in correlation", method),
         }
     }

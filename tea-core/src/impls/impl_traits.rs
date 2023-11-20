@@ -9,7 +9,7 @@ use datatype::{OptUsize, PyValue};
 // use crate::ViewOnBase;
 
 use crate::prelude::*;
-use ndarray::{arr0, ArrayBase, Data, DataOwned, RawData, Dimension};
+use ndarray::{arr0, ArrayBase, Data, DataOwned, Dimension, RawData};
 #[cfg(feature = "srd")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;

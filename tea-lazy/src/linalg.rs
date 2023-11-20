@@ -1,6 +1,6 @@
 use crate::Expr;
 // use serde::Serialize;
-use core::prelude::{ArbArray, Arr1, Arr2, ArrD, ArrOk, ArrViewD, conjugate, LeastSquaresResult};
+use core::prelude::{conjugate, ArbArray, Arr1, Arr2, ArrD, ArrOk, ArrViewD, LeastSquaresResult};
 use ndarray::{Array1, Axis, Ix2, Slice};
 use std::sync::Arc;
 

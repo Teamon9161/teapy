@@ -1,19 +1,19 @@
-use std::sync::Arc;
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
+use crate::pylazy::PyDataDict;
+#[cfg(feature = "lazy")]
 use crate::pylazy::RefObj;
+use ahash::HashMap;
 use numpy::{
     datetime::{units, Datetime},
     PyArray, PyArrayDyn,
 };
 use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
+use std::sync::Arc;
+use tears::datatype::PyValue;
 #[cfg(feature = "option_dtype")]
 use tears::datatype::{OptF64, OptI64};
-use tears::datatype::PyValue;
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 use tears::Context;
-#[cfg(feature="lazy")]
-use crate::pylazy::PyDataDict;
-use ahash::HashMap;
 
 #[derive(FromPyObject)]
 pub enum Scalar {
@@ -143,14 +143,14 @@ impl<T, D> NoDim0 for &PyArray<T, D> {
     }
 }
 
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 #[derive(Clone, Default)]
 pub struct PyContext<'py> {
     pub ct: Option<Context<'py>>,
     pub obj_map: HashMap<String, RefObj>,
 }
 
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 impl<'py> From<Context<'py>> for PyContext<'py> {
     fn from(ct: Context<'py>) -> Self {
         Self {
@@ -160,7 +160,7 @@ impl<'py> From<Context<'py>> for PyContext<'py> {
     }
 }
 
-#[cfg(feature="lazy")]
+#[cfg(feature = "lazy")]
 impl<'py> FromPyObject<'py> for PyContext<'py> {
     fn extract(ob: &'py PyAny) -> PyResult<PyContext<'py>> {
         if ob.is_none() {

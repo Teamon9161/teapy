@@ -274,7 +274,6 @@ impl GetNone for bool {
     }
 }
 
-
 impl GetNone for Vec<usize> {
     #[inline]
     fn none() -> Self {

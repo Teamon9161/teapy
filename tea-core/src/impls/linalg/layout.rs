@@ -1,6 +1,6 @@
 use crate::{
-    utils::{vec_uninit, VecAssumeInit},
     prelude::{Arr2, ArrBase, TpResult, WrapNdarray},
+    utils::{vec_uninit, VecAssumeInit},
 };
 use error::StrError;
 use ndarray::{ArrayBase, Data, Dimension};

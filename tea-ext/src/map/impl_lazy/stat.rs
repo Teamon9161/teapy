@@ -2,7 +2,6 @@ use lazy::Expr;
 
 #[ext_trait]
 impl<'a> ExprStatExt for Expr {
-
     fn t_cdf(&mut self, df: Expr<'a>, loc: Option<f64>, scale: Option<f64>) -> &mut Self {
         use statrs::distribution::StudentsT;
         self.chain_f_ctx(move |(data, ctx)| {

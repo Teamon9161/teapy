@@ -5,9 +5,9 @@ use num::traits::{abs, real::Real, Signed};
 // use std::cmp::PartialOrd;
 
 #[cfg(feature = "ops")]
-use ndarray::{DimMax, Dimension, Zip, Ix2, DataMut};
-#[cfg(feature = "ops")]
 use crate::prelude::{Arr, ArrD, ArrView, ArrViewMut, TpResult, WrapNdarray};
+#[cfg(feature = "ops")]
+use ndarray::{DataMut, DimMax, Dimension, Ix2, Zip};
 
 #[cfg(feature = "ops")]
 macro_rules! impl_cmp {
@@ -188,8 +188,7 @@ impl<T, S, D> ArrBase<S, D>
 where
     S: Data<Elem = T>,
     D: Dimension,
-{   
-    
+{
     pub fn abs_inplace(&mut self, par: bool)
     where
         T: Signed + Send + Sync,
