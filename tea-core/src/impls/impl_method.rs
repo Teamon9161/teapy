@@ -1,12 +1,5 @@
 use crate::prelude::{Arr, ArrBase, ArrView, TpResult, WrapNdarray};
-
-// use crate::{Arr, ArrBase, ArrView, WrapNdarray};
 use ndarray::{Data, DimMax, Dimension, IntoDimension, RawData, Zip};
-// use std::fmt::Debug;
-#[cfg(all(feature = "agg", feature = "arr_func"))]
-use crate::StrError;
-#[cfg(all(feature = "agg", feature = "arr_func"))]
-use ndarray::DataMut;
 
 type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
 

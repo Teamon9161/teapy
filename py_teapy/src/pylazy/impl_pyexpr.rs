@@ -782,10 +782,10 @@ impl PyExpr {
     pub fn __setstate__(&mut self, state: &PyAny) -> PyResult<()> {
         if let Ok(state) = state.downcast::<PyDict>() {
             let name = state
-                .get_item("name")
+                .get_item("name")?
                 .unwrap()
-                .map(|v| v.extract::<String>().unwrap());
-            let arr = state.get_item("arr").unwrap().unwrap();
+                .extract::<Option<String>>()?;
+            let arr = state.get_item("arr")?.unwrap();
             if let Some(name) = name {
                 self.set_name(name);
             }

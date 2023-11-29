@@ -1,8 +1,8 @@
-use core::prelude::*;
-use core::utils::{define_c, kh_sum};
 use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
 use std::cmp::min;
 use std::mem::MaybeUninit;
+use tea_core::prelude::*;
+use tea_core::utils::{define_c, kh_sum};
 
 #[arr_map_ext]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D> {

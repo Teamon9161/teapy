@@ -1,4 +1,4 @@
-extern crate tea_core as core;
+// extern crate tea_core as core;
 #[cfg(feature = "lazy")]
 extern crate tea_lazy as lazy;
 

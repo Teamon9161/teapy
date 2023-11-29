@@ -1,7 +1,7 @@
-use core::prelude::*;
-use core::utils::kh_sum;
 use ndarray::{Data, DimMax, Dimension, Ix1, Zip};
 use std::iter::zip;
+use tea_core::prelude::*;
+use tea_core::utils::kh_sum;
 
 #[derive(Copy, Clone)]
 pub enum CorrMethod {

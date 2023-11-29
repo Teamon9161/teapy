@@ -1,7 +1,7 @@
-use core::prelude::*;
 use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
 use std::cmp::min;
 use std::mem::MaybeUninit;
+use tea_core::prelude::*;
 
 #[arr_map_ext]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {

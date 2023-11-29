@@ -20,9 +20,9 @@ pub use impl_lazy::*;
 #[cfg(feature = "time")]
 pub use impl_time::TimeExt;
 
-use core::prelude::*;
 use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder, Zip};
 use std::{fmt::Debug, mem::MaybeUninit};
+use tea_core::prelude::*;
 
 #[cfg(feature = "groupby")]
 use crate::hash::TpHash;

@@ -1,7 +1,7 @@
-use core::prelude::*;
 use lazy::{adjust_slice, Expr};
 use ndarray::SliceInfoElem;
 use std::mem::transmute;
+use tea_core::prelude::*;
 
 #[ext_trait]
 impl<'a> ExprViewExt for Expr<'a> {

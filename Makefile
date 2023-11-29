@@ -31,7 +31,7 @@ format:  ## format and check
 	isort . --profile black
 	black .
 	cargo fmt --all
-	flake8 --ignore E501,F401,F403,W503
+	flake8 --ignore E501,F401,F403,W503 --exclude=.venv
 	cargo clippy -- -D warnings
 
 .PHONY: coverage

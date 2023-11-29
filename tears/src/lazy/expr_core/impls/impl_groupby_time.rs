@@ -242,7 +242,7 @@ impl<'a> Expr<'a> {
                         let current_arr = arr.slice(slice).wrap();
                         let current_others: Vec<ArrOk> = others_ref
                             .iter()
-                            .map(|arr| arr.slice(slice.clone()))
+                            .map(|arr| arr.slice(slice))
                             .collect_trusted();
                         let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into())
                             .chain(current_others.into_iter().map(|a| a.into()))

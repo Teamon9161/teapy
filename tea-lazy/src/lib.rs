@@ -2,9 +2,9 @@
 
 extern crate tea_core as core;
 
-mod context;
 mod datadict;
 pub mod expr_core;
+pub mod hash;
 
 #[cfg(feature = "groupby")]
 mod groupby;
@@ -14,8 +14,8 @@ mod join;
 mod linalg;
 mod unique;
 
-pub use context::Context;
-pub use datadict::{ColumnSelector, DataDict, GetMutOutput, GetOutput, SetInput};
+pub use datadict::{ColumnSelector, Context, DataDict, GetMutOutput, GetOutput, SetInput};
+// pub use hash::*;
 
 #[cfg(feature = "agg")]
 pub use expr_core::corr;

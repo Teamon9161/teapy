@@ -1,0 +1,14 @@
+[package]
+name = "tea-groupby"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+lazy = ["tea-lazy"]
+
+[dependencies]
+tea-core = { path = "../tea-core", features=["method_1d"] }
+tea-lazy = { path = "../tea-lazy", optional=true, default-features = false}
+tea-macros = { path = "../tea-macros" }

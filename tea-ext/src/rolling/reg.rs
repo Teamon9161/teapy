@@ -1,9 +1,11 @@
-use core::prelude::*;
-use core::utils::define_c;
-use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
+#[cfg(feature = "agg")]
+use crate::agg::*;
+use ndarray::{Data, DataMut, DimMax, Dimension, Ix1, ShapeBuilder};
 use num::traits::MulAdd;
 use std::cmp::min;
 use std::mem::MaybeUninit;
+use tea_core::prelude::*;
+use tea_core::utils::{define_c, CollectTrustedToVec};
 
 #[arr_map_ext]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
@@ -340,343 +342,363 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
 
 #[arr_map2_ext]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
-    // fn ts_regx_beta_1d<S2, D2, T2, SO>(
-    //     &self,
-    //     x: &ArrBase<S2, D2>,
-    //     out: &mut ArrBase<SO, Ix1>,
-    //     window: usize,
-    //     min_periods: usize,
-    //     stable: bool,
-    // ) -> f64
-    // where
-    //     SO: DataMut<Elem = MaybeUninit<f64>>,
-    //     S2: Data<Elem = T2>,
-    //     D2: Dimension,
-    //     D: DimMax<D2>,
-    //     T: Number,
-    //     T2: Number,
-    // {
-    //     let arr = self.as_dim1();
-    //     let x1 = x.as_dim1();
-    //     let window = min(arr.len(), window);
-    //     let window = min(x1.len(), window);
-    //     if window < min_periods {
-    //         // 如果滚动窗口是1则返回全nan
-    //         return out.apply_mut(|v| {v.write(f64::NAN);});
-    //     }
-    //     let mut sum_a = 0.;
-    //     let mut sum_b = 0.;
-    //     let mut sum_b2 = 0.;
-    //     let mut sum_ab = 0.;
-    //     let mut n = 0;
-    //     if !stable {
-    //         arr.apply_window_with_to(x, out, window, |va, vb, va_rm, vb_rm| {
-    //             if va.notnan() && vb.notnan() {
-    //                 n += 1;
-    //                 let (va, vb) = (va.f64(), vb.f64());
-    //                 sum_a += va;
-    //                 sum_b += vb;
-    //                 sum_b2 += vb.powi(2);
-    //                 sum_ab += va * vb;
-    //             };
-    //             let res = if n >= min_periods {
-    //                 (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2))
-    //             } else {
-    //                 f64::NAN
-    //             };
-    //             if let (Some(va), Some(vb)) = (va_rm, vb_rm) {
-    //                 if va.notnan() && vb.notnan() {
-    //                     n -= 1;
-    //                     let (va, vb) = (va.f64(), vb.f64());
-    //                     sum_a -= va;
-    //                     sum_b -= vb;
-    //                     sum_b2 -= vb.powi(2);
-    //                     sum_ab -= va * vb;
-    //                 };
-    //             }
-    //             res
-    //         });
-    //     } else {
-    //         define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
-    //         arr.stable_apply_window_with_to(x, out, window, |va, vb, va_rm, vb_rm| {
-    //             if va.notnan() && vb.notnan() {
-    //                 n += 1;
-    //                 sum_a.kh_sum(va, c1);
-    //                 sum_b.kh_sum(vb, c2);
-    //                 sum_ab.kh_sum(va * vb, c3);
-    //                 sum_b2.kh_sum(vb.powi(2), c7);
-    //             };
-    //             let res = if n >= min_periods {
-    //                 (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2))
-    //             } else {
-    //                 f64::NAN
-    //             };
-    //             if va_rm.notnan() && vb_rm.notnan() {
-    //                 n -= 1;
-    //                 sum_a.kh_sum(-va_rm, c4);
-    //                 sum_b.kh_sum(-vb_rm, c5);
-    //                 sum_ab.kh_sum(-va_rm * vb_rm, c6);
-    //                 sum_b2.kh_sum(-vb.powi(2), c8);
-    //             };
-    //             res
-    //         })
-    //     }
-    // }
+    fn ts_regx_beta_1d<S2, D2, T2, SO>(
+        &self,
+        x: &ArrBase<S2, D2>,
+        out: &mut ArrBase<SO, Ix1>,
+        window: usize,
+        min_periods: usize,
+        stable: bool,
+    ) -> f64
+    where
+        SO: DataMut<Elem = MaybeUninit<f64>>,
+        S2: Data<Elem = T2>,
+        D2: Dimension,
+        D: DimMax<D2>,
+        T: Number,
+        T2: Number,
+    {
+        let arr = self.as_dim1();
+        let x1 = x.as_dim1();
+        let window = min(arr.len(), window);
+        let window = min(x1.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
+        }
+        let mut sum_a = 0.;
+        let mut sum_b = 0.;
+        let mut sum_b2 = 0.;
+        let mut sum_ab = 0.;
+        let mut n = 0;
+        if !stable {
+            arr.apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+                if va.notnan() && vb.notnan() {
+                    n += 1;
+                    let (va, vb) = (va.f64(), vb.f64());
+                    sum_a += va;
+                    sum_b += vb;
+                    sum_b2 += vb.powi(2);
+                    sum_ab += va * vb;
+                };
+                let res = if n >= min_periods {
+                    (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2))
+                } else {
+                    f64::NAN
+                };
+                if let (Some(va), Some(vb)) = (va_rm, vb_rm) {
+                    if va.notnan() && vb.notnan() {
+                        n -= 1;
+                        let (va, vb) = (va.f64(), vb.f64());
+                        sum_a -= va;
+                        sum_b -= vb;
+                        sum_b2 -= vb.powi(2);
+                        sum_ab -= va * vb;
+                    };
+                }
+                res
+            });
+        } else {
+            define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
+            arr.stable_apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+                if va.notnan() && vb.notnan() {
+                    n += 1;
+                    sum_a.kh_sum(va, c1);
+                    sum_b.kh_sum(vb, c2);
+                    sum_ab.kh_sum(va * vb, c3);
+                    sum_b2.kh_sum(vb.powi(2), c7);
+                };
+                let res = if n >= min_periods {
+                    (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2))
+                } else {
+                    f64::NAN
+                };
+                if va_rm.notnan() && vb_rm.notnan() {
+                    n -= 1;
+                    sum_a.kh_sum(-va_rm, c4);
+                    sum_b.kh_sum(-vb_rm, c5);
+                    sum_ab.kh_sum(-va_rm * vb_rm, c6);
+                    sum_b2.kh_sum(-vb.powi(2), c8);
+                };
+                res
+            })
+        }
+    }
 
-    // fn ts_regx_alpha_1d<S2, D2, T2, SO>(
-    //     &self,
-    //     x: &ArrBase<S2, D2>,
-    //     out: &mut ArrBase<SO, Ix1>,
-    //     window: usize,
-    //     min_periods: usize,
-    //     stable: bool,
-    // ) -> f64
-    // where
-    //     SO: DataMut<Elem = MaybeUninit<f64>>,
-    //     S2: Data<Elem = T2>,
-    //     D2: Dimension,
-    //     D: DimMax<D2>,
-    //     T: Number,
-    //     T2: Number,
-    // {
-    //     let arr = self.as_dim1();
-    //     let x1 = x.as_dim1();
-    //     let window = min(arr.len(), window);
-    //     let window = min(x1.len(), window);
-    //     if window < min_periods {
-    //         // 如果滚动窗口是1则返回全nan
-    //         return out.apply_mut(|v| {v.write(f64::NAN);});
-    //     }
-    //     let mut sum_a = 0.;
-    //     let mut sum_b = 0.;
-    //     let mut sum_b2 = 0.;
-    //     let mut sum_ab = 0.;
-    //     let mut n = 0;
-    //     if !stable {
-    //         arr.apply_window_with_to(x, out, window, |va, vb, va_rm, vb_rm| {
-    //             if va.notnan() && vb.notnan() {
-    //                 n += 1;
-    //                 let (va, vb) = (va.f64(), vb.f64());
-    //                 sum_a += va;
-    //                 sum_b += vb;
-    //                 sum_b2 += vb.powi(2);
-    //                 sum_ab += va * vb;
-    //             };
-    //             let res = if n >= min_periods {
-    //                 let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
-    //                 (sum_a - beta * sum_b) / n.f64()
-    //             } else {
-    //                 f64::NAN
-    //             };
-    //             if let (Some(va), Some(vb)) = (va_rm, vb_rm) {
-    //                 if va.notnan() && vb.notnan() {
-    //                     n -= 1;
-    //                     let (va, vb) = (va.f64(), vb.f64());
-    //                     sum_a -= va;
-    //                     sum_b -= vb;
-    //                     sum_b2 -= vb.powi(2);
-    //                     sum_ab -= va * vb;
-    //                 };
-    //             }
-    //             res
-    //         });
-    //     } else {
-    //         define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
-    //         arr.stable_apply_window_with_to(x, out, window, |va, vb, va_rm, vb_rm| {
-    //             if va.notnan() && vb.notnan() {
-    //                 n += 1;
-    //                 sum_a.kh_sum(va, c1);
-    //                 sum_b.kh_sum(vb, c2);
-    //                 sum_ab.kh_sum(va * vb, c3);
-    //                 sum_b2.kh_sum(vb.powi(2), c7);
-    //             };
-    //             let res = if n >= min_periods {
-    //                 let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
-    //                 (sum_a - beta * sum_b) / n.f64()
-    //             } else {
-    //                 f64::NAN
-    //             };
-    //             if va_rm.notnan() && vb_rm.notnan() {
-    //                 n -= 1;
-    //                 sum_a.kh_sum(-va_rm, c4);
-    //                 sum_b.kh_sum(-vb_rm, c5);
-    //                 sum_ab.kh_sum(-va_rm * vb_rm, c6);
-    //                 sum_b2.kh_sum(-vb.powi(2), c8);
-    //             };
-    //             res
-    //         })
-    //     }
-    // }
+    fn ts_regx_alpha_1d<S2, D2, T2, SO>(
+        &self,
+        x: &ArrBase<S2, D2>,
+        out: &mut ArrBase<SO, Ix1>,
+        window: usize,
+        min_periods: usize,
+        stable: bool,
+    ) -> f64
+    where
+        SO: DataMut<Elem = MaybeUninit<f64>>,
+        S2: Data<Elem = T2>,
+        D2: Dimension,
+        D: DimMax<D2>,
+        T: Number,
+        T2: Number,
+    {
+        let arr = self.as_dim1();
+        let x1 = x.as_dim1();
+        let window = min(arr.len(), window);
+        let window = min(x1.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
+        }
+        let mut sum_a = 0.;
+        let mut sum_b = 0.;
+        let mut sum_b2 = 0.;
+        let mut sum_ab = 0.;
+        let mut n = 0;
+        if !stable {
+            arr.apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+                if va.notnan() && vb.notnan() {
+                    n += 1;
+                    let (va, vb) = (va.f64(), vb.f64());
+                    sum_a += va;
+                    sum_b += vb;
+                    sum_b2 += vb.powi(2);
+                    sum_ab += va * vb;
+                };
+                let res = if n >= min_periods {
+                    let beta =
+                        (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                    (sum_a - beta * sum_b) / n.f64()
+                } else {
+                    f64::NAN
+                };
+                if let (Some(va), Some(vb)) = (va_rm, vb_rm) {
+                    if va.notnan() && vb.notnan() {
+                        n -= 1;
+                        let (va, vb) = (va.f64(), vb.f64());
+                        sum_a -= va;
+                        sum_b -= vb;
+                        sum_b2 -= vb.powi(2);
+                        sum_ab -= va * vb;
+                    };
+                }
+                res
+            });
+        } else {
+            define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
+            arr.stable_apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+                if va.notnan() && vb.notnan() {
+                    n += 1;
+                    sum_a.kh_sum(va, c1);
+                    sum_b.kh_sum(vb, c2);
+                    sum_ab.kh_sum(va * vb, c3);
+                    sum_b2.kh_sum(vb.powi(2), c7);
+                };
+                let res = if n >= min_periods {
+                    let beta =
+                        (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                    (sum_a - beta * sum_b) / n.f64()
+                } else {
+                    f64::NAN
+                };
+                if va_rm.notnan() && vb_rm.notnan() {
+                    n -= 1;
+                    sum_a.kh_sum(-va_rm, c4);
+                    sum_b.kh_sum(-vb_rm, c5);
+                    sum_ab.kh_sum(-va_rm * vb_rm, c6);
+                    sum_b2.kh_sum(-vb.powi(2), c8);
+                };
+                res
+            })
+        }
+    }
 
-    // fn ts_regx_resid_std_1d<S2, D2, T2, SO>(
-    //     &self,
-    //     x: &ArrBase<S2, D2>,
-    //     out: &mut ArrBase<SO, Ix1>,
-    //     window: usize,
-    //     min_periods: usize,
-    // ) -> f64
-    // where
-    //     SO: DataMut<Elem = MaybeUninit<f64>>,
-    //     S2: Data<Elem = T2>,
-    //     D2: Dimension,
-    //     D: DimMax<D2>,
-    //     T: Number,
-    //     T2: Number,
-    // {
-    //     let arr = self.as_dim1();
-    //     let x1 = x.as_dim1();
-    //     let window = min(arr.len(), window);
-    //     if window < min_periods {
-    //         // 如果滚动窗口是1则返回全nan
-    //         return out.apply_mut(|v| {v.write(f64::NAN);});
-    //     }
-    //     let mut sum_a = 0.;
-    //     let mut sum_b = 0.;
-    //     let mut sum_b2 = 0.;
-    //     let mut sum_ab = 0.;
-    //     let mut n = 0;
-    //     for i in 0..window - 1 {
-    //         // safety：i is inbound
-    //         let (va, vb) = unsafe{(*arr.uget(i), *x1.uget(i))};
-    //         if va.notnan() && vb.notnan() {
-    //             n += 1;
-    //             let (va, vb) = (va.f64(), vb.f64());
-    //             sum_a += va;
-    //             sum_b += vb;
-    //             sum_b2 += vb.powi(2);
-    //             sum_ab += va * vb;
-    //         };
-    //         if n >= min_periods {
-    //             let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
-    //             let alpha = (sum_a - beta * sum_b) / n.f64();
-    //             let resid = (0..=i).map(|j| {
-    //                 let (vy, vx) = unsafe{(*arr.uget(j), *x1.uget(j))};
-    //                 vy.f64() - alpha - beta * vx.f64()
-    //             }).collect_trusted();
-    //             let std = Arr1::from_vec(resid).std_1d(2, false);
-    //             unsafe{out.uget_mut(i).write(std)};
-    //         } else {
-    //             unsafe{out.uget_mut(i).write(f64::NAN)};
-    //         };
-    //     }
-    //     for (start, end) in (window - 1..arr.len()).enumerate() {
-    //         // safety：start, end is inbound
-    //         let (va, vb) = unsafe{(*arr.uget(end), *x1.uget(end))};
-    //         if va.notnan() && vb.notnan() {
-    //             n += 1;
-    //             let (va, vb) = (va.f64(), vb.f64());
-    //             sum_a += va;
-    //             sum_b += vb;
-    //             sum_b2 += vb.powi(2);
-    //             sum_ab += va * vb;
-    //         };
-    //         if n >= min_periods {
-    //             let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
-    //             let alpha = (sum_a - beta * sum_b) / n.f64();
-    //             let resid = (start..=end).map(|j| {
-    //                 let (vy, vx) = unsafe{(*arr.uget(j), *x1.uget(j))};
-    //                 vy.f64() - alpha - beta * vx.f64()
-    //             }).collect_trusted();
-    //             let std = Arr1::from_vec(resid).std_1d(2, false);
-    //             unsafe{out.uget_mut(end).write(std)};
-    //         } else {
-    //             unsafe{out.uget_mut(end).write(f64::NAN)};
-    //         };
-    //         let (va, vb) = unsafe{(*arr.uget(start), *x1.uget(start))};
-    //         if va.notnan() && vb.notnan() {
-    //             n -= 1;
-    //             let (va, vb) = (va.f64(), vb.f64());
-    //             sum_a -= va;
-    //             sum_b -= vb;
-    //             sum_b2 -= vb.powi(2);
-    //             sum_ab -= va * vb;
-    //         }
-    //     }
-    // }
+    #[cfg(feature = "agg")]
+    fn ts_regx_resid_std_1d<S2, D2, T2, SO>(
+        &self,
+        x: &ArrBase<S2, D2>,
+        out: &mut ArrBase<SO, Ix1>,
+        window: usize,
+        min_periods: usize,
+    ) -> f64
+    where
+        SO: DataMut<Elem = MaybeUninit<f64>>,
+        S2: Data<Elem = T2>,
+        D2: Dimension,
+        D: DimMax<D2>,
+        T: Number,
+        T2: Number,
+    {
+        let arr = self.as_dim1();
+        let x1 = x.as_dim1();
+        let window = min(arr.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
+        }
+        let mut sum_a = 0.;
+        let mut sum_b = 0.;
+        let mut sum_b2 = 0.;
+        let mut sum_ab = 0.;
+        let mut n = 0;
+        for i in 0..window - 1 {
+            // safety：i is inbound
+            let (va, vb) = unsafe { (*arr.uget(i), *x1.uget(i)) };
+            if va.notnan() && vb.notnan() {
+                n += 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a += va;
+                sum_b += vb;
+                sum_b2 += vb.powi(2);
+                sum_ab += va * vb;
+            };
+            if n >= min_periods {
+                let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                let alpha = (sum_a - beta * sum_b) / n.f64();
+                let resid = (0..=i)
+                    .map(|j| {
+                        let (vy, vx) = unsafe { (*arr.uget(j), *x1.uget(j)) };
+                        vy.f64() - alpha - beta * vx.f64()
+                    })
+                    .collect_trusted();
+                let std = Arr1::from_vec(resid).std_1d(2, false);
+                unsafe { out.uget_mut(i).write(std) };
+            } else {
+                unsafe { out.uget_mut(i).write(f64::NAN) };
+            };
+        }
+        for (start, end) in (window - 1..arr.len()).enumerate() {
+            // safety：start, end is inbound
+            let (va, vb) = unsafe { (*arr.uget(end), *x1.uget(end)) };
+            if va.notnan() && vb.notnan() {
+                n += 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a += va;
+                sum_b += vb;
+                sum_b2 += vb.powi(2);
+                sum_ab += va * vb;
+            };
+            if n >= min_periods {
+                let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                let alpha = (sum_a - beta * sum_b) / n.f64();
+                let resid = (start..=end)
+                    .map(|j| {
+                        let (vy, vx) = unsafe { (*arr.uget(j), *x1.uget(j)) };
+                        vy.f64() - alpha - beta * vx.f64()
+                    })
+                    .collect_trusted();
+                let std = Arr1::from_vec(resid).std_1d(2, false);
+                unsafe { out.uget_mut(end).write(std) };
+            } else {
+                unsafe { out.uget_mut(end).write(f64::NAN) };
+            };
+            let (va, vb) = unsafe { (*arr.uget(start), *x1.uget(start)) };
+            if va.notnan() && vb.notnan() {
+                n -= 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a -= va;
+                sum_b -= vb;
+                sum_b2 -= vb.powi(2);
+                sum_ab -= va * vb;
+            }
+        }
+    }
 
-    // fn ts_regx_resid_skew_1d<S2, D2, T2, SO>(
-    //     &self,
-    //     x: &ArrBase<S2, D2>,
-    //     out: &mut ArrBase<SO, Ix1>,
-    //     window: usize,
-    //     min_periods: usize,
-    // ) -> f64
-    // where
-    //     SO: DataMut<Elem = MaybeUninit<f64>>,
-    //     S2: Data<Elem = T2>,
-    //     D2: Dimension,
-    //     D: DimMax<D2>,
-    //     T: Number,
-    //     T2: Number,
-    // {
-    //     let arr = self.as_dim1();
-    //     let x1 = x.as_dim1();
-    //     let window = min(arr.len(), window);
-    //     if window < min_periods {
-    //         // 如果滚动窗口是1则返回全nan
-    //         return out.apply_mut(|v| {v.write(f64::NAN);});
-    //     }
-    //     let mut sum_a = 0.;
-    //     let mut sum_b = 0.;
-    //     let mut sum_b2 = 0.;
-    //     let mut sum_ab = 0.;
-    //     let mut n = 0;
-    //     for i in 0..window - 1 {
-    //         // safety：i is inbound
-    //         let (va, vb) = unsafe{(*arr.uget(i), *x1.uget(i))};
-    //         if va.notnan() && vb.notnan() {
-    //             n += 1;
-    //             let (va, vb) = (va.f64(), vb.f64());
-    //             sum_a += va;
-    //             sum_b += vb;
-    //             sum_b2 += vb.powi(2);
-    //             sum_ab += va * vb;
-    //         };
-    //         if n >= min_periods {
-    //             let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
-    //             let alpha = (sum_a - beta * sum_b) / n.f64();
-    //             let resid = (0..=i).map(|j| {
-    //                 let (vy, vx) = unsafe{(*arr.uget(j), *x1.uget(j))};
-    //                 vy.f64() - alpha - beta * vx.f64()
-    //             }).collect_trusted();
-    //             let std = Arr1::from_vec(resid).skew_1d(3, false);
-    //             unsafe{out.uget_mut(i).write(std)};
-    //         } else {
-    //             unsafe{out.uget_mut(i).write(f64::NAN)};
-    //         };
-    //     }
-    //     for (start, end) in (window - 1..arr.len()).enumerate() {
-    //         // safety：start, end is inbound
-    //         let (va, vb) = unsafe{(*arr.uget(end), *x1.uget(end))};
-    //         if va.notnan() && vb.notnan() {
-    //             n += 1;
-    //             let (va, vb) = (va.f64(), vb.f64());
-    //             sum_a += va;
-    //             sum_b += vb;
-    //             sum_b2 += vb.powi(2);
-    //             sum_ab += va * vb;
-    //         };
-    //         if n >= min_periods {
-    //             let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
-    //             let alpha = (sum_a - beta * sum_b) / n.f64();
-    //             let resid = (start..=end).map(|j| {
-    //                 let (vy, vx) = unsafe{(*arr.uget(j), *x1.uget(j))};
-    //                 vy.f64() - alpha - beta * vx.f64()
-    //             }).collect_trusted();
-    //             let std = Arr1::from_vec(resid).skew_1d(3, false);
-    //             unsafe{out.uget_mut(end).write(std)};
-    //         } else {
-    //             unsafe{out.uget_mut(end).write(f64::NAN)};
-    //         };
-    //         let (va, vb) = unsafe{(*arr.uget(start), *x1.uget(start))};
-    //         if va.notnan() && vb.notnan() {
-    //             n -= 1;
-    //             let (va, vb) = (va.f64(), vb.f64());
-    //             sum_a -= va;
-    //             sum_b -= vb;
-    //             sum_b2 -= vb.powi(2);
-    //             sum_ab -= va * vb;
-    //         }
-    //     }
-    // }
+    #[cfg(feature = "agg")]
+    fn ts_regx_resid_skew_1d<S2, D2, T2, SO>(
+        &self,
+        x: &ArrBase<S2, D2>,
+        out: &mut ArrBase<SO, Ix1>,
+        window: usize,
+        min_periods: usize,
+    ) -> f64
+    where
+        SO: DataMut<Elem = MaybeUninit<f64>>,
+        S2: Data<Elem = T2>,
+        D2: Dimension,
+        D: DimMax<D2>,
+        T: Number,
+        T2: Number,
+    {
+        let arr = self.as_dim1();
+        let x1 = x.as_dim1();
+        let window = min(arr.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
+        }
+        let mut sum_a = 0.;
+        let mut sum_b = 0.;
+        let mut sum_b2 = 0.;
+        let mut sum_ab = 0.;
+        let mut n = 0;
+        for i in 0..window - 1 {
+            // safety：i is inbound
+            let (va, vb) = unsafe { (*arr.uget(i), *x1.uget(i)) };
+            if va.notnan() && vb.notnan() {
+                n += 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a += va;
+                sum_b += vb;
+                sum_b2 += vb.powi(2);
+                sum_ab += va * vb;
+            };
+            if n >= min_periods {
+                let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                let alpha = (sum_a - beta * sum_b) / n.f64();
+                let resid = (0..=i)
+                    .map(|j| {
+                        let (vy, vx) = unsafe { (*arr.uget(j), *x1.uget(j)) };
+                        vy.f64() - alpha - beta * vx.f64()
+                    })
+                    .collect_trusted();
+                let std = Arr1::from_vec(resid).skew_1d(3, false);
+                unsafe { out.uget_mut(i).write(std) };
+            } else {
+                unsafe { out.uget_mut(i).write(f64::NAN) };
+            };
+        }
+        for (start, end) in (window - 1..arr.len()).enumerate() {
+            // safety：start, end is inbound
+            let (va, vb) = unsafe { (*arr.uget(end), *x1.uget(end)) };
+            if va.notnan() && vb.notnan() {
+                n += 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a += va;
+                sum_b += vb;
+                sum_b2 += vb.powi(2);
+                sum_ab += va * vb;
+            };
+            if n >= min_periods {
+                let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                let alpha = (sum_a - beta * sum_b) / n.f64();
+                let resid = (start..=end)
+                    .map(|j| {
+                        let (vy, vx) = unsafe { (*arr.uget(j), *x1.uget(j)) };
+                        vy.f64() - alpha - beta * vx.f64()
+                    })
+                    .collect_trusted();
+                let std = Arr1::from_vec(resid).skew_1d(3, false);
+                unsafe { out.uget_mut(end).write(std) };
+            } else {
+                unsafe { out.uget_mut(end).write(f64::NAN) };
+            };
+            let (va, vb) = unsafe { (*arr.uget(start), *x1.uget(start)) };
+            if va.notnan() && vb.notnan() {
+                n -= 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a -= va;
+                sum_b -= vb;
+                sum_b2 -= vb.powi(2);
+                sum_ab -= va * vb;
+            }
+        }
+    }
 }

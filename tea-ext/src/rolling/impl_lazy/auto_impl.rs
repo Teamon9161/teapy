@@ -1,8 +1,3 @@
-// use core::prelude::*;
-// use ndarray::{Data, Dimension, Zip};
-// use crate::auto_impl_view;
-// use super::*;
-
 #[cfg(feature = "lazy")]
 use lazy::Expr;
 

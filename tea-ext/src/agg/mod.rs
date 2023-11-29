@@ -6,9 +6,9 @@ pub use corr::{Agg2Ext, Agg2Ext1d, CorrMethod};
 #[cfg(feature = "lazy")]
 pub use impl_lazy::{corr, AutoExprAggExt, ExprAggExt};
 
-use core::prelude::*;
-use core::utils::{kh_sum, vec_fold, vec_nfold};
 use ndarray::{Data, Dimension, Ix1, Zip};
+use tea_core::prelude::*;
+use tea_core::utils::{kh_sum, vec_fold, vec_nfold};
 // #[cfg(feature="lazy")]
 // use lazy::Expr;
 

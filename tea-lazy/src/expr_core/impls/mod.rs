@@ -1,13 +1,13 @@
-mod auto_impl;
+// mod auto_impl;
 mod export;
 mod impl_cast;
 mod impl_dtype_judge;
 #[cfg(feature = "agg")]
 mod impl_groupby_time;
 mod impl_io;
-mod impl_mut;
-mod impl_own;
-mod impl_view;
+// mod impl_mut;
+// mod impl_own;
+// mod impl_view;
 #[cfg(feature = "window_func")]
 mod impl_window;
 mod utils;

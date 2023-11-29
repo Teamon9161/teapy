@@ -1,6 +1,6 @@
 use super::*;
-use core::prelude::*;
 use std::cmp::Ordering;
+use tea_core::prelude::*;
 
 #[ext_trait]
 impl<'a> ArrOkExt for ArrOk<'a> {

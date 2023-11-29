@@ -5,6 +5,7 @@ members = [
     # "tea-ext",
     # "tea-core",
     # "tea-lazy",
+    # "tea-groupby",
     "tears",
     "py_teapy"
 ]

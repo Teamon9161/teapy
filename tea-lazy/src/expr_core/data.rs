@@ -4,6 +4,7 @@ use super::{Expr, ExprElement, FuncNode};
 // use serde::Serialize;
 #[cfg(feature = "blas")]
 use crate::OlsResult;
+
 use crate::{ColumnSelector, Context};
 // use core::prelude::{ArrViewD, ArbArray, ArrD, ArrOk, ArrViewMutD, GetDataType, TpResult, CollectTrustedToVec};
 // #[cfg(feature = "option_dtype")]
@@ -38,8 +39,9 @@ impl<'a> Debug for Data<'a> {
                 }
                 out.finish()
             }
-            Data::Context(selector) => write!(f, "{selector:?}"),
             Data::ArcArr(arr) => write!(f, "{arr:#?}"),
+
+            Data::Context(selector) => write!(f, "{selector:?}"),
             #[cfg(feature = "blas")]
             Data::OlsRes(res) => write!(f, "{res:#?}"),
             // #[cfg(feature = "arw")]
@@ -83,6 +85,7 @@ impl<'a> Data<'a> {
             Data::Arr(arr) => arr.get_type(),
             Data::ArrVec(_) => "ArrVec",
             Data::ArcArr(_) => "ArcArr",
+
             Data::Context(_) => "Context",
             #[cfg(feature = "blas")]
             Data::OlsRes(_) => "OlsRes",
@@ -105,6 +108,7 @@ impl<'a> Data<'a> {
             Data::Arr(arr) => arr.is_owned(),
             Data::ArrVec(_) => false,
             Data::ArcArr(_) => false,
+
             Data::Context(_) => false,
             #[cfg(feature = "blas")]
             Data::OlsRes(_) => false,
@@ -127,6 +131,7 @@ impl<'a> Data<'a> {
     pub fn init_base_is_context(&self) -> bool {
         match self {
             Data::Expr(expr) => expr.init_base_is_context(),
+
             Data::Context(_) => true,
             _ => false,
         }
@@ -177,6 +182,7 @@ impl<'a> Data<'a> {
     pub fn context_clone(&self) -> Option<Self> {
         match self {
             Data::Expr(expr) => Some(expr.context_clone().into()),
+
             Data::Context(cs) => Some(cs.clone().into()),
             _ => None,
         }
@@ -186,6 +192,7 @@ impl<'a> Data<'a> {
         match self {
             Data::Arr(arr) => Ok(arr),
             Data::Expr(e) => e.into_arr(ctx),
+
             Data::Context(col) => {
                 let ctx1 = ctx.clone().ok_or("The context is not provided")?;
                 let out = ctx1.get(col.clone())?;
@@ -202,6 +209,7 @@ impl<'a> Data<'a> {
         match self {
             Data::ArrVec(arr) => Ok(arr),
             Data::Expr(e) => e.into_arr_vec(ctx),
+
             Data::Context(col) => {
                 let ctx1 = ctx.clone().ok_or("The context is not provided")?;
                 let out = ctx1.get(col.clone())?;
@@ -258,6 +266,7 @@ impl<'a> Data<'a> {
         match self {
             Data::Arr(arr) => Ok(arr),
             Data::Expr(e) => e.view_arr(ctx),
+
             Data::Context(col) => {
                 let out = ctx
                     .ok_or("The context is not provided")?
@@ -276,6 +285,7 @@ impl<'a> Data<'a> {
         match self {
             Data::ArrVec(arr_vec) => Ok(arr_vec.iter().collect::<Vec<_>>()),
             Data::Expr(e) => e.view_arr_vec(ctx),
+
             Data::Context(col) => {
                 let ctx = ctx.ok_or("The context is not provided")?;
                 let out = ctx.get(col.clone())?;

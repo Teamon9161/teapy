@@ -119,17 +119,15 @@ impl<'a> ArrOk<'a> {
                         .to_owned()
                         .wrap()
                         .into()
+                } else if check {
+                    a_view
+                        .select(axis_, slc_view.to_dim1()?.as_slice().unwrap())
+                        .wrap()
+                        .into()
                 } else {
-                    if check {
-                        a_view
-                            .select(axis_, &slc_view.to_dim1()?.as_slice().unwrap())
-                            .wrap()
-                            .into()
-                    } else {
-                        a_view
-                            .select_unchecked(axis_, &slc_view.to_dim1()?.as_slice().unwrap())
-                            .into()
-                    }
+                    a_view
+                        .select_unchecked(axis_, slc_view.to_dim1()?.as_slice().unwrap())
+                        .into()
                 }
             }
         });

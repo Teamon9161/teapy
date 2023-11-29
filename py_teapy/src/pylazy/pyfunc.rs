@@ -558,13 +558,12 @@ pub fn get_newey_west_adjust_s(x: PyExpr, resid: PyExpr, lag: PyExpr) -> PyResul
     Ok(out)
 }
 
-// #[cfg(feature="datadict")]
 #[pyfunction]
-pub fn from_pandas(df: &PyAny) -> PyResult<PyDataDict> {
+pub fn from_dataframe(df: &PyAny) -> PyResult<PyDataDict> {
     let columns = df.getattr("columns")?.extract::<Vec<String>>()?;
     let mut data = Vec::with_capacity(columns.len());
     for col in &columns {
-        data.push(parse_expr_nocopy(df.get_item(col)?.getattr("values")?)?);
+        data.push(parse_expr_nocopy(df.get_item(col)?)?);
     }
     let (data, obj_map) = data.into_rs(Some(columns.clone()))?;
     Ok(DataDict::new(data, Some(columns)).to_py(obj_map))

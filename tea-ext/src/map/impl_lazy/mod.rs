@@ -13,11 +13,11 @@ pub use stat::ExprStatExt;
 pub use time::ExprTimeExt;
 
 use super::super::*;
-use core::prelude::*;
-use core::utils::CollectTrustedToVec;
 use lazy::{adjust_slice, Expr};
 use ndarray::{Axis, SliceInfoElem};
-use rayon::prelude::*; // use map trait of ArrBase
+use rayon::prelude::*;
+use tea_core::prelude::*;
+use tea_core::utils::CollectTrustedToVec; // use map trait of ArrBase
 
 #[ext_trait]
 impl<'a> ExprInplaceExt for Expr<'a> {

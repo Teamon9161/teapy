@@ -352,8 +352,9 @@ class GroupBy:
         e = self.dd[0]
         columns = self.dd.columns
         others = self.dd[columns[1:]].raw_data
+        by = self.by if time_expr is None else self.dd[self.by]
         groupby_obj = e.groupby(
-            by=self.dd[self.by], time_expr=time_expr, closed=self.closed, others=others
+            by=by, time_expr=time_expr, closed=self.closed, others=others
         )
         info, type_ = groupby_obj.info, groupby_obj.type
         data = []

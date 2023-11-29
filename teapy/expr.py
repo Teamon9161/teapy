@@ -60,6 +60,7 @@ def __setstate__(self, state):
 #     out = self._get_outer_join_idx(left_other=left_other, right=right, sort=sort, rev=rev)
 
 
+@register
 def mask_to_idx(self):
     from .teapy import arange
 

@@ -332,7 +332,7 @@ impl<'a> Expr<'a> {
                 let out = idxs_arr
                     .into_iter()
                     .map(|idx| {
-                        let current_arr = arr.select_unchecked(Axis(0), &idx);
+                        let current_arr = arr.select_unchecked(Axis(0), idx);
                         let current_others: Vec<ArrOk> = others_ref
                             .iter()
                             .map(|arr| {
@@ -340,7 +340,7 @@ impl<'a> Expr<'a> {
                                     o.view()
                                         .to_dim1()
                                         .unwrap()
-                                        .select_unchecked(Axis(0), &idx)
+                                        .select_unchecked(Axis(0), idx)
                                         .to_dimd()
                                         .into()
                                 })

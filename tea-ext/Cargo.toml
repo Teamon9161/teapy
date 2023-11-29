@@ -21,9 +21,9 @@ concat = []
 
 [dependencies]
 tea-core = { path = "../tea-core", features=["method_1d"] }
-tea-lazy = { path = "../tea-lazy", optional=true, default-features = false}
+tea-lazy = { path = "../tea-lazy", optional=true, default-features = false, features=["extend"]}
 tea-macros = { path = "../tea-macros" }
-ndarray = {workspace=true, features=['rayon', 'serde']}
+ndarray = { workspace=true, features=['rayon', 'serde']}
 paste = { workspace = true }
 rayon = { workspace = true }
 num = { workspace = true, optional = true}

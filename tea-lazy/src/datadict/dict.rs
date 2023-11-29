@@ -18,7 +18,8 @@ use crate::CorrMethod;
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;
 
-use ahash::{HashMap, HashMapExt};
+// use ahash::{HashMap, HashMapExt};
+use crate::hash::*;
 #[cfg(feature = "arw")]
 use std::path::Path;
 
@@ -27,7 +28,7 @@ use std::path::Path;
 #[derive(Clone, Default)]
 pub struct DataDict<'a> {
     pub data: Vec<Expr<'a>>,
-    pub map: Arc<HashMap<String, usize>>,
+    pub map: Arc<TpHashMap<String, usize>>,
 }
 
 impl Debug for DataDict<'_> {
@@ -43,7 +44,7 @@ impl<'a> DataDict<'a> {
     pub fn new(mut data: Vec<Expr<'a>>, columns: Option<Vec<String>>) -> Self {
         if let Some(columns) = columns {
             assert_eq!(data.len(), columns.len());
-            let mut column_map = HashMap::<String, usize>::with_capacity(data.len());
+            let mut column_map = TpHashMap::<String, usize>::with_capacity(data.len());
             for (col_name, i) in zip(columns, 0..data.len()) {
                 column_map.insert(col_name.clone(), i);
                 let expr = unsafe { data.get_unchecked_mut(i) };
@@ -54,7 +55,7 @@ impl<'a> DataDict<'a> {
                 map: Arc::new(column_map),
             }
         } else {
-            let mut column_map = HashMap::<String, usize>::with_capacity(data.len());
+            let mut column_map = TpHashMap::<String, usize>::with_capacity(data.len());
             let mut name_auto = 0;
             for i in 0..data.len() {
                 // we must check the name of PyExpr
@@ -82,7 +83,7 @@ impl<'a> DataDict<'a> {
     }
 
     pub fn reproduce_map(&mut self) {
-        let mut map = HashMap::<String, usize>::with_capacity(self.len());
+        let mut map = TpHashMap::<String, usize>::with_capacity(self.len());
         for (i, e) in self.data.iter().enumerate() {
             map.insert(e.name().unwrap(), i);
         }
@@ -185,7 +186,7 @@ impl<'a> DataDict<'a> {
 
     pub fn set_columns(&mut self, columns: Vec<String>) {
         assert_eq!(columns.len(), self.len());
-        let mut map = HashMap::<String, usize>::with_capacity(columns.len());
+        let mut map = TpHashMap::<String, usize>::with_capacity(columns.len());
         for (col_name, i) in zip(columns, 0..self.len()) {
             map.insert(col_name.clone(), i);
             let expr = unsafe { self.data.get_unchecked_mut(i) };

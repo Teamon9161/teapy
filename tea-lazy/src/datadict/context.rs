@@ -1,4 +1,4 @@
-use super::datadict::DataDict;
+use super::DataDict;
 use std::sync::Arc;
 
 pub type Context<'a> = Arc<DataDict<'a>>;

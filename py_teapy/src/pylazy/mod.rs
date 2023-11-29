@@ -19,7 +19,7 @@ pub use pyfunc::{arange, full};
 #[cfg(feature = "concat")]
 pub use pyfunc::{concat_expr, concat_expr_py, stack_expr, stack_expr_py};
 pub use pyfunc::{
-    context, eval_dicts, eval_exprs, from_pandas, parse_expr, parse_expr_list, parse_expr_nocopy,
+    context, eval_dicts, eval_exprs, from_dataframe, parse_expr, parse_expr_list, parse_expr_nocopy,
 };
 #[cfg(feature = "time")]
 pub use pyfunc::{datetime, timedelta};
@@ -49,7 +49,7 @@ pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(datetime, m)?)?;
     #[cfg(feature = "time")]
     m.add_function(wrap_pyfunction!(timedelta, m)?)?;
-    m.add_function(wrap_pyfunction!(from_pandas, m)?)?;
+    m.add_function(wrap_pyfunction!(from_dataframe, m)?)?;
     #[cfg(feature = "blas")]
     m.add_function(wrap_pyfunction!(get_newey_west_adjust_s, m)?)?;
     m.add_function(wrap_pyfunction!(parse_expr, m)?)?;
