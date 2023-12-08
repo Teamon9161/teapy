@@ -289,8 +289,10 @@ impl<'a> RollingExt for Expr<'a> {
     #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
     fn rolling_select_by_vecusize_max(&mut self, idxs: Self) {}
 
+    #[cfg(feature = "map")]
     #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
     fn rolling_select_umax(&mut self, roll_start: Self) {}
+    #[cfg(feature = "map")]
     #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
     fn rolling_select_by_vecusize_umax(&mut self, idxs: Self) {}
 
@@ -299,8 +301,10 @@ impl<'a> RollingExt for Expr<'a> {
     #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
     fn rolling_select_by_vecusize_min(&mut self, idxs: Self) {}
 
+    #[cfg(feature = "map")]
     #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
     fn rolling_select_umin(&mut self, roll_start: Self) {}
+    #[cfg(feature = "map")]
     #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
     fn rolling_select_by_vecusize_umin(&mut self, idxs: Self) {}
 

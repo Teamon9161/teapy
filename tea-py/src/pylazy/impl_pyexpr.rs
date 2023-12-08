@@ -2709,7 +2709,7 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(window, offset))]
-    #[cfg(all(feature = "rolling", feature = "time"))]
+    #[cfg(all(feature = "rolling", feature = "agg", feature = "time"))]
     pub unsafe fn _get_time_rolling_offset_idx(
         &self,
         window: &str,
@@ -2877,7 +2877,7 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
-    #[cfg(all(feature = "rolling", feature = "agg"))]
+    #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
     #[pyo3(signature=(roll_start))]
     pub unsafe fn _rolling_select_umin(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2887,7 +2887,7 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
-    #[cfg(all(feature = "rolling", feature = "agg"))]
+    #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
     #[pyo3(signature=(roll_start))]
     pub unsafe fn _rolling_select_umax(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -3024,6 +3024,16 @@ impl PyExpr {
         Ok(out.add_obj_into(obj))
     }
 
+    #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_umax(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_umax(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
+
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
     pub unsafe fn _rolling_select_by_vecusize_min(&self, idxs: &PyAny) -> PyResult<Self> {
@@ -3031,6 +3041,16 @@ impl PyExpr {
         let obj = idxs.obj();
         let mut out = self.clone();
         out.e.rolling_select_by_vecusize_min(idxs.e);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_umin(&self, idxs: &PyAny) -> PyResult<Self> {
+        let idxs = parse_expr_nocopy(idxs)?;
+        let obj = idxs.obj();
+        let mut out = self.clone();
+        out.e.rolling_select_by_vecusize_umin(idxs.e);
         Ok(out.add_obj_into(obj))
     }
 

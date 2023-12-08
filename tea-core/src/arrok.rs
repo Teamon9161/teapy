@@ -79,7 +79,6 @@ macro_rules! match_all {
 
 #[macro_export]
 macro_rules! match_arrok {
-    // (numeric $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize)};
     (numeric $($tt: tt)*) => {
         match_all!(ArrOk, $($tt)*,
             F32, F64, I32, I64, U64, Usize, OptUsize,
@@ -89,11 +88,10 @@ macro_rules! match_arrok {
             #[cfg(feature = "option_dtype")] OptI64
         )
     };
-    // (numeric2 $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, Usize, OptUsize, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
-    (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};//, OptUsize, #[cfg(feature = "option_dtype")] OptI32, #[cfg(feature = "option_dtype")] OptI64)};
-    (float $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64)};//, #[cfg(feature = "option_dtype")] OptF32, #[cfg(feature = "option_dtype")] OptF64)};
-    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8)};
-    (tphash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8)};
+    (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};
+    (float $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64)};
+    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8, U64)};
+    (tphash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8, U64)};
     (castable $($tt: tt)*) => {match_all!(
         ArrOk, $($tt)*,
         F32, F64, I32, I64, U64, Usize, String,

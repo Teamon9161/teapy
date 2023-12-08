@@ -8,14 +8,22 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["rolling", "agg", "map", "create", "stat", "lazy_time", "concat"]
-# default = ["rolling", "create", "stat"]
+# default = ["extend", "methods", "stat"]
+default = ["lazy_time", "methods"]
+
+extend = ["lazy_time", "option_dtype"]
+methods = ["agg", "map", "rolling", "create", "concat"]
+
+lazy = ["tea-lazy"]
+lazy_time = ["lazy", "time", "tea-lazy/time"]
+# lazy_option_dtype = ["lazy", "option_dtype", "tea-lazy/option_dtype"]
+
+time = ["tea-core/time"]
+option_dtype = ["tea-core/option_dtype"]
+
 agg = []  # aggregate functions
 map = []  # map functions
 rolling = ["num"]  # rolling functions
-lazy = ["tea-lazy"]
-time = ["tea-core/time"]
-lazy_time = ["lazy", "time", "tea-lazy/time"]
 create = ["lazy"]
 stat = ["statrs"]
 concat = ["tea-core/concat", "tea-hash"]  # used in rolling_common

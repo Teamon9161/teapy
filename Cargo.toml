@@ -1,28 +1,29 @@
 [workspace]
 resolver = "2"
 members = [
-    # "tea-dtype",
-    # "tea-macros",
-    # "tea-ext",
-    # "tea-core",
-    # "tea-lazy",
-    # "tea-hash",
-    # "tea-groupby",
-    # "tea-io",
-    # "tears",
-    # "teapy",
-    "tea-py"
+    "tea-core",
+    "tea-dtype",
+    "tea-error",
+    "tea-ext",
+    "tea-groupby",
+    "tea-hash",
+    "tea-io",
+    "tea-lazy",
+    "tea-macros",
+    "tea-py",
+    "tea-time",
+    "tea-utils",
 ]
 
 [workspace.package]
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
 license = "MIT"
 
-# [profile.release]
-# lto = true
+[profile.release]
+lto = true
 
 [workspace.dependencies]
 num = "0.4"
