@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
-import teapy as tp
 from numpy.testing import assert_array_equal
-from teapy import DataDict, Expr, ct, get_align_frames_idx
 from teapy.testing import assert_allclose, assert_allclose3
+
+import teapy as tp
+from teapy import DataDict, Expr, ct, get_align_frames_idx
 
 
 def test_memory():
