@@ -10,11 +10,9 @@ mod impl_time;
 
 pub use impl_1d::MapExt1d;
 pub use impl_arrok::ArrOkExt;
-pub use impl_inplace::{FillMethod, InplaceExt};
+pub use impl_inplace::*;
 pub use impl_string::StringExt;
 
-#[cfg(feature = "agg")]
-pub use impl_inplace::WinsorizeMethod;
 #[cfg(feature = "lazy")]
 pub use impl_lazy::*;
 #[cfg(feature = "time")]
@@ -24,14 +22,17 @@ use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder, Zip};
 use std::{fmt::Debug, mem::MaybeUninit};
 use tea_core::prelude::*;
 
-#[cfg(feature = "groupby")]
-use crate::hash::TpHash;
-#[cfg(feature = "groupby")]
-use ahash::RandomState;
-#[cfg(feature = "groupby")]
-use std::hash::Hash;
+#[cfg(feature = "lazy")]
+use lazy::Expr;
 
-#[ext_trait]
+// #[cfg(feature = "groupby")]
+// use crate::hash::TpHash;
+// #[cfg(feature = "groupby")]
+// use ahash::RandomState;
+// #[cfg(feature = "groupby")]
+// use std::hash::Hash;
+
+#[ext_trait(lazy = "view")]
 impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     fn is_nan(&self) -> ArrD<bool>
     where
@@ -47,6 +48,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         self.map(|v| !v.is_none()).to_dimd()
     }
 
+    #[lazy_exclude]
     fn is_in(&self, other: &[T]) -> ArrD<bool>
     where
         T: PartialEq,
@@ -54,6 +56,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         self.map(|v| other.contains(v)).to_dimd()
     }
 
+    #[lazy_exclude]
     fn filter<SO>(&self, mask: &ArrBase<SO, Ix1>, axis: i32, par: bool) -> ArrD<T>
     where
         T: Default + Send + Sync + Clone,
@@ -86,6 +89,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     /// # Safety
     ///
     /// The index in `slc` must be correct.
+    #[lazy_exclude]
     unsafe fn take_clone_unchecked<SO>(
         &self,
         slc: ArrBase<SO, Ix1>,
@@ -115,6 +119,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     /// # Safety
     ///
     /// The index in `slc` must be correct.
+    #[lazy_exclude]
     unsafe fn take_option_clone_unchecked<SO>(
         &self,
         slc: ArrBase<SO, Ix1>,
@@ -155,6 +160,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         // out
     }
 
+    #[lazy_exclude]
     pub fn put_mask<SO, S3, D2, D3>(
         &mut self,
         mask: &ArrBase<SO, D2>,
@@ -231,6 +237,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
+    #[teapy(type = "numeric")]
     fn arg_partition(
         &self,
         mut kth: usize,
@@ -260,6 +267,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
+    #[teapy(type = "numeric")]
     fn partition(&self, mut kth: usize, sort: bool, rev: bool, axis: i32, par: bool) -> ArrD<T>
     where
         T: Number + Send + Sync,
@@ -282,7 +290,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     }
 }
 
-#[arr_map_ext]
+#[arr_map_ext(lazy = "view", type = "numeric")]
 impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     fn cumsum<SO>(&self, out: &mut ArrBase<SO, Ix1>, stable: bool) -> T
     where
@@ -291,7 +299,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     {
         let mut sum = T::zero();
         if !stable {
-            out.apply_mut_with(self.as_dim1(), |vo, v| {
+            out.apply_mut_with(&self.as_dim1(), |vo, v| {
                 if v.notnan() {
                     sum += *v;
                     vo.write(sum);
@@ -301,7 +309,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
             });
         } else {
             let c = &mut T::zero();
-            out.apply_mut_with(self.as_dim1(), |vo, v| {
+            out.apply_mut_with(&self.as_dim1(), |vo, v| {
                 if v.notnan() {
                     sum.kh_sum(*v, c);
                     vo.write(sum);
@@ -318,7 +326,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
         T: Number,
     {
         let mut prod = T::one();
-        out.apply_mut_with(self.as_dim1(), |vo, v| {
+        out.apply_mut_with(&self.as_dim1(), |vo, v| {
             if v.notnan() {
                 prod *= *v;
                 vo.write(prod);
@@ -550,11 +558,11 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
         }
         let arr = self.as_dim1();
         if n == 0 {
-            out.apply_mut_with(arr, |vo, _| {
+            out.apply_mut_with(&arr, |vo, _| {
                 vo.write(0.);
             });
         } else if n.unsigned_abs() as usize > arr.len() - 1 {
-            out.apply_mut_with(arr, |vo, _| {
+            out.apply_mut_with(&arr, |vo, _| {
                 vo.write(f64::NAN);
             });
         } else if n > 0 {
@@ -585,4 +593,52 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
             });
         }
     }
+}
+
+#[cfg(feature = "lazy")]
+#[ext_trait(lazy_only, lazy = "f64_func", type = "numeric")]
+impl<'a> F64FuncExt for Expr<'a> {
+    fn sqrt(&self) {}
+
+    fn cbrt(&self) {}
+
+    fn ln(&self) {}
+
+    fn ln_1p(&self) {}
+
+    fn log2(&self) {}
+
+    fn log10(&self) {}
+
+    fn exp(&self) {}
+
+    fn exp_m1(&self) {}
+
+    fn exp2(&self) {}
+
+    fn acos(&self) {}
+
+    fn asin(&self) {}
+
+    fn atan(&self) {}
+
+    fn sin(&self) {}
+
+    fn cos(&self) {}
+
+    fn tan(&self) {}
+
+    fn ceil(&self) {}
+
+    fn floor(&self) {}
+
+    fn fract(&self) {}
+
+    fn trunc(&self) {}
+
+    fn is_finite(&self) {}
+
+    fn is_infinite(&self) {}
+
+    fn log(&self, _base: f64) {}
 }

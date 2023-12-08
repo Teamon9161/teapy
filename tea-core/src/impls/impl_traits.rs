@@ -142,6 +142,7 @@ impl_from!(
     (F64, f64),
     (I32, i32),
     (I64, i64),
+    (U64, u64),
     (Usize, usize),
     (Object, PyValue),
     (String, String),

@@ -1,4 +1,3 @@
-// use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 use rayon::prelude::*;
 use regex::Regex;
 use std::fmt::Debug;
@@ -18,10 +17,7 @@ use crate::CorrMethod;
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;
 
-// use ahash::{HashMap, HashMapExt};
-use crate::hash::*;
-#[cfg(feature = "arw")]
-use std::path::Path;
+use crate::TpHashMap;
 
 // static DATADICT_INIT_SIZE: usize = 10;
 
@@ -107,36 +103,6 @@ impl<'a> DataDict<'a> {
             .collect_trusted()
     }
 
-    #[cfg(feature = "arw")]
-    pub fn read_ipc<P: AsRef<Path>>(path: P, columns: crate::ColSelect<'_>) -> TpResult<Self> {
-        let (schema, arr_vec) = crate::arrow_io::read_ipc(path, columns)?;
-        let data: Vec<Expr<'a>> = schema
-            .fields
-            .into_iter()
-            .zip(arr_vec)
-            .map(|(s, a)| Expr::new_from_arr(a, Some(s.name)))
-            .collect();
-        Ok(DataDict::new(data, None))
-    }
-
-    #[cfg(feature = "arw")]
-    pub fn scan_ipc<P>(path: P, columns: crate::ColSelect<'_>) -> TpResult<Self>
-    where
-        P: AsRef<Path> + Send + Sync + Clone + 'a,
-    {
-        let mut schema = crate::arrow_io::get_ipc_schema(path.clone())?;
-        let proj = columns.into_proj(&schema)?;
-        if let Some(proj) = proj {
-            schema = schema.filter(|i, _f| proj.contains(&i));
-        }
-        let out = schema
-            .fields
-            .into_iter()
-            .map(|f| Expr::read_ipc(path.clone(), f.name.into()))
-            .collect_trusted();
-        Ok(Self::new(out, None))
-    }
-
     #[inline(always)]
     pub fn into_data(self) -> Vec<Expr<'a>> {
         self.data
@@ -193,21 +159,6 @@ impl<'a> DataDict<'a> {
             expr.rename(col_name);
         }
         self.map = Arc::new(map);
-    }
-
-    #[cfg(feature = "agg")]
-    pub fn corr<'b>(
-        &'b self,
-        col: Option<ColumnSelector<'b>>,
-        method: CorrMethod,
-        min_periods: usize,
-        stable: bool,
-    ) -> Expr<'a> {
-        use super::super::corr;
-        let col: ColumnSelector<'_> = col.unwrap_or(ColumnSelector::All);
-        let exprs: Vec<&Expr<'a>> = self.get(col).unwrap().into_exprs();
-        let exprs: Vec<Expr<'a>> = exprs.into_iter().cloned().collect::<Vec<_>>();
-        corr(exprs, method, min_periods, stable)
     }
 
     pub fn get_selector_out_name(&self, col: ColumnSelector) -> Vec<String> {

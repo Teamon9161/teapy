@@ -1,3 +1,5 @@
+#[cfg(feature = "lazy")]
+use lazy::Expr;
 use ndarray::{Data, DimMax, Dimension, Ix1, Zip};
 use std::iter::zip;
 use tea_core::prelude::*;
@@ -6,12 +8,12 @@ use tea_core::utils::kh_sum;
 #[derive(Copy, Clone)]
 pub enum CorrMethod {
     Pearson,
-    #[cfg(feature = "arr_func")]
+    #[cfg(feature = "map")]
     Spearman,
 }
 
 #[ext_trait]
-impl<T, S: Data<Elem = T>> Agg2Ext1d for ArrBase<S, Ix1> {
+impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
     /// Remove NaN values in two 1d arrays.
     #[inline]
     pub fn remove_nan2_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>) -> (Arr1<T>, Arr1<T2>)
@@ -27,7 +29,7 @@ impl<T, S: Data<Elem = T>> Agg2Ext1d for ArrBase<S, Ix1> {
     }
 }
 
-#[arr_agg2_ext]
+#[arr_agg2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]
 impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
     /// covariance of 2 array
     fn cov<S2, D2, T2>(&self, other: &ArrBase<S2, D2>, min_periods: usize, stable: bool) -> f64
@@ -47,7 +49,7 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         let arr = self.as_dim1();
         let other_arr = other.as_dim1();
         let n = if !stable {
-            arr.n_apply_valid_with(other_arr, |va, vb| {
+            arr.n_apply_valid_with(&other_arr, |va, vb| {
                 let (va, vb) = (va.f64(), vb.f64());
                 sum_a += va;
                 sum_b += vb;
@@ -60,7 +62,7 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
                 arr.mean_1d(min_periods, true),
                 other_arr.mean_1d(min_periods, true),
             );
-            arr.n_apply_valid_with(other_arr, |va, vb| {
+            arr.n_apply_valid_with(&other_arr, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);
                 sum_b = kh_sum(sum_b, vb, &mut c_b);
@@ -77,6 +79,7 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         }
     }
 
+    #[lazy_exclude]
     fn corr_pearson<S2, D2, T2>(
         &self,
         other: &ArrBase<S2, D2>,
@@ -99,7 +102,7 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         let arr = self.as_dim1();
         let other_arr = other.as_dim1();
         let n = if !stable {
-            arr.n_apply_valid_with(other_arr, |va, vb| {
+            arr.n_apply_valid_with(&other_arr, |va, vb| {
                 let (va, vb) = (va.f64(), vb.f64());
                 sum_a += va;
                 sum2_a += va.powi(2);
@@ -114,7 +117,7 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
                 arr.mean_1d(min_periods, true),
                 other_arr.mean_1d(min_periods, true),
             );
-            arr.n_apply_valid_with(other_arr, |va, vb| {
+            arr.n_apply_valid_with(&other_arr, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);
                 sum2_a = kh_sum(sum2_a, va * va, &mut c_a2);
@@ -146,7 +149,8 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         }
     }
 
-    #[cfg(feature = "arr_func")]
+    #[cfg(feature = "map")]
+    #[lazy_exclude]
     fn corr_spearman<S2, D2, T2>(
         &self,
         other: &ArrBase<S2, D2>,
@@ -160,13 +164,13 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         T: Number,
         T2: Number,
     {
-        use crate::MapExtNd;
+        use crate::map::*;
         assert_eq!(
             self.len(),
             other.len(),
             "Both arrays must be the same length when calculating correlation."
         );
-        let (arr1, arr2) = self.as_dim1().remove_nan2_1d(other.as_dim1());
+        let (arr1, arr2) = self.as_dim1().remove_nan2_1d(&other.as_dim1());
         let mut rank1 = Arr1::<f64>::uninit(arr1.raw_dim());
         let mut rank2 = Arr1::<f64>::uninit(arr2.raw_dim());
         arr1.rank_1d(&mut rank1.view_mut(), false, false);
@@ -194,7 +198,7 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
     {
         match method {
             CorrMethod::Pearson => self.corr_pearson_1d(other, min_periods, stable),
-            #[cfg(feature = "arr_func")]
+            #[cfg(feature = "map")]
             CorrMethod::Spearman => self.corr_spearman_1d(other, min_periods, stable),
             // _ => panic!("Not supported method: {} in correlation", method),
         }

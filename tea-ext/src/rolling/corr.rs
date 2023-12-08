@@ -4,7 +4,10 @@ use std::mem::MaybeUninit;
 use tea_core::prelude::*;
 use tea_core::utils::define_c;
 
-#[arr_map2_ext]
+#[cfg(feature = "lazy")]
+use lazy::Expr;
+
+#[arr_map2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
     fn ts_cov<S2, D2, T2, SO>(
         &self,
@@ -37,7 +40,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_with_to(
-                other.as_dim1(),
+                &other.as_dim1(),
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {
@@ -68,7 +71,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
         } else {
             define_c!(c1, c2, c3, c4, c5, c6);
             self.as_dim1().stable_apply_window_with_to(
-                other.as_dim1(),
+                &other.as_dim1(),
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {
@@ -127,7 +130,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_with_to(
-                other.as_dim1(),
+                &other.as_dim1(),
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {
@@ -175,7 +178,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
         } else {
             define_c!(c1, c2, c3, c4, c5, c6, c7, c8, c9, c10);
             self.as_dim1().stable_apply_window_with_to(
-                other.as_dim1(),
+                &other.as_dim1(),
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {

@@ -1,3 +1,5 @@
+#[cfg(feature = "lazy")]
+use lazy::Expr;
 use ndarray::{DataMut, Dimension, Zip};
 use std::ptr::read;
 use tea_core::prelude::*;
@@ -23,8 +25,9 @@ pub enum WinsorizeMethod {
     Sigma,
 }
 
-#[arr_inplace_ext]
+#[arr_inplace_ext(lazy = "view_mut")]
 impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<S, D> {
+    #[lazy_exclude]
     pub fn shift(&mut self, n: i32, fill: Option<T>)
     where
         T: GetNone + Clone,
@@ -33,13 +36,12 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
             return;
         }
         let fill = fill.unwrap_or_else(T::none);
-        let arr = self.as_dim1_mut();
+        let mut arr = self.as_dim1_mut();
         let len = arr.len();
         let n_usize = n.unsigned_abs() as usize;
         if n_usize >= len {
             // special case, shift more than length
             arr.fill(fill);
-            return;
         } else if n > 0 {
             for i in (n_usize..len).rev() {
                 unsafe {
@@ -62,7 +64,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                 }
             }
             // Fill the last n elements with fill
-            for i in len - n_usize as usize..len {
+            for i in len - n_usize..len {
                 unsafe {
                     *arr.uget_mut(i) = fill.clone();
                 }
@@ -70,6 +72,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         }
     }
 
+    #[lazy_exclude]
     pub fn diff(&mut self, n: i32, fill: Option<T>)
     where
         T: GetNone + Clone + std::ops::Sub<T, Output = T>,
@@ -78,13 +81,12 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
             return;
         }
         let fill = fill.unwrap_or_else(T::none);
-        let arr = self.as_dim1_mut();
+        let mut arr = self.as_dim1_mut();
         let len = arr.len();
         let n_usize = n.unsigned_abs() as usize;
         if n_usize >= len {
             // special case, shift more than length
             arr.fill(fill);
-            return;
         } else if n > 0 {
             for i in (n_usize..len).rev() {
                 unsafe {
@@ -110,7 +112,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                 }
             }
             // Fill the last n elements with fill
-            for i in len - n_usize as usize..len {
+            for i in len - n_usize..len {
                 unsafe {
                     *arr.uget_mut(i) = fill.clone();
                 }
@@ -118,13 +120,14 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         }
     }
 
+    #[lazy_exclude]
     pub fn fillna<T2>(&mut self, method: FillMethod, value: Option<T2>)
     where
         T: GetNone + Clone,
         T2: Cast<T> + Clone + Send + Sync,
     {
         use FillMethod::*;
-        let arr = self.as_dim1_mut();
+        let mut arr = self.as_dim1_mut();
         match method {
             Ffill | Bfill => {
                 let mut last_valid: Option<T> = None;
@@ -161,6 +164,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         }
     }
 
+    #[lazy_exclude]
     fn clip<T2, T3>(&mut self, min: T2, max: T3)
     where
         T: Number,
@@ -183,6 +187,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         })
     }
 
+    #[teapy(type = "numeric")]
     #[cfg(feature = "agg")]
     #[inline]
     /// Sandardize the array using zscore method on a given axis
@@ -191,8 +196,8 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         T: Number,
         f64: Cast<T>,
     {
-        use crate::agg::AggExtNd;
-        let arr = self.as_dim1_mut();
+        use crate::agg::AggExt1d;
+        let mut arr = self.as_dim1_mut();
         let (mean, var) = arr.meanvar_1d(min_periods, stable);
         if var == 0. {
             arr.apply_mut(|v| *v = 0.0.cast());
@@ -203,15 +208,16 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         }
     }
 
+    #[teapy(type = "numeric")]
     #[cfg(feature = "agg")]
     fn winsorize(&mut self, method: WinsorizeMethod, method_params: Option<f64>, stable: bool)
     where
         T: Number,
         f64: Cast<T>,
     {
-        use crate::agg::AggExtNd;
+        use crate::agg::*;
         use WinsorizeMethod::*;
-        let arr = self.as_dim1_mut();
+        let mut arr = self.as_dim1_mut();
         match method {
             Quantile => {
                 // default method is clip 1% and 99% quantile

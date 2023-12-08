@@ -1,4 +1,4 @@
-use ndarray::{Data, Dimension, Zip};
+use ndarray::{Data, Dimension};
 use tea_core::prelude::*;
 
 #[ext_trait]

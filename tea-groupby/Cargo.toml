@@ -6,9 +6,17 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 
+[features]
+default = ["lazy"]
 lazy = ["tea-lazy"]
 
 [dependencies]
-tea-core = { path = "../tea-core", features=["method_1d"] }
+pyo3 = { workspace = true, features = ["extension-module", "abi3-py38", "macros", "serde"]}
+tea-core = { path = "../tea-core", features=["method_1d", "concat", "extend"] }
 tea-lazy = { path = "../tea-lazy", optional=true, default-features = false}
 tea-macros = { path = "../tea-macros" }
+tea-hash = { path = "../tea-hash" }
+tea-ext = { path = "../tea-ext", default-features = false, features = ["agg", "map"]}
+# once_cell = { workspace = true }
+rayon = { workspace = true }
+ndarray = { workspace = true, features=['rayon', 'serde'] }

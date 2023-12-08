@@ -1,23 +1,28 @@
-// mod auto_impl;
-mod export;
 mod impl_cast;
 mod impl_dtype_judge;
-#[cfg(feature = "agg")]
-mod impl_groupby_time;
-mod impl_io;
-// mod impl_mut;
-// mod impl_own;
-// mod impl_view;
-#[cfg(feature = "window_func")]
-mod impl_window;
 mod utils;
-
-#[cfg(feature = "agg")]
-pub use impl_own::corr;
-#[cfg(all(feature = "arr_func", feature = "agg"))]
-pub use impl_own::DropNaMethod;
-#[cfg(feature = "window_func")]
-pub use impl_window::RollingTimeStartBy;
 pub use utils::adjust_slice;
 #[cfg(feature = "ops")]
 mod impl_ops;
+
+use super::super::Expr;
+use tea_core::prelude::*;
+use tea_core::utils::CollectTrustedToVec;
+
+impl<'a> Expr<'a> {
+    #[allow(unreachable_patterns)]
+    pub fn split_vec_base(self, len: usize) -> Vec<Expr<'a>> {
+        // todo: improve performance
+        // currently we need clone the result,
+        // how to take the ownership of the result and split into
+        // several Exprs without clone?
+        let mut out = (0..len).map(|_| self.clone()).collect_trusted();
+        out.iter_mut().enumerate().for_each(|(i, e)| {
+            e.chain_f_ctx(move |(data, ctx)| {
+                let arr = data.view_arr_vec(ctx.as_ref())?.remove(i);
+                Ok((match_arrok!(arr, a, { a.view().to_owned().into() }), ctx))
+            });
+        });
+        out
+    }
+}

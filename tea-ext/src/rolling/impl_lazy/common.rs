@@ -1,21 +1,21 @@
-use std::{iter::zip, sync::Arc};
+use std::iter::zip;
 
 use crate::agg::*;
-use lazy::hash::TpHashMap;
-use lazy::{DataDict, Expr};
+use lazy::Expr;
 use tea_core::prelude::*;
 use tea_core::utils::CollectTrustedToVec;
 
 use ndarray::{s, Axis};
-use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
+#[allow(dead_code)]
+#[cfg(feature = "time")]
 pub enum RollingTimeStartBy {
     Full,
     DurationStart,
 }
 
 #[ext_trait]
-impl<'a> ExprRollingByStartIdxExt for Expr<'a> {
+impl<'a> RollingExt for Expr<'a> {
     #[cfg(feature = "concat")]
     #[allow(unreachable_patterns)]
     pub fn rolling_apply_with_start(
@@ -25,6 +25,10 @@ impl<'a> ExprRollingByStartIdxExt for Expr<'a> {
         others: Vec<Expr<'a>>,
         _par: bool,
     ) -> &mut Self {
+        use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+        use std::sync::Arc;
+        use tea_hash::TpHashMap;
+        use tea_lazy::DataDict;
         let name = self.name().unwrap();
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?.deref();
@@ -38,7 +42,7 @@ impl<'a> ExprRollingByStartIdxExt for Expr<'a> {
             let len = arr.len();
             if len != roll_start_arr.len() {
                 return Err(format!(
-                    "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
+                    "rolling_apply_with_start: arr.len() != roll_start.len(): {} != {}",
                     arr.len(),
                     roll_start_arr.len()
                 )
@@ -280,230 +284,98 @@ impl<'a> ExprRollingByStartIdxExt for Expr<'a> {
         self
     }
 
-    impl_rolling_by_startidx_agg!(
-        rolling_select_max - rolling_select_by_vecusize_max,
-        max_1d()
-    );
-    impl_rolling_by_startidx_agg!(
-        rolling_select_min - rolling_select_by_vecusize_min,
-        min_1d()
-    );
-    impl_rolling_by_startidx_agg!(rolling_select_mean-rolling_select_by_vecusize_mean, mean_1d(min_periods: usize, stable: bool));
-    impl_rolling_by_startidx_agg!(rolling_select_sum-rolling_select_by_vecusize_sum, sum_1d(stable: bool));
-    impl_rolling_by_startidx_agg!(rolling_select_std-rolling_select_by_vecusize_std, std_1d(min_periods: usize, stable: bool));
-    impl_rolling_by_startidx_agg!(rolling_select_var-rolling_select_by_vecusize_var, var_1d(min_periods: usize, stable: bool));
-    impl_rolling_by_startidx_agg_all_dtype!(
-        rolling_select_valid_first - rolling_select_by_vecusize_valid_first,
-        valid_first_1d()
-    );
-    impl_rolling_by_startidx_agg_all_dtype!(
-        rolling_select_valid_last - rolling_select_by_vecusize_valid_last,
-        valid_last_1d()
-    );
-    impl_rolling_by_startidx_agg_all_dtype!(
-        rolling_select_first - rolling_select_by_vecusize_first,
-        first_1d()
-    );
-    impl_rolling_by_startidx_agg_all_dtype!(
-        rolling_select_last - rolling_select_by_vecusize_last,
-        last_1d()
-    );
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_max(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_max(&mut self, idxs: Self) {}
 
-    impl_rolling_by_startidx_agg!(
-        rolling_select_umax - rolling_select_by_vecusize_umax,
-        sorted_unique_1d().max_1d()
-    );
-    impl_rolling_by_startidx_agg!(
-        rolling_select_umin - rolling_select_by_vecusize_umin,
-        sorted_unique_1d().min_1d()
-    );
-    impl_rolling_by_startidx_agg!(
-        rolling_select_quantile - rolling_select_by_vecusize_quantile,
-        quantile_1d(q: f64, method: crate::QuantileMethod)
-    );
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_umax(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_umax(&mut self, idxs: Self) {}
 
-    impl_rolling_by_startidx_agg!(in2 rolling_select_cov, cov_1d(min_periods: usize, stable: bool));
-    impl_rolling_by_startidx_agg!(in2 rolling_select_corr, corr_1d(method: CorrMethod, min_periods: usize, stable: bool));
-}
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_min(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_min(&mut self, idxs: Self) {}
 
-macro_rules! impl_rolling_common {
-    () => {
-        paste! {
-            #[ext_trait]
-            impl<'a> ExprRollingByStartIdxExt for Expr<'a> {
-            }
-        }
-    };
-}
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_umin(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_umin(&mut self, idxs: Self) {}
 
-macro_rules! impl_rolling_by_startidx_agg {
-    ($func_name: ident-$func1_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*) $(.$func2: ident ($($p2: ident: $ty2: ty),*))*) => {
-        pub fn $func_name(&mut self, roll_start: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
-        {
-            self.chain_f_ctx(
-                move |(data, ctx)| {
-                    let arr = data.view_arr(ctx.as_ref())?.deref();
-                    let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
-                    let roll_start_arr = roll_start.view().to_dim1()?;
-                    let len = arr.len();
-                    if len != roll_start_arr.len() {
-                        return Err(format!(
-                            "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
-                            arr.len(),
-                            roll_start_arr.len()
-                        )
-                        .into());
-                    }
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_median(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_median(&mut self, idxs: Self) {}
 
-                    let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
-                        let arr = arr.view().to_dim1()?;
-                        let out = zip(roll_start_arr, 0..len)
-                        .map(|(mut start, end)| {
-                            if start > end {
-                                start = end;  // the start idx should be inbound
-                            }
-                            let current_arr = arr.slice(s![start..end + 1]).wrap();
-                            current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
-                        })
-                        .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
-                    Ok((out.into(), ctx.clone()))
-                }
-            );
-            self
-        }
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_quantile(&mut self, roll_start: Self, q: f64, method: QuantileMethod) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_quantile(&mut self, idxs: Self, q: f64, method: QuantileMethod) {}
 
-        pub fn $func1_name(&mut self, idxs: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
-        {
-            self.chain_f_ctx(
-                move |(data, ctx)| {
-                    let arr = data.view_arr(ctx.as_ref())?.deref();
-                    let idxs = idxs.view_arr(ctx.as_ref())?.deref().cast_vecusize();
-                    let idxs_arr = idxs.view().to_dim1()?;
-                    let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
-                        let arr = arr.view().to_dim1()?;
-                        let out = idxs_arr
-                            .into_iter()
-                            .map(|idx| {
-                                let current_arr = arr.select_unchecked(Axis(0), &idx);
-                                current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
-                            })
-                            .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
-                    Ok((out.into(), ctx.clone()))
-                }
-            );
-            self
-        }
-    };
-    (in2 $func_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*)) => {
-        pub fn $func_name(&mut self, other: Expr<'a>, roll_start: Expr<'a>  $(,$p:$ty)*) -> &mut Self
-        {
-            self.chain_f_ctx(
-                move |(data, ctx)| {
-                    let arr = data.view_arr(ctx.as_ref())?.deref();
-                    let other = other.view_arr(ctx.as_ref())?.deref();
-                    let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
-                    let roll_start_arr = roll_start.view().to_dim1()?;
-                    let len = arr.len();
-                    if len != roll_start_arr.len() {
-                        return Err(format!(
-                            "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
-                            arr.len(),
-                            roll_start_arr.len()
-                        )
-                        .into());
-                    }
+    #[lazy_only(lazy = "rolling_by_startidx", type = "nostr")]
+    fn rolling_select_first(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "nostr")]
+    fn rolling_select_by_vecusize_first(&mut self, idxs: Self) {}
 
-                    let out: ArrOk<'a> = match_arrok!(numeric arr, arr, {
-                        let arr = arr.view().to_dim1()?;
-                        let out = zip(roll_start_arr, 0..len)
-                        .map(|(mut start, end)| {
-                            if start > end {
-                                start = end;  // the start idx should be inbound
-                            }
-                            let current_arr = arr.slice(s![start..end + 1]).wrap();
-                            match_arrok!(numeric &other, other, {
-                                let other = other.view().to_dim1().unwrap();
-                                let other_arr = other.slice(s![start..end + 1]).wrap();
-                                current_arr.$func_1d(&other_arr, $($p),*)
-                            })
-                        })
-                        .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
-                    Ok((out.into(), ctx.clone()))
-                }
-            );
-            self
-        }
-    };
-}
+    #[lazy_only(lazy = "rolling_by_startidx", type = "nostr")]
+    fn rolling_select_last(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "nostr")]
+    fn rolling_select_by_vecusize_last(&mut self, idxs: Self) {}
 
-macro_rules! impl_rolling_by_startidx_agg_all_dtype {
-    ($func_name: ident-$func1_name: ident, $func_1d: ident ($($p: ident: $ty: ty),*) $(.$func2: ident ($($p2: ident: $ty2: ty),*))*) => {
-        #[allow(unreachable_patterns)]
-        pub fn $func_name(&mut self, roll_start: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
-        {
-            self.chain_f_ctx(
-                move |(data, ctx)| {
-                    let arr = data.view_arr(ctx.as_ref())?.deref();
-                    let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
-                    let roll_start_arr = roll_start.view().to_dim1()?;
-                    let len = arr.len();
-                    if len != roll_start_arr.len() {
-                        return Err(format!(
-                            "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
-                            arr.len(),
-                            roll_start_arr.len()
-                        )
-                        .into());
-                    }
+    #[lazy_only(lazy = "rolling_by_startidx", type = "nostr")]
+    fn rolling_select_valid_first(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "nostr")]
+    fn rolling_select_by_vecusize_valid_first(&mut self, idxs: Self) {}
 
-                    let out: ArrOk<'a> = match_arrok!(nostr arr, arr, {
-                        let arr = arr.view().to_dim1()?;
-                        let out = zip(roll_start_arr, 0..len)
-                        .map(|(mut start, end)| {
-                            if start > end {
-                                start = end;  // the start idx should be inbound
-                            }
-                            let current_arr = arr.slice(s![start..end + 1]).wrap();
-                            current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
-                        })
-                        .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
-                    Ok((out.into(), ctx.clone()))
-                }
-            );
-            self
-        }
+    #[lazy_only(lazy = "rolling_by_startidx", type = "nostr")]
+    fn rolling_select_valid_last(&mut self, roll_start: Self) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "nostr")]
+    fn rolling_select_by_vecusize_valid_last(&mut self, idxs: Self) {}
 
-        #[allow(unreachable_patterns)]
-        pub fn $func1_name(&mut self, idxs: Expr<'a>  $(,$p:$ty)* $($(,$p2:$ty2)*)*) -> &mut Self
-        {
-            self.chain_f_ctx(
-                move |(data, ctx)| {
-                    let arr = data.view_arr(ctx.as_ref())?.deref();
-                    let idxs = idxs.view_arr(ctx.as_ref())?.deref().cast_vecusize();
-                    let idxs_arr = idxs.view().to_dim1()?;
-                    let out: ArrOk<'a> = match_arrok!(nostr arr, arr, {
-                        let arr = arr.view().to_dim1()?;
-                        let out = idxs_arr
-                            .into_iter()
-                            .map(|idx| {
-                                let current_arr = arr.select_unchecked(Axis(0), &idx);
-                                current_arr.$func_1d($($p),*)$(.$func2($($p2),*))*
-                            })
-                            .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
-                    Ok((out.into(), ctx.clone()))
-                }
-            );
-            self
-        }
-    };
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_sum(&mut self, roll_start: Self, stable: bool) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_sum(&mut self, idxs: Self, stable: bool) {}
+
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_mean(&mut self, roll_start: Self, min_periods: usize, stable: bool) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_mean(&mut self, idxs: Self, min_periods: usize, stable: bool) {}
+
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_std(&mut self, roll_start: Self, min_periods: usize, stable: bool) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_std(&mut self, idxs: Self, min_periods: usize, stable: bool) {}
+
+    #[lazy_only(lazy = "rolling_by_startidx", type = "numeric")]
+    fn rolling_select_var(&mut self, roll_start: Self, min_periods: usize, stable: bool) {}
+    #[lazy_only(lazy = "rolling_by_vecusize", type = "numeric")]
+    fn rolling_select_by_vecusize_var(&mut self, idxs: Self, min_periods: usize, stable: bool) {}
+
+    #[lazy_only(lazy = "rolling_by_startidx2", type = "numeric", type2 = "numeric")]
+    fn rolling_select_cov(
+        &mut self,
+        other: Self,
+        roll_start: Self,
+        min_periods: usize,
+        stable: bool,
+    ) {
+    }
+    // #[lazy_only(lazy="rolling_by_vecusize", type="numeric")]
+    // fn rolling_select_by_vecusize_var(&mut self, idxs: Self, min_periods: usize, stable: bool) {}
+
+    #[lazy_only(lazy = "rolling_by_startidx2", type = "numeric", type2 = "numeric")]
+    fn rolling_select_corr(
+        &mut self,
+        other: Self,
+        roll_start: Self,
+        method: CorrMethod,
+        min_periods: usize,
+        stable: bool,
+    ) {
+    }
+    // #[lazy_only(lazy="rolling_by_vecusize", type="numeric")]
+    // fn rolling_select_by_vecusize_var(&mut self, idxs: Self, min_periods: usize, stable: bool) {}
 }

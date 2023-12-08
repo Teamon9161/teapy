@@ -8,7 +8,7 @@ pub use super::own::{Arr, Arr1, Arr2, ArrD};
 pub use super::traits::WrapNdarray;
 pub use super::view::{ArrView, ArrView1, ArrView2, ArrViewD};
 pub use super::viewmut::{ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD};
-pub use datatype::{BoolType, Cast, DataType, GetDataType, GetNone, Number, OptUsize};
+pub use datatype::{BoolType, Cast, DataType, GetDataType, GetNone, Number, OptUsize, PyValue};
 pub use error::{StrError, TpResult};
 
 #[cfg(feature = "blas")]

@@ -2,15 +2,16 @@ mod corr;
 #[cfg(feature = "lazy")]
 mod impl_lazy;
 
-pub use corr::{Agg2Ext, Agg2Ext1d, CorrMethod};
 #[cfg(feature = "lazy")]
-pub use impl_lazy::{corr, AutoExprAggExt, ExprAggExt};
-
+pub use corr::AutoExprAgg2Ext;
+pub use corr::{Agg2Ext, CorrMethod, CorrToolExt1d};
+#[cfg(feature = "lazy")]
+pub use impl_lazy::{corr, AutoExprAggExt, DataDictCorrExt, ExprAggExt};
+#[cfg(feature = "lazy")]
+use lazy::Expr;
 use ndarray::{Data, Dimension, Ix1, Zip};
 use tea_core::prelude::*;
 use tea_core::utils::{kh_sum, vec_fold, vec_nfold};
-// #[cfg(feature="lazy")]
-// use lazy::Expr;
 
 #[ext_trait]
 impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
@@ -55,9 +56,85 @@ impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
             (0, T::nan())
         }
     }
+
+    /// mean and variance of the array on a given axis
+    pub fn meanvar_1d(&self, min_periods: usize, stable: bool) -> (f64, f64)
+    where
+        T: Number,
+    {
+        let arr = self.as_dim1();
+        let (mut m1, mut m2) = (0., 0.);
+        if !stable {
+            let n = arr.n_apply_valid(|v| {
+                let v = v.f64();
+                m1 += v;
+                m2 += v * v;
+            });
+            if n < min_periods {
+                return (f64::NAN, f64::NAN);
+            }
+            let n_f64 = n.f64();
+            m1 /= n_f64; // E(x)
+            m2 /= n_f64; // E(x^2)
+            m2 -= m1.powi(2); // variance = E(x^2) - (E(x))^2
+            if m2 <= 1e-14 {
+                (m1, 0.)
+            } else if n >= 2 {
+                (m1, m2 * n_f64 / (n - 1).f64())
+            } else {
+                (f64::NAN, f64::NAN)
+            }
+        } else {
+            // calculate mean of the array
+            let mean = arr.mean_1d(min_periods, true);
+            if mean.isnan() {
+                return (f64::NAN, f64::NAN);
+            }
+            // elements minus mean then calculate using Kahan summation
+            // see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+            let (mut c_v, mut c_v2) = (0., 0.);
+            let n = arr.n_apply_valid(|v| {
+                let v = v.f64() - mean;
+                m1 = kh_sum(m1, v, &mut c_v);
+                m2 = kh_sum(m2, v * v, &mut c_v2);
+            });
+            if n < min_periods {
+                return (f64::NAN, f64::NAN);
+            }
+            let n_f64 = n.f64();
+            m1 /= n_f64; // E(x)
+            m2 /= n_f64; // E(x^2)
+            m2 -= m1.powi(2); // variance = E(x^2) - (E(x))^2
+            if m2 <= 1e-14 {
+                (mean, 0.)
+            } else if n >= 2 {
+                (mean, m2 * n_f64 / (n - 1).f64())
+            } else {
+                (f64::NAN, f64::NAN)
+            }
+        }
+    }
+
+    #[cfg(feature = "map")]
+    fn umax_1d(&self) -> T
+    where
+        T: PartialEq + Clone + Number,
+    {
+        use crate::map::MapExt1d;
+        self.sorted_unique_1d().max_1d()
+    }
+
+    #[cfg(feature = "map")]
+    fn umin_1d(&self) -> T
+    where
+        T: PartialEq + Clone + Number,
+    {
+        use crate::map::MapExt1d;
+        self.sorted_unique_1d().min_1d()
+    }
 }
 
-#[arr_agg_ext]
+#[arr_agg_ext(lazy = "view", type = "numeric")]
 impl<S, D, T> AggExtNd<D, T> for ArrBase<S, D>
 where
     S: Data<Elem = T>,
@@ -100,33 +177,9 @@ where
         min_idx
     }
 
-    // #[inline]
-    // /// count a value of an array on a given axis
-    // fn count_v(&self, value: &T) -> i32
-    // where T: PartialEq
-    // {
-    //     self.as_dim1().count_by(|v| v == value)
-    // }
-
-    // #[inline]
-    // /// count NaN number of an array on a given axis
-    // pub fn count_nan(&self) -> i32
-    // where T: GetNone
-    // {
-    //     self.as_dim1().count_by(|v| v.is_none())
-    // }
-
-    // #[inline]
-    // /// count not NaN number of an array on a given axis
-    // pub fn count_notnan(&self) -> i32
-    // where T: GetNone
-    // {
-    //     self.as_dim1().count_by(|v| !v.is_none())
-    // }
-
     /// first valid value
     #[inline]
-    pub fn first(&self) -> T
+    fn first(&self) -> T
     where
         T: Clone,
     {
@@ -139,7 +192,7 @@ where
 
     /// last valid value
     #[inline]
-    pub fn last(&self) -> T
+    fn last(&self) -> T
     where
         T: Clone,
     {
@@ -153,7 +206,7 @@ where
 
     /// first valid value
     #[inline]
-    pub fn valid_first(&self) -> T
+    fn valid_first(&self) -> T
     where
         T: Clone + GetNone,
     {
@@ -167,7 +220,7 @@ where
 
     /// last valid value
     #[inline]
-    pub fn valid_last(&self) -> T
+    fn valid_last(&self) -> T
     where
         T: Clone + GetNone,
     {
@@ -180,7 +233,7 @@ where
     }
 
     /// Calculate the quantile of the array on a given axis
-    pub fn quantile(&self, q: f64, method: QuantileMethod) -> f64
+    fn quantile(&self, q: f64, method: QuantileMethod) -> f64
     where
         T: Number,
     {
@@ -246,7 +299,7 @@ where
 
     /// Calculate the median of the array on a given axis
     #[inline]
-    pub fn median(&self) -> f64
+    fn median(&self) -> f64
     where
         T: Number,
     {
@@ -255,82 +308,24 @@ where
 
     /// sum of the array on a given axis
     #[inline]
-    pub fn prod(&self) -> T
+    fn prod(&self) -> T
     where
         T: Number,
     {
         self.as_dim1().nprod_1d().1
     }
 
-    /// mean and variance of the array on a given axis
-    pub fn meanvar(&self, min_periods: usize, stable: bool) -> (f64, f64)
-    where
-        T: Number,
-    {
-        let arr = self.as_dim1();
-        let (mut m1, mut m2) = (0., 0.);
-        if !stable {
-            let n = arr.n_apply_valid(|v| {
-                let v = v.f64();
-                m1 += v;
-                m2 += v * v;
-            });
-            if n < min_periods {
-                return (f64::NAN, f64::NAN);
-            }
-            let n_f64 = n.f64();
-            m1 /= n_f64; // E(x)
-            m2 /= n_f64; // E(x^2)
-            m2 -= m1.powi(2); // variance = E(x^2) - (E(x))^2
-            if m2 <= 1e-14 {
-                (m1, 0.)
-            } else if n >= 2 {
-                (m1, m2 * n_f64 / (n - 1).f64())
-            } else {
-                (f64::NAN, f64::NAN)
-            }
-        } else {
-            // calculate mean of the array
-            let mean = arr.mean_1d(min_periods, true);
-            if mean.isnan() {
-                return (f64::NAN, f64::NAN);
-            }
-            // elements minus mean then calculate using Kahan summation
-            // see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
-            let (mut c_v, mut c_v2) = (0., 0.);
-            let n = arr.n_apply_valid(|v| {
-                let v = v.f64() - mean;
-                m1 = kh_sum(m1, v, &mut c_v);
-                m2 = kh_sum(m2, v * v, &mut c_v2);
-            });
-            if n < min_periods {
-                return (f64::NAN, f64::NAN);
-            }
-            let n_f64 = n.f64();
-            m1 /= n_f64; // E(x)
-            m2 /= n_f64; // E(x^2)
-            m2 -= m1.powi(2); // variance = E(x^2) - (E(x))^2
-            if m2 <= 1e-14 {
-                (mean, 0.)
-            } else if n >= 2 {
-                (mean, m2 * n_f64 / (n - 1).f64())
-            } else {
-                (f64::NAN, f64::NAN)
-            }
-        }
-    }
-
     /// variance of the array on a given axis
-    pub fn var(&self, min_periods: usize, stable: bool) -> f64
+    fn var(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
     {
-        self.meanvar_1d(min_periods, stable).1
+        self.as_dim1().meanvar_1d(min_periods, stable).1
     }
 
     /// standard deviation of the array on a given axis
     #[inline]
-    pub fn std(&self, min_periods: usize, stable: bool) -> f64
+    fn std(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
     {
@@ -338,7 +333,7 @@ where
     }
 
     /// skewness of the array on a given axis
-    pub fn skew(&self, min_periods: usize, stable: bool) -> f64
+    fn skew(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
     {
@@ -396,7 +391,7 @@ where
     }
 
     /// kurtosis of the array on a given axis
-    pub fn kurt(&self, min_periods: usize, stable: bool) -> f64
+    fn kurt(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
     {
@@ -455,6 +450,14 @@ where
         }
         res
     }
+
+    /// count NaN number of an array on a given axis
+    #[lazy_only]
+    fn count_nan(&self) {}
+
+    /// count not NaN number of an array on a given axis
+    #[lazy_only]
+    fn count_notnan(&self) {}
 }
 
 #[allow(dead_code)]
@@ -466,16 +469,15 @@ pub enum QuantileMethod {
     MidPoint,
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::AggExt;
-//     use core::prelude::Arr1;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tea_core::prelude::*;
 
-//     #[test]
-//     fn test_argmax() {
-//         let arr = Arr1::from_vec(vec![1, 2, 3]);
-//         // dbg!("{:?}", arr.argmax(0, false));
-//         assert_eq!(arr.argmax_1d(), 2);
-//         assert_eq!(*arr.argmax(0, false).to_dim1().unwrap().get(0).unwrap(), 2);
-//     }
-// }
+    #[test]
+    fn test_argmax() {
+        let arr = Arr1::from_vec(vec![1, 2, 3]);
+        assert_eq!(arr.argmax_1d(), 2);
+        assert_eq!(*arr.argmax(0, false).to_dim1().unwrap().get(0).unwrap(), 2);
+    }
+}

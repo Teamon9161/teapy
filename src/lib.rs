@@ -1,3 +1,5 @@
-pub use py_teapy as pt;
-pub use py_teapy::teapy;
-pub use py_teapy::tears as rst;
+pub use tea_py as pt;
+pub use tea_py::tea_core;
+pub use tea_py::tea_lazy;
+
+pub use tea_py::tears as teapy;

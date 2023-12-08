@@ -1,0 +1,65 @@
+[package]
+name = "tea-py"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Fash DataDict Library in Python"
+
+
+[features]
+# default = ["extend"]
+default = ["extend", "methods", "lazy_groupby", "blas", "lazy_io"]
+
+extend = ["ops", "lazy_time", "option_dtype"]
+methods = ["agg", "map", "rolling", "concat", "create"]  # extend methods
+blas = ["tea-core/blas", "tea-lazy/blas", "tea-ext/map", "stat", "lazy"] # linalg
+
+# lazy
+lazy_io = ["io", "lazy", "tea-io/lazy"]
+lazy_groupby = ["groupby", "lazy", "tea-groupby/lazy"]
+lazy_time = ["time", "lazy", "tea-lazy/time"]
+
+# dtypes extension
+lazy = ["tea-lazy", "tea-ext/lazy"]
+ops = ["tea-lazy/ops"]
+time = ["tea-core/time", "tea-ext/time", "tea-hash/time"]
+option_dtype = ["tea-core/option_dtype", "tea-lazy/option_dtype"]
+
+# methods
+create = ["tea-ext/create"]
+concat = ["tea-core/concat", "tea-ext/concat"]
+map = ["tea-ext/map"]
+agg = ["tea-ext/agg"]
+rolling = ["tea-ext/rolling"]
+
+groupby = ["tea-groupby", "agg"]
+
+stat = ["tea-ext/stat"]
+
+# io
+io = ["arw"]
+npy = []
+arw = ["tea-io/arw"]
+
+
+srd = ["tea-core/srd"]
+
+
+[dependencies]
+tea-core = {path = "../tea-core", default-features = false}
+tea-hash = {path = "../tea-hash"}
+tea-lazy = {path = "../tea-lazy", optional = true}
+tea-ext = {path = "../tea-ext", default-features = false}
+tea-groupby = {path = "../tea-groupby", optional = true}
+tea-io = {path = "../tea-io", default-features = false, optional = true}
+pyo3 = { workspace=true }
+numpy = { workspace=true }
+parking_lot = { workspace=true }
+ahash = { workspace=true }
+rayon = { workspace=true }
+regex = { workspace=true }
+once_cell = { workspace=true }
+ndarray = { workspace=true }
+chrono = { workspace=true }

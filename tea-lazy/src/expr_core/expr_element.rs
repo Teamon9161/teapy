@@ -7,6 +7,7 @@ use std::fmt::Debug;
 
 pub trait ExprElement: GetDataType + Default + Sync + Send + Debug {}
 impl ExprElement for u8 {}
+impl ExprElement for u64 {}
 impl ExprElement for f32 {}
 impl ExprElement for f64 {}
 impl ExprElement for i32 {}

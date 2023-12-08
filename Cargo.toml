@@ -1,55 +1,25 @@
 [workspace]
-
+resolver = "2"
 members = [
+    # "tea-dtype",
     # "tea-macros",
     # "tea-ext",
     # "tea-core",
     # "tea-lazy",
+    # "tea-hash",
     # "tea-groupby",
-    "tears",
-    "py_teapy"
+    # "tea-io",
+    # "tears",
+    # "teapy",
+    "tea-py"
 ]
 
 [workspace.package]
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
 license = "MIT"
-
-[package]
-name = "teapy"
-version = "0.5.1"
-authors = ["Teamon"]
-edition = "2021"
-repository = "https://github.com/Teamon9161/teapy"
-license = "MIT"
-
-[lib]
-name = "teapy"
-crate-type = ["cdylib", "rlib"]
-
-[features]
-default = ["lazy", "create", "groupby", "concat", "arr_func", "window_func", "time", "blas", "ops", "arw", "option_dtype", "agg"]
-
-# default = ["lazy", "groupby"]
-time = ["py_teapy/time"]
-option_dtype = ["py_teapy/option_dtype"]
-lazy = ["py_teapy/lazy"]
-srd = ["py_teapy/srd"]
-window_func = ["py_teapy/window_func"]
-agg = ["py_teapy/agg"]
-arr_func = ["py_teapy/arr_func"]
-
-ops = ["py_teapy/ops"]
-groupby = ["py_teapy/groupby"]
-create = ["py_teapy/create"]
-concat = ["py_teapy/concat"]
-blas = ["py_teapy/blas"]
-arw = ["py_teapy/arw"]
-npy = ["py_teapy/npy"]
-stat = ["py_teapy/stat"]
-
 
 # [profile.release]
 # lto = true
@@ -70,9 +40,6 @@ pyo3 = {version = "0.20.0", features = ["extension-module", "abi3-py38", "macros
 parking_lot = "0.12"
 chrono = {version = "0.4.31", features = ["serde"]}
 arrow = {package = "arrow2", version = "0.18.0", default-features = false, features = ["io_ipc", "io_ipc_compression"]}
-
-[dependencies]
-py_teapy = {path = "./py_teapy", default-features = false}
 
 [profile.dev]
 incremental = true

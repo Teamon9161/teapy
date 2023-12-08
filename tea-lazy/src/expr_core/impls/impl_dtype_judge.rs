@@ -21,6 +21,7 @@ impl_dtype_judge!(
     is_f64 -> F64,
     is_i32 -> I32,
     is_i64 -> I64,
+    is_u64 -> U64,
     is_usize -> Usize,
     is_string -> String,
     is_str -> Str,

@@ -1,0 +1,42 @@
+[project]
+name = "teapy"
+dependencies = [
+    "numpy>=1.16.0",
+]
+authors = [
+  { name="Teamon", email="teamon9161@163.com" },
+]
+description = "A blazingly fast datadict library"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[build-system]
+requires = ["maturin>=1.2,<2.0"]
+build-backend = "maturin"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "pip>=23.3.1",
+    "black>=23.11.0",
+    "isort>=5.12.0",
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.4.0",
+    "flake8>=5.0.4",
+    "hypothesis>=6.89.0",
+    "statsmodels>=0.14.0",
+    "maturin>=1.3.2",
+    "pandas>=2.0.3",
+    "spyder-kernels>=2.5.0",
+]
+
+
+[tool.maturin]
+python-source = "python"
+module-name = "teapy.tears"

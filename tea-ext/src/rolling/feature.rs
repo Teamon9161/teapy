@@ -1,10 +1,12 @@
+#[cfg(feature = "lazy")]
+use lazy::Expr;
 use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
 use std::cmp::min;
 use std::mem::MaybeUninit;
 use tea_core::prelude::*;
 use tea_core::utils::{define_c, kh_sum};
 
-#[arr_map_ext]
+#[arr_map_ext(lazy = "view", type = "numeric")]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D> {
     fn ts_sum<SO>(
         &self,

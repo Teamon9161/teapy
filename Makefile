@@ -43,6 +43,7 @@ coverage: # rust and python coverage
 		export CARGO_TARGET_DIR=\$$CARGO_LLVM_COV_TARGET_DIR; \
 		export CARGO_INCREMENTAL=1; \
 		cargo llvm-cov clean --workspace; \
+		cd tea-py; \
 		maturin develop; \
 		$(MAKE) pytest-cov; \
 		# cargo llvm-cov report -- workspace --lcov --output-path coverage.lcov; \

@@ -1,13 +1,19 @@
-#[cfg(feature = "agg")]
-use crate::agg::*;
 use ndarray::{Data, DataMut, DimMax, Dimension, Ix1, ShapeBuilder};
 use num::traits::MulAdd;
 use std::cmp::min;
 use std::mem::MaybeUninit;
 use tea_core::prelude::*;
-use tea_core::utils::{define_c, CollectTrustedToVec};
+use tea_core::utils::define_c;
 
-#[arr_map_ext]
+#[cfg(feature = "agg")]
+use tea_core::utils::CollectTrustedToVec;
+
+#[cfg(feature = "agg")]
+use crate::agg::*;
+#[cfg(feature = "lazy")]
+use lazy::Expr;
+
+#[arr_map_ext(lazy = "view", type = "numeric")]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
     fn ts_reg<SO>(
         &self,
@@ -340,9 +346,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
     }
 }
 
-#[arr_map2_ext]
+#[arr_map2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
-    fn ts_regx_beta_1d<S2, D2, T2, SO>(
+    fn ts_regx_beta<S2, D2, T2, SO>(
         &self,
         x: &ArrBase<S2, D2>,
         out: &mut ArrBase<SO, Ix1>,
@@ -374,7 +380,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         let mut sum_ab = 0.;
         let mut n = 0;
         if !stable {
-            arr.apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+            arr.apply_window_with_to(&x1, out, window, |va, vb, va_rm, vb_rm| {
                 if va.notnan() && vb.notnan() {
                     n += 1;
                     let (va, vb) = (va.f64(), vb.f64());
@@ -402,7 +408,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
             });
         } else {
             define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
-            arr.stable_apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+            arr.stable_apply_window_with_to(&x1, out, window, |va, vb, va_rm, vb_rm| {
                 if va.notnan() && vb.notnan() {
                     n += 1;
                     sum_a.kh_sum(va, c1);
@@ -427,7 +433,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         }
     }
 
-    fn ts_regx_alpha_1d<S2, D2, T2, SO>(
+    fn ts_regx_alpha<S2, D2, T2, SO>(
         &self,
         x: &ArrBase<S2, D2>,
         out: &mut ArrBase<SO, Ix1>,
@@ -459,7 +465,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         let mut sum_ab = 0.;
         let mut n = 0;
         if !stable {
-            arr.apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+            arr.apply_window_with_to(&x1, out, window, |va, vb, va_rm, vb_rm| {
                 if va.notnan() && vb.notnan() {
                     n += 1;
                     let (va, vb) = (va.f64(), vb.f64());
@@ -489,7 +495,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
             });
         } else {
             define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
-            arr.stable_apply_window_with_to(x1, out, window, |va, vb, va_rm, vb_rm| {
+            arr.stable_apply_window_with_to(&x1, out, window, |va, vb, va_rm, vb_rm| {
                 if va.notnan() && vb.notnan() {
                     n += 1;
                     sum_a.kh_sum(va, c1);
@@ -517,7 +523,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
-    fn ts_regx_resid_std_1d<S2, D2, T2, SO>(
+    fn ts_regx_resid_std<S2, D2, T2, SO>(
         &self,
         x: &ArrBase<S2, D2>,
         out: &mut ArrBase<SO, Ix1>,
@@ -610,7 +616,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
-    fn ts_regx_resid_skew_1d<S2, D2, T2, SO>(
+    fn ts_regx_resid_skew<S2, D2, T2, SO>(
         &self,
         x: &ArrBase<S2, D2>,
         out: &mut ArrBase<SO, Ix1>,

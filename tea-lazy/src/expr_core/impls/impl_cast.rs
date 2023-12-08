@@ -29,6 +29,7 @@ impl_cast!(
     cast_f64: F64,
     cast_i32: I32,
     cast_i64: I64,
+    cast_u64: U64,
     cast_usize: Usize,
     cast_string: String,
     cast_bool: Bool,

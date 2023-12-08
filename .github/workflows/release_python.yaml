@@ -31,7 +31,7 @@ jobs:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --skip-existing -o wheels -u teamon
+          args: --manifest-path tea-py/Cargo.toml --skip-existing -o wheels -u teamon
 
 
   win-latest:
@@ -51,7 +51,7 @@ jobs:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --no-sdist --skip-existing -o wheels -i python -u teamon
+          args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u teamon
 
   macos_latest:
     runs-on: macos-latest
@@ -71,7 +71,7 @@ jobs:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --no-sdist --skip-existing -o wheels -i python -u teamon
+          args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u teamon
 
   macos-aarch64:
     runs-on: macos-latest
@@ -92,7 +92,7 @@ jobs:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u teamon
+          args: --manifest-path tea-py/Cargo.toml --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u teamon
 
   
   # # Needed for Docker on Apple M1

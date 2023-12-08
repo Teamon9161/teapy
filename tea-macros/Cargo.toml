@@ -10,10 +10,12 @@ license.workspace = true
 [lib]
 proc-macro = true
 
+[features]
+default = []
+# lazy = []
+
 [dependencies]
 syn = { version = "2", features=["full"] }
-# tea-core = { path = "../tea-core", default-features = false}
-# tea-error = {path = "../tea-error", default-features = false}
 quote = { version = "1" }
 proc-macro2 = { version = "1", default-features = false }
-ndarray = {features=['rayon', 'serde'], workspace=true}
+ndarray = { workspace=true }

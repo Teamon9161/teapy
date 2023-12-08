@@ -1,11 +1,11 @@
-mod auto_impl;
+// mod auto_impl;
 mod impl_view;
 #[cfg(feature = "stat")]
 mod stat;
 #[cfg(feature = "time")]
 mod time;
 
-pub use auto_impl::{AutoExprInplaceExt, AutoExprMapExt};
+// pub use auto_impl::{AutoExprInplaceExt, AutoExprMapExt};
 pub use impl_view::ExprViewExt;
 #[cfg(feature = "stat")]
 pub use stat::ExprStatExt;
@@ -17,7 +17,7 @@ use lazy::{adjust_slice, Expr};
 use ndarray::{Axis, SliceInfoElem};
 use rayon::prelude::*;
 use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec; // use map trait of ArrBase
+// use tea_core::utils::CollectTrustedToVec; // use map trait of ArrBase
 
 #[ext_trait]
 impl<'a> ExprInplaceExt for Expr<'a> {
@@ -416,18 +416,5 @@ impl<'a> ExprMapExt for Expr<'a> {
         let idx = Expr::get_sort_idx(by, rev);
         self.select(idx, 0.into(), false);
         self
-    }
-
-    #[allow(unreachable_patterns)]
-    fn split_vec_base(self, len: usize) -> Vec<Expr<'a>> {
-        // todo: improve performance
-        let mut out = (0..len).map(|_| self.clone()).collect_trusted();
-        out.iter_mut().enumerate().for_each(|(i, e)| {
-            e.chain_f_ctx(move |(data, ctx)| {
-                let arr = data.view_arr_vec(ctx.as_ref())?.remove(i);
-                Ok((match_arrok!(arr, a, { a.view().to_owned().into() }), ctx))
-            });
-        });
-        out
     }
 }

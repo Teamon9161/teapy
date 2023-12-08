@@ -196,42 +196,6 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         out.apply_mut_with(&Arr1::from_vec(out_c), |vo, v| *vo = *v);
     }
 
-    /// Hash each element of the array.
-    #[cfg(feature = "groupby")]
-    #[inline]
-    fn hash_1d(self, hasher: &RandomState) -> Arr1<u64>
-    where
-        T: Hash,
-    {
-        self.map(|v| hasher.hash_one(v))
-    }
-
-    /// Hash each element of the array.
-    #[cfg(feature = "groupby")]
-    #[inline]
-    fn tphash_1d(self) -> Arr1<u64>
-    where
-        T: TpHash,
-    {
-        self.map(|v| v.hash())
-    }
-
-    /// Hash each element of the array.
-    #[cfg(feature = "groupby")]
-    #[inline]
-    fn tphash_par_1d(self) -> Arr1<u64>
-    where
-        T: TpHash + Send + Sync,
-    {
-        Arr1::from_vec(
-            self.as_slice()
-                .unwrap()
-                .into_par_iter()
-                .map(|v| v.hash())
-                .collect::<Vec<_>>(),
-        )
-    }
-
     /// Take value on a given axis and clone to a new array, just work on 1d array
     ///
     /// if you want to along axis, select arbitrary subviews corresponding to indices and and

@@ -200,12 +200,12 @@ impl<'a, T> From<Pin<Box<ViewOnBase<'a, T>>>> for ArbArray<'a, T> {
     }
 }
 
-#[cfg(feature = "arw")]
-impl<'a, T> From<Vec<Box<dyn arrow::array::Array>>> for ArbArray<'a, T> {
-    fn from(arr: Vec<Box<dyn arrow::array::Array>>) -> Self {
-        ArbArray::ArrowChunk(arr)
-    }
-}
+// #[cfg(feature = "arw")]
+// impl<'a> From<Vec<Box<dyn arrow::array::Array>>> for ArbArray<'a, _> {
+//     fn from(arr: Vec<Box<dyn arrow::array::Array>>) -> Self {
+//         ArbArray::ArrowChunk(arr)
+//     }
+// }
 
 impl<'a, T> ArbArray<'a, T> {
     // #[allow(unreachable_patterns)]
@@ -314,6 +314,32 @@ impl<'a, T> ArbArray<'a, T> {
             unsafe { std::mem::transmute(self) }
         } else {
             self.view().cast::<T2>().into()
+        }
+    }
+
+    pub fn cast_with<'b, T2>(self, _other: &'b ArbArray<'a, T2>) -> ArbArray<'b, T2>
+    where
+        T2: GetDataType,
+        T: GetDataType,
+    {
+        if T::dtype() == T2::dtype() {
+            // safety: T and T2 are the same type
+            unsafe { std::mem::transmute(self) }
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn cast_ref_with<T2>(&self, _other: &ArbArray<'a, T2>) -> &ArbArray<'a, T2>
+    where
+        T2: GetDataType,
+        T: GetDataType,
+    {
+        if T::dtype() == T2::dtype() {
+            // safety: T and T2 are the same type
+            unsafe { std::mem::transmute(self) }
+        } else {
+            unreachable!()
         }
     }
 

@@ -1,51 +1,32 @@
 use super::*;
+use lazy::ColumnSelector;
 use rayon::prelude::*;
 use tea_core::prelude::*;
 
 #[cfg(feature = "lazy")]
-use lazy::Expr;
+use lazy::{DataDict, Expr};
 
-#[cfg(feature = "lazy")]
-macro_rules! auto_impl_agg_view {
-    (
-        $(in1, [$($func: ident),* $(,)?], $other: tt);*
-        $(;in2, [$($func2: ident),* $(,)?], $other2: tt)*
-        $(;)?
+#[ext_trait(lazy_only, lazy = "view")]
+impl<'a> AggExt for Expr<'a> {
+    fn len(&self) {}
 
-    ) => {
-        #[ext_trait]
-        impl<'a> AutoExprAggExt for Expr<'a> {
-            $($(auto_impl_view!(in1, $func, $other);)*)*
-            $($(auto_impl_view!(in2, $func2, $other2);)*)*
-        }
-    };
+    fn ndim(&self) {}
+
+    #[teapy(type = "numeric")]
+    fn sum(&self, stable: bool, axis: i32, par: bool) {}
+
+    #[teapy(type = "numeric")]
+    fn mean(&self, min_periods: usize, stable: bool, axis: i32, par: bool) {}
+
+    #[teapy(type = "numeric")]
+    fn min(&self, axis: i32, par: bool) {}
+
+    #[teapy(type = "numeric")]
+    fn max(&self, axis: i32, par: bool) {}
 }
-
-#[cfg(feature = "lazy")]
-auto_impl_agg_view!(
-    in1, [
-        argmax, argmin, count_nan, count_notnan, median,
-        max, min, prod, first, last, valid_first, valid_last
-    ],
-    (axis: i32, par: bool);
-    in1, [ndim], ();
-    in1, [sum], (stable: bool, axis: i32, par: bool);
-    in1, [mean, var, std, skew, kurt], (min_periods: usize, stable: bool, axis: i32, par: bool);
-    in1, [quantile], (q: f64, method: QuantileMethod, axis: i32, par: bool);
-    in2, [corr], (method: CorrMethod, min_periods: usize, stable: bool, axis: i32, par: bool);
-    in2, [cov], (min_periods: usize, stable: bool, axis: i32, par: bool);
-);
 
 #[ext_trait]
 impl<'a> ExprAggExt for Expr<'a> {
-    fn len(&mut self) -> &mut Self {
-        self.chain_f_ctx(|(data, ctx)| {
-            let arr = data.view_arr(ctx.as_ref())?;
-            Ok((arr.len().into(), ctx))
-        });
-        self
-    }
-
     fn count_value(&mut self, value: Expr<'a>, axis: i32, par: bool) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
@@ -130,4 +111,20 @@ pub fn corr<'a>(
         Ok((corr_arr.into(), ctx))
     });
     out
+}
+
+#[ext_trait]
+impl<'a> DataDictCorrExt for DataDict<'a> {
+    pub fn corr<'b>(
+        &'b self,
+        col: Option<ColumnSelector<'b>>,
+        method: CorrMethod,
+        min_periods: usize,
+        stable: bool,
+    ) -> Expr<'a> {
+        let col: ColumnSelector<'_> = col.unwrap_or(ColumnSelector::All);
+        let exprs: Vec<&Expr<'a>> = self.get(col).unwrap().into_exprs();
+        let exprs: Vec<Expr<'a>> = exprs.into_iter().cloned().collect::<Vec<_>>();
+        corr(exprs, method, min_periods, stable)
+    }
 }

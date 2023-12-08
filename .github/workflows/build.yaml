@@ -10,6 +10,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  RUSTFLAGS: -C debuginfo=0  # Do not produce debug symbols to keep memory usage down
+
+defaults:
+  run:
+    working-directory: tea-py
+    shell: bash
+
 jobs:
   test-rust:
     name: teapy build
@@ -27,6 +35,7 @@ jobs:
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
+          workspaces: tea-py
           shared-key: shared-${{ matrix.os }}
 
       - name: Run formatting checks

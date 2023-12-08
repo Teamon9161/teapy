@@ -1,9 +1,11 @@
+#[cfg(feature = "lazy")]
+use lazy::Expr;
 use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
 use std::cmp::min;
 use std::mem::MaybeUninit;
 use tea_core::prelude::*;
 
-#[arr_map_ext]
+#[arr_map_ext(lazy = "view", type = "numeric")]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
     fn ts_argmin<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
     where

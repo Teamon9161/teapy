@@ -7,11 +7,14 @@ repository.workspace = true
 license.workspace = true
 
 [features]
-default = ["time"]
+default = ["time", "ahasher"]
 time = ["tea-dtype/time"]
+
+ahasher = ["ahash"]
+gxhasher = ["gxhash"]  # not implemented yet
 
 [dependencies]
 tea-dtype = {path = "../tea-dtype"}
-ahash = {workspace = true}
-once_cell = {workspace = true}
-
+ahash = {workspace = true, optional = true}
+# once_cell = {workspace = true}
+gxhash = {version = "2.2", optional = true}

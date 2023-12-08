@@ -4,7 +4,7 @@ use tea_core::prelude::*;
 
 #[ext_trait]
 impl<'a> ArrOkExt for ArrOk<'a> {
-    #[allow(unreachable_patterns)]
+    #[allow(unreachable_patterns, clippy::collapsible_else_if)]
     fn select(&self, slc: &Self, axis: i32, check: bool) -> TpResult<ArrOk<'a>> {
         if slc.ndim() > 1 {
             return Err("The slice must be dim 0 or dim 1 when select on axis".into());
@@ -117,12 +117,12 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                 } else {
                     if check {
                         a_view
-                            .select(axis_, &slc_view.to_dim1()?.as_slice().unwrap())
+                            .select(axis_, slc_view.to_dim1()?.as_slice().unwrap())
                             .wrap()
                             .into()
                     } else {
                         a_view
-                            .select_unchecked(axis_, &slc_view.to_dim1()?.as_slice().unwrap())
+                            .select_unchecked(axis_, slc_view.to_dim1()?.as_slice().unwrap())
                             .into()
                     }
                 }

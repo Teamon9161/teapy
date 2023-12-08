@@ -1,14 +1,10 @@
 use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 
 use super::{Expr, ExprElement, FuncNode};
-// use serde::Serialize;
 #[cfg(feature = "blas")]
 use crate::OlsResult;
 
 use crate::{ColumnSelector, Context};
-// use core::prelude::{ArrViewD, ArbArray, ArrD, ArrOk, ArrViewMutD, GetDataType, TpResult, CollectTrustedToVec};
-// #[cfg(feature = "option_dtype")]
-// use core::prelude::GetNone;
 use core::prelude::*;
 use core::utils::CollectTrustedToVec;
 use std::{fmt::Debug, sync::Arc};

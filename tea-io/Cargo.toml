@@ -8,7 +8,15 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-arw = ["arrow"]
+default = ["lazy", "arw"]
+arw = ["arrow", "memmap", "tea-core/arw", "tea-lazy/arw"]
+lazy = ["tea-lazy"]
 
 [dependencies]
 arrow = {workspace=true, optional = true}
+tea-core = { path = "../tea-core" }
+tea-hash = { path = "../tea-hash" }
+tea-macros = {path = "../tea-macros"}
+tea-lazy = { path = "../tea-lazy", optional = true, default-features = false}
+rayon = { workspace=true }
+memmap = { package = "memmap2", version = "0.9.0", optional = true }

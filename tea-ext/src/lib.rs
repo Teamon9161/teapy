@@ -5,17 +5,20 @@ extern crate tea_lazy as lazy;
 #[macro_use]
 extern crate tea_macros;
 
+mod from_py;
 #[macro_use]
 mod macros;
+// #[cfg(feature = "blas")]
+// pub mod linalg;
 #[cfg(feature = "agg")]
-mod agg;
+pub mod agg;
 #[cfg(feature = "create")]
-mod create;
+pub mod create;
 #[cfg(feature = "map")]
-mod map;
+pub mod map;
 
 #[cfg(feature = "rolling")]
-mod rolling;
+pub mod rolling;
 
 #[cfg(feature = "agg")]
 pub use agg::*;

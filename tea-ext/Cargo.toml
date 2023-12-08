@@ -8,22 +8,26 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["rolling", "agg", "map", "create", "lazy_time"]
+default = ["rolling", "agg", "map", "create", "stat", "lazy_time", "concat"]
+# default = ["rolling", "create", "stat"]
 agg = []  # aggregate functions
 map = []  # map functions
 rolling = ["num"]  # rolling functions
 lazy = ["tea-lazy"]
 time = ["tea-core/time"]
 lazy_time = ["lazy", "time", "tea-lazy/time"]
-create = []
-# groupby = []
-concat = []
+create = ["lazy"]
+stat = ["statrs"]
+concat = ["tea-core/concat", "tea-hash"]  # used in rolling_common
 
 [dependencies]
-tea-core = { path = "../tea-core", features=["method_1d"] }
-tea-lazy = { path = "../tea-lazy", optional=true, default-features = false, features=["extend"]}
+pyo3 = { workspace = true }
+tea-core = { path = "../tea-core", default_features=false, features=["method_1d"] }
+tea-hash = { path = "../tea-hash", optional=true, default_features = false}
+tea-lazy = { path = "../tea-lazy", optional=true, default_features=false, features=["extend"]}
 tea-macros = { path = "../tea-macros" }
-ndarray = { workspace=true, features=['rayon', 'serde']}
+ndarray = { workspace=true }
 paste = { workspace = true }
 rayon = { workspace = true }
 num = { workspace = true, optional = true}
+statrs = { version = "0.16", optional=true }

@@ -6,10 +6,10 @@ mod impl_lazy;
 mod norm;
 mod reg;
 
-pub use cmp::CmpTs;
-pub use corr::CorrTs;
-pub use feature::FeatureTs;
+pub use cmp::*;
+pub use corr::*;
+pub use feature::*;
 #[cfg(feature = "lazy")]
-pub use impl_lazy::ExprRollingExt;
-pub use norm::NormTs;
-pub use reg::{Reg2Ts, RegTs};
+pub use impl_lazy::*;
+pub use norm::*;
+pub use reg::*;

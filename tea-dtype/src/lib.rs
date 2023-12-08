@@ -57,7 +57,7 @@ macro_rules! match_datatype_arm {
             macro_rules! inner_macro {
                 () => {
                     match_datatype_arm!($expr, $v, $other_enum, $ty, (
-                        Bool, F32, F64, I32, I64, U8, Usize, Object, String, Str,
+                        Bool, F32, F64, I32, I64, U8, U64, Usize, Object, String, Str,
                         OptUsize, VecUsize,
                         #[cfg(feature="time")] DateTime,
                         #[cfg(feature="time")] TimeDelta,
@@ -117,7 +117,7 @@ impl DataType {
     pub fn is_int(&self) -> bool {
         matches!(
             self,
-            DataType::I32 | DataType::I64 | DataType::Usize | DataType::OptUsize
+            DataType::I32 | DataType::I64 | DataType::Usize | DataType::U64 | DataType::OptUsize
         )
     }
 
@@ -128,6 +128,7 @@ impl DataType {
             DataType::I32
                 | DataType::I64
                 | DataType::Usize
+                | DataType::U64
                 | DataType::OptUsize
                 | DataType::OptI32
                 | DataType::OptI64
@@ -141,6 +142,7 @@ impl DataType {
             I32 => F32,
             I64 => F64,
             Usize => F64,
+            U64 => F64,
             OptUsize => F64,
             #[cfg(feature = "option_dtype")]
             OptI32 => OptF32,
@@ -157,6 +159,7 @@ impl DataType {
             F32 => I32,
             F64 => I64,
             Usize => Usize,
+            U64 => I64,
             OptUsize => OptUsize,
             #[cfg(feature = "option_dtype")]
             OptF32 => OptI32,
@@ -599,6 +602,7 @@ impl_number!(
     other
     i32, I32;
     i64, I64;
+    u64, U64;
     usize, Usize
 );
 

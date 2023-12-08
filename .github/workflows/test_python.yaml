@@ -52,6 +52,7 @@ jobs:
           export RUSTFLAGS="-C debuginfo=0"
           make venv
           source venv/bin/activate
+          cd tea-py
           maturin develop
           make test
           cargo clippy

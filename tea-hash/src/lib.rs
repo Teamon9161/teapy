@@ -1,59 +1,69 @@
 extern crate tea_dtype as datatype;
 
-use ahash::RandomState;
-use once_cell::sync::Lazy;
-use std::hash::Hasher;
+// use once_cell::sync::Lazy;
+// use std::hash::{Hash, Hasher};
 
+#[cfg(feature = "ahasher")]
+use ahash::{AHasher, RandomState};
 use datatype::Cast;
 #[cfg(feature = "time")]
 use datatype::DateTime;
-// pub type TpBuildHasher = BuildHasherDefault<TpHasher>;
-// pub type TpHashMap<K, V> = HashMap<K, V, TpBuildHasher>;
-static HASHER: Lazy<RandomState> =
-    Lazy::new(|| RandomState::with_seeds(2313, 12515, 12545345, 1245));
+#[cfg(feature = "ahasher")]
+// pub static BUILD_HASHER: Lazy<RandomState> =
+//     Lazy::new(|| RandomState::with_seeds(2313, 12515, 12545345, 1245));
+pub static BUILD_HASHER: RandomState = RandomState::with_seeds(2313, 12515, 12545345, 1245);
+#[cfg(feature = "ahasher")]
+pub type TpHasher = AHasher;
+#[cfg(feature = "ahasher")]
+pub type TpHashMap<K, V> = ahash::AHashMap<K, V>;
 
-#[derive(Default)]
-pub struct TpHasher {
-    state: u64,
-}
+#[cfg(feature = "gxhasher")]
+use gxhash::GxHasher;
+#[cfg(feature = "gxhasher")]
+static HASHER: Lazy<GxHasher> = Lazy::new(|| GxHasher::with_seeds(2313));
 
-impl Hasher for TpHasher {
-    #[inline]
-    fn finish(&self) -> u64 {
-        self.state
-    }
+// #[derive(Default)]
+// pub struct TpHasher1 {
+//     state: u64,
+// }
 
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) {
-        self.write_u64(HASHER.hash_one(bytes));
-        // unimplemented!("hash arbitrary bytes is not supported")
-    }
+// impl Hasher for TpHasher1 {
+//     #[inline]
+//     fn finish(&self) -> u64 {
+//         self.state
+//     }
 
-    #[inline]
-    fn write_u64(&mut self, i: u64) {
-        self.state = i
-    }
+//     #[inline]
+//     fn write(&mut self, _bytes: &[u8]) {
+//         // self.write_u64(BUILD_HASHER.hash_one(bytes));
+//         unimplemented!("hash arbitrary bytes is not supported")
+//     }
 
-    #[inline]
-    fn write_u32(&mut self, i: u32) {
-        self.state = i as u64
-    }
+//     #[inline]
+//     fn write_u64(&mut self, i: u64) {
+//         self.state = i
+//     }
 
-    #[inline]
-    fn write_i32(&mut self, i: i32) {
-        // Safety: same number of bits
-        unsafe { self.write_u32(std::mem::transmute::<i32, u32>(i)) }
-    }
+//     #[inline]
+//     fn write_u32(&mut self, i: u32) {
+//         self.state = i as u64
+//     }
 
-    #[inline]
-    fn write_i64(&mut self, i: i64) {
-        // Safety: same number of bits
-        unsafe { self.write_u64(std::mem::transmute::<i64, u64>(i)) }
-    }
-}
+//     #[inline]
+//     fn write_i32(&mut self, i: i32) {
+//         // Safety: same number of bits
+//         unsafe { self.write_u32(std::mem::transmute::<i32, u32>(i)) }
+//     }
+
+//     #[inline]
+//     fn write_i64(&mut self, i: i64) {
+//         // Safety: same number of bits
+//         unsafe { self.write_u64(std::mem::transmute::<i64, u64>(i)) }
+//     }
+// }
 
 pub trait TpHash {
-    fn hash(&self) -> u64;
+    fn tphash(&self) -> u64;
 }
 
 macro_rules! impl_tphash {
@@ -61,7 +71,7 @@ macro_rules! impl_tphash {
         $(
             impl TpHash for $ty {
                 #[inline]
-                fn hash(&self) -> u64 {
+                fn tphash(&self) -> u64 {
                     *self as u64
                 }
             }
@@ -72,7 +82,7 @@ macro_rules! impl_tphash {
         $(
             impl TpHash for $ty {
                 #[inline]
-                fn hash(&self) -> u64 {
+                fn tphash(&self) -> u64 {
                     unsafe {std::mem::transmute::<i64, u64>(self.clone().cast())}
                 }
             }
@@ -83,8 +93,8 @@ macro_rules! impl_tphash {
         $(
             impl TpHash for $ty {
                 #[inline]
-                fn hash(&self) -> u64 {
-                    HASHER.hash_one(self)
+                fn tphash(&self) -> u64 {
+                    BUILD_HASHER.hash_one(self)
                 }
             }
         )*
@@ -100,23 +110,23 @@ impl_tphash!(int DateTime);
 impl TpHash for f64 {
     #[inline]
     #[allow(clippy::transmute_float_to_int)]
-    fn hash(&self) -> u64 {
-        unsafe { std::mem::transmute::<f64, u64>((*self).cast()) }
+    fn tphash(&self) -> u64 {
+        unsafe { std::mem::transmute::<f64, u64>(*self) }
     }
 }
 
 impl TpHash for f32 {
     #[inline]
     #[allow(clippy::transmute_float_to_int)]
-    fn hash(&self) -> u64 {
-        unsafe { std::mem::transmute::<f32, u32>((*self).cast()) as u64 }
+    fn tphash(&self) -> u64 {
+        unsafe { std::mem::transmute::<f32, u32>(*self) as u64 }
     }
 }
 
 impl TpHash for bool {
     #[inline]
     #[allow(clippy::transmute_float_to_int)]
-    fn hash(&self) -> u64 {
+    fn tphash(&self) -> u64 {
         *self as u64
     }
 }

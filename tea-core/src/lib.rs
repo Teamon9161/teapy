@@ -1,3 +1,9 @@
+#[cfg(any(feature = "intel-mkl-system", feature = "intel-mkl-static"))]
+extern crate intel_mkl_src as _src;
+
+#[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
+extern crate openblas_src as _src;
+
 pub extern crate tea_dtype as datatype;
 pub extern crate tea_error as error;
 pub extern crate tea_utils as utils;
@@ -24,7 +30,7 @@ pub use traits::WrapNdarray;
 
 use ndarray::{
     s, Array, Array1, ArrayBase, Axis, Data, DataMut, DataOwned, Dimension, Ix0, Ix1, Ix2, IxDyn,
-    NewAxis, RawData, RawDataMut, RemoveAxis, ShapeBuilder, SliceArg, Zip,
+    NewAxis, RawData, RemoveAxis, ShapeBuilder, SliceArg, Zip,
 };
 
 use datatype::{Cast, DataType, GetDataType, PyValue};
@@ -181,35 +187,44 @@ where
     }
 
     #[inline]
-    pub fn try_as_dim1(&self) -> TpResult<&ArrBase<S, Ix1>> {
-        if self.ndim() == 1 {
-            Ok(unsafe { std::mem::transmute(self) })
-        } else {
-            Err("The array is not dim1".into())
-        }
+    pub fn try_as_dim1(&self) -> TpResult<ArrView1<T>>
+    where
+        S: Data,
+    {
+        self.view().to_dim1()
+        // if self.ndim() == 1 {
+        //     Ok(unsafe { std::mem::transmute(self) })
+        // } else {
+        //     Err("The array is not dim1".into())
+        // }
     }
 
     #[inline]
-    pub fn as_dim1(&self) -> &ArrBase<S, Ix1> {
+    pub fn as_dim1(&self) -> ArrView1<T>
+    where
+        S: Data,
+    {
         self.try_as_dim1().unwrap()
     }
 
     #[inline]
-    pub fn try_as_dim1_mut(&mut self) -> TpResult<&mut ArrBase<S, Ix1>>
+    pub fn try_as_dim1_mut(&mut self) -> TpResult<ArrViewMut1<T>>
     where
-        S: RawDataMut,
+        S: DataMut,
     {
-        if self.ndim() == 1 {
-            Ok(unsafe { std::mem::transmute(self) })
-        } else {
-            Err("The array is not dim1".into())
-        }
+        self.view_mut().to_dim1()
+        // if self.ndim() == 1 {
+        //     // self.view_mut().to_dim1()
+        //     Ok(unsafe { std::mem::transmute(self) })
+        // } else {
+        //     Err("The array is not dim1".into())
+        // }
     }
 
     #[inline]
-    pub fn as_dim1_mut(&mut self) -> &mut ArrBase<S, Ix1>
+    pub fn as_dim1_mut(&mut self) -> ArrViewMut1<T>
     where
-        S: RawDataMut,
+        S: DataMut,
     {
         self.try_as_dim1_mut().unwrap()
     }

@@ -16,7 +16,6 @@ time = ["tea-time"]
 [dependencies]
 tea-time = {path = "../tea-time", optional = true}
 tea-utils = {path = "../tea-utils"}
-# tears = {path = "../tears"}
 num = { workspace = true }
 numpy = { workspace = true }
 ndarray = { workspace = true }
