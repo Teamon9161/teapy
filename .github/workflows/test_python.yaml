@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r ./tea-py/build.requirements.txt
+          pip install -r build.requirements.txt
       - name: Run formatting checks
         run: |
           black --check .

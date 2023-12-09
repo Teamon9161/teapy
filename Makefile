@@ -46,7 +46,7 @@ coverage: # rust and python coverage
 		cd tea-py; \
 		maturin develop; \
 		$(MAKE) pytest-cov; \
-		cargo llvm-cov report -- workspace --lcov --output-path coverage.lcov; \
+		cargo llvm-cov report --lcov --output-path coverage.lcov; \
 		# cargo llvm-cov report -p tears -p py_teapy --lcov --output-path coverage.lcov; \
 		"
 

@@ -1,0 +1,17 @@
+# Dependencies
+numpy
+pandas
+
+# Tools for build
+maturin==1.0.1
+
+# Tools for test
+statsmodels==0.13.2
+pytest==7.3.0
+pytest-cov==4.1.0
+pytest-xdist==3.3.1
+hypothesis==6.54.4
+flake8==5.0.4
+isort==5.10.1
+black==22.8.0
+
