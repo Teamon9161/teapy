@@ -29,3 +29,4 @@ data/
 # backup
 **/*_bak.rs
 
+test-*/
