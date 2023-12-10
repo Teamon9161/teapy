@@ -1,10 +1,9 @@
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_array_equal
-from teapy.testing import assert_allclose, assert_allclose3
-
 import teapy as tp
+from numpy.testing import assert_array_equal
 from teapy import DataDict, Expr, ct, get_align_frames_idx
+from teapy.testing import assert_allclose, assert_allclose3
 
 
 def test_memory():
@@ -38,6 +37,16 @@ def test_init():
     assert DataDict([ea, eb], columns=["c", "d"]).columns == ["c", "d"]
 
 
+def test_rename():
+    dd = DataDict({"a": [2], "b": [45]})
+    dd.rename({"a": "c"}, inplace=True)
+    assert set(dd.columns) == set(["c", "b"])
+    dd = dd.rename({"b": "a"})
+    assert set(dd.columns) == set(["c", "a"])
+    dd = dd.rename(["a", "b"])
+    assert dd.columns == ["a", "b"]
+
+
 def test_get_and_set_item():
     dd = DataDict()
     a = np.random.randn(100)
@@ -69,6 +78,16 @@ def test_drop():
     assert dd.drop(["a", "b"]).columns == []
     dd.drop("b", inplace=True)
     assert dd.columns == ["a"]
+    del dd["a"]
+    assert dd.columns == []
+
+
+def test_to_dict():
+    data = {"a": 1, "b": 2}
+    dd = DataDict(data)
+    assert dd.to_dict() == data
+    dd = dd.with_columns((ct("a") * 2).alias("c"))
+    assert dd.to_dict(context=True) == {"a": 1, "b": 2, "c": 2}
 
 
 def test_dropna():

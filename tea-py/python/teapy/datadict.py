@@ -216,14 +216,18 @@ class DataDict:
             return self.apply(lambda e: e.max(axis=axis, par=par))
 
     def rename(self, mapper, inplace=False):
-        return self.with_columns(
-            [
-                self[key].alias(mapper[key])
-                for key in self.columns
-                if mapper.get(key) is not None
-            ],
-            inplace=inplace,
-        )
+        dd = self if inplace else self.copy()
+        if isinstance(mapper, (list, tuple)):
+            assert len(mapper) == len(dd.columns)
+            dd.columns = list(mapper)
+        elif isinstance(mapper, dict):
+            for key, value in mapper.items():
+                dd[value] = dd[key].alias(value)
+                if key != value:
+                    del dd[key]
+        else:
+            raise ValueError("mapper should be either list or dict")
+        return None if inplace else dd
 
     def exclude(self, cols):
         if not isinstance(cols, (tuple, list)):

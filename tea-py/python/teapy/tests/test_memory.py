@@ -1,8 +1,7 @@
 import numpy as np
-from teapy.testing import assert_allclose
-
 import teapy as tp
 from teapy import Expr
+from teapy.testing import assert_allclose
 
 
 def test_view_func():

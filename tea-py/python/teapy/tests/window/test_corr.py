@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd
+import teapy as tp
 from hypothesis import given
 from hypothesis import strategies as st
-from teapy.testing import assert_allclose3, make_arr
-
-import teapy as tp
 from teapy import Expr
+from teapy.testing import assert_allclose3, make_arr
 
 
 @given(make_arr(30), st.integers(3, 5), st.booleans())

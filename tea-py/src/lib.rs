@@ -1,6 +1,4 @@
-#![feature(hash_raw_entry)]
-#![feature(arbitrary_self_types)]
-#![feature(drain_filter)]
+#![feature(stmt_expr_attributes)]
 
 #[macro_use]
 pub mod from_py;

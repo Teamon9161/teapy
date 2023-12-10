@@ -1,7 +1,6 @@
 import pandas as pd
-from teapy.testing import assert_allclose
-
 from teapy import Expr, calc_ret_single
+from teapy.testing import assert_allclose
 
 
 def test_calc_ret_single():

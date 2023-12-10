@@ -73,14 +73,12 @@ impl PyExpr {
     }
 
     #[getter]
-    #[allow(unreachable_patterns)]
     pub fn get_base_type(&self) -> &'static str {
         // match_exprs!(&self.inner, e, { e.get_base_type() })
         self.e.base_type()
     }
 
     // #[getter]
-    // #[allow(unreachable_patterns)]
     // pub fn get_base_strong_count(&self) -> PyResult<usize> {
     //     match_exprs!(&self.inner, e, {
     //         e.get_base_strong_count().map_err(StrError::to_py)
@@ -110,7 +108,6 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "map", feature = "agg", feature = "ops"))]
-    #[allow(unreachable_patterns)]
     pub unsafe fn __getitem__(&self, obj: &PyAny, py: Python) -> PyResult<Self> {
         use pyo3::types::{PyList, PySlice, PyTuple};
         if let Ok(length) = obj.len() {
@@ -233,7 +230,7 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(context=None))]
-    #[cfg(feature = "time")]
+    // #[cfg(feature = "time")]
     pub fn view_in(
         slf: PyRefMut<'_, Self>,
         context: Option<&PyAny>,
@@ -266,64 +263,22 @@ impl PyExpr {
         }
         let arr = data.view_arr(ct_rs.as_ref())?;
         if matches!(arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
-            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String, TimeDelta);
+            let arr = match_arrok!(
+                arr,
+                a,
+                { a.view().to_object(py) },
+                Str,
+                String,
+                #[cfg(feature = "time")]
+                TimeDelta
+            );
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
-        } else if let ArrOk::DateTime(arr) = arr {
+        }
+        #[cfg(feature = "time")]
+        if let ArrOk::DateTime(arr) = arr {
             let arr = arr
                 .view()
                 .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
-            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
-        }
-        match_arrok!(
-            pyelement arr,
-            a,
-            {
-                unsafe {
-                    Ok(PyArray::borrow_from_array(
-                        &a.view().0,
-                        container,
-                    )
-                    .no_dim0(py)?)
-                }
-            }
-        )
-    }
-
-    #[pyo3(signature=(context=None))]
-    #[cfg(not(feature = "time"))]
-    pub fn view_in(
-        slf: PyRefMut<'_, Self>,
-        context: Option<&PyAny>,
-        py: Python,
-    ) -> PyResult<PyObject> {
-        let ct: PyContext<'static> = if let Some(context) = context {
-            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
-        } else {
-            Default::default()
-        };
-        let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
-        let data = slf.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
-        let container = unsafe { PyAny::from_borrowed_ptr(py, slf.as_ptr()) };
-        if matches!(&data, Data::ArrVec(_)) {
-            if let Data::ArrVec(arr_vec) = data {
-                let out = arr_vec
-                    .iter()
-                    .map(|arr| {
-                        match_arrok!(pyelement arr, a, {
-                            unsafe{
-                                PyArray::borrow_from_array(&a.view().0, container)
-                                .no_dim0(py)
-                                .unwrap()
-                            }
-                        })
-                    })
-                    .collect_trusted();
-                return Ok(out.into_py(py));
-            }
-        }
-        let arr = data.view_arr(ct_rs.as_ref())?;
-        if matches!(arr, ArrOk::Str(_) | ArrOk::String(_)) {
-            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String);
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
         }
         match_arrok!(
@@ -361,7 +316,7 @@ impl PyExpr {
 
     #[allow(unreachable_patterns)]
     #[pyo3(signature=(unit=None, context=None))]
-    #[cfg(feature = "time")]
+    // #[cfg(feature = "time")]
     pub fn value<'py>(
         &'py mut self,
         unit: Option<&'py str>,
@@ -394,9 +349,19 @@ impl PyExpr {
         }
         let arr = data.view_arr(ct_rs.as_ref())?;
         if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
-            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String, TimeDelta);
+            let arr = match_arrok!(
+                arr,
+                a,
+                { a.view().to_object(py) },
+                Str,
+                String,
+                #[cfg(feature = "time")]
+                TimeDelta
+            );
             return PyArray::from_owned_array(py, arr.0).no_dim0(py);
-        } else if let ArrOk::DateTime(arr) = &arr {
+        }
+        #[cfg(feature = "time")]
+        if let ArrOk::DateTime(arr) = &arr {
             match unit.unwrap_or("us").to_lowercase().as_str() {
                 "ms" => {
                     let arr = arr
@@ -432,91 +397,34 @@ impl PyExpr {
         )
     }
 
-    #[allow(unreachable_patterns, unused_variables)]
-    #[pyo3(signature=(unit=None, context=None))]
-    #[cfg(not(feature = "time"))]
-    pub fn value<'py>(
-        &'py mut self,
-        unit: Option<&'py str>,
-        context: Option<&'py PyAny>,
-        py: Python<'py>,
-    ) -> PyResult<PyObject> {
-        let ct: PyContext<'static> = if let Some(context) = context {
-            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
-        } else {
-            Default::default()
-        };
-        let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
-        self.e.eval_inplace(ct_rs.clone())?;
-        let data = self.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
-        if matches!(&data, Data::ArrVec(_)) {
-            if let Data::ArrVec(_) = data {
-                let arr_vec = data.view_arr_vec(ct_rs.as_ref()).map_err(StrError::to_py)?;
-                let out = arr_vec
-                    .into_iter()
-                    .map(|arr| {
-                        match_arrok!(pyelement arr, a, {
-                            PyArray::from_owned_array(py, a.view().to_owned().0)
-                            .no_dim0(py)
-                            .unwrap()
-                        })
-                    })
-                    .collect_trusted();
-                return Ok(out.into_py(py));
-            }
-        }
-        let arr = data.view_arr(ct_rs.as_ref())?;
-        if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_)) {
-            let arr = match_arrok!(arr, a, { a.view().to_object(py) }, Str, String);
-            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
-        }
-        match_arrok!(
-            pyelement arr,
-            a,
-            {
-                Ok(PyArray::from_owned_array(
-                    py,
-                    a.view().to_owned().0
-                )
-                .no_dim0(py)?)
-            }
-        )
-    }
-
     #[getter]
-    #[allow(unreachable_patterns)]
     pub fn step(&self) -> usize {
         self.e.step_acc()
     }
 
     #[getter]
-    #[allow(unreachable_patterns)]
     pub fn get_name(&self) -> Option<String> {
         self.e.name()
     }
 
     #[setter]
-    #[allow(unreachable_patterns)]
     pub fn set_name(&mut self, name: String) {
         self.e.rename(name)
     }
 
     #[cfg(feature = "map")]
     #[pyo3(name = "copy")]
-    #[allow(unreachable_patterns)]
     pub fn deep_copy(&self) -> Self {
         let mut out = self.clone();
         out.e.deep_copy();
         out
     }
 
-    #[allow(unreachable_patterns)]
     pub(crate) fn is_owned(&self) -> bool {
         self.e.is_owned()
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     pub unsafe fn reshape(&self, shape: &PyAny) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
@@ -748,7 +656,6 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(name, inplace=false))]
-    #[allow(unreachable_patterns)]
     pub fn alias(&mut self, name: String, inplace: bool) -> Option<Self> {
         if inplace {
             self.e.rename(name);
@@ -761,7 +668,6 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(name, inplace=false))]
-    #[allow(unreachable_patterns)]
     pub fn suffix(&mut self, name: String, inplace: bool) -> Option<Self> {
         let ori_name = self.e.name().unwrap();
         if inplace {
@@ -775,7 +681,6 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(name, inplace=false))]
-    #[allow(unreachable_patterns)]
     pub fn prefix(&mut self, name: String, inplace: bool) -> Option<Self> {
         let ori_name = self.e.ref_name().unwrap();
         if inplace {
@@ -1031,7 +936,6 @@ impl PyExpr {
 
     #[cfg(feature = "agg")]
     #[pyo3(signature=(axis=0, par=false))]
-    #[allow(unreachable_patterns)]
     pub fn first(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
         e.e.first(axis, par);
@@ -1040,28 +944,11 @@ impl PyExpr {
 
     #[cfg(feature = "agg")]
     #[pyo3(signature=(axis=0, par=false))]
-    #[allow(unreachable_patterns)]
     pub fn last(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
         e.e.last(axis, par);
         e
     }
-
-    // #[pyo3(signature=(axis=0))]
-    // #[allow(unreachable_patterns)]
-    // pub fn first(&self, axis: i32) -> Self {
-    //     let mut e = self.clone();
-    //     e.e.first(axis);
-    //     e
-    // }
-
-    // #[pyo3(signature=(axis=0))]
-    // #[allow(unreachable_patterns)]
-    // pub fn last(&self, axis: i32) -> Self {
-    //     let mut e = self.clone();
-    //     e.e.last(axis);
-    //     e
-    // }
 
     #[cfg(feature = "agg")]
     #[pyo3(signature=(axis=0, par=false))]
@@ -1165,7 +1052,6 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "map", feature = "agg"))]
-    #[allow(unreachable_patterns)]
     #[pyo3(signature=(mask, axis=None, par=false))]
     pub unsafe fn filter(&self, mask: &PyAny, axis: Option<&PyAny>, par: bool) -> PyResult<Self> {
         let mask = parse_expr_nocopy(mask)?;
@@ -1239,7 +1125,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     /// Return a view of the diagonal elements of the array.
     ///
     /// The diagonal is simply the sequence indexed by (0, 0, .., 0), (1, 1, ..., 1) etc as long as all axes have elements.
@@ -1253,7 +1138,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     /// Insert new array axis at axis and return the result.
     pub unsafe fn insert_axis(&self, axis: i32) -> Self {
         let mut out = self.clone();
@@ -1262,7 +1146,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     /// Remove new array axis at axis and return the result.
     pub unsafe fn remove_axis(&self, axis: i32) -> Self {
         let mut out = self.clone();
@@ -1271,7 +1154,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     /// Return a transposed view of the array.
     pub unsafe fn t(&self) -> Self {
         let mut out = self.clone();
@@ -1280,7 +1162,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     /// Swap axes ax and bx.
     ///
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
@@ -1291,7 +1172,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     /// Permute the axes.
     ///
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
@@ -1306,7 +1186,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "agg")]
-    #[allow(unreachable_patterns)]
     /// Return the number of dimensions (axes) in the array
     pub fn ndim(&self) -> Self {
         let mut out = self.clone();
@@ -1315,7 +1194,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "agg")]
-    #[allow(unreachable_patterns)]
     #[getter]
     /// Return the shape of the array as a usize Expr.
     pub fn shape(&self) -> Self {
@@ -2203,7 +2081,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    #[allow(unreachable_patterns)]
     pub fn params(&self) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.params();
@@ -2211,7 +2088,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    #[allow(unreachable_patterns)]
     pub fn singular_values(&self) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.singular_values();
@@ -2219,7 +2095,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    #[allow(unreachable_patterns)]
     pub fn ols_rank(&self) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.ols_rank();
@@ -2227,7 +2102,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    #[allow(unreachable_patterns)]
     pub fn sse(&self) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.sse();
@@ -2235,7 +2109,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    #[allow(unreachable_patterns)]
     pub fn fitted_values(&self) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.fitted_values();
@@ -2296,7 +2169,6 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    #[allow(unreachable_patterns)]
     pub unsafe fn broadcast(&self, shape: &PyAny) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
@@ -2306,7 +2178,6 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "map", feature = "agg"))]
-    #[allow(unreachable_patterns)]
     pub unsafe fn broadcast_with(&self, other: &PyAny) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let shape = other.shape();

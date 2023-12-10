@@ -1,8 +1,22 @@
 import numpy as np
 import pandas as pd
+import teapy as tp
 from teapy.testing import assert_allclose, assert_series_equal
 
-import teapy as tp
+
+def test_name():
+    e = tp.Expr([1, 2])
+    assert e.name is None
+    e = tp.Expr([1, 2], name="a")
+    assert e.name == "a"
+    e.alias("b", inplace=True)
+    assert e.name == "b"
+    e = e.alias("c")
+    assert e.name == "c"
+    e1 = e.suffix("_suffix")
+    assert e1.name == "c_suffix"
+    e.prefix("prefix_", inplace=True)
+    assert e.name == "prefix_c"
 
 
 def test_slice():
