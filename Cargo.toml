@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "test-core",
+    # "test-core",
     "tea-core",
     "tea-dtype",
     "tea-error",
