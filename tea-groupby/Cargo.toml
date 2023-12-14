@@ -19,7 +19,7 @@ option_dtype = ["tea-core/option_dtype"]
 
 [dependencies]
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38", "macros", "serde"]}
-tea-core = { path = "../tea-core", features=["method_1d", "concat", "extend"] }
+tea-core = { path = "../tea-core", default-features=false, features=["method_1d", "concat", "extend"] }
 tea-lazy = { path = "../tea-lazy", optional=true, default-features = false}
 tea-macros = { path = "../tea-macros" }
 tea-hash = { path = "../tea-hash" }

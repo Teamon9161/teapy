@@ -8,10 +8,12 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["hash", "extend", "ops", "blas"]
+# default = ["hash", "extend", "ops", "blas"]
+default = ["extend", "ops"]
+
+
 extend = ["hash", "option_dtype", "time"]
 
-# groupby = []
 hash = []
 arw = []  # todo! impl read_ipc in tea-io
 option_dtype = ["tea-core/option_dtype"]

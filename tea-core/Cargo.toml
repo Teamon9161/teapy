@@ -9,14 +9,15 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 # default = ["extend", "method_1d", "ops", "blas", "concat", "arw"]
-default = ["extend", "ops"]
+# default = ["extend", "ops"]
+default = []
 extend = ["option_dtype", "time"]
 option_dtype = ["tea-dtype/option_dtype"]
 method_1d = []
 time = ["tea-dtype/time"]
 ops = []
 srd = ["tea-dtype/srd", "ndarray/serde"]
-blas = ["ndarray/blas", "ops", "statrs", "lapack-sys", "intel-mkl"]
+blas = ["ndarray/blas", "ops", "lapack-sys", "intel-mkl"]
 concat = []
 arw = ["tea-error/arw", "concat"]
 
@@ -43,5 +44,5 @@ pyo3 = { workspace = true}
 lapack-sys = { version="0.14.0", optional=true }
 intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }
 openblas-src = { version = "0.10.4", optional = true, default-features = false, features = ["cblas"] }
-statrs = { version = "0.16", optional=true }
+# statrs = { version = "0.16", optional=true }
 arrow = { workspace=true, default-features = false }
