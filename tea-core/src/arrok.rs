@@ -631,7 +631,7 @@ macro_rules! impl_arrok_cast {
                 #[inline]
                 fn cast(self) -> ArbArray<'a, $T> {
                     match_arrok!(self, a, { a.cast::<$T>() },
-                        U8, F32, F64, I32, I64, U64, Usize, Bool, OptUsize, String, Str,
+                        U8, F32, F64, I32, I64, U64, Usize, Bool, OptUsize, String, Str, Object,
                         #[cfg(feature="time")] DateTime,
                         #[cfg(feature="time")] TimeDelta,
                         #[cfg(feature = "option_dtype")] OptF32,
@@ -642,14 +642,6 @@ macro_rules! impl_arrok_cast {
                     )
                 }
             }
-
-            // $(#[$meta])?
-            // impl<'a> Cast<ArrViewD<'a, $T>> for ArrOk<'a> {
-            //     fn cast(self) -> ArrViewD<'a, $T> {
-            //         let arb: ArbArray<'a, $T> = self.cast();
-            //         unsafe {std::mem::transmute(arb.view())}
-            //     }
-            // }
 
             $(#[$meta])?
             impl<'a> ArrOk<'a>

@@ -3,10 +3,10 @@ import pandas as pd
 import statsmodels.api as sm
 from hypothesis import given
 from hypothesis import strategies as st
-from teapy.testing import assert_allclose3, make_arr
 
 import teapy as tp
 from teapy import Expr
+from teapy.testing import assert_allclose3, make_arr
 
 
 @given(make_arr(30), st.integers(1, 5), st.booleans())

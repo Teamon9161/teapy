@@ -70,7 +70,14 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         } else if module_name == "polars" {
             let kwargs = PyDict::new(obj.py());
             kwargs.set_item("writable", false)?;
-            let obj = obj.getattr("to_numpy")?.call((), Some(kwargs))?;
+            let dtype = obj
+                .getattr("dtype")?
+                .getattr("__name__")?
+                .extract::<&str>()?;
+            let mut obj = obj.getattr("to_numpy")?.call((), Some(kwargs))?;
+            if dtype == "Utf8" {
+                obj = obj.getattr("astype")?.call1(("str",))?;
+            }
             return parse_expr(obj, copy);
         } else {
             return Err(PyValueError::new_err(format!(

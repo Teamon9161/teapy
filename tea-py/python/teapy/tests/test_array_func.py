@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd
 from hypothesis import given
 from hypothesis import strategies as st
+
+import teapy as tp
+from teapy import Expr
 from teapy.testing import (
     assert_allclose,
     assert_allclose3,
@@ -12,9 +15,6 @@ from teapy.testing import (
     assert_series_equal,
     make_arr,
 )
-
-import teapy as tp
-from teapy import Expr
 
 
 def test_cast_datetime():

@@ -1,9 +1,9 @@
 # from time import time
 
 import numpy as np
-from teapy.testing import assert_allclose
 
 import teapy as tp
+from teapy.testing import assert_allclose
 
 # import pandas as pd
 

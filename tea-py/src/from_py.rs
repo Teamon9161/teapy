@@ -97,6 +97,16 @@ impl<'py> PyArrayOk<'py> {
             Err(PyValueError::new_err("Dtype of the array is not object"))
         }
     }
+
+    pub fn object_to_string_arr(self) -> PyResult<ArrD<String>> {
+        if let Ok(obj_arr) = self.into_object() {
+            // let arr_readonly = obj_arr.readonly();
+            // let obj_view = obj_arr.readonly().as_array();
+            Ok(obj_arr.readonly().as_array().map(|v| v.to_string()).wrap())
+        } else {
+            Err(PyValueError::new_err("Dtype of the array is not object"))
+        }
+    }
 }
 
 // do not change the order of the variants

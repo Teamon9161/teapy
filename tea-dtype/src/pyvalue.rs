@@ -1,16 +1,22 @@
 use std::fmt::Debug;
 
-// #[cfg(feature = "lazy")]
-// use crate::ExprElement;
+use super::cast::Cast;
 use crate::{DataType, GetDataType, GetNone};
 use numpy::{Element, PyArrayDescr};
 use pyo3::{FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 #[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
+use std::string::ToString;
 
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct PyValue(pub PyObject);
+
+impl ToString for PyValue {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
 
 impl Debug for PyValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -73,5 +79,22 @@ unsafe impl Element for PyValue {
 impl<'source> FromPyObject<'source> for PyValue {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         Ok(PyValue(ob.to_object(ob.py())))
+    }
+}
+
+// impl Cast<String> for PyValue {
+//     #[inline]
+//     fn cast(self) -> String {
+//         self.to_string()
+//     }
+// }
+
+impl<T> Cast<T> for PyValue
+where
+    String: Cast<T>,
+{
+    #[inline]
+    fn cast(self) -> T {
+        self.0.to_string().cast()
     }
 }

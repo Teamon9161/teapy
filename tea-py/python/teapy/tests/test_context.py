@@ -1,9 +1,9 @@
 import numpy as np
-from teapy.regression import Ols
-from teapy.testing import assert_allclose
 
 import teapy as tp
 from teapy import ct
+from teapy.regression import Ols
+from teapy.testing import assert_allclose
 
 
 def test_base():
