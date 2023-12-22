@@ -1,7 +1,6 @@
 # from time import time
 
 import numpy as np
-
 import teapy as tp
 from teapy.testing import assert_allclose
 

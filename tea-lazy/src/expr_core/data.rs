@@ -178,7 +178,6 @@ impl<'a> Data<'a> {
     pub fn context_clone(&self) -> Option<Self> {
         match self {
             Data::Expr(expr) => Some(expr.context_clone().into()),
-
             Data::Context(cs) => Some(cs.clone().into()),
             _ => None,
         }

@@ -1,5 +1,4 @@
 import numpy as np
-
 import teapy as tp
 from teapy import Expr
 from teapy.testing import assert_allclose

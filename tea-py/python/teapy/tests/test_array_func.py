@@ -3,10 +3,9 @@ import time
 
 import numpy as np
 import pandas as pd
+import teapy as tp
 from hypothesis import given
 from hypothesis import strategies as st
-
-import teapy as tp
 from teapy import Expr
 from teapy.testing import (
     assert_allclose,

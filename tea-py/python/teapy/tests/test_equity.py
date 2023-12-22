@@ -1,5 +1,4 @@
 import pandas as pd
-
 from teapy import Expr, calc_ret_single
 from teapy.testing import assert_allclose
 

@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-
 import teapy as tp
 from teapy.testing import assert_allclose, assert_series_equal
 

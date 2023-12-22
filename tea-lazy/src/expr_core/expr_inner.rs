@@ -105,6 +105,7 @@ impl<'a> ExprInner<'a> {
         self.nodes.len()
     }
 
+    #[inline]
     pub fn context_clone(&self) -> Self {
         // self.flatten()
         let new_nodes = self.nodes.clone();
