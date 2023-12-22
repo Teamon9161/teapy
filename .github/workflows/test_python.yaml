@@ -50,9 +50,11 @@ jobs:
           cargo clippy
       - name: Run formatting checks
         run: |
+          cargo fmt --all -- --check
+          cd tea-py
           black --check .
           isort --check .  --profile black
-          cargo fmt --all -- --check
       - name: Run linting
         run: |
+          cd tea-py
           flake8 --ignore E501,F401,F403,W503
