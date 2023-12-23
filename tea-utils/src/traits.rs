@@ -40,6 +40,7 @@ impl<T> CollectTrusted<T> for Vec<T> {
 }
 
 pub trait CollectTrustedToVec: Iterator + TrustedLen {
+    #[inline(always)]
     fn collect_trusted(self) -> Vec<Self::Item>
     where
         Self: Sized,

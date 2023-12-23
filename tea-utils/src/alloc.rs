@@ -24,6 +24,7 @@ pub trait VecAssumeInit {
 
 impl<T> VecAssumeInit for Vec<MaybeUninit<T>> {
     type Elem = T;
+    #[inline]
     unsafe fn assume_init(self) -> Vec<T> {
         // FIXME use Vec::into_raw_parts instead after stablized
         // https://doc.rust-lang.org/std/vec/struct.Vec.html#method.into_raw_parts
@@ -31,10 +32,12 @@ impl<T> VecAssumeInit for Vec<MaybeUninit<T>> {
         Vec::from_raw_parts(me.as_mut_ptr() as *mut T, me.len(), me.capacity())
     }
 
+    #[inline]
     unsafe fn slice_assume_init_ref(&self) -> &[T] {
         std::slice::from_raw_parts(self.as_ptr() as *const T, self.len())
     }
 
+    #[inline]
     unsafe fn slice_assume_init_mut(&mut self) -> &mut [T] {
         std::slice::from_raw_parts_mut(self.as_mut_ptr() as *mut T, self.len())
     }
@@ -46,6 +49,7 @@ impl<T> VecAssumeInit for Vec<MaybeUninit<T>> {
 /// ------
 /// - Memory is not initialized. Do not read the memory before write.
 ///
+#[inline]
 pub fn vec_uninit<T: Sized>(n: usize) -> Vec<MaybeUninit<T>> {
     let mut v = Vec::with_capacity(n);
     unsafe {

@@ -3,6 +3,7 @@ use crate::{ArrBase, WrapNdarray};
 use ndarray::{ArrayBase, Data, DataMut, DataOwned, Ix2};
 
 /// Hermite conjugate matrix
+#[inline(always)]
 pub fn conjugate<Si, So>(a: &ArrBase<Si, Ix2>) -> ArrBase<So, Ix2>
 where
     Si: Data<Elem = f64>,

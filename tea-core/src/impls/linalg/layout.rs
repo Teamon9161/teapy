@@ -13,6 +13,7 @@ pub enum MatrixLayout {
 }
 
 impl MatrixLayout {
+    #[inline(always)]
     pub fn size(&self) -> (i32, i32) {
         match *self {
             MatrixLayout::C { row, lda } => (row, lda),
@@ -20,6 +21,7 @@ impl MatrixLayout {
         }
     }
 
+    #[inline(always)]
     pub fn resized(&self, row: i32, col: i32) -> MatrixLayout {
         match *self {
             MatrixLayout::C { .. } => MatrixLayout::C { row, lda: col },
@@ -27,6 +29,7 @@ impl MatrixLayout {
         }
     }
 
+    #[inline(always)]
     pub fn lda(&self) -> i32 {
         std::cmp::max(
             1,
@@ -36,6 +39,7 @@ impl MatrixLayout {
         )
     }
 
+    #[inline(always)]
     pub fn len(&self) -> i32 {
         match *self {
             MatrixLayout::C { row, .. } => row,
@@ -43,10 +47,12 @@ impl MatrixLayout {
         }
     }
 
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
+    #[inline]
     pub fn same_order(&self, other: &MatrixLayout) -> bool {
         matches!(
             (self, other),
@@ -55,6 +61,7 @@ impl MatrixLayout {
         )
     }
 
+    #[inline(always)]
     pub fn toggle_order(&self) -> Self {
         match *self {
             MatrixLayout::C { row, lda } => MatrixLayout::F { lda: row, col: lda },
@@ -86,6 +93,7 @@ impl MatrixLayout {
     /// let layout = MatrixLayout::C { row: 2, lda: 3 };
     /// assert_eq!(layout.t(), MatrixLayout::F { col: 2, lda: 3 });
     /// ```
+    #[inline(always)]
     pub fn t(&self) -> Self {
         match *self {
             MatrixLayout::C { row, lda } => MatrixLayout::F { col: row, lda },

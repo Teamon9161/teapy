@@ -145,6 +145,7 @@ impl<A, S: RawData<Elem = A>, D: Dimension> ArrBase<S, D> {
     ///     == aview2(&[[1., 0.]; 10])
     /// );
     /// ```
+    #[inline(always)]
     pub fn broadcast<E>(&self, dim: E) -> Option<ArrView<'_, A, E::Dim>>
     where
         E: IntoDimension,

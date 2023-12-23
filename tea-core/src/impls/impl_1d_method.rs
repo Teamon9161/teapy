@@ -39,7 +39,7 @@ where
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn apply_mut<F>(&mut self, f: F)
     where
         S: DataMut,
@@ -178,7 +178,7 @@ where
     }
 
     /// Call `f` on each element and accumulate,
-    #[inline]
+    #[inline(always)]
     pub fn acc<U, F>(&self, init: U, mut f: F) -> U
     where
         U: Add<Output = U>,
@@ -201,7 +201,7 @@ where
     }
 
     /// Only accumulate valild value using function f
-    #[inline]
+    #[inline(always)]
     pub fn acc_valid<U, F>(&self, init: U, mut f: F) -> U
     where
         T: Number,
@@ -213,7 +213,7 @@ where
     }
 
     /// Count the number of valid values and accumulate value using Kahan summation
-    #[inline]
+    #[inline(always)]
     pub fn stable_n_acc_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
     where
         S: Data,
@@ -226,7 +226,7 @@ where
     }
 
     /// Only accumulate valild value using kahan summation
-    #[inline]
+    #[inline(always)]
     pub fn stable_acc_valid<U, F>(&self, init: U, mut f: F) -> U
     where
         S: Data,
@@ -239,7 +239,7 @@ where
     }
 
     /// Apply a function to each element
-    #[inline]
+    #[inline(always)]
     pub fn apply<F>(&self, mut f: F)
     where
         S: Data,
@@ -282,7 +282,7 @@ where
     }
 
     /// Apply a function to each valid element
-    #[inline]
+    #[inline(always)]
     pub fn apply_valid<F>(&self, mut f: F)
     where
         T: Number,
@@ -293,7 +293,7 @@ where
     }
 
     /// Apply a function to each valid element and return the number of valid values
-    #[inline]
+    #[inline(always)]
     pub fn n_apply_valid<F>(&self, mut f: F) -> usize
     where
         T: Number,
@@ -304,7 +304,7 @@ where
     }
 
     /// Apply a function to self and other only when both elements are valid
-    #[inline]
+    #[inline(always)]
     pub fn apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F)
     where
         S: Data,
@@ -317,7 +317,7 @@ where
     }
 
     /// Apply a function to self and other only when both elements are valid
-    #[inline]
+    #[inline(always)]
     pub fn n_apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F) -> usize
     where
         S: Data,
@@ -333,7 +333,7 @@ where
     /// Apply function `f` on each element,
     /// if the function return `true`,
     /// `count += 1`, then return count
-    #[inline]
+    #[inline(always)]
     pub fn count_by<F>(&self, mut f: F) -> i32
     where
         S: Data,
@@ -533,6 +533,7 @@ where
     }
 
     /// sort 1d array using a compare function, but might not preserve the order of equal elements.
+    #[inline]
     pub fn sort_unstable_by<F>(&mut self, compare: F)
     where
         T: Clone,

@@ -182,6 +182,7 @@ impl Cast<TimeDelta> for TimeDelta {
 
 #[cfg(feature = "time")]
 impl Cast<i64> for DateTime {
+    #[inline(always)]
     fn cast(self) -> i64 {
         self.into_i64()
     }
@@ -189,6 +190,7 @@ impl Cast<i64> for DateTime {
 
 #[cfg(feature = "time")]
 impl Cast<i64> for TimeDelta {
+    #[inline]
     fn cast(self) -> i64 {
         let months = self.months;
         if months != 0 {
@@ -382,6 +384,7 @@ const TIME_RULE_VEC: [&str; 9] = [
 
 #[cfg(feature = "time")]
 impl Cast<DateTime> for String {
+    #[inline]
     fn cast(self) -> DateTime {
         for rule in TIME_RULE_VEC {
             if let Ok(dt) = DateTime::parse(&self, rule) {
@@ -394,6 +397,7 @@ impl Cast<DateTime> for String {
 
 #[cfg(feature = "time")]
 impl Cast<DateTime> for &str {
+    #[inline]
     fn cast(self) -> DateTime {
         for rule in TIME_RULE_VEC {
             if let Ok(dt) = DateTime::parse(self, rule) {
@@ -406,6 +410,7 @@ impl Cast<DateTime> for &str {
 
 #[cfg(feature = "time")]
 impl Cast<String> for TimeDelta {
+    #[inline]
     fn cast(self) -> String {
         format!("{:?}", self)
     }
@@ -413,6 +418,7 @@ impl Cast<String> for TimeDelta {
 
 #[cfg(feature = "time")]
 impl Cast<TimeDelta> for DateTime {
+    #[inline(always)]
     fn cast(self) -> TimeDelta {
         unreachable!()
     }
@@ -420,6 +426,7 @@ impl Cast<TimeDelta> for DateTime {
 
 #[cfg(feature = "time")]
 impl Cast<DateTime> for TimeDelta {
+    #[inline(always)]
     fn cast(self) -> DateTime {
         unreachable!()
     }
@@ -427,6 +434,7 @@ impl Cast<DateTime> for TimeDelta {
 
 #[cfg(feature = "time")]
 impl Cast<TimeDelta> for &str {
+    #[inline(always)]
     fn cast(self) -> TimeDelta {
         TimeDelta::parse(self)
     }
@@ -434,6 +442,7 @@ impl Cast<TimeDelta> for &str {
 
 #[cfg(feature = "time")]
 impl Cast<TimeDelta> for String {
+    #[inline(always)]
     fn cast(self) -> TimeDelta {
         TimeDelta::parse(&self)
     }

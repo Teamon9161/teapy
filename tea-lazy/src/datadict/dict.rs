@@ -78,6 +78,7 @@ impl<'a> DataDict<'a> {
         self.data.len()
     }
 
+    #[inline]
     pub fn reproduce_map(&mut self) {
         let mut map = TpHashMap::<String, usize>::with_capacity(self.len());
         for (i, e) in self.data.iter().enumerate() {
@@ -113,6 +114,7 @@ impl<'a> DataDict<'a> {
         self.len() == 0
     }
 
+    #[inline]
     pub fn get_new_col_name(&self) -> String {
         let mut name_auto = 0;
         loop {
@@ -144,12 +146,14 @@ impl<'a> DataDict<'a> {
     }
 
     /// Copy the column map
+    #[inline(always)]
     pub fn map_to_own(&mut self) {
         if Arc::get_mut(&mut self.map).is_none() {
             self.map = Arc::new((*self.map).clone());
         }
     }
 
+    #[inline]
     pub fn set_columns(&mut self, columns: Vec<String>) {
         assert_eq!(columns.len(), self.len());
         let mut map = TpHashMap::<String, usize>::with_capacity(columns.len());
@@ -208,6 +212,7 @@ impl<'a> DataDict<'a> {
     }
 
     /// drop some columns inplace, return the name of the dropped columns
+    #[inline]
     pub fn drop_inplace(&mut self, col: ColumnSelector) -> TpResult<Vec<String>> {
         let drop_cols = self.get_selector_out_name(col);
         self.data = self
@@ -219,6 +224,7 @@ impl<'a> DataDict<'a> {
     }
 
     /// Adjust when idx < 0
+    #[inline]
     fn valid_idx(&self, col_idx: i32) -> TpResult<usize> {
         let mut col_idx = col_idx;
         if col_idx < 0 {
@@ -496,6 +502,7 @@ impl<'a> DataDict<'a> {
         }
     }
 
+    #[inline]
     pub fn eval(self, col: ColumnSelector, context: bool) -> TpResult<Self> {
         let mut df = self.clone();
         df.eval_inplace(col, context)?;

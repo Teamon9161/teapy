@@ -2674,6 +2674,26 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
+    #[pyo3(signature=(roll_start, other, min_periods=2, stable=false))]
+    pub unsafe fn _rolling_select_weight_mean(
+        &self,
+        roll_start: &PyAny,
+        other: &PyAny,
+        min_periods: usize,
+        stable: bool,
+    ) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let other = parse_expr_nocopy(other)?;
+        let obj = roll_start.obj();
+        let obj2 = other.obj();
+        let mut out = self.clone();
+        out.e
+            .rolling_select_weight_mean(other.e, roll_start.e, min_periods, stable);
+        out.add_obj(obj).add_obj(obj2);
+        Ok(out)
+    }
+
+    #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start, min_periods=2, stable=false))]
     pub unsafe fn _rolling_select_var(
         &self,

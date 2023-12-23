@@ -10,6 +10,7 @@ pub type ArrViewMutD<'a, T> = ArrViewMut<'a, T, IxDyn>;
 
 impl<'a, T, D: Dimension> ArrViewMut<'a, T, D> {
     /// Create a 1d array view mut from slice directly.
+    #[inline]
     pub fn from_slice<Sh>(shape: Sh, slc: &mut [T]) -> Self
     where
         Sh: Into<StrideShape<D>>,
@@ -26,6 +27,7 @@ impl<'a, T, D: Dimension> ArrViewMut<'a, T, D> {
     /// # Safety
     ///
     /// The size of `T` and `T2` must be the same
+    #[inline]
     pub unsafe fn into_dtype<T2>(self) -> ArrViewMut<'a, T2, D> {
         use std::mem;
         if mem::size_of::<T>() == mem::size_of::<T2>() {
@@ -40,6 +42,7 @@ impl<'a, T, D: Dimension> ArrViewMut<'a, T, D> {
     /// # Safety
     ///
     /// See the safety requirements of `ArrayViewMut::from_shape_ptr`
+    #[inline]
     pub unsafe fn from_shape_ptr<Sh>(shape: Sh, ptr: *mut T) -> Self
     where
         Sh: Into<StrideShape<D>>,
@@ -54,13 +57,14 @@ impl<'a, T, D: Dimension> ArrViewMut<'a, T, D> {
 }
 
 impl<'a, T> ArrViewMut<'a, T, Ix0> {
-    #[inline]
+    #[inline(always)]
     pub fn into_scalar(self) -> &'a mut T {
         self.0.into_scalar()
     }
 }
 
 impl<'a, T> ArrViewMutD<'a, T> {
+    #[inline(always)]
     pub fn into_scalar(self) -> TpResult<&'a mut T> {
         Ok(self.to_dim0()?.into_scalar())
     }

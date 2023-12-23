@@ -112,6 +112,7 @@ macro_rules! define_option_dtype {
 
 
         impl<'source> FromPyObject<'source> for $typ {
+            #[inline]
             fn extract(ob: &'source PyAny) -> PyResult<Self> {
                 if ob.is_none() {
                     return Ok(None.into());
@@ -123,26 +124,26 @@ macro_rules! define_option_dtype {
         }
 
         impl $typ {
-            #[inline]
+            #[inline(always)]
             pub fn unwrap(self) -> $real {
                 self.0.unwrap()
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn map<U, F>(self, f: F) -> Option<U>
             where F: FnOnce($real) -> U
             {
                 self.0.map(f)
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn unwrap_or_else<F>(self, f: F) -> $real
             where F: FnOnce() -> $real
             {
                 self.0.unwrap_or_else(f)
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn into_real(self) -> $real {
                 self.0.unwrap_or_else(|| <$real>::none())
             }

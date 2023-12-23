@@ -53,14 +53,17 @@ impl<'a> Default for Data<'a> {
 }
 
 impl<'a> Data<'a> {
+    #[inline]
     pub fn is_expr(&self) -> bool {
         matches!(&self, Data::Expr(_))
     }
 
+    #[inline]
     pub fn is_context(&self) -> bool {
         matches!(&self, Data::Context(_))
     }
 
+    #[inline]
     pub fn as_expr(&self) -> Option<&Expr<'a>> {
         match self {
             Data::Expr(expr) => Some(expr),
@@ -68,6 +71,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn as_expr_mut(&mut self) -> Option<&mut Expr<'a>> {
         match self {
             Data::Expr(expr) => Some(expr),
@@ -90,6 +94,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn dtype(&self) -> String {
         match self {
             Data::Expr(e) => e.dtype(),
@@ -98,6 +103,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn is_owned(&self) -> bool {
         match self {
             Data::Expr(expr) => expr.is_owned(),
@@ -115,6 +121,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn prepare(&mut self) {
         match self {
             Data::Arr(arr) => arr.prepare(),
@@ -124,6 +131,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn init_base_is_context(&self) -> bool {
         match self {
             Data::Expr(expr) => expr.init_base_is_context(),
@@ -134,6 +142,7 @@ impl<'a> Data<'a> {
     }
 
     // get initial base of the expression
+    #[inline]
     pub fn get_chain_base(&self) -> Data<'a> {
         match self {
             Data::Expr(expr) => expr.get_chain_base(),
@@ -141,6 +150,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn simplify_base(&mut self) {
         if let Data::Expr(expr) = self {
             if expr.strong_count() == 1 {
@@ -154,6 +164,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn simplify_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
         match self {
             Data::Expr(expr) => {
@@ -168,6 +179,7 @@ impl<'a> Data<'a> {
     }
 
     // get the all nodes of the expression
+    #[inline(always)]
     pub fn collect_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
         match self {
             Data::Expr(expr) => expr.collect_chain_nodes(nodes),
@@ -175,6 +187,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn context_clone(&self) -> Option<Self> {
         match self {
             Data::Expr(expr) => Some(expr.context_clone().into()),
@@ -183,6 +196,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<ArrOk<'a>> {
         match self {
             Data::Arr(arr) => Ok(arr),
@@ -200,6 +214,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TpResult<Vec<ArrOk<'a>>> {
         match self {
             Data::ArrVec(arr) => Ok(arr),
@@ -221,6 +236,7 @@ impl<'a> Data<'a> {
     }
 
     #[cfg(feature = "blas")]
+    #[inline]
     pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
         match self {
             Data::OlsRes(res) => Ok(res),
@@ -239,6 +255,7 @@ impl<'a> Data<'a> {
     }
 
     #[cfg(feature = "blas")]
+    #[inline]
     pub fn view_ols_res<'b>(
         &'b self,
         ctx: Option<&'b Context<'a>>,
@@ -257,6 +274,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn view_arr<'b>(&'b self, ctx: Option<&'b Context<'a>>) -> TpResult<&'b ArrOk<'a>> {
         match self {
             Data::Arr(arr) => Ok(arr),
@@ -273,6 +291,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn view_arr_vec<'b>(
         &'b self,
         ctx: Option<&'b Context<'a>>,
@@ -296,18 +315,21 @@ impl<'a> Data<'a> {
 }
 
 impl<'a> From<ArrOk<'a>> for Data<'a> {
+    #[inline(always)]
     fn from(arr: ArrOk<'a>) -> Self {
         Data::Arr(arr)
     }
 }
 
 impl<'a> From<Expr<'a>> for Data<'a> {
+    #[inline(always)]
     fn from(expr: Expr<'a>) -> Self {
         Data::Expr(expr)
     }
 }
 
 impl<'a, T: ExprElement + 'a> From<T> for Data<'a> {
+    #[inline(always)]
     fn from(t: T) -> Self {
         let a: ArbArray<'a, T> = t.into();
         a.into()
@@ -319,6 +341,7 @@ impl<'a, T> From<Option<T>> for Data<'a>
 where
     T: GetNone + ExprElement + 'a,
 {
+    #[inline(always)]
     fn from(v: Option<T>) -> Self {
         let v = v.unwrap_or_else(T::none);
         v.into()
@@ -341,6 +364,7 @@ impl<'a, T: GetDataType + 'a> From<ArbArray<'a, T>> for Data<'a> {
 }
 
 impl<'a, T: GetDataType + 'a> From<ArrViewD<'a, T>> for Data<'a> {
+    #[inline(always)]
     fn from(arr: ArrViewD<'a, T>) -> Self {
         let a: ArbArray<'a, T> = arr.into();
         Data::Arr(a.into())
@@ -356,18 +380,21 @@ impl<'a, T: GetDataType + 'a> From<ArrViewMutD<'a, T>> for Data<'a> {
 }
 
 impl<'a> From<Vec<ArrOk<'a>>> for Data<'a> {
+    #[inline(always)]
     fn from(arr_vec: Vec<ArrOk<'a>>) -> Self {
         Data::ArrVec(arr_vec)
     }
 }
 
 impl<'a> From<Arc<ArrOk<'a>>> for Data<'a> {
+    #[inline(always)]
     fn from(arr: Arc<ArrOk<'a>>) -> Self {
         Data::ArcArr(arr)
     }
 }
 
 impl<'a> From<ColumnSelector<'a>> for Data<'a> {
+    #[inline(always)]
     fn from(col: ColumnSelector<'a>) -> Self {
         Data::Context(col)
     }
@@ -375,6 +402,7 @@ impl<'a> From<ColumnSelector<'a>> for Data<'a> {
 
 #[cfg(feature = "blas")]
 impl<'a> From<OlsResult<'a>> for Data<'a> {
+    #[inline(always)]
     fn from(res: OlsResult<'a>) -> Self {
         Data::OlsRes(Arc::new(res))
     }

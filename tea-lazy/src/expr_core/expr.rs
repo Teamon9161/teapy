@@ -33,6 +33,7 @@ pub struct Expr<'a>(Arc<Mutex<ExprInner<'a>>>);
 // }
 
 impl<'a> Clone for Expr<'a> {
+    #[inline]
     fn clone<'b>(&'b self) -> Expr<'a> {
         let name = self.name();
         let inner = ExprInner::new(Self(self.0.clone()).into(), name);
@@ -44,6 +45,7 @@ impl<'a, T> From<Option<T>> for Expr<'a>
 where
     T: ExprElement + GetNone + 'a,
 {
+    #[inline]
     fn from(v: Option<T>) -> Self {
         let v = v.unwrap_or_else(T::none);
         v.into()
@@ -51,6 +53,7 @@ where
 }
 
 impl<'a, T: ExprElement + 'a> From<T> for Expr<'a> {
+    #[inline]
     fn from(arr: T) -> Self {
         let e: ExprInner<'a> = arr.into();
         e.into()
@@ -58,6 +61,7 @@ impl<'a, T: ExprElement + 'a> From<T> for Expr<'a> {
 }
 
 impl<'a, T: ExprElement + 'a> From<ArrD<T>> for Expr<'a> {
+    #[inline]
     fn from(arr: ArrD<T>) -> Self {
         let e: ExprInner<'a> = arr.into();
         e.into()
@@ -65,6 +69,7 @@ impl<'a, T: ExprElement + 'a> From<ArrD<T>> for Expr<'a> {
 }
 
 impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for Expr<'a> {
+    #[inline]
     fn from(arr: ArbArray<'a, T>) -> Self {
         let e: ExprInner<'a> = arr.into();
         e.into()
@@ -72,18 +77,21 @@ impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for Expr<'a> {
 }
 
 impl<'a> From<ExprInner<'a>> for Expr<'a> {
+    #[inline]
     fn from(value: ExprInner<'a>) -> Self {
         Expr(Arc::new(Mutex::new(value)))
     }
 }
 
 impl<'a> From<Data<'a>> for Expr<'a> {
+    #[inline]
     fn from(data: Data<'a>) -> Self {
         Expr(Arc::new(Mutex::new(ExprInner::new(data, None))))
     }
 }
 
 impl<'a> From<ArrOk<'a>> for Expr<'a> {
+    #[inline]
     fn from(arr: ArrOk<'a>) -> Self {
         let data: Data = arr.into();
         data.into()
@@ -91,6 +99,7 @@ impl<'a> From<ArrOk<'a>> for Expr<'a> {
 }
 
 impl<'a, T: GetDataType + 'a> From<ArrViewD<'a, T>> for Expr<'a> {
+    #[inline]
     fn from(arr: ArrViewD<'a, T>) -> Self {
         let data: Data = arr.into();
         data.into()
@@ -99,19 +108,21 @@ impl<'a, T: GetDataType + 'a> From<ArrViewD<'a, T>> for Expr<'a> {
 
 impl<'a> Deref for Expr<'a> {
     type Target = Arc<Mutex<ExprInner<'a>>>;
-
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl<'a> Debug for Expr<'a> {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", &self.lock())
     }
 }
 
 impl<'a> Expr<'a> {
+    #[inline]
     pub fn new_from_owned<T: ExprElement + 'a>(arr: ArrD<T>, name: Option<String>) -> Self {
         let e: ExprInner<'a> = arr.into();
         let mut e: Expr<'a> = e.into();
@@ -119,12 +130,14 @@ impl<'a> Expr<'a> {
         e
     }
 
+    #[inline]
     pub fn new_from_arr(arr: ArrOk<'a>, name: Option<String>) -> Self {
         let mut e: Expr<'a> = arr.into();
         e.set_name(name);
         e
     }
 
+    #[inline]
     pub fn new<T: ExprElement + 'a>(arr: ArbArray<'a, T>, name: Option<String>) -> Self {
         let e: ExprInner<'a> = arr.into();
         let mut e: Expr<'a> = e.into();
@@ -132,6 +145,7 @@ impl<'a> Expr<'a> {
         e
     }
 
+    #[inline]
     pub fn into_inner(self) -> Result<ExprInner<'a>, Self> {
         let e = Arc::try_unwrap(self.0).map_err(Self)?;
         Ok(e.into_inner())
@@ -141,29 +155,32 @@ impl<'a> Expr<'a> {
     // where:
     //     {}
 
-    #[inline]
+    #[inline(always)]
     pub fn step_acc(&self) -> usize {
         self.lock().step_acc()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn step(&self) -> usize {
         self.lock().step()
     }
 
+    #[inline(always)]
     pub fn is_owned(&self) -> bool {
         self.lock().is_owned()
     }
 
+    #[inline(always)]
     pub fn dtype(&self) -> String {
         self.lock().dtype()
     }
 
+    #[inline(always)]
     pub fn strong_count(&self) -> usize {
         Arc::strong_count(&self.0)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn name(&self) -> Option<String> {
         self.lock().name_owned()
     }
@@ -175,21 +192,22 @@ impl<'a> Expr<'a> {
         unsafe { std::mem::transmute(name) }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn set_name(&mut self, name: Option<String>) {
         self.lock().set_name(name);
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn rename(&mut self, name: String) {
         self.lock().set_name(Some(name))
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn base_type(&self) -> &'static str {
         self.lock().base_type()
     }
 
+    #[inline]
     pub fn context_clone(&self) -> Self {
         let inner = self.lock().context_clone();
         inner.into()
@@ -269,6 +287,7 @@ impl<'a> Expr<'a> {
     // }
 
     #[allow(unreachable_patterns)]
+    #[inline]
     pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<ArrOk<'a>> {
         match Arc::try_unwrap(self.0) {
             Ok(inner) => inner.into_inner().into_arr(ctx),
@@ -287,6 +306,7 @@ impl<'a> Expr<'a> {
 
     #[allow(unreachable_patterns)]
     #[cfg(feature = "blas")]
+    #[inline]
     pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
         match Arc::try_unwrap(self.0) {
             Ok(inner) => inner.into_inner().into_ols_res(ctx),
@@ -300,6 +320,7 @@ impl<'a> Expr<'a> {
     }
 
     #[allow(unreachable_patterns)]
+    #[inline]
     pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TpResult<Vec<ArrOk<'a>>> {
         match Arc::try_unwrap(self.0) {
             Ok(inner) => inner.into_inner().into_arr_vec(ctx),
@@ -360,32 +381,32 @@ impl<'a> Expr<'a> {
         unsafe { Ok(std::mem::transmute(arr)) }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn prepare(&self) {
         self.lock().prepare();
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn init_base_is_context(&self) -> bool {
         self.lock().init_base_is_context()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_chain_base(&self) -> Data<'a> {
         self.lock().get_chain_base()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn simplify_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
         self.lock().simplify_chain_nodes(nodes)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn collect_chain_nodes(&self, nodes: Vec<FuncNode<'a>>) -> Vec<FuncNode<'a>> {
         self.lock().collect_chain_nodes(nodes)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn flatten(&self) -> Self {
         self.lock().flatten().into()
     }

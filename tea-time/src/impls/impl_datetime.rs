@@ -19,6 +19,7 @@ impl std::fmt::Debug for DateTime {
 
 impl Deref for DateTime {
     type Target = Option<NaiveDateTime>;
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -31,18 +32,21 @@ impl Deref for DateTime {
 // }
 
 impl From<Option<NaiveDateTime>> for DateTime {
+    #[inline(always)]
     fn from(dt: Option<NaiveDateTime>) -> Self {
         Self(dt)
     }
 }
 
 impl From<NaiveDateTime> for DateTime {
+    #[inline(always)]
     fn from(dt: NaiveDateTime) -> Self {
         Self(Some(dt))
     }
 }
 
 impl From<i64> for DateTime {
+    #[inline]
     fn from(dt: i64) -> Self {
         if dt == i64::MIN {
             return DateTime(None);
@@ -69,6 +73,7 @@ impl<U: NPUnit> From<NPDatetime<U>> for DateTime {
 }
 
 impl ToString for DateTime {
+    #[inline(always)]
     fn to_string(&self) -> String {
         self.strftime(None)
     }

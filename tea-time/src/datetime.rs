@@ -95,12 +95,14 @@ impl DateTime {
         Some(Self::from_timestamp_opt(secs, nsecs))
     }
 
+    #[inline(always)]
     pub fn parse(s: &str, fmt: &str) -> Result<Self, String> {
         Ok(Self(Some(
             NaiveDateTime::parse_from_str(s, fmt).map_err(|e| format!("{e}"))?,
         )))
     }
 
+    #[inline]
     pub fn strftime(&self, fmt: Option<&str>) -> String {
         if let Some(fmt) = fmt {
             self.0
@@ -148,12 +150,14 @@ impl DateTime {
 pub struct PyDateTime(DateTime);
 
 impl ToPyObject for DateTime {
+    #[inline(always)]
     fn to_object(&self, py: Python<'_>) -> PyObject {
         PyDateTime(*self).into_py(py)
     }
 }
 
 impl DateTime {
+    #[inline]
     pub fn into_np_datetime<T: NPUnit>(self) -> NPDatetime<T> {
         use NPY_DATETIMEUNIT::*;
         if let Some(dt) = self.0 {
@@ -168,32 +172,32 @@ impl DateTime {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn time(&self) -> Option<NaiveTime> {
         self.0.map(|dt| dt.time())
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn day(&self) -> Option<usize> {
         self.0.map(|dt| dt.day() as usize)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn month(&self) -> Option<usize> {
         self.0.map(|dt| dt.month() as usize)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn hour(&self) -> Option<usize> {
         self.0.map(|dt| dt.hour() as usize)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn minute(&self) -> Option<usize> {
         self.0.map(|dt| dt.minute() as usize)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn second(&self) -> Option<usize> {
         self.0.map(|dt| dt.second() as usize)
     }
@@ -217,7 +221,7 @@ impl Neg for TimeDelta {
 
 impl Add for TimeDelta {
     type Output = TimeDelta;
-
+    #[inline]
     fn add(self, rhs: TimeDelta) -> TimeDelta {
         if self.is_not_nat() & rhs.is_not_nat() {
             Self {
@@ -232,7 +236,7 @@ impl Add for TimeDelta {
 
 impl Sub for TimeDelta {
     type Output = TimeDelta;
-
+    #[inline]
     fn sub(self, rhs: TimeDelta) -> TimeDelta {
         if self.is_not_nat() & rhs.is_not_nat() {
             Self {
@@ -247,7 +251,7 @@ impl Sub for TimeDelta {
 
 impl Mul<i32> for TimeDelta {
     type Output = TimeDelta;
-
+    #[inline]
     fn mul(self, rhs: i32) -> Self {
         if self.is_not_nat() {
             Self {
@@ -312,6 +316,7 @@ impl ScalarOperand for TimeDelta {}
 impl ScalarOperand for DateTime {}
 
 impl From<&str> for TimeDelta {
+    #[inline(always)]
     fn from(s: &str) -> Self {
         TimeDelta::parse(s)
     }
@@ -323,12 +328,14 @@ pub struct PyTimeDelta(TimeDelta);
 #[pymethods]
 impl PyTimeDelta {
     #[staticmethod]
+    #[inline(always)]
     pub fn parse(rule: &str) -> Self {
         Self(TimeDelta::parse(rule))
     }
 }
 
 impl ToPyObject for TimeDelta {
+    #[inline(always)]
     fn to_object(&self, py: pyo3::Python<'_>) -> pyo3::PyObject {
         PyTimeDelta(self.clone()).into_py(py)
     }

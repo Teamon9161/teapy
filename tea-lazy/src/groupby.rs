@@ -10,6 +10,7 @@ use crate::{hash::TpHash, match_all, match_arrok, Expr};
 use std::{collections::hash_map::Entry, sync::Arc};
 
 /// Get the partition size for parallel
+#[inline]
 pub fn get_partition_size() -> usize {
     let mut n_partitions = rayon::current_num_threads();
     // set n_partitions to closes 2^n above the no of threads.

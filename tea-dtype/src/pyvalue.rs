@@ -13,6 +13,7 @@ use std::string::ToString;
 pub struct PyValue(pub PyObject);
 
 impl ToString for PyValue {
+    #[inline(always)]
     fn to_string(&self) -> String {
         self.0.to_string()
     }
@@ -25,15 +26,19 @@ impl Debug for PyValue {
 }
 
 impl GetNone for PyValue {
+    #[inline(always)]
     fn none() -> Self {
         PyValue(Python::with_gil(|py| py.None()))
     }
+
+    #[inline(always)]
     fn is_none(&self) -> bool {
         Python::with_gil(|py| self.0.as_ref(py).is_none())
     }
 }
 
 impl PartialEq for PyValue {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         Python::with_gil(|py| self.0.as_ref(py).eq(other.0.as_ref(py))).unwrap()
     }
@@ -47,12 +52,14 @@ impl Serialize for PyValue {
 }
 
 impl ToPyObject for PyValue {
+    #[inline(always)]
     fn to_object(&self, py: Python<'_>) -> PyObject {
         self.0.to_object(py)
     }
 }
 
 impl Default for PyValue {
+    #[inline(always)]
     fn default() -> Self {
         PyValue(Python::with_gil(|py| py.None()))
     }
@@ -60,6 +67,7 @@ impl Default for PyValue {
 
 impl GetDataType for PyValue {
     // type Physical = PyObject;
+    #[inline(always)]
     fn dtype() -> DataType {
         DataType::Object
     }
@@ -70,13 +78,14 @@ impl GetDataType for PyValue {
 
 unsafe impl Element for PyValue {
     const IS_COPY: bool = false;
-
+    #[inline(always)]
     fn get_dtype(py: Python) -> &PyArrayDescr {
         PyArrayDescr::object(py)
     }
 }
 
 impl<'source> FromPyObject<'source> for PyValue {
+    #[inline(always)]
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         Ok(PyValue(ob.to_object(ob.py())))
     }

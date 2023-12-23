@@ -3,7 +3,7 @@ use std::mem::MaybeUninit;
 use error::TpResult;
 
 use super::prelude::{ArrBase, WrapNdarray};
-use ndarray::{arr0, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
+use ndarray::{arr0 as nd_arr0, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
 
 pub type Arr<T, D> = ArrBase<OwnedRepr<T>, D>;
 pub type ArrD<T> = Arr<T, IxDyn>;
@@ -16,6 +16,7 @@ impl<T, D: Dimension> Arr<T, D> {
     /// # Safety
     ///
     /// The size of `T` and `T2` must be the same
+    #[inline]
     pub unsafe fn into_dtype<T2>(self) -> Arr<T2, D> {
         use std::mem;
         if mem::size_of::<T>() == mem::size_of::<T2>() {
@@ -27,6 +28,7 @@ impl<T, D: Dimension> Arr<T, D> {
         }
     }
 
+    #[inline(always)]
     pub fn from_elem<Sh>(shape: Sh, elem: T) -> Self
     where
         T: Clone,
@@ -38,6 +40,7 @@ impl<T, D: Dimension> Arr<T, D> {
     /// Create an array with default values, shape `shape`
     ///
     /// **Panics** if the product of non-zero axis lengths overflows `isize`.
+    #[inline(always)]
     pub fn default<Sh>(shape: Sh) -> Self
     where
         T: Default,
@@ -46,6 +49,7 @@ impl<T, D: Dimension> Arr<T, D> {
         Array::default(shape).wrap()
     }
 
+    #[inline(always)]
     pub fn uninit<Sh>(shape: Sh) -> Arr<MaybeUninit<T>, D>
     where
         Sh: ShapeBuilder<Dim = D>,
@@ -53,6 +57,7 @@ impl<T, D: Dimension> Arr<T, D> {
         Array::uninit(shape).wrap()
     }
 
+    #[inline(always)]
     pub fn into_raw_vec(self) -> Vec<T> {
         self.0.into_raw_vec()
     }
@@ -76,6 +81,7 @@ impl<T, D: Dimension> Arr<MaybeUninit<T>, D> {
     /// Note that for owned and shared ownership arrays, the promise must include all of the
     /// array's storage; it is for example possible to slice these in place, but that must
     /// only be done after all elements have been initialized.
+    #[inline(always)]
     pub unsafe fn assume_init(self) -> Arr<T, D> {
         self.0.assume_init().wrap()
     }
@@ -89,12 +95,19 @@ impl<T> Arr<T, Ix0> {
 }
 
 impl<T> From<T> for Arr<T, Ix0> {
+    #[inline(always)]
     fn from(t: T) -> Self {
-        arr0(t).wrap()
+        nd_arr0(t).wrap()
     }
 }
 
+#[inline(always)]
+pub fn arr0<T>(t: T) -> Arr<T, Ix0> {
+    nd_arr0(t).wrap()
+}
+
 impl<T> ArrD<T> {
+    #[inline(always)]
     pub fn into_scalar(self) -> TpResult<T> {
         Ok(self.to_dim0()?.into_scalar())
     }

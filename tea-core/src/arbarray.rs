@@ -59,10 +59,12 @@ impl<'a, T: Clone> Clone for ArbArray<'a, T> {
 }
 
 impl<'a, T> ViewOnBase<'a, T> {
+    #[inline(always)]
     pub fn view(&self) -> &ArrViewD<'a, T> {
         self.view.as_ref().unwrap()
     }
 
+    #[inline]
     pub fn new(arr: ArbArray<'a, T>, view: ArrViewD<'a, T>) -> Pin<Box<Self>> {
         let out = Self {
             base: arr.into(),
@@ -73,6 +75,7 @@ impl<'a, T> ViewOnBase<'a, T> {
     }
 
     #[cfg(feature = "arw")]
+    #[inline(always)]
     pub fn new_from_arrow(
         arr: Box<dyn arrow::array::Array>,
         view: ArrViewD<'a, T>,
@@ -136,6 +139,7 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
 
 #[cfg(not(feature = "arw"))]
 impl<'a, T: Default> Default for ArbArray<'a, T> {
+    #[inline(always)]
     fn default() -> Self {
         ArbArray::Owned(Default::default())
     }
@@ -143,6 +147,7 @@ impl<'a, T: Default> Default for ArbArray<'a, T> {
 
 #[cfg(feature = "arw")]
 impl<'a, T> Default for ArbArray<'a, T> {
+    #[inline(always)]
     fn default() -> Self {
         ArbArray::ArrowChunk(vec![])
     }
@@ -177,24 +182,28 @@ macro_rules! match_arbarray {
 pub(crate) use match_arbarray;
 
 impl<'a, T> From<ArrViewD<'a, T>> for ArbArray<'a, T> {
+    #[inline(always)]
     fn from(arr: ArrViewD<'a, T>) -> Self {
         ArbArray::View(arr)
     }
 }
 
 impl<'a, T> From<ArrViewMutD<'a, T>> for ArbArray<'a, T> {
+    #[inline(always)]
     fn from(arr: ArrViewMutD<'a, T>) -> Self {
         ArbArray::ViewMut(arr)
     }
 }
 
 impl<T> From<ArrD<T>> for ArbArray<'_, T> {
+    #[inline(always)]
     fn from(arr: ArrD<T>) -> Self {
         ArbArray::Owned(arr)
     }
 }
 
 impl<'a, T> From<Pin<Box<ViewOnBase<'a, T>>>> for ArbArray<'a, T> {
+    #[inline(always)]
     fn from(vb: Pin<Box<ViewOnBase<'a, T>>>) -> Self {
         ArbArray::ViewOnBase(vb)
     }
@@ -208,12 +217,12 @@ impl<'a, T> From<Pin<Box<ViewOnBase<'a, T>>>> for ArbArray<'a, T> {
 // }
 
 impl<'a, T> ArbArray<'a, T> {
-    // #[allow(unreachable_patterns)]
+    // #[allow(unreachable_patterns)]    #[inline(always)]
     pub fn raw_dim(&self) -> IxDyn {
         self.view().raw_dim()
-        // match_arbarray!(self, a, { a.raw_dim() })
     }
 
+    #[inline(always)]
     pub fn dtype(&self) -> DataType
     where
         T: GetDataType,
@@ -268,6 +277,7 @@ impl<'a, T> ArbArray<'a, T> {
         match_arbarray!(self, a, { a.norm_axis(axis) })
     }
 
+    #[inline]
     pub fn deref(&self) -> ArbArray<'_, T> {
         match &self {
             ArbArray::View(view) => view.view().into(),
@@ -317,6 +327,7 @@ impl<'a, T> ArbArray<'a, T> {
         }
     }
 
+    #[inline]
     pub fn cast_with<'b, T2>(self, _other: &'b ArbArray<'a, T2>) -> ArbArray<'b, T2>
     where
         T2: GetDataType,
@@ -330,6 +341,7 @@ impl<'a, T> ArbArray<'a, T> {
         }
     }
 
+    #[inline]
     pub fn cast_ref_with<T2>(&self, _other: &ArbArray<'a, T2>) -> &ArbArray<'a, T2>
     where
         T2: GetDataType,
@@ -402,7 +414,7 @@ impl<'a, T> ArbArray<'a, T> {
     /// # Safety
     ///
     /// The size of `T` and `T2` must be the same
-    #[inline]
+    #[inline(always)]
     pub unsafe fn into_dtype<T2>(self) -> ArbArray<'a, T2> {
         std::mem::transmute(self)
     }

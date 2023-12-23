@@ -27,6 +27,38 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
             .unzip();
         (Arr1::from_vec(out1), Arr1::from_vec(out2))
     }
+
+    pub fn weight_mean_1d<S2, T2>(
+        &self,
+        other: &ArrBase<S2, Ix1>,
+        min_periods: usize,
+        stable: bool,
+    ) -> f64
+    where
+        T: Number,
+        S2: Data<Elem = T2>,
+        T2: Number,
+    {
+        let weight_sum = other.sum_1d(stable);
+        debug_assert_eq!(self.len(), other.len());
+        let len = self.len();
+        let mut sum = 0.;
+        let mut nan_num = 0;
+        for i in 0..len {
+            let v1 = unsafe { *self.uget(i) };
+            let v2 = unsafe { *other.uget(i) };
+            if v1.notnan() & v2.notnan() {
+                sum += v1.f64() * v2.f64();
+            } else {
+                nan_num += 1;
+            }
+        }
+        if len - nan_num >= min_periods {
+            sum / weight_sum.f64()
+        } else {
+            f64::NAN
+        }
+    }
 }
 
 #[arr_agg2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]

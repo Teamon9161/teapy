@@ -1,5 +1,4 @@
 use ahash::HashMap;
-// use tea_hash::TpHashMap;
 use pyo3::{PyTraverseError, PyVisit};
 use std::borrow::Cow;
 use std::fmt::Debug;
@@ -293,7 +292,7 @@ impl PyDataDict {
                     .dd
                     .map
                     .get(e)
-                    .expect(format!("Can not find the column: {:?}", e).as_str())
+                    .unwrap_or_else(|| panic!("Can not find the column: {:?}", e))
             })
             .collect_trusted();
         self.dd.eval_inplace(cs, context).map_err(StrError::to_py)?;

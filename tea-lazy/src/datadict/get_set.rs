@@ -7,18 +7,21 @@ pub enum GetOutput<'a, 'b> {
 }
 
 impl<'a, 'b> From<&'b Expr<'a>> for GetOutput<'a, 'b> {
+    #[inline(always)]
     fn from(expr: &'b Expr<'a>) -> Self {
         GetOutput::Expr(expr)
     }
 }
 
 impl<'a, 'b> From<Vec<&'b Expr<'a>>> for GetOutput<'a, 'b> {
+    #[inline(always)]
     fn from(exprs: Vec<&'b Expr<'a>>) -> Self {
         GetOutput::Exprs(exprs)
     }
 }
 
 impl<'a, 'b> GetOutput<'a, 'b> {
+    #[inline]
     pub fn into_exprs(self) -> Vec<&'b Expr<'a>> {
         match self {
             GetOutput::Expr(expr) => vec![expr],
@@ -26,6 +29,7 @@ impl<'a, 'b> GetOutput<'a, 'b> {
         }
     }
 
+    #[inline]
     pub fn into_expr(self) -> TpResult<&'b Expr<'a>> {
         match self {
             GetOutput::Expr(expr) => Ok(expr),
@@ -41,6 +45,7 @@ impl<'a, 'b> GetOutput<'a, 'b> {
 }
 
 impl<'a, 'b> GetMutOutput<'a, 'b> {
+    #[inline]
     pub fn into_exprs(self) -> Vec<&'b mut Expr<'a>> {
         match self {
             GetMutOutput::Expr(expr) => vec![expr],
@@ -48,6 +53,7 @@ impl<'a, 'b> GetMutOutput<'a, 'b> {
         }
     }
 
+    #[inline]
     pub fn into_expr(self) -> TpResult<&'b mut Expr<'a>> {
         match self {
             GetMutOutput::Expr(expr) => Ok(expr),
@@ -68,12 +74,14 @@ pub enum GetMutOutput<'a, 'b> {
 }
 
 impl<'a, 'b> From<&'b mut Expr<'a>> for GetMutOutput<'a, 'b> {
+    #[inline(always)]
     fn from(expr: &'b mut Expr<'a>) -> Self {
         GetMutOutput::Expr(expr)
     }
 }
 
 impl<'a, 'b> From<Vec<&'b mut Expr<'a>>> for GetMutOutput<'a, 'b> {
+    #[inline(always)]
     fn from(exprs: Vec<&'b mut Expr<'a>>) -> Self {
         GetMutOutput::Exprs(exprs)
     }
@@ -85,18 +93,21 @@ pub enum SetInput<'a> {
 }
 
 impl<'a> From<Expr<'a>> for SetInput<'a> {
+    #[inline(always)]
     fn from(expr: Expr<'a>) -> Self {
         SetInput::Expr(expr)
     }
 }
 
 impl<'a> From<Vec<Expr<'a>>> for SetInput<'a> {
+    #[inline(always)]
     fn from(exprs: Vec<Expr<'a>>) -> Self {
         SetInput::Exprs(exprs)
     }
 }
 
 impl<'a> SetInput<'a> {
+    #[inline]
     pub fn into_expr(self) -> TpResult<Expr<'a>> {
         match self {
             SetInput::Expr(expr) => Ok(expr),
@@ -110,6 +121,7 @@ impl<'a> SetInput<'a> {
         }
     }
 
+    #[inline]
     pub fn into_exprs(self) -> Vec<Expr<'a>> {
         match self {
             SetInput::Expr(expr) => vec![expr],

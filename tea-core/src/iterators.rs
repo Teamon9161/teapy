@@ -27,6 +27,7 @@ where
     type Item = &'a S::Elem;
     type IntoIter = Iter<'a, S::Elem, D>;
 
+    #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
@@ -40,6 +41,7 @@ where
     type Item = &'a mut S::Elem;
     type IntoIter = IterMut<'a, S::Elem, D>;
 
+    #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
@@ -350,6 +352,7 @@ pub struct GroupIter<'a, T1: 'a, T2: 'a, P> {
 
 impl<'a, T1: 'a, T2: 'a, P> GroupIter<'a, T1, T2, P> {
     #[allow(dead_code)]
+    #[inline]
     pub fn new(key: &'a [T1], value: &'a [T2], predicate: P) -> Self {
         assert_eq!(key.len(), value.len());
         GroupIter {
@@ -406,7 +409,7 @@ impl<'a, T1: 'a, T2: 'a, P> DoubleEndedIterator for GroupIter<'a, T1, T2, P>
 where
     P: FnMut(&T1, &T1) -> bool,
 {
-    #[inline]
+    // #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.key.is_empty() {
             None

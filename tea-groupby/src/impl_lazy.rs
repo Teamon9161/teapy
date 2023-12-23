@@ -53,29 +53,33 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                 .chain(others_name)
                 .collect::<Vec<_>>();
             let mut map: Option<Arc<TpHashMap<String, usize>>> = None;
-            let agg_expr = agg_expr.flatten();
+            let mut agg_expr = agg_expr.flatten();
+            agg_expr.simplify();
+            let init_data = agg_expr.get_chain_base();
+            let nodes = agg_expr.collect_chain_nodes(vec![]);
             let out: ArrOk<'a> = match_arrok!(arr, arr, {
                 let arr = arr.view().to_dim1()?;
                 let out = idxs_arr
                     .iter() // do not use into_iter here, as we need to keep the idxs_arr alive until we use to_owned
                     .map(|idx| {
-                        let current_arr = arr.select_unchecked(Axis(0), idx);
-                        let current_others: Vec<ArrOk> = others_ref
-                            .iter()
-                            .map(|arr| {
-                                match_arrok!(arr, o, {
-                                    o.view()
-                                        .to_dim1()
-                                        .unwrap()
-                                        .select_unchecked(Axis(0), idx)
-                                        .to_dimd()
-                                        .into()
-                                })
-                            })
-                            .collect_trusted();
-                        let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into())
-                            .chain(current_others.into_iter().map(|a| a.into()))
-                            .collect::<Vec<_>>();
+                        let exprs: Vec<Expr<'_>> = if others_ref.is_empty() {
+                            vec![arr.select_unchecked(Axis(0), idx).to_dimd().into()]
+                        } else {
+                            std::iter::once(arr.select_unchecked(Axis(0), idx).to_dimd().into())
+                                .chain(others_ref.iter().map(|arr| {
+                                    match_arrok!(arr, o, {
+                                        let arr: ArrOk = o
+                                            .view()
+                                            .to_dim1()
+                                            .unwrap()
+                                            .select_unchecked(Axis(0), idx)
+                                            .to_dimd()
+                                            .into();
+                                        arr.into()
+                                    })
+                                }))
+                                .collect::<Vec<_>>()
+                        };
                         let current_ctx = if map.is_some() {
                             DataDict {
                                 data: exprs,
@@ -86,17 +90,23 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                             map = Some(dd.map.clone());
                             dd
                         };
-                        let out_e = agg_expr.context_clone();
+                        // let out_e = agg_expr.context_clone();
                         // this is safe as we don't return a view on the current context
                         // into_owned is important here to guarantee the above
                         let current_ctx: Arc<DataDict> =
                             Arc::new(unsafe { std::mem::transmute(current_ctx) });
-                        let o = out_e
-                            .view_arr(Some(&current_ctx))
-                            .unwrap()
-                            .deref()
-                            .into_owned();
-                        o
+                        let mut data = init_data.clone();
+                        let mut ctx = Some(current_ctx);
+                        for f in &nodes {
+                            (data, ctx) = f((data, ctx)).unwrap();
+                        }
+                        data.into_arr(ctx).unwrap()
+                        // let o = out_e
+                        //     .view_arr(Some(&current_ctx))
+                        //     .unwrap()
+                        //     .deref()
+                        //     .into_owned();
+                        // o
                     })
                     .collect_trusted();
                 ArrOk::same_dtype_concat_1d(out)

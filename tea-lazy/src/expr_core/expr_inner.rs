@@ -34,6 +34,7 @@ pub struct ExprInner<'a> {
 // }
 
 impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
+    #[inline]
     fn from(arr: T) -> Self {
         let a: ArbArray<'a, T> = arr.into();
         ExprInner {
@@ -46,6 +47,7 @@ impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
 }
 
 impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a> {
+    #[inline]
     fn from(arr: ArrD<T>) -> Self {
         let a: ArbArray<'a, T> = arr.into();
         ExprInner {
@@ -58,6 +60,7 @@ impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a> {
 }
 
 impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for ExprInner<'a> {
+    #[inline]
     fn from(arr: ArbArray<'a, T>) -> Self {
         ExprInner {
             base: Data::Arr(arr.into()),
@@ -92,6 +95,7 @@ impl<'a> Debug for ExprInner<'a> {
 }
 
 impl<'a> ExprInner<'a> {
+    #[inline]
     pub fn new(data: Data<'a>, name: Option<String>) -> Self {
         ExprInner {
             base: data,
@@ -101,6 +105,7 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn step(&self) -> usize {
         self.nodes.len()
     }
@@ -119,6 +124,7 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    #[inline]
     pub fn step_acc(&self) -> usize {
         let self_step = self.step();
         if let Some(expr) = self.base.as_expr() {
@@ -128,22 +134,27 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
 
+    #[inline(always)]
     pub fn name_owned(&self) -> Option<String> {
         self.name.clone()
     }
 
+    #[inline(always)]
     pub fn set_name(&mut self, name: Option<String>) {
         self.name = name;
     }
 
+    #[inline(always)]
     pub fn set_base(&mut self, data: Data<'a>) {
         self.base = data;
     }
 
+    #[inline]
     pub fn is_owned(&self) -> bool {
         if self.step() == 0 {
             self.base.is_owned()
@@ -152,10 +163,12 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn base_type(&self) -> &'static str {
         self.base.get_type()
     }
 
+    #[inline]
     pub fn dtype(&self) -> String {
         if self.step() == 0 {
             self.base.dtype()
@@ -164,6 +177,7 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    #[inline(always)]
     /// chain a new function to current function chain
     pub fn chain_f_ctx<F>(&mut self, f: F)
     where
@@ -233,6 +247,7 @@ impl<'a> ExprInner<'a> {
     //     Ok(self)
     // }
 
+    #[inline]
     pub fn into_out(self, mut ctx: Option<Context<'a>>) -> TpResult<Data<'a>> {
         let mut data = self.base;
         for f in self.nodes.into_iter() {
@@ -241,17 +256,20 @@ impl<'a> ExprInner<'a> {
         Ok(data)
     }
 
+    #[inline]
     pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<ArrOk<'a>> {
         self.into_out(ctx.clone())
             .map(|data| data.into_arr(ctx).unwrap())
     }
 
+    #[inline]
     pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TpResult<Vec<ArrOk<'a>>> {
         self.into_out(ctx.clone())
             .map(|data| data.into_arr_vec(ctx).unwrap())
     }
 
     #[cfg(feature = "blas")]
+    #[inline]
     pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
         self.into_out(ctx.clone())
             .map(|data| data.into_ols_res(ctx).unwrap())
@@ -366,6 +384,7 @@ impl<'a> ExprInner<'a> {
         }
     }
 
+    #[inline]
     pub fn simplify(&mut self) {
         // do not change the order of collect nodes and simplify base
         // as simplify base may change the base type

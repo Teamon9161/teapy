@@ -80,6 +80,7 @@ impl TimeDelta {
         }
     }
 
+    #[inline(always)]
     pub fn nat() -> Self {
         Self {
             months: i32::MIN,
@@ -88,10 +89,12 @@ impl TimeDelta {
     }
 
     #[allow(dead_code)]
+    #[inline(always)]
     pub fn is_nat(&self) -> bool {
         self.months == i32::MIN
     }
 
+    #[inline(always)]
     pub fn is_not_nat(&self) -> bool {
         self.months != i32::MIN
     }

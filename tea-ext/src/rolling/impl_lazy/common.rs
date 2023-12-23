@@ -16,6 +16,88 @@ pub enum RollingTimeStartBy {
 
 #[ext_trait]
 impl<'a> RollingExt for Expr<'a> {
+    // #[cfg(feature = "concat")]
+    // #[allow(unreachable_patterns)]
+    // pub fn rolling_apply_with_start(
+    //     &mut self,
+    //     agg_expr: Expr<'a>,
+    //     roll_start: Expr<'a>,
+    //     others: Vec<Expr<'a>>,
+    //     _par: bool,
+    // ) -> &mut Self {
+    //     use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+    //     use std::sync::Arc;
+    //     use tea_hash::TpHashMap;
+    //     use tea_lazy::DataDict;
+    //     let name = self.name().unwrap();
+    //     self.chain_f_ctx(move |(data, ctx)| {
+    //         let arr = data.view_arr(ctx.as_ref())?.deref();
+    //         let others_ref = others
+    //             .par_iter()
+    //             .map(|e| e.view_arr(ctx.as_ref()).unwrap().deref())
+    //             .collect::<Vec<_>>();
+    //         let others_name = others.iter().map(|e| e.name().unwrap()).collect_trusted();
+    //         let roll_start = roll_start.view_arr(ctx.as_ref())?.deref().cast_usize();
+    //         let roll_start_arr = roll_start.view().to_dim1()?;
+    //         let len = arr.len();
+    //         if len != roll_start_arr.len() {
+    //             return Err(format!(
+    //                 "rolling_apply_with_start: arr.len() != roll_start.len(): {} != {}",
+    //                 arr.len(),
+    //                 roll_start_arr.len()
+    //             )
+    //             .into());
+    //         }
+    //         let columns = std::iter::once(name.clone())
+    //             .chain(others_name)
+    //             .collect::<Vec<_>>();
+    //         let mut map: Option<Arc<TpHashMap<String, usize>>> = None;
+    //         let agg_expr = agg_expr.flatten();
+    //         let out: ArrOk<'a> = match_arrok!(arr, arr, {
+    //             let arr = arr.view().to_dim1()?;
+    //             let out = zip(roll_start_arr, 0..len)
+    //                 .map(|(mut start, end)| {
+    //                     if start > end {
+    //                         start = end; // the start idx should be inbound
+    //                     }
+    //                     let current_arr = arr.slice(s![start..end + 1]).wrap();
+    //                     let current_others: Vec<ArrOk> = others_ref
+    //                         .iter()
+    //                         .map(|arr| arr.slice(s![start..=end]))
+    //                         .collect_trusted();
+    //                     let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into())
+    //                         .chain(current_others.into_iter().map(|a| a.into()))
+    //                         .collect::<Vec<_>>();
+    //                     let current_ctx = if map.is_some() {
+    //                         DataDict {
+    //                             data: exprs,
+    //                             map: map.clone().unwrap(),
+    //                         }
+    //                     } else {
+    //                         let dd = DataDict::new(exprs, Some(columns.clone()));
+    //                         map = Some(dd.map.clone());
+    //                         dd
+    //                     };
+    //                     let out_e = agg_expr.context_clone();
+    //                     // this is safe as we don't return a view on the current context
+    //                     // into_owned is important here to guarantee the above
+    //                     let current_ctx: Arc<DataDict> =
+    //                         Arc::new(unsafe { std::mem::transmute(current_ctx) });
+    //                     let o = out_e
+    //                         .view_arr(Some(&current_ctx))
+    //                         .unwrap()
+    //                         .deref()
+    //                         .into_owned();
+    //                     o
+    //                 })
+    //                 .collect_trusted();
+    //             ArrOk::same_dtype_concat_1d(out)
+    //         });
+    //         Ok((out.into(), ctx.clone()))
+    //     });
+    //     self
+    // }
+
     #[cfg(feature = "concat")]
     #[allow(unreachable_patterns)]
     pub fn rolling_apply_with_start(
@@ -52,45 +134,77 @@ impl<'a> RollingExt for Expr<'a> {
                 .chain(others_name)
                 .collect::<Vec<_>>();
             let mut map: Option<Arc<TpHashMap<String, usize>>> = None;
-            let agg_expr = agg_expr.flatten();
+            let mut agg_expr = agg_expr.flatten();
+            agg_expr.simplify();
+            let init_data = agg_expr.get_chain_base();
+            let nodes = agg_expr.collect_chain_nodes(vec![]);
             let out: ArrOk<'a> = match_arrok!(arr, arr, {
                 let arr = arr.view().to_dim1()?;
-                let out = zip(roll_start_arr, 0..len)
-                    .map(|(mut start, end)| {
-                        if start > end {
-                            start = end; // the start idx should be inbound
-                        }
-                        let current_arr = arr.slice(s![start..end + 1]).wrap();
-                        let current_others: Vec<ArrOk> = others_ref
-                            .iter()
-                            .map(|arr| arr.slice(s![start..=end]))
-                            .collect_trusted();
-                        let exprs: Vec<Expr<'_>> = std::iter::once(current_arr.to_dimd().into())
-                            .chain(current_others.into_iter().map(|a| a.into()))
-                            .collect::<Vec<_>>();
-                        let current_ctx = if map.is_some() {
-                            DataDict {
-                                data: exprs,
-                                map: map.clone().unwrap(),
+                let out = if others_ref.is_empty() {
+                    zip(roll_start_arr, 0..len)
+                        .map(|(mut start, end)| {
+                            if start > end {
+                                start = end; // the start idx should be inbound
                             }
-                        } else {
-                            let dd = DataDict::new(exprs, Some(columns.clone()));
-                            map = Some(dd.map.clone());
-                            dd
-                        };
-                        let out_e = agg_expr.context_clone();
-                        // this is safe as we don't return a view on the current context
-                        // into_owned is important here to guarantee the above
-                        let current_ctx: Arc<DataDict> =
-                            Arc::new(unsafe { std::mem::transmute(current_ctx) });
-                        let o = out_e
-                            .view_arr(Some(&current_ctx))
-                            .unwrap()
-                            .deref()
-                            .into_owned();
-                        o
-                    })
-                    .collect_trusted();
+                            let exprs: Vec<Expr<'_>> =
+                                vec![arr.slice(s![start..end + 1]).to_dimd().into()];
+                            let current_ctx = if map.is_some() {
+                                DataDict {
+                                    data: exprs,
+                                    map: map.clone().unwrap(),
+                                }
+                            } else {
+                                let dd = DataDict::new(exprs, Some(columns.clone()));
+                                map = Some(dd.map.clone());
+                                dd
+                            };
+                            // this is safe as we don't return a view on the current context
+                            // into_owned is important here to guarantee the above
+                            let current_ctx: Arc<DataDict> =
+                                Arc::new(unsafe { std::mem::transmute(current_ctx) });
+                            let mut data = init_data.clone();
+                            let mut ctx = Some(current_ctx);
+                            for f in &nodes {
+                                (data, ctx) = f((data, ctx)).unwrap();
+                            }
+                            data.into_arr(ctx).unwrap()
+                            // arr0(1).to_dimd().into()
+                        })
+                        .collect_trusted()
+                } else {
+                    zip(roll_start_arr, 0..len)
+                        .map(|(mut start, end)| {
+                            if start > end {
+                                start = end; // the start idx should be inbound
+                            }
+                            let slice = s![start..end + 1];
+                            let exprs: Vec<Expr<'_>> =
+                                std::iter::once(arr.slice(slice).to_dimd().into())
+                                    .chain(others_ref.iter().map(|a| a.slice(slice).into()))
+                                    .collect::<Vec<_>>();
+                            let current_ctx = if map.is_some() {
+                                DataDict {
+                                    data: exprs,
+                                    map: map.clone().unwrap(),
+                                }
+                            } else {
+                                let dd = DataDict::new(exprs, Some(columns.clone()));
+                                map = Some(dd.map.clone());
+                                dd
+                            };
+                            // this is safe as we don't return a view on the current context
+                            // into_owned is important here to guarantee the above
+                            let current_ctx: Arc<DataDict> =
+                                Arc::new(unsafe { std::mem::transmute(current_ctx) });
+                            let mut data = init_data.clone();
+                            let mut ctx = Some(current_ctx);
+                            for f in &nodes {
+                                (data, ctx) = f((data, ctx)).unwrap();
+                            }
+                            data.into_arr(ctx).unwrap()
+                        })
+                        .collect_trusted()
+                };
                 ArrOk::same_dtype_concat_1d(out)
             });
             Ok((out.into(), ctx.clone()))
@@ -382,4 +496,14 @@ impl<'a> RollingExt for Expr<'a> {
     }
     // #[lazy_only(lazy="rolling_by_vecusize", type="numeric")]
     // fn rolling_select_by_vecusize_var(&mut self, idxs: Self, min_periods: usize, stable: bool) {}
+
+    #[lazy_only(lazy = "rolling_by_startidx2", type = "numeric", type2 = "numeric")]
+    fn rolling_select_weight_mean(
+        &mut self,
+        other: Self,
+        roll_start: Self,
+        min_periods: usize,
+        stable: bool,
+    ) {
+    }
 }

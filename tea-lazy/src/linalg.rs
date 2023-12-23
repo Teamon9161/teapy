@@ -38,22 +38,27 @@ impl<'a> OlsResult<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn x(&self) -> ArrViewD<'_, f64> {
         self.x.view()
     }
 
+    #[inline(always)]
     pub fn y(&self) -> ArrViewD<'_, f64> {
         self.y.view()
     }
 
+    #[inline(always)]
     pub fn singular_values(&self) -> ArrViewD<'_, f64> {
         self.singular_values.view().to_dimd()
     }
 
+    #[inline(always)]
     pub fn solution(&self) -> ArrViewD<'_, f64> {
         self.solution.view()
     }
 
+    #[inline(always)]
     pub fn rank(&self) -> i32 {
         self.rank
     }

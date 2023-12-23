@@ -58,7 +58,7 @@ where
     S: RawData<Elem = T>,
     D: Dimension,
 {
-    #[inline]
+    #[inline(always)]
     pub fn new(a: ArrayBase<S, D>) -> Self {
         Self(a)
     }
@@ -72,18 +72,18 @@ where
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn norm_axis(&self, axis: i32) -> Axis {
         Axis(self.ensure_axis(axis))
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn norm_index(&self, index: i32, axis: Axis) -> usize {
         let length = self.len_of(axis);
         self.ensure_index(index, length)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn ensure_index(&self, index: i32, length: usize) -> usize {
         if index < 0 {
             (length as i32 + index) as usize
@@ -92,6 +92,7 @@ where
         }
     }
 
+    #[inline(always)]
     pub fn slice<I: SliceArg<D>>(&self, info: I) -> ArrView<'_, T, <I as SliceArg<D>>::OutDim>
     where
         S: Data,
@@ -99,6 +100,7 @@ where
         self.0.slice(info).wrap()
     }
 
+    #[inline(always)]
     pub fn dtype(&self) -> DataType
     where
         T: GetDataType,
@@ -107,6 +109,7 @@ where
     }
 
     #[cfg(feature = "npy")]
+    #[inline(always)]
     pub fn write_npy<P>(self, path: P) -> TpResult<()>
     where
         P: AsRef<std::path::Path>,
@@ -116,7 +119,7 @@ where
         write_npy(path, &self.0).map_err(|e| format!("{e}").as_str())?
     }
     /// Create a one-dimensional array from a vector (no copying needed).
-    #[inline]
+    #[inline(always)]
     pub fn from_vec(v: Vec<T>) -> Arr1<T>
     where
         S: DataOwned,
@@ -125,7 +128,7 @@ where
         Array1::from_vec(v).wrap()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn from_par_iter<I: IntoParallelIterator<Item = T>>(iterable: I) -> Arr1<T>
     where
         T: Send,
@@ -135,6 +138,7 @@ where
         Arr1::from_vec(iterable.into_par_iter().collect())
     }
 
+    #[inline(always)]
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Arr1<T>
     where
@@ -144,6 +148,7 @@ where
         Array1::from_iter(iterable).wrap()
     }
 
+    #[inline(always)]
     /// Create a 1d array from slice, need clone.
     pub fn clone_from_slice(slc: &[T]) -> Arr1<T>
     where
@@ -153,6 +158,7 @@ where
         Array1::from_vec(slc.to_vec()).wrap()
     }
 
+    #[inline(always)]
     pub fn zeros<Sh>(shape: Sh) -> Self
     where
         S: DataOwned<Elem = T>,
@@ -186,7 +192,7 @@ where
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn try_as_dim1(&self) -> TpResult<ArrView1<T>>
     where
         S: Data,
@@ -199,7 +205,7 @@ where
         // }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn as_dim1(&self) -> ArrView1<T>
     where
         S: Data,
@@ -207,7 +213,7 @@ where
         self.try_as_dim1().unwrap()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn try_as_dim1_mut(&mut self) -> TpResult<ArrViewMut1<T>>
     where
         S: DataMut,
@@ -221,7 +227,7 @@ where
         // }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn as_dim1_mut(&mut self) -> ArrViewMut1<T>
     where
         S: DataMut,
@@ -232,13 +238,13 @@ where
     /// Change the array to dim2.
     ///
     /// Note that the original array must be dim2.
-    #[inline]
+    #[inline(always)]
     pub fn to_dim2(self) -> TpResult<ArrBase<S, Ix2>> {
         self.to_dim::<Ix2>().map_err(|e| format!("{e}").into())
     }
 
     /// Change the array to dimD.
-    #[inline]
+    #[inline(always)]
     pub fn to_dimd(self) -> ArrBase<S, IxDyn> {
         self.to_dim::<IxDyn>().unwrap() // this should never fail
     }
@@ -258,7 +264,7 @@ where
     D: Dimension,
 {
     /// Clone the elements in the array to `out` array.
-    #[inline]
+    #[inline(always)]
     pub fn clone_to<S2>(&self, out: &mut ArrBase<S2, D>)
     where
         T: Clone,
@@ -268,7 +274,7 @@ where
     }
 
     /// Clone the elements in the array to `out` array.
-    #[inline]
+    #[inline(always)]
     pub fn clone_to_uninit<S2>(&self, out: &mut ArrBase<S2, D>)
     where
         T: Clone,
@@ -280,11 +286,13 @@ where
     }
 
     /// Return a read-only view of the array
+    #[inline(always)]
     pub fn view(&self) -> ArrView<'_, T, D> {
         ArrBase(self.0.view())
     }
 
     /// Return a read-write view of the array
+    #[inline(always)]
     pub fn view_mut(&mut self) -> ArrViewMut<'_, T, D>
     where
         S: DataMut,
@@ -293,6 +301,7 @@ where
     }
 
     /// Return an uniquely owned copy of the array.
+    #[inline(always)]
     pub fn to_owned(&self) -> Arr<T, D>
     where
         T: Clone,
@@ -300,6 +309,7 @@ where
         self.0.to_owned().wrap()
     }
 
+    #[inline(always)]
     pub fn to_arc(self) -> Arc<Self>
     where
         S: Data,
@@ -313,6 +323,7 @@ where
     /// Elements are visited in arbitrary order.
     ///
     /// Return an array with the same shape as `self`.
+    #[inline(always)]
     pub fn map<'a, T2, F>(&'a self, f: F) -> Arr<T2, D>
     where
         F: FnMut(&'a T) -> T2,
@@ -327,6 +338,7 @@ where
     /// Elements are visited in arbitrary order.
     ///
     /// Return an array with the same shape as `self`.
+    #[inline(always)]
     pub fn mapv<T2, F>(&self, mut f: F) -> Arr<T2, D>
     where
         F: FnMut(T) -> T2,
@@ -335,6 +347,7 @@ where
         self.map(move |x| f(*x))
     }
 
+    #[inline(always)]
     pub fn cast<T2>(self) -> Arr<T2, D>
     where
         T: Clone + Cast<T2>,
@@ -447,6 +460,7 @@ where
     // }
 
     /// Try to cast to pyobject
+    #[inline(always)]
     pub fn to_object(&self, py: Python) -> Arr<PyValue, D>
     where
         T: Debug + Clone + ToPyObject,
@@ -476,6 +490,7 @@ where
     }
 
     /// Try to cast to string
+    #[inline(always)]
     pub fn to_string(&self) -> Arr<String, D>
     where
         T: ToString,
@@ -484,6 +499,7 @@ where
     }
 
     #[cfg(feature = "method_1d")]
+    #[inline(always)]
     pub fn iter(&self) -> Iter<'_, T, D>
     where
         D: Dim1,
@@ -493,6 +509,7 @@ where
     }
 
     #[cfg(feature = "method_1d")]
+    #[inline(always)]
     pub fn iter_mut(&mut self) -> IterMut<'_, T, D>
     where
         D: Dim1,
@@ -504,6 +521,7 @@ where
 
 impl<S: Data<Elem = PyValue>, D: Dimension> ArrBase<S, D> {
     /// Try to cast to string
+    #[inline(always)]
     pub fn object_to_string(self, py: Python) -> Arr<String, D> {
         self.map(|v| v.0.extract::<String>(py).unwrap())
     }

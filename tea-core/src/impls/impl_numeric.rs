@@ -142,6 +142,7 @@ macro_rules! impl_pow {
         where
             D: Dimension,
         {
+            #[inline(always)]
             pub fn pow<S2, D2>(
                 &self,
                 rhs: &ArrBase<S2, D2>,
@@ -160,6 +161,7 @@ macro_rules! impl_pow {
         where
             D: Dimension,
         {
+            #[inline(always)]
             pub fn pow<S2, D2>(
                 &self,
                 rhs: &ArrBase<S2, D2>,
@@ -189,6 +191,7 @@ where
     S: Data<Elem = T>,
     D: Dimension,
 {
+    #[inline(always)]
     pub fn abs_inplace(&mut self, par: bool)
     where
         T: Signed + Send + Sync,
@@ -201,6 +204,7 @@ where
         }
     }
 
+    #[inline(always)]
     pub fn abs(&self) -> Arr<T, D>
     where
         T: Signed + Send + Sync + Clone,
@@ -208,6 +212,7 @@ where
         self.map(|v| abs(v.clone()))
     }
 
+    #[inline(always)]
     pub fn sign(&self) -> Arr<T, D>
     where
         T: Signed + Clone,

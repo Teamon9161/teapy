@@ -92,6 +92,7 @@ macro_rules! impl_datatype {
     ($tyname:ident, $physical:ty) => {
         impl GetDataType for $physical {
             // type Physical = $physical;
+            #[inline(always)]
             fn dtype() -> DataType {
                 DataType::$tyname
             }
@@ -101,11 +102,13 @@ macro_rules! impl_datatype {
 
 impl DataType {
     #[cfg(not(feature = "option_dtype"))]
+    #[inline(always)]
     pub fn is_float(&self) -> bool {
         matches!(self, DataType::F32 | DataType::F64)
     }
 
     #[cfg(feature = "option_dtype")]
+    #[inline(always)]
     pub fn is_float(&self) -> bool {
         matches!(
             self,
@@ -114,6 +117,7 @@ impl DataType {
     }
 
     #[cfg(not(feature = "option_dtype"))]
+    #[inline(always)]
     pub fn is_int(&self) -> bool {
         matches!(
             self,
@@ -122,6 +126,7 @@ impl DataType {
     }
 
     #[cfg(feature = "option_dtype")]
+    #[inline(always)]
     pub fn is_int(&self) -> bool {
         matches!(
             self,
@@ -205,44 +210,44 @@ pub trait GetNone {
 }
 
 impl GetNone for f64 {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         f64::NAN
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         self.is_nan()
     }
 }
 
 impl GetNone for f32 {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         f32::NAN
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         self.is_nan()
     }
 }
 
 impl GetNone for String {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         "None".to_owned()
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         self == "None"
     }
 }
 
 impl GetNone for &str {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         "None"
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         *self == "None"
     }
@@ -252,11 +257,11 @@ macro_rules! impl_getnone {
     (int $($T: ty),*) => {
         $(
             impl GetNone for $T {
-                #[inline]
+                #[inline(always)]
                 fn none() -> Self {
                     unreachable!("int dtype can not be None")
                 }
-                #[inline]
+                #[inline(always)]
                 fn is_none(&self) -> bool {
                     false
                 }
@@ -267,22 +272,22 @@ macro_rules! impl_getnone {
 impl_getnone!(int char, i8, i16, i32, i64, u8, u16, u32, u64, usize, isize);
 
 impl GetNone for bool {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         panic!("bool doesn't have None value")
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         false
     }
 }
 
 impl GetNone for Vec<usize> {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         vec![]
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         self.is_empty()
     }
@@ -290,11 +295,11 @@ impl GetNone for Vec<usize> {
 
 #[cfg(feature = "time")]
 impl GetNone for DateTime {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         Self(None)
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         self.0.is_none()
     }
@@ -302,11 +307,11 @@ impl GetNone for DateTime {
 
 #[cfg(feature = "time")]
 impl GetNone for TimeDelta {
-    #[inline]
+    #[inline(always)]
     fn none() -> Self {
         TimeDelta::nat()
     }
-    #[inline]
+    #[inline(always)]
     fn is_none(&self) -> bool {
         self.is_nat()
     }
@@ -314,6 +319,7 @@ impl GetNone for TimeDelta {
 
 impl<'a> GetDataType for &'a str {
     // type Physical = &'a str;
+    #[inline(always)]
     fn dtype() -> DataType {
         DataType::Str
     }
@@ -438,7 +444,7 @@ pub trait Number:
 
     /// if other is nan, then add other to self and n += 1
     /// else just return self
-    #[inline(always)]
+    #[inline]
     fn n_add(self, other: Self, n: &mut usize) -> Self {
         // note: only check if other is NaN
         // assume that self is not NaN
@@ -452,7 +458,7 @@ pub trait Number:
 
     /// if other is nan, then product other to self and n += 1
     /// else just return self
-    #[inline(always)]
+    #[inline]
     fn n_prod(self, other: Self, n: &mut usize) -> Self {
         // note: only check if other is NaN
         // assume that self is not NaN
@@ -515,6 +521,7 @@ pub trait Number:
         }
     }
 
+    #[inline]
     fn nan_sort_cmp_rev_stable(&self, other: &Self) -> Ordering {
         if other.isnan() {
             if self.isnan() {
@@ -618,6 +625,7 @@ impl BoolType for bool {
 
 #[cfg(feature = "option_dtype")]
 impl BoolType for OptBool {
+    #[inline(always)]
     fn bool_(self) -> bool {
         self.unwrap()
     }

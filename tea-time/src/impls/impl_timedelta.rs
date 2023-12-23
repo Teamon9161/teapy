@@ -2,12 +2,14 @@ use crate::TimeDelta;
 use chrono::Duration;
 
 impl Default for TimeDelta {
+    #[inline(always)]
     fn default() -> Self {
         TimeDelta::nat()
     }
 }
 
 impl From<Duration> for TimeDelta {
+    #[inline(always)]
     fn from(duration: Duration) -> Self {
         Self {
             months: 0,
@@ -17,6 +19,7 @@ impl From<Duration> for TimeDelta {
 }
 
 impl From<i64> for TimeDelta {
+    #[inline]
     fn from(dt: i64) -> Self {
         if dt == i64::MIN {
             return TimeDelta::nat();
