@@ -26,17 +26,17 @@ import pandas as pd
 import polars as pl
 import teapy as tp
 
-e1 = tp.Expr([1, 2, 3])  # Create from a list
-e2 = tp.Expr((1, 2, 3))  # Create from a tuple
-e3 = tp.Expr(np.array([1, 2, 3]), 'e3')  # Create from a numpy.ndarray, name is e3
-e4 = tp.Expr(pd.Series([1, 2, 3]))  # Create from a pandas.Series
-e5 = tp.Expr(pl.Series([1, 2, 3]))  # Create from a polars.Series
+e1 = tp.Expr([1, 2, 3])  # Create from list
+e2 = tp.Expr((1, 2, 3))  # Create from tuple
+e3 = tp.Expr(np.array([1, 2, 3]), 'e3')  # Create from numpy.ndarray, name is e3
+e4 = tp.Expr(pd.Series([1, 2, 3]))  # Create from pandas.Series
+e5 = tp.Expr(pl.Series([1, 2, 3]))  # Create from polars.Series
 ```
 ### Creating DataDicts
 ```Python
 # DataDicts can be created in different ways
-dd1 = tp.DataDict({'a': [1, 2], 'b': [2, 3]}, c=[3, 4])  # Create from a dictionary
-dd2 = tp.DataDict([tp.Expr([1, 2], 'a'), tp.Expr([2, 3], 'b')])  # Create from a list of expressions
+dd1 = tp.DataDict({'a': [1, 2], 'b': [2, 3]}, c=[3, 4])  # Create from dictionary
+dd2 = tp.DataDict([tp.Expr([1, 2], 'a'), tp.Expr([2, 3], 'b')])  # Create from list of expressions
 dd3 = tp.DataDict(a=[1, 2], b=[2, 3], c=np.array([3, 6, 2]))  # Create by specifying key-value pairs
 ```
 
