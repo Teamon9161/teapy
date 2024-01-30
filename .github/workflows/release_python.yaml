@@ -25,13 +25,13 @@ jobs:
       - name: Publish wheel
         uses: messense/maturin-action@v1
         env:
-          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
           RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
         with:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --manifest-path tea-py/Cargo.toml --skip-existing -o wheels -u teamon
+          args: --manifest-path tea-py/Cargo.toml --skip-existing -o wheels -u __token__
 
 
   win-latest:
@@ -45,13 +45,13 @@ jobs:
       - name: Publish wheel
         uses: messense/maturin-action@v1
         env:
-          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
           RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2
         with:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u teamon
+          args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u __token__
 
   macos_latest:
     runs-on: macos-latest
@@ -64,14 +64,14 @@ jobs:
       - name: Publish wheel
         uses: messense/maturin-action@v1
         env:
-          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
           RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
           CXXFLAGS: -stdlib=libc++
         with:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u teamon
+          args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u __token__
 
   macos-aarch64:
     runs-on: macos-latest
@@ -87,12 +87,12 @@ jobs:
       - name: Publish wheel
         uses: messense/maturin-action@v1
         env:
-          MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+          MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         with:
           rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
-          args: --manifest-path tea-py/Cargo.toml --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u teamon
+          args: --manifest-path tea-py/Cargo.toml --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u __token__
 
   
   # # Needed for Docker on Apple M1
@@ -107,11 +107,11 @@ jobs:
   #     - name: Publish wheel
   #       uses: messense/maturin-action@v1
   #       env:
-  #         MATURIN_PASSWORD: ${{ secrets.PYPI_SECRET }}
+  #         MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
   #         JEMALLOC_SYS_WITH_LG_PAGE: 16
   #       with:
   #         rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
   #         maturin-version: ${{ env.MATURIN_VERSION }}
   #         target: aarch64-unknown-linux-gnu
   #         command: publish
-  #         args: --skip-existing --no-sdist -o wheels -i python -u teamon
+  #         args: --skip-existing --no-sdist -o wheels -i python -u __token__
