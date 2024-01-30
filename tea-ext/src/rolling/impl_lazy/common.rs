@@ -506,4 +506,7 @@ impl<'a> RollingExt for Expr<'a> {
         stable: bool,
     ) {
     }
+
+    #[lazy_only(lazy = "rolling_by_startidx2", type = "numeric", type2 = "bool")]
+    fn rolling_select_cut_mean(&mut self, other: Self, roll_start: Self, min_periods: usize) {}
 }

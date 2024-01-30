@@ -132,6 +132,62 @@ impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
         use crate::map::MapExt1d;
         self.sorted_unique_1d().min_1d()
     }
+
+    pub fn cut_nsum_1d<S2>(
+        &self,
+        mask: &ArrBase<S2, Ix1>,
+        min_periods: usize,
+        // stable: bool,
+    ) -> (usize, T)
+    where
+        T: Number,
+        S2: Data<Elem = bool>,
+        // T2: Cast<bool>
+    {
+        let mut n = 0_usize;
+        let sum = self.fold_with(mask.view(), T::zero(), |acc, v, valid| {
+            if (*valid) && v.notnan() {
+                n += 1;
+                acc + *v
+            } else {
+                acc
+            }
+        });
+        if n >= min_periods {
+            (n, sum)
+        } else {
+            (n, T::nan())
+        }
+    }
+
+    #[inline]
+    pub fn cut_sum_1d<S2>(
+        &self,
+        mask: &ArrBase<S2, Ix1>,
+        min_periods: usize,
+        // stable: bool,
+    ) -> T
+    where
+        T: Number,
+        S2: Data<Elem = bool>,
+    {
+        self.cut_nsum_1d(mask, min_periods).1
+    }
+
+    #[inline]
+    pub fn cut_mean_1d<S2>(
+        &self,
+        mask: &ArrBase<S2, Ix1>,
+        min_periods: usize,
+        // stable: bool,
+    ) -> f64
+    where
+        T: Number,
+        S2: Data<Elem = bool>,
+    {
+        let (n, sum) = self.cut_nsum_1d(mask, min_periods);
+        sum.f64() / n.f64()
+    }
 }
 
 #[arr_agg_ext(lazy = "view", type = "numeric")]

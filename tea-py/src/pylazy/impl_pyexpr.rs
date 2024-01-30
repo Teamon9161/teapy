@@ -2694,6 +2694,25 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
+    #[pyo3(signature=(roll_start, mask, min_periods=1))]
+    pub unsafe fn _rolling_select_cut_mean(
+        &self,
+        roll_start: &PyAny,
+        mask: &PyAny,
+        min_periods: usize,
+    ) -> PyResult<Self> {
+        let roll_start = parse_expr_nocopy(roll_start)?;
+        let mask = parse_expr_nocopy(mask)?;
+        let obj = roll_start.obj();
+        let obj2 = mask.obj();
+        let mut out = self.clone();
+        out.e
+            .rolling_select_cut_mean(mask.e, roll_start.e, min_periods);
+        out.add_obj(obj).add_obj(obj2);
+        Ok(out)
+    }
+
+    #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start, min_periods=2, stable=false))]
     pub unsafe fn _rolling_select_var(
         &self,

@@ -90,6 +90,7 @@ macro_rules! match_arrok {
     };
     (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};
     (float $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64)};
+    (bool $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, Bool)};
     (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8, U64)};
     (tphash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8, U64)};
     (castable $($tt: tt)*) => {match_all!(
