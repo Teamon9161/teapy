@@ -1669,6 +1669,24 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(other, window, min_periods=1, axis=0, par=false))]
+    pub unsafe fn ts_regx_resid_mean(
+        &self,
+        other: &PyAny,
+        window: usize,
+        min_periods: usize,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
+        let other = parse_expr_nocopy(other)?;
+        let obj = other.obj();
+        let mut out = self.clone();
+        out.e
+            .ts_regx_resid_mean(other.e, window, min_periods, axis, par);
+        Ok(out.add_obj_into(obj))
+    }
+
+    #[cfg(all(feature = "rolling", feature = "agg"))]
+    #[pyo3(signature=(other, window, min_periods=1, axis=0, par=false))]
     pub unsafe fn ts_regx_resid_std(
         &self,
         other: &PyAny,

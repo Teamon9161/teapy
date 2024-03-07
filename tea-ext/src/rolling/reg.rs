@@ -523,6 +523,99 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
+    fn ts_regx_resid_mean<S2, D2, T2, SO>(
+        &self,
+        x: &ArrBase<S2, D2>,
+        out: &mut ArrBase<SO, Ix1>,
+        window: usize,
+        min_periods: usize,
+    ) -> f64
+    where
+        SO: DataMut<Elem = MaybeUninit<f64>>,
+        S2: Data<Elem = T2>,
+        D2: Dimension,
+        D: DimMax<D2>,
+        T: Number,
+        T2: Number,
+    {
+        let arr = self.as_dim1();
+        let x1 = x.as_dim1();
+        let window = min(arr.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
+        }
+        let mut sum_a = 0.;
+        let mut sum_b = 0.;
+        let mut sum_b2 = 0.;
+        let mut sum_ab = 0.;
+        let mut n = 0;
+        for i in 0..window - 1 {
+            // safety：i is inbound
+            let (va, vb) = unsafe { (*arr.uget(i), *x1.uget(i)) };
+            if va.notnan() && vb.notnan() {
+                n += 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a += va;
+                sum_b += vb;
+                sum_b2 += vb.powi(2);
+                sum_ab += va * vb;
+            };
+            if n >= min_periods {
+                let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                let alpha = (sum_a - beta * sum_b) / n.f64();
+                let resid = (0..=i)
+                    .map(|j| {
+                        let (vy, vx) = unsafe { (*arr.uget(j), *x1.uget(j)) };
+                        vy.f64() - alpha - beta * vx.f64()
+                    })
+                    .collect_trusted();
+                let mean = Arr1::from_vec(resid).mean_1d(1, false);
+                unsafe { out.uget_mut(i).write(mean) };
+            } else {
+                unsafe { out.uget_mut(i).write(f64::NAN) };
+            };
+        }
+        for (start, end) in (window - 1..arr.len()).enumerate() {
+            // safety：start, end is inbound
+            let (va, vb) = unsafe { (*arr.uget(end), *x1.uget(end)) };
+            if va.notnan() && vb.notnan() {
+                n += 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a += va;
+                sum_b += vb;
+                sum_b2 += vb.powi(2);
+                sum_ab += va * vb;
+            };
+            if n >= min_periods {
+                let beta = (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2));
+                let alpha = (sum_a - beta * sum_b) / n.f64();
+                let resid = (start..=end)
+                    .map(|j| {
+                        let (vy, vx) = unsafe { (*arr.uget(j), *x1.uget(j)) };
+                        vy.f64() - alpha - beta * vx.f64()
+                    })
+                    .collect_trusted();
+                let mean = Arr1::from_vec(resid).mean_1d(1, false);
+                unsafe { out.uget_mut(end).write(mean) };
+            } else {
+                unsafe { out.uget_mut(end).write(f64::NAN) };
+            };
+            let (va, vb) = unsafe { (*arr.uget(start), *x1.uget(start)) };
+            if va.notnan() && vb.notnan() {
+                n -= 1;
+                let (va, vb) = (va.f64(), vb.f64());
+                sum_a -= va;
+                sum_b -= vb;
+                sum_b2 -= vb.powi(2);
+                sum_ab -= va * vb;
+            }
+        }
+    }
+
+    #[cfg(feature = "agg")]
     fn ts_regx_resid_std<S2, D2, T2, SO>(
         &self,
         x: &ArrBase<S2, D2>,

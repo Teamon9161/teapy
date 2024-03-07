@@ -67,6 +67,7 @@ class Ols:
             self.rank = self.ols_res.ols_rank()
             self.params = self.ols_res.params()
             self.fitted_values = self.ols_res.fitted_values()
+            self.SSE = self.ols_res.sse()
             self.resid = self.resid()
         else:
             pinv_x, s = self.x.pinv(return_s=True)
