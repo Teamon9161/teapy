@@ -271,7 +271,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
         }
     }
 
-    fn ts_rank<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    fn ts_rank<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize, pct: bool, rev: bool) -> f64
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
@@ -306,9 +306,18 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 };
                 let out = out.uget_mut(i);
                 if n >= min_periods {
-                    out.write(rank + 0.5 * (n_repeat - 1).f64())
+                    let res = if !rev {
+                        rank + 0.5 * (n_repeat - 1).f64()
+                    } else {
+                        (n + 1).f64() - rank - 0.5 * (n_repeat - 1).f64()
+                    };
+                    if pct {
+                        out.write(res / n.f64());
+                    } else {
+                        out.write(res);
+                    }
                 } else {
-                    out.write(f64::NAN)
+                    out.write(f64::NAN);
                 };
             }
         }
@@ -333,9 +342,18 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 };
                 let out = out.uget_mut(end);
                 if n >= min_periods {
-                    out.write(rank + 0.5 * (n_repeat - 1).f64()) // 对于重复值的method: average
+                    let res = if !rev {
+                        rank + 0.5 * (n_repeat - 1).f64()// 对于重复值的method: average
+                    } else {
+                        (n + 1).f64() - rank - 0.5 * (n_repeat - 1).f64()
+                    };
+                    if pct {
+                        out.write(res / n.f64());
+                    } else {
+                        out.write(res);
+                    }
                 } else {
-                    out.write(f64::NAN)
+                    out.write(f64::NAN);
                 };
                 let v = *arr.uget(start);
                 if v.notnan() {
@@ -345,77 +363,77 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
         }
     }
 
-    fn ts_rank_pct<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
-    where
-        SO: DataMut<Elem = MaybeUninit<f64>>,
-        T: Number,
-    {
-        let arr = self.as_dim1();
-        let window = min(arr.len(), window);
-        if window < min_periods {
-            // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {
-                v.write(f64::NAN);
-            });
-        }
-        let mut n = 0usize;
-        for i in 0..window - 1 {
-            // 安全性：i不会超过arr和out的长度
-            unsafe {
-                let v = *arr.uget(i);
-                let mut n_repeat = 1; // 当前值的重复次数
-                let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
-                if v.notnan() {
-                    n += 1;
-                    for j in 0..i {
-                        let a = *arr.uget(j);
-                        if a < v {
-                            rank += 1.
-                        } else if a == v {
-                            n_repeat += 1
-                        }
-                    }
-                } else {
-                    rank = f64::NAN
-                };
-                let out = out.uget_mut(i);
-                if n >= min_periods {
-                    out.write((rank + 0.5 * (n_repeat - 1).f64()) / n.f64());
-                } else {
-                    out.write(f64::NAN);
-                };
-            }
-        }
-        for (start, end) in (window - 1..arr.len()).enumerate() {
-            // 安全性：start和end不会超过self的长度，而out和self长度相同
-            unsafe {
-                let v = *arr.uget(end);
-                let mut n_repeat = 1; // 当前值的重复次数
-                let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
-                if v.notnan() {
-                    n += 1;
-                    for i in start..end {
-                        let a = *arr.uget(i);
-                        if a < v {
-                            rank += 1.
-                        } else if a == v {
-                            n_repeat += 1
-                        }
-                    }
-                } else {
-                    rank = f64::NAN
-                };
-                let out = out.uget_mut(end);
-                if n >= min_periods {
-                    out.write((rank + 0.5 * (n_repeat - 1).f64()) / n.f64()); // 对于重复值的method: average
-                } else {
-                    out.write(f64::NAN);
-                };
-                let v = *arr.uget(start);
-                if v.notnan() {
-                    n -= 1;
-                };
-            }
-        }
-    }
+    // fn ts_rank_pct<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize) -> f64
+    // where
+    //     SO: DataMut<Elem = MaybeUninit<f64>>,
+    //     T: Number,
+    // {
+    //     let arr = self.as_dim1();
+    //     let window = min(arr.len(), window);
+    //     if window < min_periods {
+    //         // 如果滚动窗口是1则返回全nan
+    //         return out.apply_mut(|v| {
+    //             v.write(f64::NAN);
+    //         });
+    //     }
+    //     let mut n = 0usize;
+    //     for i in 0..window - 1 {
+    //         // 安全性：i不会超过arr和out的长度
+    //         unsafe {
+    //             let v = *arr.uget(i);
+    //             let mut n_repeat = 1; // 当前值的重复次数
+    //             let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
+    //             if v.notnan() {
+    //                 n += 1;
+    //                 for j in 0..i {
+    //                     let a = *arr.uget(j);
+    //                     if a < v {
+    //                         rank += 1.
+    //                     } else if a == v {
+    //                         n_repeat += 1
+    //                     }
+    //                 }
+    //             } else {
+    //                 rank = f64::NAN
+    //             };
+    //             let out = out.uget_mut(i);
+    //             if n >= min_periods {
+    //                 out.write((rank + 0.5 * (n_repeat - 1).f64()) / n.f64());
+    //             } else {
+    //                 out.write(f64::NAN);
+    //             };
+    //         }
+    //     }
+    //     for (start, end) in (window - 1..arr.len()).enumerate() {
+    //         // 安全性：start和end不会超过self的长度，而out和self长度相同
+    //         unsafe {
+    //             let v = *arr.uget(end);
+    //             let mut n_repeat = 1; // 当前值的重复次数
+    //             let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
+    //             if v.notnan() {
+    //                 n += 1;
+    //                 for i in start..end {
+    //                     let a = *arr.uget(i);
+    //                     if a < v {
+    //                         rank += 1.
+    //                     } else if a == v {
+    //                         n_repeat += 1
+    //                     }
+    //                 }
+    //             } else {
+    //                 rank = f64::NAN
+    //             };
+    //             let out = out.uget_mut(end);
+    //             if n >= min_periods {
+    //                 out.write((rank + 0.5 * (n_repeat - 1).f64()) / n.f64()); // 对于重复值的method: average
+    //             } else {
+    //                 out.write(f64::NAN);
+    //             };
+    //             let v = *arr.uget(start);
+    //             if v.notnan() {
+    //                 n -= 1;
+    //             };
+    //         }
+    //     }
+    // }
 }

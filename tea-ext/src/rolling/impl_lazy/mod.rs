@@ -1,8 +1,8 @@
-mod auto_impl;
+// mod auto_impl;
 #[cfg(feature = "agg")]
 mod common;
 
-pub use auto_impl::ExprRollingExt;
+// pub use auto_impl::ExprRollingExt;
 #[cfg(all(feature = "agg", feature = "lazy"))]
 pub use common::AutoExprRollingExt;
 #[cfg(feature = "agg")]

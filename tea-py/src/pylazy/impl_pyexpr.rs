@@ -1549,21 +1549,23 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, pct=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=1, pct=false, rev=false, axis=0, par=false))]
     pub fn ts_rank(
         &self,
         window: usize,
         min_periods: usize,
         pct: bool,
+        rev: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        if !pct {
-            out.e.ts_rank(window, min_periods, axis, par);
-        } else {
-            out.e.ts_rank_pct(window, min_periods, axis, par);
-        }
+        out.e.ts_rank(window, min_periods, pct, rev, axis, par);
+        // if !pct {
+        //     out.e.ts_rank(window, min_periods, axis, par);
+        // } else {
+        //     out.e.ts_rank_pct(window, min_periods, axis, par);
+        // }
         out
     }
 
