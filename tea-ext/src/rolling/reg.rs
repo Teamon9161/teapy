@@ -344,6 +344,67 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
             })
         }
     }
+
+    fn ts_reg_resid_mean<SO>(
+        &self,
+        out: &mut ArrBase<SO, Ix1>,
+        window: usize,
+        min_periods: usize,
+    ) -> f64
+    where
+        SO: DataMut<Elem = MaybeUninit<f64>>,
+        T: Number,
+    {
+        let arr = self.as_dim1();
+        // 错位相减核心公式：sum_xt(t) = sum_xt(t-1) - sum_x + n * new_element
+        let window = min(arr.len(), window);
+        if window < min_periods {
+            // 如果滚动窗口是1则返回全nan
+            return out.apply_mut(|v| {
+                v.write(f64::NAN);
+            });
+        }
+        let mut sum = 0.;
+        let mut sum_xx = 0.;
+        let mut sum_xt = 0.;
+        let mut n = 0;
+        arr.apply_window_to(out, window, |v, v_rm| {
+            if v.notnan() {
+                n += 1;
+                let v = v.f64();
+                sum_xt += n.f64() * v; // 错位相减法, 忽略nan带来的系数和window不一致问题
+                sum += v;
+                sum_xx += v * v;
+            };
+            let res = if n >= min_periods {
+                let n_f64 = n.f64();
+                let nn_add_n = n.mul_add(n, n);
+                let sum_t = (nn_add_n >> 1).f64(); // sum of time from 1 to window
+                                                   // denominator of slope
+                let sum_tt = (n * nn_add_n * n.mul_add(2, 1)).f64() / 6.;
+                let divisor = sum_tt - sum_t.powi(2);
+                let beta = (n_f64 * sum_xt - sum_t * sum) / divisor;
+                let alpha = sum_t.mul_add(-beta, sum) / n_f64;
+                let resid_sum = sum_xx - 2. * alpha * sum - 2. * beta * sum_xt
+                    + alpha * alpha * n_f64
+                    + 2. * alpha * beta * sum_t
+                    + beta * beta * sum_tt;
+                resid_sum / n_f64
+            } else {
+                f64::NAN
+            };
+            if let Some(v) = v_rm {
+                if v.notnan() {
+                    let v = v.f64();
+                    n -= 1;
+                    sum_xt -= sum;
+                    sum -= v;
+                    sum_xx -= v * v;
+                };
+            }
+            res
+        });
+    }
 }
 
 #[arr_map2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]

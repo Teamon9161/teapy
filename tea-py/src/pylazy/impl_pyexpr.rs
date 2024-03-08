@@ -1932,6 +1932,20 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
+    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
+    pub fn ts_reg_resid_mean(
+        &self,
+        window: usize,
+        min_periods: usize,
+        axis: i32,
+        par: bool,
+    ) -> Self {
+        let mut out = self.clone();
+        out.e.ts_reg_resid_mean(window, min_periods, axis, par);
+        out
+    }
+
+    #[cfg(feature = "rolling")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
     pub fn ts_reg_intercept(
         &self,
