@@ -271,7 +271,14 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
         }
     }
 
-    fn ts_rank<SO>(&self, out: &mut ArrBase<SO, Ix1>, window: usize, min_periods: usize, pct: bool, rev: bool) -> f64
+    fn ts_rank<SO>(
+        &self,
+        out: &mut ArrBase<SO, Ix1>,
+        window: usize,
+        min_periods: usize,
+        pct: bool,
+        rev: bool,
+    ) -> f64
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
@@ -343,7 +350,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 let out = out.uget_mut(end);
                 if n >= min_periods {
                     let res = if !rev {
-                        rank + 0.5 * (n_repeat - 1).f64()// 对于重复值的method: average
+                        rank + 0.5 * (n_repeat - 1).f64() // 对于重复值的method: average
                     } else {
                         (n + 1).f64() - rank - 0.5 * (n_repeat - 1).f64()
                     };
