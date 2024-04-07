@@ -232,8 +232,9 @@ impl PyExpr {
     #[pyo3(signature=(context=None))]
     // #[cfg(feature = "time")]
     pub fn view_in(
-        slf: PyRefMut<'_, Self>,
-        context: Option<&PyAny>,
+        // slf: PyRefMut<'_, Self>,
+        slf: Bound<'_, PyExpr>,
+        context: Option<&Bound<'_, PyAny>>,
         py: Python,
     ) -> PyResult<PyObject> {
         let ct: PyContext<'static> = if let Some(context) = context {
@@ -242,8 +243,12 @@ impl PyExpr {
             Default::default()
         };
         let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
-        let data = slf.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
-        let container = unsafe { PyAny::from_borrowed_ptr(py, slf.as_ptr()) };
+        let slf_ref = slf.borrow();
+        let data = slf_ref
+            .e
+            .view_data(ct_rs.as_ref())
+            .map_err(StrError::to_py)?;
+        let container = slf.into_any();
         if matches!(&data, Data::ArrVec(_)) {
             if let Data::ArrVec(arr_vec) = data {
                 let out = arr_vec
@@ -251,7 +256,8 @@ impl PyExpr {
                     .map(|arr| {
                         match_arrok!(pyelement arr, a, {
                             unsafe{
-                                PyArray::borrow_from_array(&a.view().0, container)
+                                // PyArray::borrow_from_array(&a.view().0, container)
+                                PyArray::borrow_from_array_bound(&a.view().0, container.clone())
                                 .no_dim0(py)
                                 .unwrap()
                             }
@@ -272,21 +278,21 @@ impl PyExpr {
                 #[cfg(feature = "time")]
                 TimeDelta
             );
-            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+            return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
         }
         #[cfg(feature = "time")]
         if let ArrOk::DateTime(arr) = arr {
             let arr = arr
                 .view()
                 .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
-            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+            return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
         }
         match_arrok!(
             pyelement arr,
             a,
             {
                 unsafe {
-                    Ok(PyArray::borrow_from_array(
+                    Ok(PyArray::borrow_from_array_bound(
                         &a.view().0,
                         container,
                     )
@@ -297,8 +303,7 @@ impl PyExpr {
     }
 
     #[getter]
-    pub fn get_view(slf: PyRefMut<'_, Self>, py: Python) -> PyResult<PyObject> {
-        // slf.view_in(None, py)
+    pub fn get_view(slf: Bound<'_, Self>, py: Python) -> PyResult<PyObject> {
         PyExpr::view_in(slf, None, py)
     }
 
@@ -320,7 +325,7 @@ impl PyExpr {
     pub fn value<'py>(
         &'py mut self,
         unit: Option<&'py str>,
-        context: Option<&'py PyAny>,
+        context: Option<&Bound<'py, PyAny>>,
         py: Python<'py>,
     ) -> PyResult<PyObject> {
         let ct: PyContext<'static> = if let Some(context) = context {
@@ -338,7 +343,7 @@ impl PyExpr {
                     .into_iter()
                     .map(|arr| {
                         match_arrok!(pyelement arr, a, {
-                            PyArray::from_owned_array(py, a.view().to_owned().0)
+                            PyArray::from_owned_array_bound(py, a.view().to_owned().0)
                             .no_dim0(py)
                             .unwrap()
                         })
@@ -358,7 +363,7 @@ impl PyExpr {
                 #[cfg(feature = "time")]
                 TimeDelta
             );
-            return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+            return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
         }
         #[cfg(feature = "time")]
         if let ArrOk::DateTime(arr) = &arr {
@@ -367,19 +372,19 @@ impl PyExpr {
                     let arr = arr
                         .view()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
-                    return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+                    return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
                 }
                 "us" => {
                     let arr = arr
                         .view()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
-                    return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+                    return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
                 }
                 "ns" => {
                     let arr = arr
                         .view()
                         .map(|v| v.into_np_datetime::<numpy::datetime::units::Nanoseconds>());
-                    return PyArray::from_owned_array(py, arr.0).no_dim0(py);
+                    return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
                 }
                 _ => unimplemented!("not support datetime unit"),
             }
@@ -388,7 +393,7 @@ impl PyExpr {
             pyelement arr,
             a,
             {
-                Ok(PyArray::from_owned_array(
+                Ok(PyArray::from_owned_array_bound(
                     py,
                     a.view().to_owned().0
                 )
@@ -434,7 +439,7 @@ impl PyExpr {
     }
 
     pub fn __getattr__<'py>(
-        slc: PyRef<'py, Self>,
+        slf: PyRef<'py, Self>,
         attr: &'py str,
         py: Python<'py>,
     ) -> PyResult<&'py PyAny> {
@@ -444,7 +449,7 @@ impl PyExpr {
             let func = res.clone();
             let functools = py.import("functools")?;
             let partial = functools.getattr("partial")?;
-            partial.call1((func, slc))
+            partial.call1((func, slf))
         } else {
             Err(PyAttributeError::new_err(format!(
                 "'PyExpr' object has no attribute {attr}"
@@ -2054,7 +2059,7 @@ impl PyExpr {
         if let Ok(ty_name) = ty.extract::<&str>() {
             self.cast_by_str(ty_name, py)
         } else if let Ok(py_type) = ty.extract::<&pyo3::types::PyType>() {
-            self.cast_by_str(py_type.name().unwrap(), py)
+            self.cast_by_str(&py_type.name().unwrap(), py)
         } else {
             unimplemented!("Incorrect type for casting")
         }

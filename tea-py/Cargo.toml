@@ -10,7 +10,7 @@ description = "Fast DataDict Library in Python"
 
 [features]
 default = ["extend", "methods_extend", "groupby_extend", "lazy_io", "blas"]
-# default = ["lazy"]
+# default = ["extend", "blas", "agg", "map"]
 
 # methods includes extend datatype
 methods_extend = ["extend", "methods", "tea-ext/extend"]

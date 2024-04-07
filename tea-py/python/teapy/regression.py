@@ -3,7 +3,14 @@ from functools import partial
 import teapy as tp
 from teapy import Expr, asexprs, nan
 
-from .tears import get_newey_west_adjust_s
+from .selector import Selector
+from .tears import get_newey_west_adjust_s as _get_newey_west_adjust_s
+
+
+def get_newey_west_adjust_s(x, resid, lag):
+    if isinstance(x, Selector):
+        return x.mod_func("regression.get_newey_west_adjust_s")(x, resid, lag)
+    return _get_newey_west_adjust_s(x, resid, lag)
 
 
 def mark_star(value_to_mark, t_value, p_value, precision=2, split="\r\n"):
@@ -44,7 +51,8 @@ class Ols:
         adjust_t: 是否需要对回归的t值和p值进行Newey-West调整，如果会True则默认calc_t也为True
         lag: Newey-West调整时的最大滞后阶数，为None时使用最优滞后阶数的公式进行计算.
         """
-        y, x = Expr(y), Expr(x)
+        if not isinstance(y, tp.Selector) and not isinstance(x, tp.Selector):
+            y, x = Expr(y), Expr(x)
         self.n_ori = y.shape[0]
         self.keep_shape = keep_shape
         self.dropna = dropna

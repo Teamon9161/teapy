@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from .datadict import name_prefix
+from .py_datadict import name_prefix
+from .selector import selector_to_expr
 from .tears import Expr
 from .tears import expr_register as _expr_register
 from .tears import parse_expr_list as asexprs
@@ -244,6 +245,7 @@ class ExprRolling(ExprRollMixin):
 
     def apply(self, agg_expr):
         idx = self.idx
+        agg_expr = selector_to_expr(agg_expr, context=True)
         if self.type in ["fix", "start", "time_start"]:
             if isinstance(agg_expr, (list, tuple)):
                 return [
@@ -341,6 +343,7 @@ class ExprGroupBy(ExprRollMixin):
         return wrap_func
 
     def agg(self, agg_expr):
+        agg_expr = selector_to_expr(agg_expr, context=True)
         if self.type == "time":
             label, start_idx = self.info
             if isinstance(agg_expr, (list, tuple)):

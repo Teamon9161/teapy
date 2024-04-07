@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use super::cast::Cast;
 use crate::{DataType, GetDataType, GetNone};
 use numpy::{Element, PyArrayDescr};
-use pyo3::{FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
+use pyo3::{Bound, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 #[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
 use std::string::ToString;
@@ -78,9 +78,14 @@ impl GetDataType for PyValue {
 
 unsafe impl Element for PyValue {
     const IS_COPY: bool = false;
+    // #[inline(always)]
+    // fn get_dtype(py: Python) -> &PyArrayDescr {
+    //     PyArrayDescr::object(py)
+    // }
+
     #[inline(always)]
-    fn get_dtype(py: Python) -> &PyArrayDescr {
-        PyArrayDescr::object(py)
+    fn get_dtype_bound(py: Python<'_>) -> Bound<'_, PyArrayDescr> {
+        PyArrayDescr::object_bound(py)
     }
 }
 

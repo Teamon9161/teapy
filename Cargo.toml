@@ -37,8 +37,8 @@ regex = "1"
 serde = { version = "1.0", features = ["derive", "rc"] }
 # serde_with = {version = "3.0", features = ["chrono"]}
 ndarray = {features=['rayon', 'serde'], version="0.15"}
-numpy = "0.20.0"
-pyo3 = {version = "0.20.0", features = ["extension-module", "abi3-py38", "macros", "serde"]}
+numpy = "0.21.0"
+pyo3 = {version = "0.21.0", features = ["extension-module", "abi3-py38", "macros", "serde", "gil-refs"]}
 parking_lot = "0.12"
 chrono = {version = "0.4.31", features = ["serde"]}
 arrow = {package = "arrow2", version = "0.18.0", default-features = false, features = ["io_ipc", "io_ipc_compression"]}

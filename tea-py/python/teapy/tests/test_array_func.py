@@ -297,6 +297,9 @@ def test_fillna():
     assert_allclose(s, np.array([101, 5, 6, 733, 101, 34, 101, 101]))
 
 
+test_fillna()
+
+
 def test_clip():
     s = pd.Series([np.nan, 5, 6, 733, np.nan, 34, 456, np.nan])
     assert_allclose3(

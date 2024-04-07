@@ -1,14 +1,17 @@
-#[cfg(feature = "lazy")]
-use crate::pylazy::PyDataDict;
+// #[cfg(feature = "lazy")]
+// use crate::pylazy::PyDataDict;
 #[cfg(feature = "lazy")]
 use crate::pylazy::RefObj;
 use ahash::HashMap;
 use numpy::{
     datetime::{units, Datetime},
-    PyArray, PyArrayDyn,
+    PyArray, PyArrayDyn, PyUntypedArrayMethods,
 };
-use pyo3::{exceptions::PyValueError, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
-use std::sync::Arc;
+use pyo3::{
+    exceptions::PyValueError, prelude::PyAnyMethods, Bound, FromPyObject, PyAny, PyObject,
+    PyResult, Python, ToPyObject,
+};
+// use std::sync::Arc;
 #[cfg(feature = "option_dtype")]
 use tea_core::datatype::{OptF64, OptI64};
 use tea_core::prelude::*;
@@ -155,6 +158,16 @@ impl<T, D> NoDim0 for &PyArray<T, D> {
     }
 }
 
+impl<T, D> NoDim0 for Bound<'_, PyArray<T, D>> {
+    fn no_dim0(self, py: Python) -> PyResult<PyObject> {
+        if self.ndim() == 0 {
+            Ok(self.call_method0("item")?.to_object(py))
+        } else {
+            Ok(self.to_object(py))
+        }
+    }
+}
+
 #[cfg(feature = "lazy")]
 #[derive(Clone, Default)]
 pub struct PyContext<'py> {
@@ -180,18 +193,18 @@ impl<'py> FromPyObject<'py> for PyContext<'py> {
                 ct: None,
                 obj_map: Default::default(),
             })
-        } else if let Ok(dd) = ob.extract::<PyDataDict>() {
-            Ok(Self {
-                // safety: we can cast 'py to 'static as we are running in python
-                ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
-                obj_map: dd.obj_map,
-            })
-        } else if ob.hasattr("_dd")? && ob.get_type().name()? == "DataDict" {
-            let dd = ob.getattr("_dd")?.extract::<PyDataDict>()?;
-            Ok(Self {
-                ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
-                obj_map: dd.obj_map,
-            })
+        // } else if let Ok(dd) = ob.extract::<PyDataDict>() {
+        //     Ok(Self {
+        //         // safety: we can cast 'py to 'static as we are running in python
+        //         ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
+        //         obj_map: dd.obj_map,
+        //     })
+        // } else if ob.hasattr("_dd")? && ob.get_type().name()? == "DataDict" {
+        //     let dd = ob.getattr("_dd")?.extract::<PyDataDict>()?;
+        //     Ok(Self {
+        //         ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
+        //         obj_map: dd.obj_map,
+        //     })
         } else {
             Err(PyValueError::new_err(
                 "Cannot extract a Context from the object",

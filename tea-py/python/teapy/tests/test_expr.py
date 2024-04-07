@@ -142,7 +142,7 @@ def test_group_by_time():
         df_pd = df.set_index("time").resample("12h", closed=closed).sum()
 
         label, v = value.groupby("12h", time_expr=time, closed=closed).agg(
-            tp.ct(0).sum()
+            tp.s(0).sum()
         )
         label = label.eview()
         v = v.eview()

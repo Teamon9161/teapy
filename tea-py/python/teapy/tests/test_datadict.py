@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import teapy as tp
 from numpy.testing import assert_array_equal
-from teapy import DataDict, Expr, ct, get_align_frames_idx
+from teapy import Expr, get_align_frames_idx, s
+from teapy.py_datadict import DataDict
 from teapy.testing import assert_allclose, assert_allclose3
 
 
@@ -86,8 +87,8 @@ def test_to_dict():
     data = {"a": 1, "b": 2}
     dd = DataDict(data)
     assert dd.to_dict() == data
-    dd = dd.with_columns((ct("a") * 2).alias("c"))
-    assert dd.to_dict(context=True) == {"a": 1, "b": 2, "c": 2}
+    dd = dd.with_columns((s("a") * 2).alias("c"))
+    assert dd.to_dict() == {"a": 1, "b": 2, "c": 2}
 
 
 def test_dropna():
@@ -200,7 +201,7 @@ def test_join():
 
     ldd = DataDict({"on": ["a", "b", "d", "c"], "va": [1, 2, 3, 4]})
     rdd = DataDict({"on": ["b", "a", "e"], "vb": [10, 20, 30]})
-    dd = ldd.join(rdd, how="outer", on="on").eval(False)
+    dd = ldd.join(rdd, how="outer", on="on").eval()
     assert_allclose(dd["va"].eview(), np.array([1, 2, 4, 3, np.nan]))
     assert_allclose(dd["vb"].eview(), np.array([20, 10, np.nan, np.nan, 30]))
     assert_array_equal(dd["on"].eview(), np.array(["a", "b", "c", "d", "e"]))
@@ -223,7 +224,7 @@ def test_groupby():
     )
     df = dd.to_pd()
     assert_allclose(
-        dd.groupby("g").agg(ct(1).max().alias("v"))["v"].eview(),
+        dd.groupby("g").agg(s(1).max().alias("v"))["v"].eview(),
         df.groupby("g", sort=False).v.max(),
     )
 
@@ -236,7 +237,7 @@ def test_groupby():
     )
 
     res = dd.groupby("a").agg(
-        ct("c").sum().alias("c1"),
+        s("c").sum().alias("c1"),
         c="max",
     )
     assert_allclose(res["c1"].eview(), np.array([10, 10, 1]))

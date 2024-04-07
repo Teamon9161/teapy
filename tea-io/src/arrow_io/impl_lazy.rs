@@ -28,6 +28,23 @@ impl<'a> ExprIPCExt for Expr<'a> {
     }
 }
 
+pub fn scan_ipc_lazy<'a, P>(path: P, columns: ColSelect<'_>) -> TpResult<Vec<Expr<'a>>>
+where
+    P: AsRef<Path> + Send + Sync + Clone + 'a,
+{
+    let mut schema = super::read_ipc_schema(path.clone())?;
+    let proj = columns.into_proj(&schema)?;
+    if let Some(proj) = proj {
+        schema = schema.filter(|i, _f| proj.contains(&i));
+    }
+    let out = schema
+        .fields
+        .into_iter()
+        .map(|f| Expr::read_ipc(path.clone(), f.name.into()))
+        .collect_trusted();
+    Ok(out)
+}
+
 #[ext_trait]
 impl<'a> DataDictIPCExt for DataDict<'a> {
     pub fn read_ipc<P: AsRef<Path>>(path: P, columns: ColSelect<'_>) -> TpResult<DataDict<'a>> {
@@ -45,16 +62,7 @@ impl<'a> DataDictIPCExt for DataDict<'a> {
     where
         P: AsRef<Path> + Send + Sync + Clone + 'a,
     {
-        let mut schema = super::read_ipc_schema(path.clone())?;
-        let proj = columns.into_proj(&schema)?;
-        if let Some(proj) = proj {
-            schema = schema.filter(|i, _f| proj.contains(&i));
-        }
-        let out = schema
-            .fields
-            .into_iter()
-            .map(|f| Expr::read_ipc(path.clone(), f.name.into()))
-            .collect_trusted();
+        let out = scan_ipc_lazy(path, columns)?;
         Ok(Self::new(out, None))
     }
 }
