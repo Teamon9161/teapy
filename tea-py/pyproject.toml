@@ -10,9 +10,11 @@ description = "A blazingly fast datadict library"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    # "Operating System :: OS Independent",
 ]
 
 [build-system]
@@ -34,7 +36,7 @@ dev-dependencies = [
     "maturin>=1.3.2",
     "pandas>=2.0.3",
     "spyder-kernels>=2.5.0",
-    "polars>=0.20.18",
+    "polars>=0.20.16",
 ]
 
 
