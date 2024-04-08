@@ -10,7 +10,7 @@ defaults:
 env:
   RUST_TOOLCHAIN: nightly-2023-06-01
   PYTHON_VERSION: '3.8'
-  MATURIN_VERSION: '1.0.1'
+  MATURIN_VERSION: '1.5.1'
 
 
 jobs:

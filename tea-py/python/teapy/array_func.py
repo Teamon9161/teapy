@@ -167,12 +167,13 @@ def winsorize(
         median: if method_params is 3, calculate median value at first, and then
             calculate MAD. MAD is the median of the `|v - median|` array where v is the
             element of the array. All elements greater than `median + 3 * MAD` will be
-            set to `median + 3 * MAD`, and all elements less than `median - 3 * MAD` will
-            be set to `median - 3 * MAD` by default.
+            set to `median + 3 * MAD`, and all elements less than
+            `median - 3 * MAD` will be set to `median - 3 * MAD` by default.
 
         sigma: if method_params is 3, calulate the mean and standard deviation of the
-            array, all elements greater than `mean + 3 * std` will be set `mean + 3 * std`,
-            and all elements less than `mean - 3 * std` will be set to `mean - 3 * std`.
+            array, all elements greater than `mean + 3 * std` will be set
+            `mean + 3 * std`, and all elements less than `mean - 3 * std`
+            will be set to `mean - 3 * std`.
     method_params : float64
         if method is quantile: the default is 1%.
         if method is median: the default is 3.

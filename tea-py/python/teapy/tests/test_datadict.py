@@ -41,9 +41,9 @@ def test_init():
 def test_rename():
     dd = DataDict({"a": [2], "b": [45]})
     dd.rename({"a": "c"}, inplace=True)
-    assert set(dd.columns) == set(["c", "b"])
+    assert set(dd.columns) == {"c", "b"}
     dd = dd.rename({"b": "a"})
-    assert set(dd.columns) == set(["c", "a"])
+    assert set(dd.columns) == {"c", "a"}
     dd = dd.rename(["a", "b"])
     assert dd.columns == ["a", "b"]
 
@@ -219,7 +219,7 @@ def test_groupby():
     dd = DataDict(
         {
             "g": ["e", "e"] + ["a", "b", "a", "a", "c"] * n + ["d"],
-            "v": [-0.1, -5] + np.random.randn(5 * n).tolist() + [1],
+            "v": [-0.1, -5, *np.random.randn(5 * n).tolist(), 1],
         }
     )
     df = dd.to_pd()

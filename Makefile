@@ -28,10 +28,9 @@ pytest-cov: venv  ## test with coverage report
 
 .PHONY: format
 format:  ## format and check
-	isort . --profile black
-	black .
+	ruff check --fix
 	cargo fmt --all
-	flake8 --ignore E501,F401,F403,W503 --exclude=.venv
+	ruff check
 	cargo clippy -- -D warnings
 
 .PHONY: coverage

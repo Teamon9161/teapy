@@ -100,30 +100,32 @@ class Selector:
             for i, arg in enumerate(lf.args):
                 if isinstance(arg, Selector):
                     lf.args[i] = convert_one(arg, dd=dd, context=context)
-                elif isinstance(arg, (list, tuple)):
-                    if any([isinstance(a, Selector) for a in arg]):
-                        if isinstance(arg, tuple):
-                            arg = list(arg)
-                        lf.args[i] = [
-                            convert_one(e, dd=dd, context=context)
-                            if isinstance(e, Selector)
-                            else e
-                            for e in arg
-                        ]
+                elif isinstance(arg, (list, tuple)) and any(
+                    isinstance(a, Selector) for a in arg
+                ):
+                    if isinstance(arg, tuple):
+                        arg = list(arg)
+                    lf.args[i] = [
+                        convert_one(e, dd=dd, context=context)
+                        if isinstance(e, Selector)
+                        else e
+                        for e in arg
+                    ]
             # convert keyword argument to Expr
             for k, v in lf.kwargs.items():
                 if isinstance(v, Selector):
                     lf.kwargs[k] = convert_one(v, dd=dd, context=context)
-                elif isinstance(v, (list, tuple)):
-                    if any([isinstance(e, Selector) for e in v]):
-                        if isinstance(v, tuple):
-                            v = list(v)
-                        lf.kwargs[k] = [
-                            convert_one(e, dd=dd, context=context)
-                            if isinstance(e, Selector)
-                            else e
-                            for e in v
-                        ]
+                elif isinstance(v, (list, tuple)) and any(
+                    isinstance(e, Selector) for e in v
+                ):
+                    if isinstance(v, tuple):
+                        v = list(v)
+                    lf.kwargs[k] = [
+                        convert_one(e, dd=dd, context=context)
+                        if isinstance(e, Selector)
+                        else e
+                        for e in v
+                    ]
             self.lazy_funcs[j] = lf
         res = []
         for e in base_exprs:
@@ -153,7 +155,7 @@ class Selector:
 
     def __call__(self, *args, **kwargs):
         if self.current_func is not None:
-            lazy_funcs = self.lazy_funcs + [self.current_func(*args, **kwargs)]
+            lazy_funcs = [*self.lazy_funcs, self.current_func(*args, **kwargs)]
             return self._new_with_func(None, lazy_funcs=lazy_funcs)
         else:
             raise RuntimeError("No function to call")
@@ -218,6 +220,7 @@ def selector_to_expr(exprs, dd=None, context=False):
 
 if __name__ == "__main__":
     import numpy as np
+
     import teapy as tp
     from teapy import s
 

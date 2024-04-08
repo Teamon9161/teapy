@@ -1,9 +1,8 @@
 from functools import wraps
 
 from .selector import Selector
-from .tears import arange
+from .tears import arange, stack
 from .tears import corr as _corr
-from .tears import stack
 
 
 def select_wrapper(func):
@@ -65,7 +64,7 @@ def align_frames(dds, by, sort=True, rev=False, outer_df=False, with_by=True):
     dd_outer = dds[0].apply(lambda e: e.suffix(suffix + "0"), exclude=by)
     # s = 0
     for i, rdd in enumerate(dds[1:]):
-        rdd = rdd.apply(lambda e: e.suffix(suffix + str(i + 1)), exclude=by)
+        rdd = rdd.apply(lambda e, i=i: e.suffix(suffix + str(i + 1)), exclude=by)
         dd_outer.join(rdd, on=by, how="outer", sort=False, inplace=True)
         # # to avoid stack overflow
         # s += 1
@@ -78,15 +77,15 @@ def align_frames(dds, by, sort=True, rev=False, outer_df=False, with_by=True):
         return dd_outer if with_by else dd_outer.exclude(by)
     if with_by:
         return [
-            dd_outer[by + ["^.*" + suffix + f"{i}$"]].apply(
-                lambda e: e.alias(e.name.replace(suffix + str(i), ""))
+            dd_outer[[*by, "^.*" + suffix + f"{i}$"]].apply(
+                lambda e, i=i: e.alias(e.name.replace(suffix + str(i), ""))
             )
             for i in range(len(dds))
         ]
     else:
         return dd_outer[by], [
             dd_outer["^.*" + suffix + f"{i}$"].apply(
-                lambda e: e.alias(e.name.replace(suffix + str(i), ""))
+                lambda e, i=i: e.alias(e.name.replace(suffix + str(i), ""))
             )
             for i in range(len(dds))
         ]

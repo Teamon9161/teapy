@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from .py_datadict import name_prefix
 from .selector import selector_to_expr
 from .tears import Expr
@@ -56,11 +58,6 @@ def __setstate__(self, state):
     return Expr(state["arr"], state.get("name"))
 
 
-# @register
-# def outer_join(self, right, left_other=None, sort=True, rev=False):
-#     out = self._get_outer_join_idx(left_other=left_other, right=right, sort=sort, rev=rev)
-
-
 @register
 def mask_to_idx(self):
     from .tears import arange
@@ -72,12 +69,12 @@ def mask_to_idx(self):
 @register
 def rolling(
     self,
-    window: str | int = None,
+    window: str | int | None = None,
     time_expr=None,
     idx=None,
     offset=None,
     start_by="full",
-    others=None,
+    others: Expr | list(Expr) | None = None,
     by=None,
     type_=None,
 ) -> ExprRolling:
@@ -150,7 +147,8 @@ class ExprRollMixin:
             import warnings
 
             warnings.warn(
-                "by will be deprecated in future release, please use time_expr instead"
+                "by will be deprecated in future release, please use time_expr instead",
+                stacklevel=2,
             )
             self.time_expr = by
 

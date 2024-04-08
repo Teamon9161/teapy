@@ -3,15 +3,23 @@ from .expr import Expr, register
 from .mod_func import *
 from .py_datadict import DataDict, from_dataframe, from_pd, from_pl, scan_ipc
 from .selector import Selector
-from .tears import arange
+from .tears import (
+    arange,
+    concat,
+    context,
+    eval_exprs,
+    expr_register,
+    get_version,
+    nan,
+    stack,
+    timedelta,
+    where_,
+)
 from .tears import calc_ret_single as _calc_ret_single
 from .tears import calc_ret_single_with_spread as _calc_ret_single_with_spread
-from .tears import concat, context, eval_exprs, expr_register
 from .tears import full as _full
-from .tears import get_version, nan
 from .tears import parse_expr as asexpr
 from .tears import parse_expr_list as asexprs
-from .tears import stack, timedelta, where_
 from .window_func import *
 
 __version__ = get_version()
@@ -33,9 +41,8 @@ def eval(lazy_list):
                 exprs.extend(dd.exprs)
             return eval_exprs(exprs, inplace=True)
         else:
-            raise ValueError(
-                f"eval() only accept list of Expr or DataDict, but the type is {type(lazy_list[0])}"
-            )
+            msg = f"eval only accept list(Expr | DataDict), find {type(lazy_list[0])}"
+            raise ValueError(msg)
 
 
 def full(shape, fill_value=nan):
@@ -45,7 +52,7 @@ def full(shape, fill_value=nan):
 
 
 def where(cond, x, y):
-    if any([isinstance(i, Selector) for i in [cond, x, y]]):
+    if any(isinstance(i, Selector) for i in [cond, x, y]):
         return Selector().mod_func("where")(cond, x, y)
     return where_(cond, x, y)
 

@@ -1,9 +1,7 @@
 from .selector import selector_to_expr
-from .tears import Expr
+from .tears import Expr, eval_exprs, stack
 from .tears import context as ct
-from .tears import eval_exprs
 from .tears import scan_ipc as _scan_ipc
-from .tears import stack
 
 name_prefix = "column_"
 
@@ -91,6 +89,7 @@ class DataDict:
         warn(
             "raw_data will be deprecated in future release, use exprs instead",
             DeprecationWarning,
+            stacklevel=2,
         )
         return self.exprs
 
@@ -129,7 +128,7 @@ class DataDict:
                     new_data.extend(res.exprs)
             return DataDict(new_data, copy=self.copy_flag)
         else:
-            raise ValueError("key must be int, str, list or tuple")
+            raise TypeError("key must be int, str, list or tuple")
 
     def set(self, key, value):
         if isinstance(key, int):
@@ -351,7 +350,7 @@ class DataDict:
                 if key != value:
                     del dd[key]
         else:
-            raise ValueError("mapper should be either list or dict")
+            raise TypeError("mapper should be either list or dict")
         return None if inplace else dd
 
     def exclude(self, cols):
@@ -507,14 +506,14 @@ class GroupBy:
                         pattern = r"\((.*?),"
                         eval_info = re.sub(
                             pattern,
-                            "(self.dd['{}'],".format(re.findall(pattern, v)[0]),
+                            f"(self.dd['{re.findall(pattern, v)[0]}'],",
                             v,
                         )
                     else:
                         pattern = r"\((.*?)\)"
                         eval_info = re.sub(
                             pattern,
-                            "(self.dd['{}'])".format(re.findall(pattern, v)[0]),
+                            f"(self.dd['{re.findall(pattern, v)[0]}'])",
                             v,
                         )
                 else:

@@ -42,14 +42,14 @@ class Ols:
     ):
         """
         线性回归
-        y: 因变量，需是一维，支持的类型：能被转为Expr的所有类型
-        x: 自变量，支持的类型：能被转为Expr的所有类型
+        y: 因变量, 需是一维, 支持的类型: 能被转为Expr的所有类型
+        x: 自变量, 支持的类型: 能被转为Expr的所有类型
         constant: 是否在回归时给x加上常数项
-        dropna: 是否需要去掉nan，如果无nan却去除nan会略微降低效率
-        calc_t: 是否需要计算t值和p值，由于不需要计算时可以直接使用lapack求解，因此可以显著提高速度
-        keep_shape: 返回的残差序列resid是否保留原有序列的长度（默认会先去除nan，序列长度可能会改变
-        adjust_t: 是否需要对回归的t值和p值进行Newey-West调整，如果会True则默认calc_t也为True
-        lag: Newey-West调整时的最大滞后阶数，为None时使用最优滞后阶数的公式进行计算.
+        dropna: 是否需要去掉nan, 如果无nan却去除nan会略微降低效率
+        calc_t: 是否需要计算t值和p值, 由于不需要计算时可以直接使用lapack求解, 因此可以显著提高速度
+        keep_shape: 返回的残差序列resid是否保留原有序列的长度(默认会先去除nan, 序列长度可能会改变
+        adjust_t: 是否需要对回归的t值和p值进行Newey-West调整, 如果会True则默认calc_t也为True
+        lag: Newey-West调整时的最大滞后阶数, 为None时使用最优滞后阶数的公式进行计算.
         """
         if not isinstance(y, tp.Selector) and not isinstance(x, tp.Selector):
             y, x = Expr(y), Expr(x)
@@ -118,8 +118,9 @@ class Ols:
             return self.y - self.fitted_values
 
     def result(self, i=1, mark=False, multiplier=1, precision=4, split="\r\n"):
-        """返回第i个位置的回归结果
-        i: 返回第i个位置（从0开始）的自变量的回归结果
+        """
+        返回第i个位置的回归结果
+        i: 返回第i个位置(从0开始)的自变量的回归结果
         mark: 是否需要直接返回标记星号的结果
         """
         if hasattr(self, "tvalues"):
@@ -134,13 +135,13 @@ class Ols:
 # t统计量经过Newey West调整的线性回归
 NwOls = partial(Ols, calc_t=True, adjust_t=True)
 
-# 旧版本的api，后面可能会弃用
+# 旧版本的api, 后面可能会弃用
 sp_ols = partial(Ols, adjust_t=False)
 nw_ols = NwOls
 
 
 class ChowTest:
-    """邹检验，参考chowtest库，注意原库进行f检验时自由度似乎写错了，本函数已进行修正"""
+    """邹检验, 参考chowtest库, 注意原库进行f检验时自由度似乎写错了, 本函数已进行修正"""
 
     def __init__(self, y, x, x1_idx, x2_idx, constant=True):
         y, x, x1_idx, x2_idx = asexprs((y, x, x1_idx, x2_idx))
@@ -160,8 +161,9 @@ class ChowTest:
         self.pvalues = 1 - self.chowvalues.f_cdf(df1=k, df2=(N1 + N2 - 2 * k))
 
     def result(self, i=1, mark=False, multiplier=1, precision=4, split="\r\n"):
-        """返回第i个位置的回归结果
-        i: 返回第i个位置（从0开始）的自变量的回归结果
+        """
+        返回第i个位置的回归结果
+        i: 返回第i个位置(从0开始)的自变量的回归结果
         mark: 是否需要直接返回标记星号的结果
         """
         ret = [self.params[i] * multiplier, self.chowvalues, self.pvalues]
@@ -179,13 +181,13 @@ if __name__ == "__main__":
     from numpy.testing import assert_allclose
 
     def sp_ols_sm(y, x, constant=True):
-        """statsmodels的ols回归函数，效率较低，constant为True则加常数项"""
+        """statsmodels的ols回归函数, 效率较低, constant为True则加常数项"""
         x = np.asanyarray(x)
         x = np.vstack([np.ones(x.shape[0]), x.T]).T if constant else x
         return sm.OLS(np.asanyarray(y), x, missing="drop").fit()
 
     def nw_ols_sm(y, x, lag=None, constant=True):
-        """statsmodels实现的ols函数，效率较低，constant为True则加常数项, lag: 滞后阶数"""
+        """statsmodels实现的ols函数, 效率较低, constant为True则加常数项, lag: 滞后阶数"""
         nlag = int(np.ceil(4 * (y.size / 100) ** (2 / 9))) if lag is None else lag
         x = np.asanyarray(x)
         x = np.vstack([np.ones(x.shape[0]), x.T]).T if constant else x

@@ -17,6 +17,7 @@ venv/
 # cache and ide
 .vscode/
 .DS_Store
+.ruff_cache/
 **/__pycache__
 
 # Rust/Cargo generated files
