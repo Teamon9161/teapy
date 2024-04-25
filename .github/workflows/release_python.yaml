@@ -9,9 +9,6 @@ defaults:
 
 env:
   RUSTFLAGS: "-Dwarnings"
-  # RUST_TOOLCHAIN: nightly-2023-06-01
-  # PYTHON_VERSION: '3.8'
-  # MATURIN_VERSION: '1.5.1'
 
 
 jobs:
@@ -22,6 +19,11 @@ jobs:
         target: [x86_64, x86]
     steps:
       - uses: actions/checkout@v4
+      # Avoid potential out-of-memory errors
+      - name: Set swap space for Linux
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -139,105 +141,3 @@ jobs:
         with:
           command: upload
           args: --non-interactive --skip-existing *
-
-  # manylinux-x64_64:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ env.PYTHON_VERSION }}
-
-  #     - name: Publish wheel
-  #       uses: messense/maturin-action@v1
-  #       env:
-  #         MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-  #         RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
-  #       with:
-  #         # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
-  #         maturin-version: ${{ env.MATURIN_VERSION }}
-  #         command: publish
-  #         args: --manifest-path tea-py/Cargo.toml --skip-existing -o wheels -u __token__
-
-
-  # win-latest:
-  #   runs-on: windows-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ env.PYTHON_VERSION }}
-
-  #     - name: Publish wheel
-  #       uses: messense/maturin-action@v1
-  #       env:
-  #         MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-  #         RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2
-  #       with:
-  #         # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
-  #         maturin-version: ${{ env.MATURIN_VERSION }}
-  #         command: publish
-  #         args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u __token__
-
-  # macos_latest:
-  #   runs-on: macos-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ env.PYTHON_VERSION }}
-
-  #     - name: Publish wheel
-  #       uses: messense/maturin-action@v1
-  #       env:
-  #         MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-  #         RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
-  #         CXXFLAGS: -stdlib=libc++
-  #       with:
-  #         # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
-  #         maturin-version: ${{ env.MATURIN_VERSION }}
-  #         command: publish
-  #         args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u __token__
-
-  # macos-aarch64:
-  #   runs-on: macos-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ env.PYTHON_VERSION }}
-
-  #     - name: Set up Rust targets
-  #       run: rustup target add aarch64-apple-darwin
-
-  #     - name: Publish wheel
-  #       uses: messense/maturin-action@v1
-  #       env:
-  #         MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-  #       with:
-  #         # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
-  #         maturin-version: ${{ env.MATURIN_VERSION }}
-  #         command: publish
-  #         args: --manifest-path tea-py/Cargo.toml --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u __token__
-
-  
-  # # # Needed for Docker on Apple M1
-  # # manylinux-aarch64:
-  # #   runs-on: ubuntu-latest
-  # #   steps:
-  # #     - uses: actions/checkout@v3
-  # #     - uses: actions/setup-python@v4
-  # #       with:
-  # #         python-version: ${{ env.PYTHON_VERSION }}
-
-  # #     - name: Publish wheel
-  # #       uses: messense/maturin-action@v1
-  # #       env:
-  # #         MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-  # #         JEMALLOC_SYS_WITH_LG_PAGE: 16
-  # #       with:
-  # #         rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
-  # #         maturin-version: ${{ env.MATURIN_VERSION }}
-  # #         target: aarch64-unknown-linux-gnu
-  # #         command: publish
-  # #         args: --skip-existing --no-sdist -o wheels -i python -u __token__
