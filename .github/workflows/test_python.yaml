@@ -53,9 +53,3 @@ jobs:
           cargo fmt --all -- --check
           cd tea-py
           ruff check
-          # black --check .
-          # isort --check .  --profile black
-      # - name: Run linting
-      #   run: |
-      #     cd tea-py
-      #     flake8 --ignore E501,F401,F403,W503

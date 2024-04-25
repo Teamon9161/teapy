@@ -7,15 +7,12 @@ from .tears import corr as _corr
 
 def select_wrapper(func):
     name = func.__qualname__
-    print(name)
-
     @wraps(func)
     def _wrap_func(exprs, *args, **kwargs):
         if len(exprs) and isinstance(exprs[0], Selector):
             return Selector().mod_func(name)(exprs, *args, **kwargs)
         else:
             return func(exprs, *args, **kwargs)
-
     return _wrap_func
 
 

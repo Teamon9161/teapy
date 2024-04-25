@@ -618,6 +618,7 @@ pub trait BoolType {
 }
 
 impl BoolType for bool {
+    #[inline(always)]
     fn bool_(self) -> bool {
         self
     }
