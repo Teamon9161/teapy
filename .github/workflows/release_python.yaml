@@ -8,7 +8,7 @@ defaults:
     shell: bash
 
 env:
-  RUST_TOOLCHAIN: nightly-2023-06-01
+  # RUST_TOOLCHAIN: nightly-2023-06-01
   PYTHON_VERSION: '3.8'
   MATURIN_VERSION: '1.5.1'
 
@@ -28,7 +28,7 @@ jobs:
           MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
           RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
         with:
-          rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
+          # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
           args: --manifest-path tea-py/Cargo.toml --skip-existing -o wheels -u __token__
@@ -48,7 +48,7 @@ jobs:
           MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
           RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2
         with:
-          rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
+          # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
           args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u __token__
@@ -68,7 +68,7 @@ jobs:
           RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
           CXXFLAGS: -stdlib=libc++
         with:
-          rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
+          # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
           args: --manifest-path tea-py/Cargo.toml --no-sdist --skip-existing -o wheels -i python -u __token__
@@ -89,7 +89,7 @@ jobs:
         env:
           MATURIN_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         with:
-          rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
+          # rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
           maturin-version: ${{ env.MATURIN_VERSION }}
           command: publish
           args: --manifest-path tea-py/Cargo.toml --target aarch64-apple-darwin --skip-existing --no-sdist -o wheels -i python -u __token__
