@@ -211,17 +211,17 @@ impl<'a> DataDict<'a> {
         }
     }
 
-    /// drop some columns inplace, return the name of the dropped columns
-    #[inline]
-    pub fn drop_inplace(&mut self, col: ColumnSelector) -> TpResult<Vec<String>> {
-        let drop_cols = self.get_selector_out_name(col);
-        self.data = self
-            .data
-            .drain_filter(|e| !drop_cols.contains(&e.name().unwrap()))
-            .collect::<Vec<_>>();
-        self.reproduce_map();
-        Ok(drop_cols)
-    }
+    // /// drop some columns inplace, return the name of the dropped columns
+    // #[inline]
+    // pub fn drop_inplace(&mut self, col: ColumnSelector) -> TpResult<Vec<String>> {
+    //     let drop_cols = self.get_selector_out_name(col);
+    //     self.data = self
+    //         .data
+    //         .drain_filter(|e| !drop_cols.contains(&e.name().unwrap()))
+    //         .collect::<Vec<_>>();
+    //     self.reproduce_map();
+    //     Ok(drop_cols)
+    // }
 
     /// Adjust when idx < 0
     #[inline]

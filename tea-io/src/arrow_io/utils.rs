@@ -13,9 +13,7 @@ pub(crate) fn columns_to_projection(columns: &[&str], schema: &Schema) -> TpResu
 
         for column in columns {
             let Some(&i) = column_names.get(column) else {
-                return Err(
-                    format!("unable to find column {:?}", column).into(),
-                )
+                return Err(format!("unable to find column {:?}", column).into());
             };
             prj.push(i);
         }

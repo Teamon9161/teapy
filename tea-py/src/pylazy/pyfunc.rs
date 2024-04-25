@@ -30,6 +30,10 @@ pub fn parse_expr_nocopy(obj: &PyAny) -> PyResult<PyExpr> {
 /// A util function to convert python object to PyExpr
 ///
 /// copy: whether to copy numpy.ndarray when creating the PyExpr
+///
+/// # Safety
+///
+/// we need python object to be alive when we are using the PyExpr if copy is false
 pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
     if let Ok(expr) = obj.extract::<PyExpr>() {
         Ok(expr)
@@ -279,7 +283,7 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
 pub fn concat_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
-    let mut e1 = exprs.get(0).unwrap().clone();
+    let mut e1 = exprs.first().unwrap().clone();
     let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
     e1.e.concat(
         exprs.into_iter().skip(1).map(|e| e.e).collect_trusted(),
@@ -305,7 +309,7 @@ pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> 
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
 pub fn stack_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
-    let mut e1 = exprs.get(0).unwrap().clone();
+    let mut e1 = exprs.first().unwrap().clone();
     let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
     e1.e.stack(
         exprs.into_iter().skip(1).map(|e| e.e).collect_trusted(),

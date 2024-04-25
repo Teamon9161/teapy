@@ -49,7 +49,7 @@ impl<'a, T, D: Dimension> ArrView<'a, T, D> {
 
     /// Create an array view from vec directly.
     #[inline]
-    pub fn from_ref_vec<Sh>(shape: Sh, vec: &Vec<T>) -> Self
+    pub fn from_ref_vec<Sh>(shape: Sh, vec: &[T]) -> Self
     where
         Sh: Into<StrideShape<D>>,
     {

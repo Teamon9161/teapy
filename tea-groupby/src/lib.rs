@@ -74,11 +74,7 @@ impl<T, S: Data<Elem = T>> HashExt1d for ArrBase<S, Ix1> {
     where
         T: Hash,
     {
-        self.map(|v| {
-            let mut hasher = BUILD_HASHER.build_hasher();
-            v.hash(&mut hasher);
-            hasher.finish()
-        })
+        self.map(|v| BUILD_HASHER.hash_one(v))
     }
 
     /// Hash each element of the array.

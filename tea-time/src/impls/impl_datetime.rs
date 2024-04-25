@@ -72,9 +72,8 @@ impl<U: NPUnit> From<NPDatetime<U>> for DateTime {
     }
 }
 
-impl ToString for DateTime {
-    #[inline(always)]
-    fn to_string(&self) -> String {
-        self.strftime(None)
+impl std::fmt::Display for DateTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.strftime(None))
     }
 }

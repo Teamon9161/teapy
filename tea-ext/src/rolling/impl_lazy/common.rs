@@ -160,8 +160,9 @@ impl<'a> RollingExt for Expr<'a> {
                             };
                             // this is safe as we don't return a view on the current context
                             // into_owned is important here to guarantee the above
-                            let current_ctx: Arc<DataDict> =
-                                Arc::new(unsafe { std::mem::transmute(current_ctx) });
+                            let current_ctx: Arc<DataDict> = Arc::new(unsafe {
+                                std::mem::transmute::<DataDict<'_>, DataDict<'a>>(current_ctx)
+                            });
                             let mut data = init_data.clone();
                             let mut ctx = Some(current_ctx);
                             for f in &nodes {
@@ -194,8 +195,9 @@ impl<'a> RollingExt for Expr<'a> {
                             };
                             // this is safe as we don't return a view on the current context
                             // into_owned is important here to guarantee the above
-                            let current_ctx: Arc<DataDict> =
-                                Arc::new(unsafe { std::mem::transmute(current_ctx) });
+                            let current_ctx: Arc<DataDict> = Arc::new(unsafe {
+                                std::mem::transmute::<DataDict<'_>, DataDict<'a>>(current_ctx)
+                            });
                             let mut data = init_data.clone();
                             let mut ctx = Some(current_ctx);
                             for f in &nodes {

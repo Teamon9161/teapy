@@ -1,5 +1,3 @@
-#![feature(drain_filter)] // need in DataDict drop_inplace
-
 extern crate tea_core as core;
 
 mod datadict;

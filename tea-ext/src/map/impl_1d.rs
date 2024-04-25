@@ -260,7 +260,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         SO: DataMut<Elem = T>,
         S3: Data<Elem = bool> + Send + Sync,
     {
-        zip(self, mask.into_iter())
+        zip(self, mask)
             .filter(|(_v, m)| *m)
             .zip(out.iter_mut())
             .for_each(|((v, _m), o)| *o = v.clone())

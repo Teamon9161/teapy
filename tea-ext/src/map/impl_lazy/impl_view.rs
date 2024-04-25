@@ -1,3 +1,5 @@
+#![allow(clippy::missing_transmute_annotations)]
+
 use lazy::{adjust_slice, Expr};
 use ndarray::SliceInfoElem;
 use std::mem::transmute;
@@ -5,7 +7,7 @@ use tea_core::prelude::*;
 
 #[ext_trait]
 impl<'a> ExprViewExt for Expr<'a> {
-    #[allow(unreachable_patterns)]
+    #[allow(unreachable_patterns, clippy::missing_transmute_annotations)]
     fn index_axis(&mut self, index: Expr<'a>, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;

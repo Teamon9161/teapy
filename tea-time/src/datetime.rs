@@ -146,6 +146,7 @@ impl DateTime {
     }
 }
 
+#[allow(dead_code)]
 #[pyclass]
 pub struct PyDateTime(DateTime);
 
@@ -322,6 +323,7 @@ impl From<&str> for TimeDelta {
     }
 }
 
+#[allow(dead_code)]
 #[pyclass]
 pub struct PyTimeDelta(TimeDelta);
 

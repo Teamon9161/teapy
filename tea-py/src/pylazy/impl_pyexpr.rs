@@ -238,7 +238,11 @@ impl PyExpr {
         py: Python,
     ) -> PyResult<PyObject> {
         let ct: PyContext<'static> = if let Some(context) = context {
-            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+            unsafe {
+                std::mem::transmute::<PyContext<'_>, PyContext<'static>>(
+                    context.extract::<PyContext>()?,
+                )
+            }
         } else {
             Default::default()
         };
@@ -329,7 +333,11 @@ impl PyExpr {
         py: Python<'py>,
     ) -> PyResult<PyObject> {
         let ct: PyContext<'static> = if let Some(context) = context {
-            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+            unsafe {
+                std::mem::transmute::<PyContext<'_>, PyContext<'static>>(
+                    context.extract::<PyContext>()?,
+                )
+            }
         } else {
             Default::default()
         };

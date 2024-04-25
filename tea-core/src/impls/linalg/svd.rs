@@ -72,7 +72,7 @@ impl ArrD<f64> {
                     .map(|x| x.as_mut_ptr())
                     .unwrap_or([].as_mut_ptr()) as *mut f64, // vt
                 &vt_row,                    // ldvt
-                work_size.as_mut_ptr() as *mut f64,
+                work_size.as_mut_ptr(),
                 &(-1), // lwork
                 &mut info,
             );

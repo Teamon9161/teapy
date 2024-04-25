@@ -49,7 +49,7 @@ pub fn read_ipc<'a, P: AsRef<Path>>(
                         let mut arrs = reader
                             .map(|batch| batch.unwrap().into_arrays())
                             .collect::<Vec<_>>();
-                        let arrs = (0..arrs.get(0).unwrap().len())
+                        let arrs = (0..arrs.first().unwrap().len())
                             .map(|_| {
                                 let mut out = Vec::with_capacity(arrs.len());
                                 // out.push(arrs.pop().unwrap());
@@ -60,10 +60,7 @@ pub fn read_ipc<'a, P: AsRef<Path>>(
                         arrs.into_par_iter()
                             .rev()
                             .map(|a| {
-                                let a = a
-                                    .into_par_iter()
-                                    .map(|arr| ArrOk::from_arrow(arr))
-                                    .collect();
+                                let a = a.into_par_iter().map(ArrOk::from_arrow).collect();
                                 ArrOk::same_dtype_concat_1d(a)
                             })
                             .collect()
@@ -72,7 +69,7 @@ pub fn read_ipc<'a, P: AsRef<Path>>(
                         chunk
                             .into_arrays()
                             .into_par_iter()
-                            .map(|a| ArrOk::from_arrow(a))
+                            .map(ArrOk::from_arrow)
                             .collect()
                     };
                     return Ok((schema, out));
@@ -127,15 +124,12 @@ pub fn read_ipc<'a, P: AsRef<Path>>(
         arrs.into_par_iter()
             .rev()
             .map(|a| {
-                let a = a
-                    .into_par_iter()
-                    .map(|arr| ArrOk::from_arrow(arr))
-                    .collect();
+                let a = a.into_par_iter().map(ArrOk::from_arrow).collect();
                 ArrOk::same_dtype_concat_1d(a)
             })
             .collect()
     } else {
-        arrs.into_par_iter().map(|a| ArrOk::from_arrow(a)).collect()
+        arrs.into_par_iter().map(ArrOk::from_arrow).collect()
     };
     Ok((schema, out))
 }

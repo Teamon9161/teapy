@@ -12,10 +12,17 @@ use std::string::ToString;
 #[repr(transparent)]
 pub struct PyValue(pub PyObject);
 
-impl ToString for PyValue {
-    #[inline(always)]
-    fn to_string(&self) -> String {
-        self.0.to_string()
+// impl ToString for PyValue {
+//     #[inline(always)]
+//     fn to_string(&self) -> String {
+//         self.0.to_string()
+//     }
+// }
+
+impl std::fmt::Display for PyValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // write!(f, "{}", self.strftime(None))
+        std::fmt::Display::fmt(&self.0, f)
     }
 }
 

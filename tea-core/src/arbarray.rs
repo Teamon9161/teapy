@@ -244,7 +244,7 @@ impl<'a, T> ArbArray<'a, T> {
             if let ArbArray::ArrowChunk(arrow_chunk) = arrow_chunk {
                 let arr_vec = arrow_chunk
                     .into_par_iter()
-                    .map(|arr| ArrOk::from_arrow(arr))
+                    .map(ArrOk::from_arrow)
                     .collect::<Vec<_>>();
                 let arr = ArrOk::same_dtype_concat_1d(arr_vec);
                 *self = arr.cast()
@@ -321,21 +321,21 @@ impl<'a, T> ArbArray<'a, T> {
     {
         if T::dtype() == T2::dtype() {
             // safety: T and T2 are the same type
-            unsafe { std::mem::transmute(self) }
+            unsafe { std::mem::transmute::<ArbArray<'a, T>, ArbArray<'a, T2>>(self) }
         } else {
             self.view().cast::<T2>().into()
         }
     }
 
     #[inline]
-    pub fn cast_with<'b, T2>(self, _other: &'b ArbArray<'a, T2>) -> ArbArray<'b, T2>
+    pub fn cast_with<T2>(self, _other: &ArbArray<'a, T2>) -> ArbArray<'a, T2>
     where
         T2: GetDataType,
         T: GetDataType,
     {
         if T::dtype() == T2::dtype() {
             // safety: T and T2 are the same type
-            unsafe { std::mem::transmute(self) }
+            unsafe { std::mem::transmute::<ArbArray<'a, T>, ArbArray<'a, T2>>(self) }
         } else {
             unreachable!()
         }
@@ -349,7 +349,7 @@ impl<'a, T> ArbArray<'a, T> {
     {
         if T::dtype() == T2::dtype() {
             // safety: T and T2 are the same type
-            unsafe { std::mem::transmute(self) }
+            unsafe { std::mem::transmute::<&ArbArray<'a, T>, &ArbArray<'a, T2>>(self) }
         } else {
             unreachable!()
         }

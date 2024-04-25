@@ -112,7 +112,11 @@ impl PyExpr {
     #[allow(unreachable_patterns)]
     pub fn eval_inplace(&mut self, context: Option<&PyAny>, freeze: bool) -> PyResult<()> {
         let ct: PyContext<'static> = if let Some(context) = context {
-            unsafe { std::mem::transmute(context.extract::<PyContext>()?) }
+            unsafe {
+                std::mem::transmute::<PyContext<'_>, PyContext<'static>>(
+                    context.extract::<PyContext>()?,
+                )
+            }
         } else {
             Default::default()
         };

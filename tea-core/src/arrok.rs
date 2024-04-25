@@ -208,7 +208,7 @@ impl<'a> ArrOk<'a> {
             // 'a and 'b
             // remove this transmute once we add a different lifetime
             // for &str datatype
-            unsafe { std::mem::transmute(a) }
+            unsafe { std::mem::transmute::<ArrOk<'a>, ArrOk<'b>>(a) }
         })
     }
 
@@ -326,7 +326,7 @@ impl<'a> ArrOk<'a> {
         }
     }
 
-    #[allow(unreachable_patterns)]
+    #[allow(unreachable_patterns, clippy::missing_transmute_annotations)]
     #[inline]
     pub fn view(&self) -> ArrOk<'_> {
         match self {

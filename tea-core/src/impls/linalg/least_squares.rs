@@ -223,11 +223,11 @@ pub fn least_squares_impl(
             &nrhs,
             a_t.as_mut()
                 .map(|x| x.as_mut_ptr())
-                .unwrap_or(mut_a.as_mut_ptr()) as *mut f64,
+                .unwrap_or(mut_a.as_mut_ptr()),
             &m,
             b_t.as_mut()
                 .map(|x| x.as_mut_ptr())
-                .unwrap_or(mut_b.as_mut_ptr()) as *mut f64,
+                .unwrap_or(mut_b.as_mut_ptr()),
             &m_,
             singular_values.as_mut_ptr() as *mut f64,
             &rcond,

@@ -50,7 +50,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                         .map(|e| e.view_arr(ctx.as_ref()).unwrap().deref())
                         .collect::<Vec<_>>()
                 })
-                .unwrap_or(vec![]);
+                .unwrap_or_default();
             let others_ref = others.iter().collect::<Vec<_>>();
             let arr = data.view_arr(ctx.as_ref()).unwrap();
             let len = arr.len();

@@ -214,7 +214,7 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
 }
 
 // #[allow(clippy::useless_conversion, clippy::type_complexity)]
-#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+#[allow(suspicious_double_ref_op, noop_method_call, clippy::clone_on_copy)]
 /// return outer_keys, left_idx and right_idx to select from left and right table
 pub fn join_outer<'a>(
     left_keys: &[&ArrOk<'a>],

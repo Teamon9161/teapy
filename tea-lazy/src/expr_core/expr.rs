@@ -346,7 +346,7 @@ impl<'a> Expr<'a> {
         let data = e.view_data(context)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
-        unsafe { Ok(std::mem::transmute(data)) }
+        unsafe { Ok(std::mem::transmute::<&Data<'_>, &Data<'a>>(data)) }
     }
 
     #[inline]
@@ -368,7 +368,7 @@ impl<'a> Expr<'a> {
         let arr = e.view_arr(ctx)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
-        unsafe { Ok(std::mem::transmute(arr)) }
+        unsafe { Ok(std::mem::transmute::<&ArrOk<'_>, &ArrOk<'a>>(arr)) }
     }
 
     #[inline]
@@ -378,7 +378,7 @@ impl<'a> Expr<'a> {
         let arr = e.view_arr_vec(ctx)?;
         // safety: the array can only be read when the expression is already evaluated
         // so the data of the array should not be changed
-        unsafe { Ok(std::mem::transmute(arr)) }
+        unsafe { Ok(std::mem::transmute::<Vec<&ArrOk<'_>>, Vec<&ArrOk<'a>>>(arr)) }
     }
 
     #[inline(always)]
