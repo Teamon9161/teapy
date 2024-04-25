@@ -12,12 +12,12 @@ use std::{
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
-use chrono::{Datelike, DurationRound, Months, NaiveDateTime, NaiveTime, Timelike};
+use chrono::{DateTime as CrDateTime, Datelike, DurationRound, Months, NaiveTime, Timelike, Utc};
 
 use crate::{convert::*, TimeDelta};
 
 #[derive(Clone, Copy, Default, Hash, Eq, PartialEq, PartialOrd)]
-pub struct DateTime(pub Option<NaiveDateTime>);
+pub struct DateTime(pub Option<CrDateTime<Utc>>);
 
 impl DateTime {
     #[inline]
@@ -29,7 +29,7 @@ impl DateTime {
 
     #[inline]
     pub fn from_timestamp_opt(secs: i64, nsecs: u32) -> Self {
-        Self(NaiveDateTime::from_timestamp_opt(secs, nsecs))
+        Self(CrDateTime::from_timestamp(secs, nsecs))
     }
 
     #[inline]
@@ -98,7 +98,9 @@ impl DateTime {
     #[inline(always)]
     pub fn parse(s: &str, fmt: &str) -> Result<Self, String> {
         Ok(Self(Some(
-            NaiveDateTime::parse_from_str(s, fmt).map_err(|e| format!("{e}"))?,
+            CrDateTime::parse_from_str(s, fmt)
+                .map(|v| v.into())
+                .map_err(|e| format!("{e}"))?,
         )))
     }
 

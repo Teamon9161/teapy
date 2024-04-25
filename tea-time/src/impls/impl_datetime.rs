@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime as CrDateTime, Utc};
 use numpy::{
     datetime::{Datetime as NPDatetime, Unit as NPUnit},
     npyffi::NPY_DATETIMEUNIT,
@@ -18,7 +18,7 @@ impl std::fmt::Debug for DateTime {
 }
 
 impl Deref for DateTime {
-    type Target = Option<NaiveDateTime>;
+    type Target = Option<CrDateTime<Utc>>;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -31,16 +31,16 @@ impl Deref for DateTime {
 //     }
 // }
 
-impl From<Option<NaiveDateTime>> for DateTime {
+impl From<Option<CrDateTime<Utc>>> for DateTime {
     #[inline(always)]
-    fn from(dt: Option<NaiveDateTime>) -> Self {
+    fn from(dt: Option<CrDateTime<Utc>>) -> Self {
         Self(dt)
     }
 }
 
-impl From<NaiveDateTime> for DateTime {
+impl From<CrDateTime<Utc>> for DateTime {
     #[inline(always)]
-    fn from(dt: NaiveDateTime) -> Self {
+    fn from(dt: CrDateTime<Utc>) -> Self {
         Self(Some(dt))
     }
 }
