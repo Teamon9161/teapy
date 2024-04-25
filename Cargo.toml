@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.7.1"
+version = "0.7.2"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
