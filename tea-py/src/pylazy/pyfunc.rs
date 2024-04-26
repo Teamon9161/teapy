@@ -85,17 +85,15 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         let module_name = obj.getattr("__module__")?.extract::<&str>()?;
         let module_name = module_name.split('.').next().unwrap();
         if module_name == "pandas" {
-            dbg!("parse pd Series");
+            // dbg!("parse pd Series");
             let obj = obj.getattr("values")?;
             return parse_expr(obj, copy);
         } else if module_name == "polars" {
             let kwargs = PyDict::new(obj.py());
             kwargs.set_item("writable", false)?;
             let dtype = obj.getattr("dtype")?.str()?.to_str()?;
-            // let mut obj = obj.getattr("to_numpy")?.call((), Some(kwargs))?;
             let mut obj = obj.call_method("to_numpy", (), Some(kwargs))?;
             if dtype == "Utf8" {
-                // obj = obj.getattr("astype")?.call1(("str",))?;
                 obj = obj.call_method("astype", ("str",), None)?;
             }
             return parse_expr(obj, copy);
@@ -512,9 +510,4 @@ pub fn scan_ipc(path: String, columns: PyColSelect) -> PyResult<Vec<PyExpr>> {
         .map(|e| e.into())
         .collect();
     Ok(out)
-    // let dd = DataDict::scan_ipc(path, columns.0).map_err(StrError::to_py)?;
-    // Ok(PyDataDict {
-    //     dd,
-    //     obj_map: Default::default(),
-    // })
 }
