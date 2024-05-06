@@ -38,3 +38,9 @@ paste = { workspace = true }
 rayon = { workspace = true }
 num = { workspace = true, optional = true}
 statrs = { version = "0.16", optional=true }
+
+# [dependencies.tevec]
+# git = "https://github.com/Teamon9161/tevec.git"
+# branch = "master"
+# default-features = false
+# features = ["nd_array", "rolling"]
