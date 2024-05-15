@@ -1,9 +1,10 @@
-mod cast;
-mod option_datatype;
+// mod cast;
+// mod option_datatype;
 mod pyvalue;
 
-pub use cast::Cast;
-pub use option_datatype::OptUsize;
+// pub use cast::Cast;
+pub use tevec::prelude::Cast;
+// pub use option_datatype::OptUsize;
 pub use pyvalue::PyValue;
 
 use num::{traits::MulAdd, Num};
@@ -184,7 +185,8 @@ impl_datatype!(I64, i64);
 impl_datatype!(U64, u64);
 impl_datatype!(Usize, usize);
 impl_datatype!(String, String);
-impl_datatype!(OptUsize, OptUsize);
+// impl_datatype!(OptUsize, OptUsize);
+impl_datatype!(OptUsize, Option<usize>);
 impl_datatype!(VecUsize, Vec<usize>);
 
 #[cfg(feature = "time")]

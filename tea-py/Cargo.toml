@@ -28,7 +28,8 @@ methods = ["agg", "map", "rolling", "concat", "create"]  # extend methods
 lazy_io = ["io", "lazy", "tea-io/lazy"]
 lazy_groupby = ["groupby", "lazy", "tea-groupby/lazy"]
 lazy_time = ["time", "lazy", "tea-lazy/time"]
-lazy_option_dtype = ["option_dtype", "lazy", "tea-lazy/option_dtype"]
+# lazy_option_dtype = ["option_dtype", "lazy", "tea-lazy/option_dtype"]
+lazy_option_dtype = ["lazy"]
 
 # dtypes extension
 lazy = ["tea-lazy", "tea-ext/lazy"]

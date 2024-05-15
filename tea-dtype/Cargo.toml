@@ -8,12 +8,13 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["option_dtype", "time"]
+default = ["time"]
 option_dtype = []
 srd = ["serde"]
 time = ["tea-time"]
 
 [dependencies]
+tevec = { workspace = true, default-features = false}
 tea-time = {path = "../tea-time", optional = true}
 tea-utils = {path = "../tea-utils"}
 num = { workspace = true }
