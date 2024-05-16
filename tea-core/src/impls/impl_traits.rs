@@ -1,12 +1,6 @@
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeDelta};
-#[cfg(feature = "option_dtype")]
-use datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
-use datatype::{OptUsize, PyValue};
-
-// #[cfg(feature = "lazy")]
-// use crate::ExprElement;
-// use crate::ViewOnBase;
+use datatype::PyValue;
 
 use crate::prelude::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, Dimension, RawData};
@@ -158,18 +152,8 @@ impl_from!(
     (DateTime, DateTime),
     #[cfg(feature = "time")]
     (TimeDelta, TimeDelta), //, (Str, &str)
-    (OptUsize, OptUsize),
-    (VecUsize, Vec<usize>),
-    #[cfg(feature = "option_dtype")]
-    (OptF64, OptF64),
-    #[cfg(feature = "option_dtype")]
-    (OptF32, OptF32),
-    #[cfg(feature = "option_dtype")]
-    (OptI32, OptI32),
-    #[cfg(feature = "option_dtype")]
-    (OptI64, OptI64),
-    #[cfg(feature = "option_dtype")]
-    (OptBool, OptBool)
+    (OptUsize, Option<usize>),
+    (VecUsize, Vec<usize>)
 );
 
 impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {

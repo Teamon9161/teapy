@@ -5,7 +5,7 @@ use super::arbarray::ArbArray;
 use super::view::ArrViewD;
 #[cfg(any(feature = "concat", feature = "arw"))]
 use crate::{own::Arr1, utils::CollectTrustedToVec};
-use datatype::{match_datatype_arm, Cast, DataType, GetDataType, OptUsize, PyValue};
+use datatype::{match_datatype_arm, Cast, DataType, GetDataType, PyValue};
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeDelta};
 use ndarray::{Axis, IxDyn, SliceArg};
@@ -21,7 +21,7 @@ pub enum ArrOk<'a> {
     U8(ArbArray<'a, u8>),
     U64(ArbArray<'a, u64>),
     Usize(ArbArray<'a, usize>),
-    OptUsize(ArbArray<'a, OptUsize>),
+    OptUsize(ArbArray<'a, Option<usize>>),
     F32(ArbArray<'a, f32>),
     F64(ArbArray<'a, f64>),
     I32(ArbArray<'a, i32>),
@@ -228,7 +228,7 @@ impl<'a> ArrOk<'a> {
             ArrOk::I32(a) => a.cast::<f32>().into(),
             ArrOk::I64(a) => a.cast::<f64>().into(),
             ArrOk::Usize(a) => a.cast::<f64>().into(),
-            ArrOk::OptUsize(a) => a.cast::<f64>().into(),
+            // ArrOk::OptUsize(a) => a.cast::<f64>().into(),
             #[cfg(feature = "option_dtype")]
             ArrOk::OptI32(a) => a.cast::<OptF32>().into(),
             #[cfg(feature = "option_dtype")]
@@ -298,10 +298,10 @@ impl<'a> ArrOk<'a> {
         match_arrok!(self, a, { a }, Str)
     }
 
-    #[inline]
-    pub fn cast_object(self) -> ArbArray<'a, PyValue> {
-        match_arrok!(self, a, { a }, Object)
-    }
+    // #[inline]
+    // pub fn cast_object(self) -> ArbArray<'a, PyValue> {
+    //     match_arrok!(self, a, { a }, Object)
+    // }
 
     #[inline]
     pub fn cast_vecusize(self) -> ArbArray<'a, Vec<usize>> {
@@ -348,16 +348,6 @@ impl<'a> ArrOk<'a> {
             ArrOk::DateTime(arr) => arr.view().into(),
             #[cfg(feature = "time")]
             ArrOk::TimeDelta(arr) => arr.view().into(),
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptF64(arr) => arr.view().into(),
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptF32(arr) => arr.view().into(),
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptI32(arr) => arr.view().into(),
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptI64(arr) => arr.view().into(),
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptBool(arr) => arr.view().into(),
             _ => unimplemented!("view is not implemented for this dtype"),
         }
         // match_arr!(&self, arr, { arr.view().into() })
@@ -422,16 +412,6 @@ impl_same_dtype_concat_1d!(
     DateTime,
     #[cfg(feature = "time")]
     TimeDelta,
-    #[cfg(feature = "option_dtype")]
-    OptF32,
-    #[cfg(feature = "option_dtype")]
-    OptF64,
-    #[cfg(feature = "option_dtype")]
-    OptI32,
-    #[cfg(feature = "option_dtype")]
-    OptI64,
-    #[cfg(feature = "option_dtype")]
-    OptBool
 );
 
 impl<'a> Cast<ArbArray<'a, &'a str>> for ArrOk<'a> {
@@ -624,7 +604,7 @@ impl_from_arrow!(
 );
 
 macro_rules! impl_arrok_cast {
-    ($($(#[$meta: meta])? $T: ty: $cast_func: ident),*) => {
+    ($($(#[$meta: meta])? $T: ty: $cast_func: ident),* $(,)? ) => {
         $(
             $(#[$meta])?
             impl<'a> Cast<ArbArray<'a, $T>> for ArrOk<'a>
@@ -632,14 +612,9 @@ macro_rules! impl_arrok_cast {
                 #[inline]
                 fn cast(self) -> ArbArray<'a, $T> {
                     match_arrok!(self, a, { a.cast::<$T>() },
-                        U8, F32, F64, I32, I64, U64, Usize, Bool, OptUsize, String, Str, Object,
+                        U8, F32, F64, I32, I64, U64, Usize, OptUsize, Bool, String, Str, Object,
                         #[cfg(feature="time")] DateTime,
-                        #[cfg(feature="time")] TimeDelta,
-                        #[cfg(feature = "option_dtype")] OptF32,
-                        #[cfg(feature = "option_dtype")] OptF64,
-                        #[cfg(feature = "option_dtype")] OptI32,
-                        #[cfg(feature = "option_dtype")] OptI64,
-                        #[cfg(feature = "option_dtype")] OptBool
+                        #[cfg(feature="time")] TimeDelta
                     )
                 }
             }
@@ -676,18 +651,8 @@ impl_arrok_cast!(
     String: cast_string,
     #[cfg(feature="time")]
     DateTime: cast_datetime_default,
-    OptUsize: cast_optusize,
+    Option<usize>: cast_optusize,
+    PyValue: cast_object,
     #[cfg(feature="time")]
-    TimeDelta: cast_timedelta,
-    #[cfg(feature = "option_dtype")]
-    OptF32: cast_optf32,
-    #[cfg(feature = "option_dtype")]
-    OptF64: cast_optf64,
-    #[cfg(feature = "option_dtype")]
-    OptI32: cast_opti32,
-    #[cfg(feature = "option_dtype")]
-    OptI64: cast_opti64,
-    #[cfg(feature = "option_dtype")]
-    OptBool: cast_optbool
-
+    TimeDelta: cast_timedelta
 );

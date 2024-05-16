@@ -2,12 +2,12 @@ use std::fmt::Debug;
 
 // use super::cast::Cast;
 use super::Cast;
-use crate::{DataType, GetDataType, GetNone};
+use crate::{DataType, GetDataType, IsNone};
 use numpy::{Element, PyArrayDescr};
 use pyo3::{Bound, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 #[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
-use std::string::ToString;
+// use std::string::ToString;
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -33,7 +33,22 @@ impl Debug for PyValue {
     }
 }
 
-impl GetNone for PyValue {
+// impl GetNone for PyValue {
+//     #[inline(always)]
+//     fn none() -> Self {
+//         PyValue(Python::with_gil(|py| py.None()))
+//     }
+
+//     #[inline(always)]
+//     fn is_none(&self) -> bool {
+//         Python::with_gil(|py| self.0.as_ref(py).is_none())
+//     }
+// }
+
+impl IsNone for PyValue {
+    type Inner = PyValue;
+    type Cast<U: IsNone<Inner = U> + Clone> = U;
+
     #[inline(always)]
     fn none() -> Self {
         PyValue(Python::with_gil(|py| py.None()))
@@ -42,6 +57,28 @@ impl GetNone for PyValue {
     #[inline(always)]
     fn is_none(&self) -> bool {
         Python::with_gil(|py| self.0.as_ref(py).is_none())
+    }
+    
+    #[inline]
+    fn to_opt(self) -> Option<Self::Inner> {
+        if self.is_none() {
+            None
+        } else {
+            Some(self)
+        }
+    }
+
+    #[inline(always)]
+    fn from_inner(inner: Self::Inner) -> Self {
+        inner
+    }
+
+    #[inline]
+    fn inner_cast<U: IsNone<Inner = U> + Clone>(inner: U) -> Self::Cast<U>
+    where
+        Self::Inner: Cast<U::Inner>,
+    {
+        Cast::<U>::cast(inner)
     }
 }
 
@@ -81,16 +118,9 @@ impl GetDataType for PyValue {
     }
 }
 
-// #[cfg(feature = "lazy")]
-// impl ExprElement for PyValue {}
 
 unsafe impl Element for PyValue {
     const IS_COPY: bool = false;
-    // #[inline(always)]
-    // fn get_dtype(py: Python) -> &PyArrayDescr {
-    //     PyArrayDescr::object(py)
-    // }
-
     #[inline(always)]
     fn get_dtype_bound(py: Python<'_>) -> Bound<'_, PyArrayDescr> {
         PyArrayDescr::object_bound(py)
@@ -111,12 +141,17 @@ impl<'source> FromPyObject<'source> for PyValue {
 //     }
 // }
 
-impl<T> Cast<T> for PyValue
-where
-    String: Cast<T>,
-{
-    #[inline]
-    fn cast(self) -> T {
-        self.0.to_string().cast()
-    }
+macro_rules! impl_pyvalue_cast {
+    ($($T: ty),*) => {
+        $(impl Cast<$T> for PyValue
+        {
+            #[inline]
+            fn cast(self) -> $T {
+                Python::with_gil(|py| self.0.extract::<$T>(py))
+                    .expect(format!("Failed to cast pyvalue to {}", stringify!($T)).as_str())
+            }
+        })*
+    };
 }
+
+impl_pyvalue_cast!(bool, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64, String);

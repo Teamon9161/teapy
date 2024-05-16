@@ -3,17 +3,17 @@ resolver = "2"
 members = [
     # "test-core",
     "tea-core",
-    "tea-dtype",
-    "tea-error",
-    "tea-ext",
-    "tea-groupby",
-    "tea-hash",
-    "tea-io",
-    "tea-lazy",
-    "tea-macros",
-    "tea-py",
-    "tea-time",
-    "tea-utils",
+    # "tea-dtype",
+    # "tea-error",
+    # "tea-ext",
+    # "tea-groupby",
+    # "tea-hash",
+    # "tea-io",
+    # "tea-lazy",
+    # "tea-macros",
+    # "tea-py",
+    # "tea-time",
+    # "tea-utils",
 ]
 
 [workspace.package]
