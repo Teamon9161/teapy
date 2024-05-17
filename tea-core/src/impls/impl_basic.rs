@@ -1,6 +1,6 @@
 use crate::impl_reduce_nd;
 use crate::prelude::{Arr1, ArrBase, ArrD, WrapNdarray};
-use datatype::{BoolType, GetNone, Number};
+use datatype::{BoolType, IsNone, Number};
 use ndarray::{Data, Dimension, Ix1, RemoveAxis, Zip};
 
 impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
@@ -24,7 +24,7 @@ impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
         if n >= 1 {
             (n, acc)
         } else {
-            (0, T::nan())
+            (0, T::none())
         }
     }
 }
@@ -38,7 +38,7 @@ impl_reduce_nd!(
         if let Some(slc) = self.0.as_slice_memory_order() {
             let res = utils::vec_fold(slc, T::min_, T::max_with);
             return if res == T::min_() {
-                T::nan()
+                T::none()
             } else {
                 res
             };
@@ -51,7 +51,7 @@ impl_reduce_nd!(
         });
         // note: assume that not all of the elements are the max value of type T
         if max == T::min_() {
-            T::nan()
+            T::none()
         } else {
             max
         }
@@ -67,7 +67,7 @@ impl_reduce_nd!(
         if let Some(slc) = self.as_slice_memory_order() {
             let res = utils::vec_fold(slc, T::max_, T::min_with);
             return if res == T::max_() {
-                T::nan()
+                T::none()
             } else {
                 res
             };
@@ -80,7 +80,7 @@ impl_reduce_nd!(
         });
         // note: assume that not all of the elements are the max value of type T
         if min == T::max_() {
-            T::nan()
+            T::none()
         } else {
             min
         }
@@ -130,7 +130,7 @@ impl_reduce_nd!(
     /// count not NaN number of an array on a given axis
     #[inline]
     pub fn count_notnan_1d(&self) -> i32
-    {T: GetNone; Send; Sync,}
+    {T: IsNone; Send; Sync,}
     {
         self.count_by(|v| !v.is_none())
     }
@@ -141,7 +141,7 @@ impl_reduce_nd!(
     /// count NaN number of an array on a given axis
     #[inline]
     pub fn count_nan_1d(&self) -> i32
-    {T: GetNone; Send; Sync,}
+    {T: IsNone; Send; Sync,}
     {
         self.count_by(|v| v.is_none())
     }

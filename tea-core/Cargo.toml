@@ -8,11 +8,9 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-# default = ["extend", "method_1d", "ops", "blas", "concat", "arw"]
-# default = ["extend", "ops"]
-default = []
-extend = ["option_dtype", "time"]
-option_dtype = ["tea-dtype/option_dtype"]
+# default = ["time", "method_1d", "ops", "blas", "concat", "arw"]
+default = ["time"]
+
 method_1d = []
 time = ["tea-dtype/time"]
 ops = []

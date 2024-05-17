@@ -162,7 +162,7 @@ impl<'a, T, D> Iter<'a, T, D> {
         unsafe {
             while i < len {
                 let v = &*self.ptr.add(i * self.stride);
-                if v.notnan() {
+                if v.not_none() {
                     accum = f(accum, v);
                     n += 1;
                 }

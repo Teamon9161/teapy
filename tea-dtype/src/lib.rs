@@ -1,11 +1,14 @@
-mod pyvalue;
+mod object;
+#[cfg(feature="time")]
+mod time;
 
 pub use tevec::prelude::{BoolType, Cast, IsNone, Number};
-pub use pyvalue::PyValue;
+pub use object::Object;
 
 
 #[cfg(feature = "time")]
-pub use tea_time::{DateTime, TimeDelta, TimeUnit};
+pub use tevec::prelude::{DateTime, TimeDelta, TimeUnit};
+// pub use tea_time::{DateTime, TimeDelta, TimeUnit};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum DataType {
@@ -136,119 +139,6 @@ impl_datatype!(DateTime, DateTime);
 #[cfg(feature = "time")]
 impl_datatype!(TimeDelta, TimeDelta);
 
-// pub trait GetNone {
-//     fn none() -> Self;
-//     #[allow(clippy::wrong_self_convention)]
-//     fn is_none(&self) -> bool;
-// }
-
-// impl GetNone for f64 {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         f64::NAN
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         self.is_nan()
-//     }
-// }
-
-// impl GetNone for f32 {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         f32::NAN
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         self.is_nan()
-//     }
-// }
-
-// impl GetNone for String {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         "None".to_owned()
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         self == "None"
-//     }
-// }
-
-// impl GetNone for &str {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         "None"
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         *self == "None"
-//     }
-// }
-
-// macro_rules! impl_getnone {
-//     (int $($T: ty),*) => {
-//         $(
-//             impl GetNone for $T {
-//                 #[inline(always)]
-//                 fn none() -> Self {
-//                     unreachable!("int dtype can not be None")
-//                 }
-//                 #[inline(always)]
-//                 fn is_none(&self) -> bool {
-//                     false
-//                 }
-//             }
-//         )*
-//     };
-// }
-// impl_getnone!(int char, i8, i16, i32, i64, u8, u16, u32, u64, usize, isize);
-
-// impl GetNone for bool {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         panic!("bool doesn't have None value")
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         false
-//     }
-// }
-
-// impl GetNone for Vec<usize> {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         vec![]
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         self.is_empty()
-//     }
-// }
-
-// #[cfg(feature = "time")]
-// impl GetNone for DateTime {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         Self(None)
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         self.0.is_none()
-//     }
-// }
-
-// #[cfg(feature = "time")]
-// impl GetNone for TimeDelta {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         TimeDelta::nat()
-//     }
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         self.is_nat()
-//     }
-// }
 
 impl<'a> GetDataType for &'a str {
     // type Physical = &'a str;
@@ -545,14 +435,3 @@ impl<'a> GetDataType for &'a str {
 //     u64, U64;
 //     usize, Usize
 // );
-
-// pub trait BoolType {
-//     fn bool_(self) -> bool;
-// }
-
-// impl BoolType for bool {
-//     #[inline(always)]
-//     fn bool_(self) -> bool {
-//         self
-//     }
-// }

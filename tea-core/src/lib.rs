@@ -33,11 +33,11 @@ use ndarray::{
     NewAxis, RawData, RemoveAxis, ShapeBuilder, SliceArg, Zip,
 };
 
-use datatype::{Cast, DataType, GetDataType, PyValue};
+use datatype::{Cast, DataType, GetDataType, Object};
 use error::TpResult;
 use num::Zero;
 use prelude::{Arr, Arr1, ArrView, ArrView1, ArrViewMut, ArrViewMut1};
-use pyo3::{Python, ToPyObject};
+use pyo3::Python;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::{fmt::Debug, iter::zip, mem::MaybeUninit, sync::Arc};
 
@@ -459,14 +459,14 @@ where
     //     self.map(|v| {v.cast()})
     // }
 
-    /// Try to cast to pyobject
-    #[inline(always)]
-    pub fn to_object(&self, py: Python) -> Arr<PyValue, D>
-    where
-        T: Debug + Clone + ToPyObject,
-    {
-        self.map(|v| PyValue(v.to_object(py)))
-    }
+    // /// Try to cast to pyobject
+    // #[inline(always)]
+    // pub fn to_object(&self, py: Python) -> Arr<Object, D>
+    // where
+    //     T: Debug + Clone + ToPyObject,
+    // {
+    //     self.map(|v| Object(v.to_object(py)))
+    // }
 
     /// Try to cast to datetime
     #[cfg(feature = "time")]
@@ -519,7 +519,7 @@ where
     }
 }
 
-impl<S: Data<Elem = PyValue>, D: Dimension> ArrBase<S, D> {
+impl<S: Data<Elem = Object>, D: Dimension> ArrBase<S, D> {
     /// Try to cast to string
     #[inline(always)]
     pub fn object_to_string(self, py: Python) -> Arr<String, D> {

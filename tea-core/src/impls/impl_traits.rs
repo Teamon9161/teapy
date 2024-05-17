@@ -1,6 +1,6 @@
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeDelta};
-use datatype::PyValue;
+use datatype::Object;
 
 use crate::prelude::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, Dimension, RawData};
@@ -146,7 +146,7 @@ impl_from!(
     (I64, i64),
     (U64, u64),
     (Usize, usize),
-    (Object, PyValue),
+    (Object, Object),
     (String, String),
     #[cfg(feature = "time")]
     (DateTime, DateTime),

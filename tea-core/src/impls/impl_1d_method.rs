@@ -88,14 +88,14 @@ where
     #[inline]
     pub fn fold_valid<U, F>(&self, init: U, mut f: F) -> U
     where
-        T: Number,
+        T: IsNone,
         S: Data,
         F: FnMut(U, &T) -> U,
     {
         let mut acc = init;
         for i in 0..self.0.len() {
             let v = unsafe { self.uget(i) };
-            if v.notnan() {
+            if v.not_none() {
                 acc = f(acc, v);
             }
         }
@@ -108,8 +108,8 @@ where
     where
         S: Data,
         S2: Data<Elem = T2>,
-        T: Number,
-        T2: Number,
+        T: IsNone,
+        T2: IsNone,
         F: FnMut(U, &T, &T2) -> U,
     {
         assert_eq!(
@@ -120,7 +120,7 @@ where
         let mut acc = init;
         for i in 0..self.0.len() {
             let (v, vo) = unsafe { (self.uget(i), other.uget(i)) };
-            if v.notnan() && vo.notnan() {
+            if v.not_none() && vo.not_none() {
                 acc = f(acc, v, vo);
             }
         }
@@ -133,14 +133,14 @@ where
     pub fn n_fold_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
     where
         S: Data,
-        T: Number,
+        T: IsNone,
         F: FnMut(U, &T) -> U,
     {
         let mut acc = init;
         let mut n = 0;
         for i in 0..self.0.len() {
             let v = unsafe { self.uget(i) };
-            if v.notnan() {
+            if v.not_none() {
                 n += 1;
                 acc = f(acc, v);
             }
@@ -160,8 +160,8 @@ where
     where
         S: Data,
         S2: Data<Elem = T2>,
-        T: Number,
-        T2: Number,
+        T: IsNone,
+        T2: IsNone,
         F: FnMut(U, &T, &T2) -> U,
     {
         assert!(self.len() == other.len());
@@ -169,7 +169,7 @@ where
         let mut n = 0;
         for i in 0..self.0.len() {
             let (v, vo) = unsafe { (self.uget(i), other.uget(i)) };
-            if v.notnan() && vo.notnan() {
+            if v.not_none() && vo.not_none() {
                 n += 1;
                 acc = f(acc, v, vo);
             }
@@ -192,7 +192,7 @@ where
     #[inline]
     pub fn n_acc_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
     where
-        T: Number,
+        T: IsNone,
         U: Add<Output = U>,
         S: Data,
         F: FnMut(&T) -> U,
@@ -204,7 +204,7 @@ where
     #[inline(always)]
     pub fn acc_valid<U, F>(&self, init: U, mut f: F) -> U
     where
-        T: Number,
+        T: IsNone,
         U: Add<Output = U>,
         S: Data,
         F: FnMut(&T) -> U,
@@ -218,7 +218,7 @@ where
     where
         S: Data,
         U: Number,
-        T: Number,
+        T: IsNone,
         F: FnMut(&T) -> U,
     {
         let c = &mut U::zero();
@@ -231,7 +231,7 @@ where
     where
         S: Data,
         U: Number,
-        T: Number,
+        T: IsNone,
         F: FnMut(&T) -> U,
     {
         let c = &mut U::zero();
@@ -285,7 +285,7 @@ where
     #[inline(always)]
     pub fn apply_valid<F>(&self, mut f: F)
     where
-        T: Number,
+        T: IsNone,
         S: Data,
         F: FnMut(&T),
     {
@@ -296,7 +296,7 @@ where
     #[inline(always)]
     pub fn n_apply_valid<F>(&self, mut f: F) -> usize
     where
-        T: Number,
+        T: IsNone,
         S: Data,
         F: FnMut(&T),
     {
@@ -309,8 +309,8 @@ where
     where
         S: Data,
         S2: Data<Elem = T2>,
-        T: Number,
-        T2: Number,
+        T: IsNone,
+        T2: IsNone,
         F: FnMut(&T, &T2),
     {
         self.fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
@@ -322,8 +322,8 @@ where
     where
         S: Data,
         S2: Data<Elem = T2>,
-        T: Number,
-        T2: Number,
+        T: IsNone,
+        T2: IsNone,
         F: FnMut(&T, &T2),
     {
         self.n_fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))

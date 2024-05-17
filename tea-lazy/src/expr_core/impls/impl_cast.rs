@@ -1,7 +1,6 @@
 use crate::Expr;
 use core::prelude::*;
 use core::{match_all, match_arrok};
-use pyo3::Python;
 
 macro_rules! impl_cast {
     ($($(#[$meta: meta])? $func: ident: $dtype: ident),* $(,)?) => {
@@ -95,12 +94,12 @@ impl<'a> Expr<'a> {
         }
     }
 
-    #[allow(unreachable_patterns)]
-    pub fn cast_object_eager(&mut self, py: Python) -> TpResult<&mut Self> {
-        self.eval_inplace(None)?;
-        let arr = self.view_arr(None)?;
-        let out = match_arrok!(arr, a, { a.view().to_object(py) });
-        self.lock().set_base(out.into());
-        Ok(self)
-    }
+    // #[allow(unreachable_patterns)]
+    // pub fn cast_object_eager(&mut self, py: Python) -> TpResult<&mut Self> {
+    //     self.eval_inplace(None)?;
+    //     let arr = self.view_arr(None)?;
+    //     let out = match_arrok!(arr, a, { a.view().to_object(py) });
+    //     self.lock().set_base(out.into());
+    //     Ok(self)
+    // }
 }

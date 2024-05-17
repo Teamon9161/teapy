@@ -7,51 +7,34 @@ use numpy::{Element, PyArrayDescr};
 use pyo3::{Bound, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 #[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
-// use std::string::ToString;
+
 
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct PyValue(pub PyObject);
+pub struct Object(pub PyObject);
 
-// impl ToString for PyValue {
-//     #[inline(always)]
-//     fn to_string(&self) -> String {
-//         self.0.to_string()
-//     }
-// }
 
-impl std::fmt::Display for PyValue {
+impl std::fmt::Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // write!(f, "{}", self.strftime(None))
         std::fmt::Display::fmt(&self.0, f)
     }
 }
 
-impl Debug for PyValue {
+impl Debug for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", &self.0)
     }
 }
 
-// impl GetNone for PyValue {
-//     #[inline(always)]
-//     fn none() -> Self {
-//         PyValue(Python::with_gil(|py| py.None()))
-//     }
 
-//     #[inline(always)]
-//     fn is_none(&self) -> bool {
-//         Python::with_gil(|py| self.0.as_ref(py).is_none())
-//     }
-// }
-
-impl IsNone for PyValue {
-    type Inner = PyValue;
+impl IsNone for Object {
+    type Inner = Object;
     type Cast<U: IsNone<Inner = U> + Clone> = U;
 
     #[inline(always)]
     fn none() -> Self {
-        PyValue(Python::with_gil(|py| py.None()))
+        Object(Python::with_gil(|py| py.None()))
     }
 
     #[inline(always)]
@@ -82,7 +65,7 @@ impl IsNone for PyValue {
     }
 }
 
-impl PartialEq for PyValue {
+impl PartialEq for Object {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         Python::with_gil(|py| self.0.as_ref(py).eq(other.0.as_ref(py))).unwrap()
@@ -90,27 +73,27 @@ impl PartialEq for PyValue {
 }
 
 #[cfg(feature = "serde")]
-impl Serialize for PyValue {
+impl Serialize for Object {
     fn serialize<S: Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error> {
         unimplemented!("can not serialize PyObject")
     }
 }
 
-impl ToPyObject for PyValue {
+impl ToPyObject for Object {
     #[inline(always)]
     fn to_object(&self, py: Python<'_>) -> PyObject {
         self.0.to_object(py)
     }
 }
 
-impl Default for PyValue {
+impl Default for Object {
     #[inline(always)]
     fn default() -> Self {
-        PyValue(Python::with_gil(|py| py.None()))
+        Object(Python::with_gil(|py| py.None()))
     }
 }
 
-impl GetDataType for PyValue {
+impl GetDataType for Object {
     // type Physical = PyObject;
     #[inline(always)]
     fn dtype() -> DataType {
@@ -119,7 +102,7 @@ impl GetDataType for PyValue {
 }
 
 
-unsafe impl Element for PyValue {
+unsafe impl Element for Object {
     const IS_COPY: bool = false;
     #[inline(always)]
     fn get_dtype_bound(py: Python<'_>) -> Bound<'_, PyArrayDescr> {
@@ -127,31 +110,65 @@ unsafe impl Element for PyValue {
     }
 }
 
-impl<'source> FromPyObject<'source> for PyValue {
+impl<'source> FromPyObject<'source> for Object {
     #[inline(always)]
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        Ok(PyValue(ob.to_object(ob.py())))
+        Ok(Object(ob.to_object(ob.py())))
     }
 }
 
-// impl Cast<String> for PyValue {
-//     #[inline]
-//     fn cast(self) -> String {
-//         self.to_string()
-//     }
-// }
+impl<'a> Cast<Object> for &'a str {
+    #[inline]
+    fn cast(self) -> Object {
+        Python::with_gil(|py| Object(self.to_object(py)))
+    }
+}
 
-macro_rules! impl_pyvalue_cast {
+macro_rules! impl_object_cast {
     ($($T: ty),*) => {
-        $(impl Cast<$T> for PyValue
-        {
-            #[inline]
-            fn cast(self) -> $T {
-                Python::with_gil(|py| self.0.extract::<$T>(py))
-                    .expect(format!("Failed to cast pyvalue to {}", stringify!($T)).as_str())
+        $(
+            impl Cast<$T> for Object
+            {
+                #[inline]
+                fn cast(self) -> $T {
+                    Python::with_gil(|py| self.0.extract::<$T>(py))
+                        .expect(format!("Failed to cast Object to {}", stringify!($T)).as_str())
+                }
             }
-        })*
+
+            impl Cast<Object> for $T
+            {
+                #[inline]
+                fn cast(self) -> Object {
+                    Python::with_gil(|py| Object(self.to_object(py)))
+                }
+            }
+
+            impl Cast<Object> for Option<$T>
+            {
+                #[inline]
+                fn cast(self) -> Object {
+                    if let Some(v) = self {
+                        v.cast()
+                    } else {
+                        Object::none()
+                    }
+                }
+            }
+
+            impl Cast<Option<$T>> for Object
+            {
+                #[inline]
+                fn cast(self) -> Option<$T> {
+                    if self.is_none() {
+                        return None;
+                    } else {
+                        Python::with_gil(|py| self.0.extract::<$T>(py)).ok()
+                    }
+                }
+            }
+        )*
     };
 }
 
-impl_pyvalue_cast!(bool, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64, String);
+impl_object_cast!(bool, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64, String);

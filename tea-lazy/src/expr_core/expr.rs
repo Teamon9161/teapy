@@ -5,7 +5,7 @@ use super::FuncNode;
 use crate::Context;
 #[cfg(feature = "blas")]
 use crate::OlsResult;
-use core::datatype::{GetDataType, GetNone};
+use core::datatype::GetDataType;
 use core::{
     error::TpResult,
     match_all, match_arrok,
@@ -41,16 +41,16 @@ impl<'a> Clone for Expr<'a> {
     }
 }
 
-impl<'a, T> From<Option<T>> for Expr<'a>
-where
-    T: ExprElement + GetNone + 'a,
-{
-    #[inline]
-    fn from(v: Option<T>) -> Self {
-        let v = v.unwrap_or_else(T::none);
-        v.into()
-    }
-}
+// impl<'a, T> From<Option<T>> for Expr<'a>
+// where
+//     T: ExprElement + IsNone + 'a,
+// {
+//     #[inline]
+//     fn from(v: Option<T>) -> Self {
+//         let v = v.unwrap_or_else(T::none);
+//         v.into()
+//     }
+// }
 
 impl<'a, T: ExprElement + 'a> From<T> for Expr<'a> {
     #[inline]

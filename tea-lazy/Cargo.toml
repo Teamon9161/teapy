@@ -10,13 +10,14 @@ license.workspace = true
 [features]
 # default = ["hash", "extend", "ops", "blas"]
 default = ["extend", "ops"]
+# default = []
 
 
-extend = ["hash", "option_dtype", "time"]
+extend = ["hash", "time"]
 
 hash = []
 arw = []  # todo! impl read_ipc in tea-io
-option_dtype = ["tea-core/option_dtype"]
+# option_dtype = ["tea-core/option_dtype"]
 ops = ["tea-core/ops"]
 time = ["tea-core/time"]
 blas = ["tea-core/blas", "tea-core/method_1d"]

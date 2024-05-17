@@ -102,7 +102,7 @@ macro_rules! impl_tphash {
 }
 
 impl_tphash!(uint u8, u16, u32, u64, usize);
-impl_tphash!(int i8, i16, i32, i64, isize);
+impl_tphash!(int i32, i64, isize);
 impl_tphash!(default String, &str, Vec<u64>, [u64]);
 #[cfg(feature = "time")]
 impl_tphash!(int DateTime);

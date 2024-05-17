@@ -20,7 +20,7 @@ macro_rules! impl_reduce_nd {
                 $($generic: $bound $(+ $other_bnd)*,)*
             $body
         }
-        impl<T: Clone, S, D> ArrBase<S, D>
+        impl<T: Clone + Send + Sync, S, D> ArrBase<S, D>
         where
             S: Data<Elem = T>,
             D: Dimension,
