@@ -463,7 +463,9 @@ where
         mut f: F,
     ) where
         T: Number,
+        T::Inner: Number,
         T2: Number,
+        T2::Inner: Number,
         S: Data,
         S2: Data<Elem = T2>,
         S3: DataMut<Elem = MaybeUninit<f64>>,

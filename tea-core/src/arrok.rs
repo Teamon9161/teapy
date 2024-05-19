@@ -66,7 +66,8 @@ macro_rules! match_all {
 macro_rules! match_arrok {
     (numeric $($tt: tt)*) => {
         match_all!(ArrOk, $($tt)*,
-            F32, F64, I32, I64, U64, Usize, OptUsize,
+            F32, F64, I32, I64, U64, Usize, 
+            // OptUsize,
         )
     };
     (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};

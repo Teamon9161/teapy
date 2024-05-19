@@ -14,7 +14,7 @@ use tea_core::prelude::*;
 use tea_core::utils::{kh_sum, vec_fold, vec_nfold};
 
 #[ext_trait]
-impl<T: IsNone + Clone, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
+impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
     // /// sum of the array on a given axis, return valid_num n and the sum of the array
     // fn nsum_1d(&self, stable: bool) -> (usize, T)
     // where
@@ -43,15 +43,16 @@ impl<T: IsNone + Clone, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
     fn nprod_1d(&self) -> (usize, T)
     where
         T: Number,
+        T::Inner: Number,
     {
         if let Some(slc) = self.as_slice_memory_order() {
             let (n, prod) = vec_nfold(slc, T::one, T::n_prod);
             return (n, prod);
         }
         // fall back to normal calculation
-        let (n, acc) = self.n_fold_valid(T::one(), |acc, v| acc * v);
+        let (n, acc) = self.n_fold_valid(T::Inner::one(), |acc, v| acc * v);
         if n >= 1 {
-            (n, acc)
+            (n, T::from_inner(acc))
         } else {
             (0, T::none())
         }
@@ -60,6 +61,7 @@ impl<T: IsNone + Clone, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
     /// mean and variance of the array on a given axis
     pub fn meanvar_1d(&self, min_periods: usize, stable: bool) -> (f64, f64)
     where
+        T: Number,
         T::Inner: Number
     {
         let arr = self.as_dim1();
@@ -195,7 +197,7 @@ impl<S, D, T> AggExtNd<D, T> for ArrBase<S, D>
 where
     S: Data<Elem = T>,
     D: Dimension,
-    T: Send + Sync,
+    T: IsNone + Clone + Send + Sync,
 {
     /// return -1 if all of the elements are NaN
     fn argmax(&self) -> i32
@@ -367,6 +369,7 @@ where
     fn prod(&self) -> T
     where
         T: Number,
+        T::Inner: Number,
     {
         self.as_dim1().nprod_1d().1
     }
@@ -375,6 +378,7 @@ where
     fn var(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
+        T::Inner: Number,
     {
         self.as_dim1().meanvar_1d(min_periods, stable).1
     }
@@ -384,6 +388,7 @@ where
     fn std(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
+        T::Inner: Number,
     {
         self.var_1d(min_periods, stable).sqrt()
     }
@@ -392,6 +397,7 @@ where
     fn skew(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
+        T::Inner: Number,
     {
         let arr = self.as_dim1();
         let (mut m1, mut m2, mut m3) = (0., 0., 0.);
@@ -450,6 +456,7 @@ where
     fn kurt(&self, min_periods: usize, stable: bool) -> f64
     where
         T: Number,
+        T::Inner: Number,
     {
         let arr = self.as_dim1();
         let (mut m1, mut m2, mut m3, mut m4) = (0., 0., 0., 0.);

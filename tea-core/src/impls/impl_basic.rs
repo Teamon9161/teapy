@@ -1,7 +1,7 @@
-use crate::impl_reduce_nd;
+// use crate::impl_reduce_nd;
 use crate::prelude::{Arr1, ArrBase, ArrD, WrapNdarray};
 use datatype::{BoolType, IsNone, Number};
-use ndarray::{Data, Dimension, Ix1, RemoveAxis, Zip};
+use ndarray::{Data, Dimension, Ix1, Zip};
 use num::Zero;
 use tea_macros::arr_agg_ext;
 use tevec::prelude::*;
@@ -36,11 +36,10 @@ impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
 }
 
 #[arr_agg_ext]
-impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
+impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S, D> {
     /// Max value of the array on a given axis
-    pub fn max_1d(&self) -> T
+    pub fn max(&self) -> T
     where T: Number
-    // {T: Number,}
     {
         if let Some(slc) = self.0.as_slice_memory_order() {
             let res = utils::vec_fold(slc, T::min_, T::max_with);
@@ -51,7 +50,7 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
             };
         }
         let mut max = T::min_();
-        self.apply(|v| {
+        self.as_dim1().apply(|v| {
             if max < *v {
                 max = *v;
             }
@@ -65,7 +64,7 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
     }
 
     /// Min value of the array on a given axis
-    pub fn min_1d(&self) -> T
+    pub fn min(&self) -> T
     where T: Number
     {
         if let Some(slc) = self.as_slice_memory_order() {
@@ -77,7 +76,7 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
             };
         }
         let mut min = T::max_();
-        self.apply(|v| {
+        self.as_dim1().apply(|v| {
             if min > *v {
                 min = *v;
             }
@@ -92,18 +91,18 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
 
     /// sum of the array on a given axis
     #[inline]
-    pub fn sum_1d(&self, stable: bool) -> T
+    pub fn sum(&self, stable: bool) -> T
     where T: Number, T::Inner: Number,
     {
-        self.nsum_1d(stable).1
+        self.as_dim1().nsum_1d(stable).1
     }
 
     /// mean of the array on a given axis
     #[inline]
-    pub fn mean_1d(&self, min_periods: usize, stable: bool) -> f64
+    pub fn mean(&self, min_periods: usize, stable: bool) -> f64
     where T: Number, T::Inner: Number,
     {
-        let(n, sum) = self.nsum_1d(stable);
+        let(n, sum) = self.as_dim1().nsum_1d(stable);
         if n >= min_periods {
             sum.f64() / n.f64()
         } else {
@@ -113,7 +112,7 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
 
     /// count a value of an array on a given axis
     #[inline]
-    pub fn count_v_1d(&self, value: T) -> i32
+    pub fn count_v(&self, value: T) -> i32
     where 
         T: IsNone + Clone, 
         T::Inner: PartialEq
@@ -124,7 +123,7 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
 
     /// count a value of an array on a given axis
     #[inline]
-    pub fn count_none(&self) -> i32
+    pub fn count_nan(&self) -> i32
     where T: IsNone + Clone
     {
         // self.count_by(|v| v == &value)
@@ -132,7 +131,7 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
     }
     /// count a value of an array on a given axis
     #[inline]
-    pub fn count(&self) -> i32
+    pub fn count_notnan(&self) -> i32
     where T: IsNone + Clone
     {
         // self.count_by(|v| v == &value)
@@ -140,14 +139,14 @@ impl<T: Send + Sync, S: Data<Elem = T>> BasicAggExt for ArrBase<S, Ix1> {
     }
 
     #[inline]
-    pub fn any_1d(&self) -> bool
+    pub fn any(&self) -> bool
     where T: BoolType
     {
         self.0.iter().cloned().any()
     }
     
     #[inline]
-    pub fn all_1d(&self) -> bool
+    pub fn all(&self) -> bool
     where T: BoolType + Copy
     {
         self.0.iter().cloned().all()

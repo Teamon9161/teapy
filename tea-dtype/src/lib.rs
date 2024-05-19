@@ -4,6 +4,7 @@ mod time;
 
 pub use tevec::prelude::{BoolType, Cast, IsNone, Number};
 pub use object::Object;
+pub use num::{Zero, One};
 
 
 #[cfg(feature = "time")]
