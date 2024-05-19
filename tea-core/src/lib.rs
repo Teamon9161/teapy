@@ -39,7 +39,7 @@ use num::Zero;
 use prelude::{Arr, Arr1, ArrView, ArrView1, ArrViewMut, ArrViewMut1};
 use pyo3::Python;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-use std::{fmt::Debug, iter::zip, mem::MaybeUninit, sync::Arc};
+use std::{iter::zip, mem::MaybeUninit, sync::Arc};
 
 #[cfg(feature = "npy")]
 use ndarray_npy::{write_npy, WritableElement, WriteNpyError};

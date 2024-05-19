@@ -3,7 +3,8 @@ use ndarray::{Data, DataMut, Ix1, RawData};
 use std::cmp::Ordering;
 use std::mem::MaybeUninit;
 use std::ops::Add;
-use utils::kh_sum;
+use super::BasicAggExt;
+// use utils::kh_sum;
 
 impl<T, S> ArrBase<S, Ix1>
 where
@@ -88,15 +89,15 @@ where
     #[inline]
     pub fn fold_valid<U, F>(&self, init: U, mut f: F) -> U
     where
-        T: IsNone,
+        T: IsNone + Clone,
         S: Data,
-        F: FnMut(U, &T) -> U,
+        F: FnMut(U, T::Inner) -> U,
     {
         let mut acc = init;
         for i in 0..self.0.len() {
             let v = unsafe { self.uget(i) };
             if v.not_none() {
-                acc = f(acc, v);
+                acc = f(acc, v.clone().unwrap());
             }
         }
         acc
@@ -108,9 +109,9 @@ where
     where
         S: Data,
         S2: Data<Elem = T2>,
-        T: IsNone,
-        T2: IsNone,
-        F: FnMut(U, &T, &T2) -> U,
+        T: IsNone + Clone,
+        T2: IsNone + Clone,
+        F: FnMut(U, T::Inner, T2::Inner) -> U,
     {
         assert_eq!(
             self.len(),
@@ -121,7 +122,7 @@ where
         for i in 0..self.0.len() {
             let (v, vo) = unsafe { (self.uget(i), other.uget(i)) };
             if v.not_none() && vo.not_none() {
-                acc = f(acc, v, vo);
+                acc = f(acc, v.clone().unwrap(), vo.clone().unwrap());
             }
         }
         acc
@@ -133,8 +134,8 @@ where
     pub fn n_fold_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
     where
         S: Data,
-        T: IsNone,
-        F: FnMut(U, &T) -> U,
+        T: IsNone + Clone,
+        F: FnMut(U, T::Inner) -> U,
     {
         let mut acc = init;
         let mut n = 0;
@@ -142,7 +143,7 @@ where
             let v = unsafe { self.uget(i) };
             if v.not_none() {
                 n += 1;
-                acc = f(acc, v);
+                acc = f(acc, v.clone().unwrap());
             }
         }
         (n, acc)
@@ -160,9 +161,9 @@ where
     where
         S: Data,
         S2: Data<Elem = T2>,
-        T: IsNone,
-        T2: IsNone,
-        F: FnMut(U, &T, &T2) -> U,
+        T: IsNone + Clone,
+        T2: IsNone + Clone,
+        F: FnMut(U, T::Inner, T2::Inner) -> U,
     {
         assert!(self.len() == other.len());
         let mut acc = init;
@@ -171,7 +172,7 @@ where
             let (v, vo) = unsafe { (self.uget(i), other.uget(i)) };
             if v.not_none() && vo.not_none() {
                 n += 1;
-                acc = f(acc, v, vo);
+                acc = f(acc, v.clone().unwrap(), vo.clone().unwrap());
             }
         }
         (n, acc)
@@ -188,55 +189,55 @@ where
         self.fold(init, |acc, v| acc + f(v))
     }
 
-    /// Count the number of valid values and accumulate valid values using function f
-    #[inline]
-    pub fn n_acc_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
-    where
-        T: IsNone,
-        U: Add<Output = U>,
-        S: Data,
-        F: FnMut(&T) -> U,
-    {
-        self.n_fold_valid(init, |acc, v| acc + f(v))
-    }
+    // /// Count the number of valid values and accumulate valid values using function f
+    // #[inline]
+    // pub fn n_acc_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
+    // where
+    //     T: IsNone + Clone,
+    //     U: Add<Output = U>,
+    //     S: Data,
+    //     F: FnMut(T::Inner) -> U,
+    // {
+    //     self.n_fold_valid(init, |acc, v| acc + f(v))
+    // }
 
-    /// Only accumulate valild value using function f
-    #[inline(always)]
-    pub fn acc_valid<U, F>(&self, init: U, mut f: F) -> U
-    where
-        T: IsNone,
-        U: Add<Output = U>,
-        S: Data,
-        F: FnMut(&T) -> U,
-    {
-        self.fold_valid(init, |acc, v| acc + f(v))
-    }
+    // /// Only accumulate valild value using function f
+    // #[inline(always)]
+    // pub fn acc_valid<U, F>(&self, init: U, mut f: F) -> U
+    // where
+    //     T: IsNone,
+    //     U: Add<Output = U>,
+    //     S: Data,
+    //     F: FnMut(&T) -> U,
+    // {
+    //     self.fold_valid(init, |acc, v| acc + f(v))
+    // }
 
-    /// Count the number of valid values and accumulate value using Kahan summation
-    #[inline(always)]
-    pub fn stable_n_acc_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
-    where
-        S: Data,
-        U: Number,
-        T: IsNone,
-        F: FnMut(&T) -> U,
-    {
-        let c = &mut U::zero();
-        self.n_fold_valid(init, |acc, v| kh_sum(acc, f(v), c))
-    }
+    // /// Count the number of valid values and accumulate value using Kahan summation
+    // #[inline(always)]
+    // pub fn stable_n_acc_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
+    // where
+    //     S: Data,
+    //     U: Number,
+    //     T: IsNone,
+    //     F: FnMut(&T) -> U,
+    // {
+    //     let c = &mut U::zero();
+    //     self.n_fold_valid(init, |acc, v| kh_sum(acc, f(v), c))
+    // }
 
-    /// Only accumulate valild value using kahan summation
-    #[inline(always)]
-    pub fn stable_acc_valid<U, F>(&self, init: U, mut f: F) -> U
-    where
-        S: Data,
-        U: Number,
-        T: IsNone,
-        F: FnMut(&T) -> U,
-    {
-        let c = &mut U::zero();
-        self.fold_valid(init, |acc, v| kh_sum(acc, f(v), c))
-    }
+    // /// Only accumulate valild value using kahan summation
+    // #[inline(always)]
+    // pub fn stable_acc_valid<U, F>(&self, init: U, mut f: F) -> U
+    // where
+    //     S: Data,
+    //     U: Number,
+    //     T: IsNone,
+    //     F: FnMut(&T) -> U,
+    // {
+    //     let c = &mut U::zero();
+    //     self.fold_valid(init, |acc, v| kh_sum(acc, f(v), c))
+    // }
 
     /// Apply a function to each element
     #[inline(always)]
@@ -285,9 +286,9 @@ where
     #[inline(always)]
     pub fn apply_valid<F>(&self, mut f: F)
     where
-        T: IsNone,
+        T: IsNone + Clone,
         S: Data,
-        F: FnMut(&T),
+        F: FnMut(T::Inner),
     {
         self.fold_valid((), move |(), elt| f(elt))
     }
@@ -296,39 +297,39 @@ where
     #[inline(always)]
     pub fn n_apply_valid<F>(&self, mut f: F) -> usize
     where
-        T: IsNone,
+        T: IsNone + Clone,
         S: Data,
-        F: FnMut(&T),
+        F: FnMut(T::Inner),
     {
         self.n_fold_valid((), move |(), elt| f(elt)).0
     }
 
-    /// Apply a function to self and other only when both elements are valid
-    #[inline(always)]
-    pub fn apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F)
-    where
-        S: Data,
-        S2: Data<Elem = T2>,
-        T: IsNone,
-        T2: IsNone,
-        F: FnMut(&T, &T2),
-    {
-        self.fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
-    }
+    // /// Apply a function to self and other only when both elements are valid
+    // #[inline(always)]
+    // pub fn apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F)
+    // where
+    //     S: Data,
+    //     S2: Data<Elem = T2>,
+    //     T: IsNone,
+    //     T2: IsNone,
+    //     F: FnMut(&T, &T2),
+    // {
+    //     self.fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
+    // }
 
-    /// Apply a function to self and other only when both elements are valid
-    #[inline(always)]
-    pub fn n_apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F) -> usize
-    where
-        S: Data,
-        S2: Data<Elem = T2>,
-        T: IsNone,
-        T2: IsNone,
-        F: FnMut(&T, &T2),
-    {
-        self.n_fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
-            .0
-    }
+    // /// Apply a function to self and other only when both elements are valid
+    // #[inline(always)]
+    // pub fn n_apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F) -> usize
+    // where
+    //     S: Data,
+    //     S2: Data<Elem = T2>,
+    //     T: IsNone,
+    //     T2: IsNone,
+    //     F: FnMut(&T, &T2),
+    // {
+    //     self.n_fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
+    //         .0
+    // }
 
     /// Apply function `f` on each element,
     /// if the function return `true`,
@@ -422,6 +423,7 @@ where
     pub fn stable_apply_window_to<S2, F>(&self, out: &mut ArrBase<S2, Ix1>, window: usize, mut f: F)
     where
         T: Number,
+        T::Inner: Number,
         S: Data,
         S2: DataMut<Elem = MaybeUninit<f64>>,
         F: FnMut(f64, f64) -> f64,

@@ -14,30 +14,30 @@ use tea_core::prelude::*;
 use tea_core::utils::{kh_sum, vec_fold, vec_nfold};
 
 #[ext_trait]
-impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
-    /// sum of the array on a given axis, return valid_num n and the sum of the array
-    fn nsum_1d(&self, stable: bool) -> (usize, T)
-    where
-        T: Number,
-    {
-        if !stable {
-            if let Some(slc) = self.as_slice_memory_order() {
-                let (n, sum) = vec_nfold(slc, T::zero, T::n_add);
-                return (n, sum);
-            }
-        }
-        // fall back to normal calculation
-        let (n, acc) = if !stable {
-            self.n_acc_valid(T::zero(), |v| *v)
-        } else {
-            self.stable_n_acc_valid(T::zero(), |v| *v)
-        };
-        if n >= 1 {
-            (n, acc)
-        } else {
-            (0, T::nan())
-        }
-    }
+impl<T: IsNone + Clone, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
+    // /// sum of the array on a given axis, return valid_num n and the sum of the array
+    // fn nsum_1d(&self, stable: bool) -> (usize, T)
+    // where
+    //     T: Number,
+    // {
+    //     if !stable {
+    //         if let Some(slc) = self.as_slice_memory_order() {
+    //             let (n, sum) = vec_nfold(slc, T::zero, T::n_add);
+    //             return (n, sum);
+    //         }
+    //     }
+    //     // fall back to normal calculation
+    //     let (n, acc) = if !stable {
+    //         self.n_acc_valid(T::zero(), |v| *v)
+    //     } else {
+    //         self.stable_n_acc_valid(T::zero(), |v| *v)
+    //     };
+    //     if n >= 1 {
+    //         (n, acc)
+    //     } else {
+    //         (0, T::none())
+    //     }
+    // }
 
     /// production of the array on a given axis, return valid_num n and the production of the array
     fn nprod_1d(&self) -> (usize, T)
@@ -49,18 +49,18 @@ impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
             return (n, prod);
         }
         // fall back to normal calculation
-        let (n, acc) = self.n_fold_valid(T::one(), |acc, v| acc * *v);
+        let (n, acc) = self.n_fold_valid(T::one(), |acc, v| acc * v);
         if n >= 1 {
             (n, acc)
         } else {
-            (0, T::nan())
+            (0, T::none())
         }
     }
 
     /// mean and variance of the array on a given axis
     pub fn meanvar_1d(&self, min_periods: usize, stable: bool) -> (f64, f64)
     where
-        T: Number,
+        T::Inner: Number
     {
         let arr = self.as_dim1();
         let (mut m1, mut m2) = (0., 0.);
@@ -87,7 +87,7 @@ impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
         } else {
             // calculate mean of the array
             let mean = arr.mean_1d(min_periods, true);
-            if mean.isnan() {
+            if mean.is_none() {
                 return (f64::NAN, f64::NAN);
             }
             // elements minus mean then calculate using Kahan summation
@@ -146,7 +146,7 @@ impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
     {
         let mut n = 0_usize;
         let sum = self.fold_with(mask.view(), T::zero(), |acc, v, valid| {
-            if (*valid) && v.notnan() {
+            if (*valid) && v.not_none() {
                 n += 1;
                 acc + *v
             } else {
@@ -156,7 +156,7 @@ impl<T, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
         if n >= min_periods {
             (n, sum)
         } else {
-            (n, T::nan())
+            (n, T::none())
         }
     }
 
@@ -264,7 +264,7 @@ where
     #[inline]
     fn valid_first(&self) -> T
     where
-        T: Clone + GetNone,
+        T: Clone + IsNone,
     {
         for v in self.as_dim1().iter() {
             if !v.clone().is_none() {
@@ -278,7 +278,7 @@ where
     #[inline]
     fn valid_last(&self) -> T
     where
-        T: Clone + GetNone,
+        T: Clone + IsNone,
     {
         for v in self.as_dim1().iter().rev() {
             if !v.clone().is_none() {
@@ -308,7 +308,7 @@ where
         let (q, i, j, vi, vj) = if q <= 0.5 {
             let q_idx = len_1 * q;
             let (i, j) = (q_idx.floor().usize(), q_idx.ceil().usize());
-            let (head, m, _tail) = slc.select_nth_unstable_by(j, |va, vb| va.nan_sort_cmp(vb));
+            let (head, m, _tail) = slc.select_nth_unstable_by(j, |va, vb| va.sort_cmp(vb));
             if i != j {
                 let vi = vec_fold(head, T::min_, T::max_with);
                 let vi = if vi == T::min_() { f64::NAN } else { vi.f64() };
@@ -321,7 +321,7 @@ where
             let q = 1. - q;
             let q_idx = len_1 * q;
             let (i, j) = (q_idx.floor().usize(), q_idx.ceil().usize());
-            let (head, m, _tail) = slc.select_nth_unstable_by(j, |va, vb| va.nan_sort_cmp_rev(vb));
+            let (head, m, _tail) = slc.select_nth_unstable_by(j, |va, vb| va.sort_cmp_rev(vb));
             if i != j {
                 let vi = vec_fold(head, T::max_, T::min_with);
                 let vi = if vi == T::max_() { f64::NAN } else { vi.f64() };
@@ -406,7 +406,7 @@ where
         } else {
             // calculate mean of the array
             let mean = arr.mean_1d(min_periods, true);
-            if mean.isnan() {
+            if mean.is_none() {
                 return f64::NAN;
             }
             // elements minus mean then calculate using Kahan summation
@@ -439,7 +439,7 @@ where
         } else {
             f64::NAN
         };
-        if res.notnan() && res != 0. {
+        if res.not_none() && res != 0. {
             let adjust = (n * (n - 1)).f64().sqrt() / (n - 2).f64();
             res *= adjust;
         }
@@ -465,7 +465,7 @@ where
         } else {
             // calculate mean of the array
             let mean = arr.mean_1d(min_periods, true);
-            if mean.isnan() {
+            if mean.is_none() {
                 return f64::NAN;
             }
             // elements minus mean then calculate using Kahan summation
@@ -500,7 +500,7 @@ where
         } else {
             f64::NAN
         };
-        if res.notnan() && res != 0. {
+        if res.not_none() && res != 0. {
             res = 1. / ((n - 2) * (n - 3)).f64()
                 * ((n.pow(2) - 1).f64() * res - (3 * (n - 1).pow(2)).f64())
         }
@@ -528,7 +528,7 @@ pub enum QuantileMethod {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tea_core::prelude::*;
+    // use tea_core::prelude::*;
 
     #[test]
     fn test_argmax() {

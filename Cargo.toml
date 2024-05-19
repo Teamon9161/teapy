@@ -5,12 +5,12 @@ members = [
     "tea-core",
     "tea-dtype",
     # "tea-error",
-    # "tea-ext",
+    "tea-ext",
     # "tea-groupby",
-    # "tea-hash",
-    # "tea-io",
+    "tea-hash",
+    "tea-io",
     "tea-lazy",
-    # "tea-macros",
+    "tea-macros",
     # "tea-py",
     # "tea-time",
     # "tea-utils",
@@ -48,6 +48,7 @@ path = "../tevec/tevec"
 # git = "https://github.com/Teamon9161/tevec.git"
 # branch = "master"
 default-features = false
+features = ["ndarray"]
 
 [profile.dev]
 incremental = true

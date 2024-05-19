@@ -9,16 +9,17 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 # default = ["rolling", "agg", "lazy", "concat"]
-default = ["extend", "methods"]
+# default = ["extend", "methods"]
+default = ["agg", "lazy"]
 
-extend = ["lazy_time", "option_dtype"]
+extend = ["lazy_time"]
 methods = ["agg", "map", "rolling", "create", "concat"]
 
 lazy = ["tea-lazy"]
 lazy_time = ["lazy", "time", "tea-lazy/time"]
 
 time = ["tea-core/time"]
-option_dtype = ["tea-core/option_dtype"]
+# option_dtype = ["tea-core/option_dtype"]
 
 agg = []  # aggregate functions
 map = ["tea-core/ops"]  # map functions

@@ -6,8 +6,10 @@ macro_rules! impl_reduce_nd {
         $func: ident,
         $(#[$meta:meta])*
         pub fn $func_1d:ident $(<$($t: ident),*>)? (&$self:ident $(, $p:ident: $p_ty:ty)* $(,)?) -> $otype:ty
-        {$($generic:ident: $bound:path $(; $other_bnd:path)* $(,)?)*} $(,)?
-        $body: tt
+        // {$($generic:ident: $bound:path $(; $other_bnd:path)* $(,)?)*} $(,)?
+        // where $($where_pred:tt)+
+        $( where $($where_pred:tt)+ )?
+        $body: block
     ) => {
         impl<T: Clone, S> ArrBase<S, Ix1>
         where
@@ -16,8 +18,8 @@ macro_rules! impl_reduce_nd {
             // implement function on a given axis
             $(#[$meta])*
             pub fn $func_1d $(<$($t),*>)? (&$self $(, $p: $p_ty)*) -> $otype
-            where
-                $($generic: $bound $(+ $other_bnd)*,)*
+            $(where $($where_pred)*)?
+                // $($generic: $bound $(+ $other_bnd)*,)*
             $body
         }
         impl<T: Clone + Send + Sync, S, D> ArrBase<S, D>
@@ -30,7 +32,8 @@ macro_rules! impl_reduce_nd {
             pub fn $func $(<$($t),*>)? (&$self $(, $p: $p_ty)*, axis: i32, par: bool) -> ArrD<$otype>
             where
                 D: RemoveAxis,
-                $($generic: $bound $(+ $other_bnd)*,)*
+                $($($where_pred)*)?
+                // $($generic: $bound $(+ $other_bnd)*,)*
             {
                 let axis = $self.norm_axis(axis);
                 if $self.is_empty() || $self.len_of(axis) == 0 {

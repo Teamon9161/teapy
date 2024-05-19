@@ -33,6 +33,10 @@ intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
 tea-dtype = { path = "../tea-dtype", default-features = false}
 tea-utils = { path = "../tea-utils"}
 tea-error = { path = "../tea-error", default-features = false }
+tea-macros = { path = "../tea-macros", default-features = false }
+
+tevec = { workspace = true, default-features = false, features = ["agg", "ndarray"]}
+
 ndarray = { workspace = true }
 num = { workspace = true }
 rayon = { workspace = true }

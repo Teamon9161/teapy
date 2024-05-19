@@ -23,7 +23,7 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
         T2: Number,
     {
         let (out1, out2): (Vec<_>, Vec<_>) = zip(self, other)
-            .filter(|(v1, v2)| v1.notnan() & v2.notnan())
+            .filter(|(v1, v2)| v1.not_none() & v2.not_none())
             .unzip();
         (Arr1::from_vec(out1), Arr1::from_vec(out2))
     }
@@ -47,7 +47,7 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
         for i in 0..len {
             let v1 = unsafe { *self.uget(i) };
             let v2 = unsafe { *other.uget(i) };
-            if v1.notnan() & v2.notnan() {
+            if v1.not_none() & v2.not_none() {
                 sum += v1.f64() * v2.f64();
             } else {
                 nan_num += 1;
@@ -69,8 +69,8 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number,
-        T2: Number,
+        T: Number + Send + Sync,
+        T2: Number + Send + Sync,
     {
         assert_eq!(
             self.len(),
@@ -122,8 +122,8 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number,
-        T2: Number,
+        T: Number + Send + Sync,
+        T2: Number + Send + Sync,
     {
         assert_eq!(
             self.len(),
@@ -193,8 +193,8 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number,
-        T2: Number,
+        T: Number + Send + Sync,
+        T2: Number + Send + Sync,
     {
         use crate::map::*;
         assert_eq!(
@@ -225,8 +225,8 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number,
-        T2: Number,
+        T: Number + Send + Sync,
+        T2: Number + Send + Sync,
     {
         match method {
             CorrMethod::Pearson => self.corr_pearson_1d(other, min_periods, stable),
