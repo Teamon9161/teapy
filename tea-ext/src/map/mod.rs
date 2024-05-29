@@ -311,7 +311,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
             let c = &mut T::zero();
             out.apply_mut_with(&self.as_dim1(), |vo, v| {
                 if v.notnan() {
-                    sum.kh_sum(*v, c);
+                    sum = sum.kh_sum(*v, c);
                     vo.write(sum);
                 } else {
                     vo.write(T::nan());
@@ -641,4 +641,17 @@ impl<'a> F64FuncExt for Expr<'a> {
     fn is_infinite(&self) {}
 
     fn log(&self, _base: f64) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::arr1;
+
+    #[test]
+    fn test_cumsum() {
+        let arr = arr1(&[1., 2., 3., 4., 5.]).wrap();
+        let out = arr.cumsum(true, 0, false).to_dim1().unwrap().into_raw_vec();
+        assert_eq!(out, vec![1., 3., 6., 10., 15.]);
+    }
 }

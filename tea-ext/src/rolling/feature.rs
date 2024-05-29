@@ -48,13 +48,13 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
                 if v.not_none() {
                     n += 1;
-                    sum.kh_sum(v.f64(), c);
+                    sum = sum.kh_sum(v.f64(), c);
                 };
                 let res = if n >= min_periods { sum } else { f64::NAN };
                 if let Some(v) = v_rm {
                     if v.not_none() {
                         n -= 1;
-                        sum.kh_sum(-v.f64(), c1);
+                        sum = sum.kh_sum(-v.f64(), c1);
                     };
                 }
                 res
@@ -106,7 +106,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
                 if v.not_none() {
                     n += 1;
-                    sum.kh_sum(v.f64(), c);
+                    sum = sum.kh_sum(v.f64(), c);
                 };
                 let res = if n >= min_periods {
                     sum / n.f64()
@@ -116,7 +116,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                 if let Some(v) = v_rm {
                     if v.not_none() {
                         n -= 1;
-                        sum.kh_sum(-v.f64(), c1);
+                        sum = sum.kh_sum(-v.f64(), c1);
                     };
                 }
                 res
@@ -174,7 +174,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                 if v.not_none() {
                     n += 1;
                     let v = v.f64();
-                    q_x.kh_sum(v.f64() - alpha * q_x, c1);
+                    q_x = q_x.kh_sum(v.f64() - alpha * q_x, c1);
                 };
                 let res = if n >= min_periods {
                     q_x.f64() * alpha / (1. - oma.powi(n as i32))
@@ -184,7 +184,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                 if let Some(v) = v_rm {
                     if v.not_none() {
                         n -= 1;
-                        q_x.kh_sum(-v.f64() * oma.powi(n as i32), c2);
+                        q_x = q_x.kh_sum(-v.f64() * oma.powi(n as i32), c2);
                     };
                 }
                 res
@@ -241,8 +241,8 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
                 if v.not_none() {
                     n += 1;
-                    sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                    sum.kh_sum(v.f64(), c2);
+                    sum_xt = sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                    sum = sum.kh_sum(v.f64(), c2);
                 };
                 let res = if n >= min_periods {
                     let divisor = (n * (n + 1)) >> 1;
@@ -253,8 +253,8 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                 if let Some(v) = v_rm {
                     if v.not_none() {
                         n -= 1;
-                        sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                        sum.kh_sum(-v.f64(), c4);
+                        sum_xt = sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                        sum = sum.kh_sum(-v.f64(), c4);
                     };
                 }
                 res
@@ -524,10 +524,10 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                 .stable_apply_window_to(out, window, |v, v_rm| {
                     if v.not_none() {
                         n += 1;
-                        sum.kh_sum(v, c1);
+                        sum = sum.kh_sum(v, c1);
                         let v2 = v * v;
-                        sum2.kh_sum(v2, c2);
-                        sum3.kh_sum(v2 * v, c3);
+                        sum2 = sum2.kh_sum(v2, c2);
+                        sum3 = sum3.kh_sum(v2 * v, c3);
                     };
                     let res = if n >= min_periods {
                         let n_f64 = n.f64();
@@ -549,10 +549,10 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                     };
                     if v_rm.not_none() {
                         n -= 1;
-                        sum.kh_sum(-v_rm, c4);
+                        sum = sum.kh_sum(-v_rm, c4);
                         let v_rm2 = v_rm * v_rm;
-                        sum2.kh_sum(-v_rm2, c5);
-                        sum3.kh_sum(-v_rm2 * v_rm, c6);
+                        sum2 = sum2.kh_sum(-v_rm2, c5);
+                        sum3 = sum3.kh_sum(-v_rm2 * v_rm, c6);
                     };
                     res
                 })
@@ -637,11 +637,11 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                 .stable_apply_window_to(out, window, |v, v_rm| {
                     if v.not_none() {
                         n += 1;
-                        sum.kh_sum(v, c1);
+                        sum = sum.kh_sum(v, c1);
                         let v2 = v * v;
-                        sum2.kh_sum(v2, c2);
-                        sum3.kh_sum(v2 * v, c3);
-                        sum4.kh_sum(v2 * v2, c4);
+                        sum2 = sum2.kh_sum(v2, c2);
+                        sum3 = sum3.kh_sum(v2 * v, c3);
+                        sum4 = sum4.kh_sum(v2 * v2, c4);
                     };
                     let res = if n >= min_periods {
                         let n_f64 = n.f64();
@@ -668,11 +668,11 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
                     };
                     if v_rm.not_none() {
                         n -= 1;
-                        sum.kh_sum(-v_rm, c5);
+                        sum = sum.kh_sum(-v_rm, c5);
                         let v_rm2 = v_rm * v_rm;
-                        sum2.kh_sum(-v_rm2, c6);
-                        sum3.kh_sum(-v_rm2 * v_rm, c7);
-                        sum4.kh_sum(-v_rm2 * v_rm2, c8);
+                        sum2 = sum2.kh_sum(-v_rm2, c6);
+                        sum3 = sum3.kh_sum(-v_rm2 * v_rm, c7);
+                        sum4 = sum4.kh_sum(-v_rm2 * v_rm2, c8);
                     };
                     res
                 })

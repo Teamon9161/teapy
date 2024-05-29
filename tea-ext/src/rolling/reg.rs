@@ -72,8 +72,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
             arr.apply_window_to(out, window, |v, v_rm| {
                 if v.notnan() {
                     n += 1;
-                    sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                    sum.kh_sum(v.f64(), c2);
+                    sum_xt = sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                    sum = sum.kh_sum(v.f64(), c2);
                 };
                 let res = if n >= min_periods {
                     let n_f64 = n.f64();
@@ -90,8 +90,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
                 if let Some(v) = v_rm {
                     if v.notnan() {
                         n -= 1;
-                        sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                        sum.kh_sum(-v.f64(), c4);
+                        sum_xt = sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                        sum = sum.kh_sum(-v.f64(), c4);
                     };
                 }
                 res
@@ -156,8 +156,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
             arr.apply_window_to(out, window, |v, v_rm| {
                 if v.notnan() {
                     n += 1;
-                    sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                    sum.kh_sum(v.f64(), c2);
+                    sum_xt = sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                    sum = sum.kh_sum(v.f64(), c2);
                 };
                 let res = if n >= min_periods {
                     let n_f64 = n.f64();
@@ -174,8 +174,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
                 if let Some(v) = v_rm {
                     if v.notnan() {
                         n -= 1;
-                        sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                        sum.kh_sum(-v.f64(), c4);
+                        sum_xt = sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                        sum = sum.kh_sum(-v.f64(), c4);
                     };
                 }
                 res
@@ -238,8 +238,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
             arr.apply_window_to(out, window, |v, v_rm| {
                 if v.notnan() {
                     n += 1;
-                    sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                    sum.kh_sum(v.f64(), c2);
+                    sum_xt = sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                    sum = sum.kh_sum(v.f64(), c2);
                 };
                 let res = if n >= min_periods {
                     let n_f64 = n.f64();
@@ -254,8 +254,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
                 if let Some(v) = v_rm {
                     if v.notnan() {
                         n -= 1;
-                        sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                        sum.kh_sum(-v.f64(), c4);
+                        sum_xt = sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                        sum = sum.kh_sum(-v.f64(), c4);
                     };
                 }
                 res
@@ -319,8 +319,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
             arr.apply_window_to(out, window, |v, v_rm| {
                 if v.notnan() {
                     n += 1;
-                    sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                    sum.kh_sum(v.f64(), c2);
+                    sum_xt = sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                    sum = sum.kh_sum(v.f64(), c2);
                 };
                 let res = if n >= min_periods {
                     let n_f64 = n.f64();
@@ -336,8 +336,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
                 if let Some(v) = v_rm {
                     if v.notnan() {
                         n -= 1;
-                        sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
-                        sum.kh_sum(-v.f64(), c4);
+                        sum_xt = sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
+                        sum = sum.kh_sum(-v.f64(), c4);
                     };
                 }
                 res
@@ -474,10 +474,10 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
             arr.stable_apply_window_with_to(&x1, out, window, |va, vb, va_rm, vb_rm| {
                 if va.notnan() && vb.notnan() {
                     n += 1;
-                    sum_a.kh_sum(va, c1);
-                    sum_b.kh_sum(vb, c2);
-                    sum_ab.kh_sum(va * vb, c3);
-                    sum_b2.kh_sum(vb.powi(2), c7);
+                    sum_a = sum_a.kh_sum(va, c1);
+                    sum_b = sum_b.kh_sum(vb, c2);
+                    sum_ab = sum_ab.kh_sum(va * vb, c3);
+                    sum_b2 = sum_b2.kh_sum(vb.powi(2), c7);
                 };
                 let res = if n >= min_periods {
                     (n.f64() * sum_ab - sum_a * sum_b) / (n.f64() * sum_b2 - sum_b.powi(2))
@@ -486,10 +486,10 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
                 };
                 if va_rm.notnan() && vb_rm.notnan() {
                     n -= 1;
-                    sum_a.kh_sum(-va_rm, c4);
-                    sum_b.kh_sum(-vb_rm, c5);
-                    sum_ab.kh_sum(-va_rm * vb_rm, c6);
-                    sum_b2.kh_sum(-vb.powi(2), c8);
+                    sum_a = sum_a.kh_sum(-va_rm, c4);
+                    sum_b = sum_b.kh_sum(-vb_rm, c5);
+                    sum_ab = sum_ab.kh_sum(-va_rm * vb_rm, c6);
+                    sum_b2 = sum_b2.kh_sum(-vb.powi(2), c8);
                 };
                 res
             })
@@ -563,10 +563,10 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
             arr.stable_apply_window_with_to(&x1, out, window, |va, vb, va_rm, vb_rm| {
                 if va.notnan() && vb.notnan() {
                     n += 1;
-                    sum_a.kh_sum(va, c1);
-                    sum_b.kh_sum(vb, c2);
-                    sum_ab.kh_sum(va * vb, c3);
-                    sum_b2.kh_sum(vb.powi(2), c7);
+                    sum_a = sum_a.kh_sum(va, c1);
+                    sum_b = sum_b.kh_sum(vb, c2);
+                    sum_ab = sum_ab.kh_sum(va * vb, c3);
+                    sum_b2 = sum_b2.kh_sum(vb.powi(2), c7);
                 };
                 let res = if n >= min_periods {
                     let beta =
@@ -577,10 +577,10 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
                 };
                 if va_rm.notnan() && vb_rm.notnan() {
                     n -= 1;
-                    sum_a.kh_sum(-va_rm, c4);
-                    sum_b.kh_sum(-vb_rm, c5);
-                    sum_ab.kh_sum(-va_rm * vb_rm, c6);
-                    sum_b2.kh_sum(-vb.powi(2), c8);
+                    sum_a = sum_a.kh_sum(-va_rm, c4);
+                    sum_b = sum_b.kh_sum(-vb_rm, c5);
+                    sum_ab = sum_ab.kh_sum(-va_rm * vb_rm, c6);
+                    sum_b2 = sum_b2.kh_sum(-vb.powi(2), c8);
                 };
                 res
             })

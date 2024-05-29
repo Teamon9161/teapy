@@ -67,8 +67,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D> {
                 if v.notnan() {
                     n += 1;
                     let v = v.f64();
-                    sum.kh_sum(v, c1);
-                    sum2.kh_sum(v * v, c2);
+                    sum = sum.kh_sum(v, c1);
+                    sum2 = sum2.kh_sum(v * v, c2);
                 };
                 let res = if n >= min_periods {
                     let n_f64 = n.f64();
@@ -87,8 +87,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D> {
                     if v_rm.notnan() {
                         n -= 1;
                         let v_rm = v_rm.f64();
-                        sum.kh_sum(-v_rm, c3);
-                        sum2.kh_sum(-v_rm * v_rm, c4);
+                        sum = sum.kh_sum(-v_rm, c3);
+                        sum2 = sum2.kh_sum(-v_rm * v_rm, c4);
                     };
                 }
                 res
@@ -155,8 +155,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D> {
                 if v.notnan() {
                     n += 1;
                     let v = v.f64();
-                    sum.kh_sum(v, c1);
-                    sum2.kh_sum(v * v, c2);
+                    sum = sum.kh_sum(v, c1);
+                    sum2 = sum2.kh_sum(v * v, c2);
                 };
                 let res = if n >= min_periods {
                     let n_f64 = n.f64();
@@ -175,8 +175,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> NormTs for ArrBase<S, D> {
                     if v_rm.notnan() {
                         n -= 1;
                         let v_rm = v_rm.f64();
-                        sum.kh_sum(-v_rm, c3);
-                        sum2.kh_sum(-v_rm * v_rm, c4);
+                        sum = sum.kh_sum(-v_rm, c3);
+                        sum2 = sum2.kh_sum(-v_rm * v_rm, c4);
                     };
                 }
                 res

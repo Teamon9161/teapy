@@ -79,9 +79,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
                 |va, vb, va_rm, vb_rm| {
                     if va.notnan() && vb.notnan() {
                         n += 1;
-                        sum_a.kh_sum(va, c1);
-                        sum_b.kh_sum(vb, c2);
-                        sum_ab.kh_sum(va * vb, c3);
+                        sum_a = sum_a.kh_sum(va, c1);
+                        sum_b = sum_b.kh_sum(vb, c2);
+                        sum_ab = sum_ab.kh_sum(va * vb, c3);
                     };
                     let res = if n >= min_periods {
                         (sum_ab - (sum_a * sum_b) / n.f64()) / (n - 1).f64()
@@ -90,9 +90,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
                     };
                     if va_rm.notnan() && vb_rm.notnan() {
                         n -= 1;
-                        sum_a.kh_sum(-va_rm, c4);
-                        sum_b.kh_sum(-vb_rm, c5);
-                        sum_ab.kh_sum(-va_rm * vb_rm, c6);
+                        sum_a = sum_a.kh_sum(-va_rm, c4);
+                        sum_b = sum_b.kh_sum(-vb_rm, c5);
+                        sum_ab = sum_ab.kh_sum(-va_rm * vb_rm, c6);
                     };
                     res
                 },
@@ -188,11 +188,11 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
                 |va, vb, va_rm, vb_rm| {
                     if va.notnan() && vb.notnan() {
                         n += 1;
-                        sum_a.kh_sum(va, c1);
-                        sum2_a.kh_sum(va * va, c2);
-                        sum_b.kh_sum(vb, c3);
-                        sum2_b.kh_sum(vb * vb, c4);
-                        sum_ab.kh_sum(va * vb, c5);
+                        sum_a = sum_a.kh_sum(va, c1);
+                        sum2_a = sum2_a.kh_sum(va * va, c2);
+                        sum_b = sum_b.kh_sum(vb, c3);
+                        sum2_b = sum2_b.kh_sum(vb * vb, c4);
+                        sum_ab = sum_ab.kh_sum(va * vb, c5);
                     };
                     let res = if n >= min_periods {
                         let n_f64 = n.f64();
@@ -214,11 +214,11 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
                     };
                     if va_rm.notnan() && vb_rm.notnan() {
                         n -= 1;
-                        sum_a.kh_sum(-va_rm, c6);
-                        sum2_a.kh_sum(-va_rm * va_rm, c7);
-                        sum_b.kh_sum(-vb_rm, c8);
-                        sum2_b.kh_sum(-vb_rm * vb_rm, c9);
-                        sum_ab.kh_sum(-va_rm * vb_rm, c10);
+                        sum_a = sum_a.kh_sum(-va_rm, c6);
+                        sum2_a = sum2_a.kh_sum(-va_rm * va_rm, c7);
+                        sum_b = sum_b.kh_sum(-vb_rm, c8);
+                        sum2_b = sum2_b.kh_sum(-vb_rm * vb_rm, c9);
+                        sum_ab = sum_ab.kh_sum(-va_rm * vb_rm, c10);
                     };
                     res
                 },
