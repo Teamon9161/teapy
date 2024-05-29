@@ -27,7 +27,7 @@ pub enum Scalar {
     I32(i32),
     Usize(usize),
     String(String),
-    Object(PyValue),
+    Object(Object),
 }
 
 macro_rules! impl_scalar {
@@ -53,7 +53,7 @@ pub enum PyArrayOk<'py> {
     I32(&'py PyArrayDyn<i32>),
     I64(&'py PyArrayDyn<i64>),
     Usize(&'py PyArrayDyn<usize>),
-    Object(&'py PyArrayDyn<PyValue>),
+    Object(&'py PyArrayDyn<Object>),
     DateTimeMs(&'py PyArrayDyn<Datetime<units::Milliseconds>>),
     DateTimeUs(&'py PyArrayDyn<Datetime<units::Microseconds>>),
     DateTimeNs(&'py PyArrayDyn<Datetime<units::Nanoseconds>>),
@@ -93,7 +93,7 @@ impl<'py> PyArrayOk<'py> {
         matches!(self, DateTimeMs(_) | DateTimeNs(_) | DateTimeUs(_))
     }
 
-    pub fn into_object(self) -> PyResult<&'py PyArrayDyn<PyValue>> {
+    pub fn into_object(self) -> PyResult<&'py PyArrayDyn<Object>> {
         if let PyArrayOk::Object(obj_arr) = self {
             Ok(obj_arr)
         } else {
@@ -116,16 +116,10 @@ impl<'py> PyArrayOk<'py> {
 #[derive(FromPyObject)]
 pub enum PyList {
     Bool(Vec<bool>),
-    // #[cfg(feature = "option_dtype")]
-    // Boll(Vec<OptBool>)
     I64(Vec<i64>),
-    #[cfg(feature = "option_dtype")]
-    OptI64(Vec<OptI64>),
     F64(Vec<f64>),
-    #[cfg(feature = "option_dtype")]
-    OptF64(Vec<OptF64>),
     String(Vec<String>),
-    Object(Vec<PyValue>),
+    Object(Vec<Object>),
 }
 
 macro_rules! match_pylist {
@@ -133,11 +127,7 @@ macro_rules! match_pylist {
         match $list {
             PyList::Bool($l) => $body,
             PyList::I64($l) => $body,
-            #[cfg(feature = "option_dtype")]
-            PyList::OptI64($l) => $body,
             PyList::F64($l) => $body,
-            #[cfg(feature = "option_dtype")]
-            PyList::OptF64($l) => $body,
             PyList::String($l) => $body,
             PyList::Object($l) => $body,
         }

@@ -30,7 +30,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     #[lazy_exclude]
     pub fn shift(&mut self, n: i32, fill: Option<T>)
     where
-        T: GetNone + Clone,
+        T: IsNone + Clone,
     {
         if self.is_empty() || (n == 0) {
             return;
@@ -75,7 +75,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     #[lazy_exclude]
     pub fn diff(&mut self, n: i32, fill: Option<T>)
     where
-        T: GetNone + Clone + std::ops::Sub<T, Output = T>,
+        T: IsNone + Clone + std::ops::Sub<T, Output = T>,
     {
         if self.is_empty() || (n == 0) {
             return;
@@ -123,7 +123,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     #[lazy_exclude]
     pub fn fillna<T2>(&mut self, method: FillMethod, value: Option<T2>)
     where
-        T: GetNone + Clone,
+        T: IsNone + Clone,
         T2: Cast<T> + Clone + Send + Sync,
     {
         use FillMethod::*;
@@ -194,6 +194,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     fn zscore(&mut self, min_periods: usize, stable: bool)
     where
         T: Number,
+        T::Inner: Number,
         f64: Cast<T>,
     {
         use crate::agg::AggExt1d;
@@ -213,6 +214,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     fn winsorize(&mut self, method: WinsorizeMethod, method_params: Option<f64>, stable: bool)
     where
         T: Number,
+        T::Inner: Number,
         f64: Cast<T>,
     {
         use crate::agg::*;

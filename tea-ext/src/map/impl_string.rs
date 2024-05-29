@@ -25,7 +25,7 @@ where
     }
 
     #[cfg(feature = "time")]
-    fn strptime(&self, fmt: String) -> Arr<DateTime, D> {
-        self.map(|s| DateTime::parse(s, fmt.as_str()).unwrap_or_default())
+    fn strptime(&self, fmt: Option<&str>) -> Arr<DateTime, D> {
+        self.map(|s| DateTime::parse(s, fmt).unwrap_or_default())
     }
 }

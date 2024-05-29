@@ -9,33 +9,16 @@ description = "Fast DataDict Library in Python"
 
 
 [features]
-default = ["extend", "methods_extend", "groupby_extend", "lazy_io", "blas"]
-# default = ["extend", "blas", "agg", "map"]
-
-# methods includes extend datatype
-methods_extend = ["extend", "methods", "tea-ext/extend"]
-# groupby methods includes extend datatype
-groupby_extend = ["extend", "groupby", "tea-groupby/extend"]
+default = ["lazy", "ops", "map", "blas", "methods", "time", "io", "groupby"]
 
 blas = ["tea-core/blas", "tea-lazy/blas", "tea-ext/map", "stat", "lazy"] # linalg
 
-
-extend = ["ops", "lazy_time", "lazy_option_dtype"]
 methods = ["agg", "map", "rolling", "concat", "create"]  # extend methods
 
-
-# lazy
-lazy_io = ["io", "lazy", "tea-io/lazy"]
-lazy_groupby = ["groupby", "lazy", "tea-groupby/lazy"]
-lazy_time = ["time", "lazy", "tea-lazy/time"]
-# lazy_option_dtype = ["option_dtype", "lazy", "tea-lazy/option_dtype"]
-lazy_option_dtype = ["lazy"]
-
 # dtypes extension
-lazy = ["tea-lazy", "tea-ext/lazy"]
+lazy = []
 ops = ["tea-lazy/ops"]
-time = ["tea-core/time", "tea-ext/time", "tea-hash/time"]
-option_dtype = ["tea-core/option_dtype"]
+time = ["tea-core/time", "tea-ext/time", "tea-hash/time", "tea-lazy/time"]
 
 # methods
 create = ["tea-ext/create"]
@@ -58,12 +41,12 @@ srd = ["tea-core/srd"]
 
 
 [dependencies]
-tea-core = {path = "../tea-core", default-features = false}
+tea-core = {path = "../tea-core", default-features = false, features = ["method_1d"]}
 tea-hash = {path = "../tea-hash"}
-tea-lazy = {path = "../tea-lazy", optional = true}
-tea-ext = {path = "../tea-ext", default-features = false}
-tea-groupby = {path = "../tea-groupby", optional = true}
-tea-io = {path = "../tea-io", default-features = false, optional = true}
+tea-lazy = {path = "../tea-lazy"}
+tea-ext = {path = "../tea-ext", default-features = false, features=["lazy"]}
+tea-groupby = {path = "../tea-groupby", features=["lazy"], optional = true}
+tea-io = {path = "../tea-io", default-features = false, features=["lazy"], optional = true}
 pyo3 = { workspace=true }
 numpy = { workspace=true }
 parking_lot = { workspace=true }

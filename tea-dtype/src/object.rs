@@ -13,13 +13,14 @@ use serde::{Serialize, Serializer};
 pub struct Object(pub PyObject);
 
 impl std::fmt::Display for Object {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // write!(f, "{}", self.strftime(None))
         std::fmt::Display::fmt(&self.0, f)
     }
 }
 
 impl Debug for Object {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", &self.0)
     }

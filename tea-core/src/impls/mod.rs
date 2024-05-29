@@ -1,6 +1,6 @@
 #[cfg(feature = "method_1d")]
 mod impl_1d_method;
-// #[cfg(feature = "method_1d")]
+#[cfg(feature = "method_1d")]
 mod impl_basic;
 mod impl_method;
 #[cfg(feature = "time")]
@@ -9,6 +9,7 @@ mod impl_time;
 mod impl_numeric;
 mod impl_traits;
 
+#[cfg(feature = "method_1d")]
 pub use impl_basic::BasicAggExt;
 
 #[cfg(feature = "blas")]

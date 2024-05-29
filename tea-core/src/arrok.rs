@@ -425,7 +425,7 @@ macro_rules! impl_from_arrow {
 
             pub fn from_arrow(arr: Box<dyn arrow::array::Array>) -> ArrOk<'a> {
                 use arrow::datatypes::DataType as ArrowDT;
-                use crate::{prelude::ViewOnBase, datatype::{IsNone, Number}};
+                use crate::{prelude::ViewOnBase, datatype::{IsNone, TvNumber}};
                 use arrow::array::PrimitiveArray;
                 match arr.data_type() {
                     $(ArrowDT::$arrow_dt => {

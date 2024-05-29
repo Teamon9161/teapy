@@ -8,7 +8,8 @@ pub use tevec::prelude::{BoolType, Cast, IsNone, Number as TvNumber};
 
 #[cfg(feature = "time")]
 pub use tevec::prelude::{DateTime, TimeDelta, TimeUnit};
-// pub use tea_time::{DateTime, TimeDelta, TimeUnit};
+#[cfg(feature = "time")]
+pub use time::{DateTimeToPy, DateTimeToRs};
 
 /// just for old code compatibility
 pub trait Number: TvNumber {

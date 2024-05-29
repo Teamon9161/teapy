@@ -192,9 +192,9 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                                 let (va, vb) =
                                     unsafe { (key_view.uget(*a), key_view.uget(*b)) };
                                 if !rev {
-                                    va.nan_sort_cmp_stable(vb)
+                                    va.sort_cmp_stable(vb)
                                 } else {
-                                    va.nan_sort_cmp_rev_stable(vb)
+                                    va.sort_cmp_rev_stable(vb)
                                 }
                             }
                         )

@@ -32,17 +32,11 @@ impl_cast!(
     cast_usize: Usize,
     cast_string: String,
     cast_bool: Bool,
+    cast_object: Object,
     #[cfg(feature="time")] cast_datetime_default: DateTime,
     #[cfg(feature="time")] cast_timedelta: TimeDelta,
     cast_optusize: OptUsize,
     cast_vecusize: VecUsize,
-    #[cfg(feature = "option_dtype")] cast_optf32: OptF32,
-    #[cfg(feature = "option_dtype")] cast_optf64: OptF64,
-    #[cfg(feature = "option_dtype")] cast_opti32: OptI32,
-    #[cfg(feature = "option_dtype")] cast_opti64: OptI64,
-    #[cfg(feature = "option_dtype")] cast_optbool: OptBool,
-
-
 );
 
 impl<'a> Expr<'a> {

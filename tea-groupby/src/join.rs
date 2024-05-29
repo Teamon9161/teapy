@@ -110,7 +110,7 @@ impl<'a> ExprJoinExt for Expr<'a> {
 }
 
 #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec<OptUsize> {
+pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec<Option<usize>> {
     assert_eq!(
         left_keys.len(),
         right_keys.len(),
@@ -136,7 +136,7 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
             panic!("the length of right keys should be equal, but the length of right key is different")
         }
     }
-    let mut output: Vec<OptUsize> = Vec::with_capacity(len);
+    let mut output: Vec<Option<usize>> = Vec::with_capacity(len);
     // fast path for only one key
     if key_len == 1 {
         match_arrok!(hash left_keys[0], lk_arr, {
@@ -169,14 +169,14 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
                     let entry = group_dict_right.entry(left_key);
                     match entry {
                         Entry::Vacant(_entry) => {
-                            output.push(None.into());
+                            output.push(None);
                         }
                         Entry::Occupied(mut entry) => {
                             let v = entry.get_mut();
                             if v.1.len() > 1 {
-                                output.push(v.1.pop().unwrap().into());
+                                output.push(v.1.pop());
                             } else {
-                                output.push(v.1[0].into());
+                                output.push(Some(v.1[0]));
                             }
                         }
                     }
@@ -197,14 +197,14 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
             let entry = group_dict_right.entry(hash);
             match entry {
                 Entry::Vacant(_entry) => {
-                    output.push(None.into());
+                    output.push(None);
                 }
                 Entry::Occupied(mut entry) => {
                     let v = entry.get_mut();
                     if v.1.len() > 1 {
-                        output.push(v.1.pop().unwrap().into());
+                        output.push(v.1.pop());
                     } else {
-                        output.push(v.1[0].into());
+                        output.push(Some(v.1[0]));
                     }
                 }
             }
@@ -219,7 +219,7 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
 pub fn join_outer<'a>(
     left_keys: &[&ArrOk<'a>],
     right_keys: &[&ArrOk<'a>],
-) -> (Vec<ArrOk<'a>>, Vec<OptUsize>, Vec<OptUsize>) {
+) -> (Vec<ArrOk<'a>>, Vec<Option<usize>>, Vec<Option<usize>>) {
     assert_eq!(
         left_keys.len(),
         right_keys.len(),
@@ -256,7 +256,7 @@ pub fn join_outer<'a>(
                 // the first element is the index of the key and the right table indicates the idx is left or right
                 let mut key_idx = Vec::<(usize, bool, _)>::with_capacity(outer_capatiy);
                 let mut outer_dict =
-                    TpHashMap::<_, (OptUsize, OptUsize)>::with_capacity_and_hasher(outer_capatiy, BUILD_HASHER.clone());
+                    TpHashMap::<_, (Option<usize>, Option<usize>)>::with_capacity_and_hasher(outer_capatiy, BUILD_HASHER.clone());
                 let lk_arr = lk_arr.cast_ref_with(rk_arr).view().to_dim1().unwrap();
                 let rk_arr = rk_arr.view().to_dim1().unwrap();
 
@@ -265,7 +265,7 @@ pub fn join_outer<'a>(
                     let entry = outer_dict.entry(left_value.clone());
                     match entry {
                         Entry::Vacant(entry) => {
-                            entry.insert((i.into(), None.into()));
+                            entry.insert((Some(i), None));
                             key_idx.push((i, true, left_value));
                         }
                         Entry::Occupied(mut _entry) => {
@@ -278,13 +278,13 @@ pub fn join_outer<'a>(
                     let entry = outer_dict.entry(right_value.clone());
                     match entry {
                         Entry::Vacant(entry) => {
-                            entry.insert((None.into(), i.into()));
+                            entry.insert((None, Some(i)));
                             key_idx.push((i, false, right_value));
                         }
                         Entry::Occupied(mut entry) => {
                             let v = entry.get_mut();
                             // the key is duplicated, we don't need to push the key_idx
-                            v.1 = i.into();
+                            v.1 = Some(i);
                         }
                     }
                 }
@@ -307,10 +307,11 @@ pub fn join_outer<'a>(
         let (len, hashed_left_keys) = prepare_groupby(left_keys, false);
         let (right_len, hashed_right_keys) = prepare_groupby(right_keys, false);
         let mut key_idx = Vec::<(usize, bool, _)>::with_capacity(outer_capatiy);
-        let mut outer_dict = TpHashMap::<_, (OptUsize, OptUsize)>::with_capacity_and_hasher(
-            outer_capatiy,
-            BUILD_HASHER.clone(),
-        );
+        let mut outer_dict =
+            TpHashMap::<_, (Option<usize>, Option<usize>)>::with_capacity_and_hasher(
+                outer_capatiy,
+                BUILD_HASHER.clone(),
+            );
         for i in 0..len {
             let tuple_left_keys = hashed_left_keys
                 .iter()
@@ -320,7 +321,7 @@ pub fn join_outer<'a>(
             let entry = outer_dict.entry(hash);
             match entry {
                 Entry::Vacant(entry) => {
-                    entry.insert((i.into(), None.into()));
+                    entry.insert((Some(i), None));
                     key_idx.push((i, true, hash));
                 }
                 Entry::Occupied(mut _entry) => {
@@ -337,7 +338,7 @@ pub fn join_outer<'a>(
             let entry = outer_dict.entry(hash);
             match entry {
                 Entry::Vacant(entry) => {
-                    entry.insert((None.into(), i.into()));
+                    entry.insert((None, Some(i)));
                     key_idx.push((i, false, hash));
                 }
                 Entry::Occupied(mut entry) => {

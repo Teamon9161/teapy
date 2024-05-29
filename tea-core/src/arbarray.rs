@@ -1,6 +1,6 @@
 use crate::datatype::{Cast, DataType, GetDataType};
 use crate::prelude::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
-use error::TpResult;
+// use error::TpResult;
 use ndarray::{s, Array, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
 // #[cfg(feature="srd")]
 // use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -9,6 +9,7 @@ use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::marker::PhantomPinned;
 use std::ops::Deref;
 use std::pin::Pin;
+use tevec::prelude::*;
 
 pub enum ArbArray<'a, T> {
     View(ArrViewD<'a, T>),
@@ -439,11 +440,12 @@ impl<'a, T> ArbArray<'a, T> {
         }
     }
 
-    pub fn into_owned_inner(self) -> TpResult<ArrD<T>> {
+    pub fn into_owned_inner(self) -> TResult<ArrD<T>> {
         if let ArbArray::Owned(arr) = self {
             Ok(arr)
         } else {
-            Err("ArbArray is not owned".into())
+            tbail!("ArbArray is not owned")
+            // Err("ArbArray is not owned".into())
         }
     }
 

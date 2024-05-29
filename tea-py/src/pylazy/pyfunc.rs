@@ -10,6 +10,8 @@ use tea_ext::agg::{corr, CorrMethod};
 
 #[cfg(feature = "arw")]
 use crate::from_py::PyColSelect;
+#[cfg(feature = "time")]
+use tea_core::datatype::DateTimeToRs;
 #[cfg(feature = "arw")]
 use tea_core::prelude::StrError;
 #[cfg(feature = "create")]
@@ -142,7 +144,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                             DateTimeMs(arr) => Expr::new_from_owned(
                                 arr.readonly()
                                     .as_array()
-                                    .map(|v| Into::<DateTime>::into(*v))
+                                    .map(|v| (*v).to_rs().unwrap())
                                     .wrap(),
                                 None,
                             )
@@ -150,7 +152,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                             DateTimeNs(arr) => Expr::new_from_owned(
                                 arr.readonly()
                                     .as_array()
-                                    .map(|v| Into::<DateTime>::into(*v))
+                                    .map(|v| (*v).to_rs().unwrap())
                                     .wrap(),
                                 None,
                             )
@@ -158,7 +160,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                             DateTimeUs(arr) => Expr::new_from_owned(
                                 arr.readonly()
                                     .as_array()
-                                    .map(|v| Into::<DateTime>::into(*v))
+                                    .map(|v| (*v).to_rs().unwrap())
                                     .wrap(),
                                 None,
                             )
@@ -442,15 +444,15 @@ pub unsafe fn arange(start: &PyAny, end: Option<&PyAny>, step: Option<f64>) -> P
 #[cfg(feature = "time")]
 #[pyfunction]
 pub fn timedelta(rule: &str) -> PyExpr {
-    let e: Expr<'static> = TimeDelta::parse(rule).into();
+    let e: Expr<'static> = TimeDelta::parse(rule).unwrap().into();
     e.into()
 }
 
 #[cfg(feature = "time")]
 #[pyfunction]
-pub fn datetime(s: &str, fmt: &str) -> PyResult<PyExpr> {
+pub fn datetime(s: &str, fmt: Option<&str>) -> PyResult<PyExpr> {
     let e: Expr<'static> = DateTime::parse(s, fmt)
-        .map_err(PyValueError::new_err)?
+        .map_err(|e| PyValueError::new_err(e.to_string()))?
         .into();
     Ok(e.into())
 }

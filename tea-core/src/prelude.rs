@@ -4,6 +4,7 @@ pub use crate::{
     match_all, match_arrok, ArrBase, Dim1,
 };
 
+#[cfg(feature = "method_1d")]
 pub use super::impls::BasicAggExt;
 pub use super::own::{arr0, Arr, Arr1, Arr2, ArrD};
 pub use super::traits::WrapNdarray;

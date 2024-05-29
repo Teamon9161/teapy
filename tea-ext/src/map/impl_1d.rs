@@ -9,7 +9,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
     #[inline]
     fn dropna_1d(self) -> Arr1<T>
     where
-        T: GetNone,
+        T: IsNone,
     {
         Arr1::from_iter(self.into_iter().filter(|v| !v.is_none()))
     }
@@ -114,13 +114,13 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
                     idx_sorted.sort_unstable_by(|a: &i32, b: &i32| {
                         let (va, vb) =
                             unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                        va.nan_sort_cmp(&vb)
+                        va.sort_cmp(&vb)
                     })
                 } else {
                     idx_sorted.sort_unstable_by(|a: &i32, b: &i32| {
                         let (va, vb) =
                             unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                        va.nan_sort_cmp_rev(&vb)
+                        va.sort_cmp_rev(&vb)
                     })
                 }
                 for (i, v) in idx_sorted.iter().take(n).enumerate() {
@@ -138,7 +138,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         if !rev {
             let sort_func = |a: &i32, b: &i32| {
                 let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                va.nan_sort_cmp(&vb)
+                va.sort_cmp(&vb)
             };
             idx_sorted.select_nth_unstable_by(kth, sort_func);
             idx_sorted.truncate(kth + 1);
@@ -149,7 +149,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         } else {
             let sort_func = |a: &i32, b: &i32| {
                 let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                va.nan_sort_cmp_rev(&vb)
+                va.sort_cmp_rev(&vb)
             };
             idx_sorted.select_nth_unstable_by(kth, sort_func);
             idx_sorted.truncate(kth + 1);
@@ -174,20 +174,16 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
             } else {
                 let mut arr = self.to_owned(); // clone the array
                 if !rev {
-                    arr.sort_unstable_by(|a, b| a.nan_sort_cmp(b));
+                    arr.sort_unstable_by(|a, b| a.sort_cmp(b));
                 } else {
-                    arr.sort_unstable_by(|a, b| a.nan_sort_cmp_rev(b));
+                    arr.sort_unstable_by(|a, b| a.sort_cmp_rev(b));
                 }
                 out.apply_mut_with(&arr, |vo, v| *vo = *v);
             }
             return;
         }
         let mut out_c = self.0.to_owned().into_raw_vec(); // clone the array
-        let sort_func = if !rev {
-            T::nan_sort_cmp
-        } else {
-            T::nan_sort_cmp_rev
-        };
+        let sort_func = if !rev { T::sort_cmp } else { T::sort_cmp_rev };
         out_c.select_nth_unstable_by(kth, sort_func);
         out_c.truncate(kth + 1);
         if sort {
@@ -232,15 +228,15 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         mut out: ArrBase<SO, Ix1>,
         slc: ArrBase<S3, Ix1>,
     ) where
-        T: Clone + GetNone,
+        T: Clone + IsNone,
         SO: DataMut<Elem = MaybeUninit<T>>,
-        S3: Data<Elem = OptUsize> + Send + Sync,
+        S3: Data<Elem = Option<usize>> + Send + Sync,
     {
         let value = slc
             .iter()
             .map(|idx| {
-                if let Some(idx) = Into::<Option<usize>>::into(*idx) {
-                    self.uget(idx).clone()
+                if let Some(idx) = idx {
+                    self.uget(*idx).clone()
                 } else {
                     T::none()
                 }

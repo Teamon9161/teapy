@@ -6,12 +6,12 @@ members = [
     "tea-dtype",
     # "tea-error",
     "tea-ext",
-    # "tea-groupby",
+    "tea-groupby",
     "tea-hash",
     "tea-io",
     "tea-lazy",
     "tea-macros",
-    # "tea-py",
+    "tea-py",
     # "tea-time",
     # "tea-utils",
 ]
@@ -44,9 +44,9 @@ chrono = {version = "0.4.37", features = ["serde"]}
 arrow = {package = "arrow2", version = "0.18.0", default-features = false, features = ["io_ipc", "io_ipc_compression"]}
 
 [workspace.dependencies.tevec]
-path = "../tevec/tevec"
-# git = "https://github.com/Teamon9161/tevec.git"
-# branch = "master"
+# path = "../tevec/tevec"
+git = "https://github.com/Teamon9161/tevec.git"
+branch = "master"
 default-features = false
 features = ["ndarray"]
 

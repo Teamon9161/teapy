@@ -135,7 +135,7 @@ impl PyExpr {
         Ok(())
     }
 
-    pub(crate) fn cast_by_str(&self, ty_name: &str, py: Python) -> PyResult<Self> {
+    pub(crate) fn cast_by_str(&self, ty_name: &str) -> PyResult<Self> {
         let mut expr = self.clone();
         match ty_name.to_lowercase().as_str() {
             "float" | "f64" => expr.e.cast_f64(),
@@ -144,7 +144,7 @@ impl PyExpr {
             "i64" => expr.e.cast_i64(),
             "usize" | "uint" => expr.e.cast_usize(),
             "bool" => expr.e.cast_bool(),
-            "object" => expr.e.cast_object_eager(py).map_err(StrError::to_py)?,
+            "object" => expr.e.cast_object(),
             "str" => expr.e.cast_string(),
             #[cfg(feature = "time")]
             "datetime" => expr.e.cast_datetime_default(),
@@ -159,14 +159,6 @@ impl PyExpr {
             #[cfg(feature = "time")]
             "timedelta" => expr.e.cast_timedelta(),
             "optusize" | "option<usize>" | "opt<usize>" => expr.e.cast_optusize(),
-            #[cfg(feature = "option_dtype")]
-            "optf64" | "option<f64>" | "opt<f64>" => expr.e.cast_optf64(),
-            #[cfg(feature = "option_dtype")]
-            "opti64" | "option<i64>" | "opt<i64>" => expr.e.cast_opti64(),
-            #[cfg(feature = "option_dtype")]
-            "optf32" | "option<f32>" | "opt<f32>" => expr.e.cast_optf32(),
-            #[cfg(feature = "option_dtype")]
-            "opti32" | "option<i32>" | "opt<i32>" => expr.e.cast_optf64(),
             _ => Err(PyValueError::new_err(format!(
                 "cast to type: {:?} is not implemented",
                 &ty_name

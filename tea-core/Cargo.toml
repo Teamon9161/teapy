@@ -9,7 +9,7 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 # default = ["time", "method_1d", "ops", "blas", "concat", "arw"]
-default = ["time"]
+default = ["time", "method_1d"]
 
 method_1d = []
 time = ["tea-dtype/time"]
@@ -17,7 +17,7 @@ ops = []
 srd = ["tea-dtype/srd", "ndarray/serde"]
 blas = ["ndarray/blas", "ops", "lapack-sys", "intel-mkl"]
 concat = []
-arw = ["tea-error/arw", "concat"]
+arw = ["tea-error/arw", "arrow", "concat"]
 
 # blas choices
 openblas  = ["openblas-static"]
@@ -47,4 +47,4 @@ lapack-sys = { version="0.14.0", optional=true }
 intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }
 openblas-src = { version = "0.10.4", optional = true, default-features = false, features = ["cblas"] }
 # statrs = { version = "0.16", optional=true }
-arrow = { workspace=true, default-features = false }
+arrow = { workspace=true, default-features = false, optional = true }

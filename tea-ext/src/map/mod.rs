@@ -36,14 +36,14 @@ use lazy::Expr;
 impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     fn is_nan(&self) -> ArrD<bool>
     where
-        T: GetNone,
+        T: IsNone,
     {
         self.map(|v| v.is_none()).to_dimd()
     }
 
     fn not_nan(&self) -> ArrD<bool>
     where
-        T: GetNone,
+        T: IsNone,
     {
         self.map(|v| !v.is_none()).to_dimd()
     }
@@ -127,9 +127,9 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         par: bool,
     ) -> ArrD<T>
     where
-        T: Clone + Default + GetNone + Send + Sync,
+        T: Clone + Default + IsNone + Send + Sync,
         D: Dimension,
-        SO: Data<Elem = OptUsize> + Send + Sync,
+        SO: Data<Elem = Option<usize>> + Send + Sync,
     {
         let f_flag = !self.is_standard_layout();
         let axis = self.norm_axis(axis);
@@ -356,7 +356,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
                         *arr.uget((b.assume_init_read()) as usize),
                     )
                 }; // safety: out不超过self的长度
-                va.nan_sort_cmp(&vb)
+                va.sort_cmp(&vb)
             });
         } else {
             out.sort_unstable_by(|a, b| {
@@ -366,7 +366,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
                         *arr.uget((b.assume_init_read()) as usize),
                     )
                 }; // safety: out不超过self的长度
-                va.nan_sort_cmp_rev(&vb)
+                va.sort_cmp_rev(&vb)
             });
         }
     }
@@ -398,12 +398,12 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
         if !rev {
             idx_sorted.sort_unstable_by(|a, b| {
                 let (va, vb) = unsafe { (*arr.uget(*a), *arr.uget(*b)) }; // safety: out不超过self的长度
-                va.nan_sort_cmp(&vb)
+                va.sort_cmp(&vb)
             });
         } else {
             idx_sorted.sort_unstable_by(|a, b| {
                 let (va, vb) = unsafe { (*arr.uget(*a), *arr.uget(*b)) }; // safety: out不超过self的长度
-                va.nan_sort_cmp_rev(&vb)
+                va.sort_cmp_rev(&vb)
             });
         }
 

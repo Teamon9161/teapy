@@ -35,6 +35,9 @@ use tea_ext::ExprTimeExt;
 #[cfg(all(feature = "rolling", feature = "agg", feature = "time"))]
 use tea_ext::RollingTimeStartBy;
 
+#[cfg(feature = "time")]
+use tea_core::datatype::DateTimeToPy;
+
 #[cfg(feature = "groupby")]
 use tea_groupby::*;
 
@@ -273,16 +276,20 @@ impl PyExpr {
         }
         let arr = data.view_arr(ct_rs.as_ref())?;
         if matches!(arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
-            let arr = match_arrok!(
-                arr,
-                a,
-                { a.view().to_object(py) },
-                Str,
-                String,
-                #[cfg(feature = "time")]
-                TimeDelta
-            );
-            return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
+            // let arr = match_arrok!(
+            //     arr,
+            //     a,
+            //     { a.view().to_object(py) },
+            //     Str,
+            //     String,
+            //     #[cfg(feature = "time")]
+            //     TimeDelta
+            // );
+            return PyArray::from_owned_array_bound(
+                py,
+                arr.view().cast_object().into_owned_inner().unwrap().0,
+            )
+            .no_dim0(py);
         }
         #[cfg(feature = "time")]
         if let ArrOk::DateTime(arr) = arr {
@@ -362,16 +369,21 @@ impl PyExpr {
         }
         let arr = data.view_arr(ct_rs.as_ref())?;
         if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
-            let arr = match_arrok!(
-                arr,
-                a,
-                { a.view().to_object(py) },
-                Str,
-                String,
-                #[cfg(feature = "time")]
-                TimeDelta
-            );
-            return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
+            // let arr = match_arrok!(
+            //     arr,
+            //     a,
+            //     { a.view().cast_object() },
+            //     Str,
+            //     String,
+            //     #[cfg(feature = "time")]
+            //     TimeDelta
+            // );
+            // let arr = arr.cast_object();
+            return PyArray::from_owned_array_bound(
+                py,
+                arr.view().cast_object().into_owned_inner().unwrap().0,
+            )
+            .no_dim0(py);
         }
         #[cfg(feature = "time")]
         if let ArrOk::DateTime(arr) = &arr {
@@ -2063,11 +2075,11 @@ impl PyExpr {
         }
     }
 
-    pub fn cast(&self, ty: &PyAny, py: Python) -> PyResult<Self> {
+    pub fn cast(&self, ty: &PyAny) -> PyResult<Self> {
         if let Ok(ty_name) = ty.extract::<&str>() {
-            self.cast_by_str(ty_name, py)
+            self.cast_by_str(ty_name)
         } else if let Ok(py_type) = ty.extract::<&pyo3::types::PyType>() {
-            self.cast_by_str(&py_type.name().unwrap(), py)
+            self.cast_by_str(&py_type.name().unwrap())
         } else {
             unimplemented!("Incorrect type for casting")
         }
@@ -2266,13 +2278,13 @@ impl PyExpr {
 
     #[cfg(feature = "time")]
     pub fn offset_by(&self, delta: &str) -> PyResult<Self> {
-        let delta: Expr<'static> = TimeDelta::parse(delta).into();
+        let delta: Expr<'static> = TimeDelta::parse(delta).unwrap().into();
         let out = self.clone();
         Ok((out.e + delta).to_py(self.obj()))
     }
 
     #[cfg(all(feature = "map", feature = "time"))]
-    pub fn strptime(&self, fmt: String) -> PyResult<Self> {
+    pub fn strptime(&self, fmt: Option<String>) -> PyResult<Self> {
         let mut out = self.clone();
         out.e.strptime(fmt);
         Ok(out)
