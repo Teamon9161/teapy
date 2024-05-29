@@ -66,7 +66,7 @@ macro_rules! match_all {
 macro_rules! match_arrok {
     (numeric $($tt: tt)*) => {
         match_all!(ArrOk, $($tt)*,
-            F32, F64, I32, I64, U64, Usize, 
+            F32, F64, I32, I64, U64, Usize,
             // OptUsize,
         )
     };
@@ -392,7 +392,6 @@ impl<'a> Cast<ArbArray<'a, &'a str>> for ArrOk<'a> {
         }
     }
 }
-
 
 impl<'a> Cast<ArbArray<'a, Vec<usize>>> for ArrOk<'a> {
     #[inline]

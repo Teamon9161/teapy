@@ -7,7 +7,7 @@ use tea_core::prelude::*;
 use tea_core::utils::{define_c, kh_sum};
 
 #[arr_map_ext(lazy = "view", type = "numeric")]
-impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D> {
+impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D> {
     fn ts_sum<SO>(
         &self,
         out: &mut ArrBase<SO, Ix1>,
@@ -30,13 +30,13 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     sum += v.f64();
                 };
                 let res = if n >= min_periods { sum } else { f64::NAN };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         n -= 1;
                         sum -= v.f64();
                     };
@@ -46,13 +46,13 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         } else {
             define_c!(c, c1);
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     sum.kh_sum(v.f64(), c);
                 };
                 let res = if n >= min_periods { sum } else { f64::NAN };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         n -= 1;
                         sum.kh_sum(-v.f64(), c1);
                     };
@@ -84,7 +84,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     sum += v.f64();
                 };
@@ -94,7 +94,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v_rm) = v_rm {
-                    if v_rm.notnan() {
+                    if v_rm.not_none() {
                         n -= 1;
                         sum -= v_rm.f64();
                     };
@@ -104,7 +104,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         } else {
             define_c!(c, c1);
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     sum.kh_sum(v.f64(), c);
                 };
@@ -114,7 +114,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         n -= 1;
                         sum.kh_sum(-v.f64(), c1);
                     };
@@ -150,7 +150,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     q_x += v.f64() - alpha * q_x.f64();
                 };
@@ -160,7 +160,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         n -= 1;
                         // 本应是window-1，不过本身window就要自然减一，调整一下顺序
                         q_x -= v.f64() * oma.powi(n as i32);
@@ -171,7 +171,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         } else {
             define_c!(c1, c2);
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     let v = v.f64();
                     q_x.kh_sum(v.f64() - alpha * q_x, c1);
@@ -182,7 +182,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         n -= 1;
                         q_x.kh_sum(-v.f64() * oma.powi(n as i32), c2);
                     };
@@ -215,7 +215,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     let v = v.f64();
                     sum_xt += n.f64() * v; // 错位相减法, 忽略nan带来的系数和window不一致问题
@@ -228,7 +228,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         n -= 1;
                         sum_xt -= sum;
                         sum -= v.f64();
@@ -239,7 +239,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         } else {
             define_c!(c1, c2, c3, c4);
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     sum_xt.kh_sum(v.f64() * n.f64(), c1); // 错位相减法, 忽略nan带来的系数和window不一致问题
                     sum.kh_sum(v.f64(), c2);
@@ -251,7 +251,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         n -= 1;
                         sum_xt.kh_sum(-sum, c3); // 错位相减法, 忽略nan带来的系数和window不一致问题
                         sum.kh_sum(-v.f64(), c4);
@@ -272,6 +272,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
+        T::Inner: Number,
     {
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
@@ -287,7 +288,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     let v = v.f64();
                     sum += v;
@@ -308,7 +309,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         let v = v.f64();
                         n -= 1;
                         sum -= v;
@@ -325,7 +326,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
             self.as_dim1()
                 .stable_apply_window_to(out, window, |v, v_rm| {
-                    if v.notnan() {
+                    if v.not_none() {
                         n += 1;
                         let delta = kh_sum(v, -mean, c1);
                         mean += delta / n.f64();
@@ -344,7 +345,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     } else {
                         f64::NAN
                     };
-                    if v_rm.notnan() {
+                    if v_rm.not_none() {
                         n -= 1;
                         if n > 0 {
                             let delta = kh_sum(v_rm, -mean, c2);
@@ -368,6 +369,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
+        T::Inner: Number,
     {
         let window = min(self.len(), window);
         if (window < min_periods) | (window == 1) {
@@ -381,7 +383,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     let v = v.f64();
                     sum += v;
@@ -402,7 +404,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         let v = v.f64();
                         n -= 1;
                         sum -= v;
@@ -419,7 +421,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
             self.as_dim1()
                 .stable_apply_window_to(out, window, |v, v_rm| {
-                    if v.notnan() {
+                    if v.not_none() {
                         n += 1;
                         let delta = kh_sum(v, -mean, c1);
                         mean += delta / n.f64();
@@ -438,7 +440,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     } else {
                         f64::NAN
                     };
-                    if v_rm.notnan() {
+                    if v_rm.not_none() {
                         n -= 1;
                         if n > 0 {
                             let delta = kh_sum(v_rm, -mean, c2);
@@ -462,6 +464,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
+        T::Inner: Number,
     {
         let min_periods = min_periods.max(3);
         let window = min(self.len(), window);
@@ -477,7 +480,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     let v = v.f64();
                     sum += v;
@@ -504,7 +507,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         let v = v.f64();
                         n -= 1;
                         sum -= v;
@@ -519,7 +522,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             define_c!(c1, c2, c3, c4, c5, c6);
             self.as_dim1()
                 .stable_apply_window_to(out, window, |v, v_rm| {
-                    if v.notnan() {
+                    if v.not_none() {
                         n += 1;
                         sum.kh_sum(v, c1);
                         let v2 = v * v;
@@ -544,7 +547,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     } else {
                         f64::NAN
                     };
-                    if v_rm.notnan() {
+                    if v_rm.not_none() {
                         n -= 1;
                         sum.kh_sum(-v_rm, c4);
                         let v_rm2 = v_rm * v_rm;
@@ -566,6 +569,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
+        T::Inner: Number,
     {
         let min_periods = min_periods.max(4);
         let window = min(self.len(), window);
@@ -582,7 +586,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut n = 0;
         if !stable {
             self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     let v = v.f64();
                     sum += v;
@@ -615,7 +619,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     f64::NAN
                 };
                 if let Some(v) = v_rm {
-                    if v.notnan() {
+                    if v.not_none() {
                         let v = v.f64();
                         n -= 1;
                         sum -= v;
@@ -631,7 +635,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
             define_c!(c1, c2, c3, c4, c5, c6, c7, c8);
             self.as_dim1()
                 .stable_apply_window_to(out, window, |v, v_rm| {
-                    if v.notnan() {
+                    if v.not_none() {
                         n += 1;
                         sum.kh_sum(v, c1);
                         let v2 = v * v;
@@ -662,7 +666,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                     } else {
                         f64::NAN
                     };
-                    if v_rm.notnan() {
+                    if v_rm.not_none() {
                         n -= 1;
                         sum.kh_sum(-v_rm, c5);
                         let v_rm2 = v_rm * v_rm;
@@ -679,6 +683,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
+        T::Inner: Number,
     {
         let window = min(self.len(), window);
         if window < min_periods {
@@ -691,7 +696,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut zero_num = 0;
         let mut n = 0;
         self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-            if v.notnan() {
+            if v.not_none() {
                 n += 1;
                 if *v != T::zero() {
                     prod *= v.f64();
@@ -709,7 +714,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                 f64::NAN
             };
             if let Some(v) = v_rm {
-                if v.notnan() {
+                if v.not_none() {
                     n -= 1;
                     if *v != T::zero() {
                         prod /= v.f64();
@@ -738,7 +743,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
         let mut zero_num = 0;
         let mut n = 0;
         self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-            if v.notnan() {
+            if v.not_none() {
                 n += 1;
                 if *v != T::zero() {
                     prod *= v.f64();
@@ -756,7 +761,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D
                 f64::NAN
             };
             if let Some(v) = v_rm {
-                if v.notnan() {
+                if v.not_none() {
                     n -= 1;
                     if *v != T::zero() {
                         prod /= v.f64();

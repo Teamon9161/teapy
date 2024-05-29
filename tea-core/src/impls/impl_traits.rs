@@ -1,6 +1,6 @@
+use datatype::Object;
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeDelta};
-use datatype::Object;
 
 use crate::prelude::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, Dimension, RawData};

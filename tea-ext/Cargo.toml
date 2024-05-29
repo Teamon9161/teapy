@@ -8,9 +8,9 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-# default = ["rolling", "agg", "lazy", "concat"]
+default = ["rolling", "agg", "lazy", "concat"]
 # default = ["extend", "methods"]
-default = ["agg", "lazy"]
+# default = ["agg", "lazy"]
 
 extend = ["lazy_time"]
 methods = ["agg", "map", "rolling", "create", "concat"]

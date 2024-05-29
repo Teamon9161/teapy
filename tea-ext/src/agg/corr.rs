@@ -36,8 +36,10 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
     ) -> f64
     where
         T: Number,
+        T::Inner: Number,
         S2: Data<Elem = T2>,
         T2: Number,
+        T2::Inner: Number,
     {
         let weight_sum = other.sum_1d(stable);
         debug_assert_eq!(self.len(), other.len());
@@ -62,15 +64,18 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
 }
 
 #[arr_agg2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]
-impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
+impl<T: IsNone + Clone + Send + Sync, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
     /// covariance of 2 array
     fn cov<S2, D2, T2>(&self, other: &ArrBase<S2, D2>, min_periods: usize, stable: bool) -> f64
     where
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number + Send + Sync,
-        T2: Number + Send + Sync,
+        T2: IsNone + Clone + Send + Sync,
+        T: Number,
+        T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         assert_eq!(
             self.len(),
@@ -122,8 +127,10 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number + Send + Sync,
+        T: Number,
         T2: Number + Send + Sync,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         assert_eq!(
             self.len(),
@@ -193,8 +200,10 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number + Send + Sync,
+        T: Number,
         T2: Number + Send + Sync,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         use crate::map::*;
         assert_eq!(
@@ -225,8 +234,10 @@ impl<T, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
         S2: Data<Elem = T2>,
         D2: Dimension,
         D: DimMax<D2>,
-        T: Number + Send + Sync,
+        T: Number,
         T2: Number + Send + Sync,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         match method {
             CorrMethod::Pearson => self.corr_pearson_1d(other, min_periods, stable),

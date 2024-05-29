@@ -9,7 +9,9 @@ pub use super::own::{arr0, Arr, Arr1, Arr2, ArrD};
 pub use super::traits::WrapNdarray;
 pub use super::view::{ArrView, ArrView1, ArrView2, ArrViewD};
 pub use super::viewmut::{ArrViewMut, ArrViewMut1, ArrViewMut2, ArrViewMutD};
-pub use datatype::{BoolType, Cast, DataType, GetDataType, IsNone, Number, Object, Zero, One};
+pub use datatype::{
+    BoolType, Cast, DataType, GetDataType, IsNone, Number, Object, One, TvNumber, Zero,
+};
 pub use error::{StrError, TpResult};
 
 #[cfg(feature = "blas")]

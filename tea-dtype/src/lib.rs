@@ -1,15 +1,34 @@
 mod object;
-#[cfg(feature="time")]
+#[cfg(feature = "time")]
 mod time;
 
-pub use tevec::prelude::{BoolType, Cast, IsNone, Number};
+pub use num::{One, Zero};
 pub use object::Object;
-pub use num::{Zero, One};
-
+pub use tevec::prelude::{BoolType, Cast, IsNone, Number as TvNumber};
 
 #[cfg(feature = "time")]
 pub use tevec::prelude::{DateTime, TimeDelta, TimeUnit};
 // pub use tea_time::{DateTime, TimeDelta, TimeUnit};
+
+/// just for old code compatibility
+pub trait Number: TvNumber {
+    #[inline(always)]
+    fn nan() -> Self {
+        Self::none()
+    }
+
+    #[inline(always)]
+    fn notnan(self) -> bool {
+        self.not_none()
+    }
+
+    #[inline(always)]
+    fn isnan(self) -> bool {
+        self.is_none()
+    }
+}
+
+impl<T: TvNumber> Number for T {}
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum DataType {
@@ -85,7 +104,6 @@ impl DataType {
         matches!(self, DataType::F32 | DataType::F64)
     }
 
-
     #[inline(always)]
     pub fn is_int(&self) -> bool {
         matches!(
@@ -93,7 +111,6 @@ impl DataType {
             DataType::I32 | DataType::I64 | DataType::Usize | DataType::U64 | DataType::OptUsize
         )
     }
-
 
     pub fn float(self) -> Self {
         use DataType::*;
@@ -139,7 +156,6 @@ impl_datatype!(VecUsize, Vec<usize>);
 impl_datatype!(DateTime, DateTime);
 #[cfg(feature = "time")]
 impl_datatype!(TimeDelta, TimeDelta);
-
 
 impl<'a> GetDataType for &'a str {
     // type Physical = &'a str;

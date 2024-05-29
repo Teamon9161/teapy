@@ -24,6 +24,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
         D: DimMax<D2>,
         T: Number,
         T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         let arr = self.as_dim1();
         let window = min(arr.len(), window);
@@ -113,6 +115,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
         D: DimMax<D2>,
         T: Number,
         T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         let window = min(self.len(), window);
         let window = min(other.len(), window);

@@ -3,7 +3,6 @@ use lazy::ColumnSelector;
 use rayon::prelude::*;
 use tea_core::prelude::*;
 
-
 #[cfg(feature = "lazy")]
 use lazy::{DataDict, Expr};
 

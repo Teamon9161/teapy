@@ -8,11 +8,9 @@ use pyo3::{Bound, FromPyObject, PyAny, PyObject, PyResult, Python, ToPyObject};
 #[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
 
-
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct Object(pub PyObject);
-
 
 impl std::fmt::Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -27,7 +25,6 @@ impl Debug for Object {
     }
 }
 
-
 impl IsNone for Object {
     type Inner = Object;
     type Cast<U: IsNone<Inner = U> + Clone> = U;
@@ -41,7 +38,7 @@ impl IsNone for Object {
     fn is_none(&self) -> bool {
         Python::with_gil(|py| self.0.as_ref(py).is_none())
     }
-    
+
     #[inline]
     fn to_opt(self) -> Option<Self::Inner> {
         if self.is_none() {
@@ -100,7 +97,6 @@ impl GetDataType for Object {
         DataType::Object
     }
 }
-
 
 unsafe impl Element for Object {
     const IS_COPY: bool = false;
@@ -171,4 +167,6 @@ macro_rules! impl_object_cast {
     };
 }
 
-impl_object_cast!(bool, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64, String);
+impl_object_cast!(
+    bool, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64, String
+);

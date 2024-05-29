@@ -1,6 +1,6 @@
-use super::{Object, DateTime, TimeDelta};
-use tevec::dtype::chrono::{DateTime as CrDateTime, Duration, Utc};
+use super::{DateTime, Object, TimeDelta};
 use pyo3::prelude::*;
+use tevec::dtype::chrono::{DateTime as CrDateTime, Duration, Utc};
 use tevec::prelude::Cast;
 
 impl Cast<Object> for DateTime {
@@ -28,7 +28,6 @@ impl Cast<Object> for TimeDelta {
     }
 }
 
-
 impl Cast<TimeDelta> for Object {
     #[inline]
     fn cast(self) -> TimeDelta {
@@ -36,7 +35,7 @@ impl Cast<TimeDelta> for Object {
         if let Some(v) = v {
             TimeDelta {
                 months: 0,
-                inner: v
+                inner: v,
             }
         } else {
             TimeDelta::nat()

@@ -1,11 +1,10 @@
 // use crate::impl_reduce_nd;
 use crate::prelude::{Arr1, ArrBase, ArrD, WrapNdarray};
-use datatype::{BoolType, IsNone, Number};
+use datatype::{BoolType, IsNone, Number, TvNumber};
 use ndarray::{Data, Dimension, Ix1, Zip};
 use num::Zero;
 use tea_macros::arr_agg_ext;
 use tevec::prelude::*;
-
 
 impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
     /// sum of the array on a given axis, return valid_num n and the sum of the array
@@ -39,15 +38,12 @@ impl<T, S: Data<Elem = T>> ArrBase<S, Ix1> {
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S, D> {
     /// Max value of the array on a given axis
     pub fn max(&self) -> T
-    where T: Number
+    where
+        T: Number,
     {
         if let Some(slc) = self.0.as_slice_memory_order() {
             let res = utils::vec_fold(slc, T::min_, T::max_with);
-            return if res == T::min_() {
-                T::none()
-            } else {
-                res
-            };
+            return if res == T::min_() { T::none() } else { res };
         }
         let mut max = T::min_();
         self.as_dim1().apply(|v| {
@@ -65,15 +61,12 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S,
 
     /// Min value of the array on a given axis
     pub fn min(&self) -> T
-    where T: Number
+    where
+        T: Number,
     {
         if let Some(slc) = self.as_slice_memory_order() {
             let res = utils::vec_fold(slc, T::max_, T::min_with);
-            return if res == T::max_() {
-                T::none()
-            } else {
-                res
-            };
+            return if res == T::max_() { T::none() } else { res };
         }
         let mut min = T::max_();
         self.as_dim1().apply(|v| {
@@ -92,7 +85,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S,
     /// sum of the array on a given axis
     #[inline]
     pub fn sum(&self, stable: bool) -> T
-    where T: Number, T::Inner: Number,
+    where
+        T: Number,
+        T::Inner: Number,
     {
         self.as_dim1().nsum_1d(stable).1
     }
@@ -100,9 +95,11 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S,
     /// mean of the array on a given axis
     #[inline]
     pub fn mean(&self, min_periods: usize, stable: bool) -> f64
-    where T: Number, T::Inner: Number,
+    where
+        T: Number,
+        T::Inner: Number,
     {
-        let(n, sum) = self.as_dim1().nsum_1d(stable);
+        let (n, sum) = self.as_dim1().nsum_1d(stable);
         if n >= min_periods {
             sum.f64() / n.f64()
         } else {
@@ -113,9 +110,9 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S,
     /// count a value of an array on a given axis
     #[inline]
     pub fn count_v(&self, value: T) -> i32
-    where 
-        T: IsNone + Clone, 
-        T::Inner: PartialEq
+    where
+        T: IsNone + Clone,
+        T::Inner: PartialEq,
     {
         // self.count_by(|v| v == &value)
         self.0.iter().cloned().vcount_value(value) as i32
@@ -124,7 +121,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S,
     /// count a value of an array on a given axis
     #[inline]
     pub fn count_nan(&self) -> i32
-    where T: IsNone + Clone
+    where
+        T: IsNone + Clone,
     {
         // self.count_by(|v| v == &value)
         self.0.iter().cloned().count_none() as i32
@@ -132,7 +130,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S,
     /// count a value of an array on a given axis
     #[inline]
     pub fn count_notnan(&self) -> i32
-    where T: IsNone + Clone
+    where
+        T: IsNone + Clone,
     {
         // self.count_by(|v| v == &value)
         Vec1ViewAggValid::count(self.0.iter().cloned()) as i32
@@ -140,19 +139,20 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggExt for ArrBase<S,
 
     #[inline]
     pub fn any(&self) -> bool
-    where T: BoolType
+    where
+        T: BoolType,
     {
         self.0.iter().cloned().any()
     }
-    
+
     #[inline]
     pub fn all(&self) -> bool
-    where T: BoolType + Copy
+    where
+        T: BoolType + Copy,
     {
         self.0.iter().cloned().all()
     }
 }
-
 
 // impl_reduce_nd!(
 //     max,

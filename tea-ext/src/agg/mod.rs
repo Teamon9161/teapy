@@ -62,7 +62,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     pub fn meanvar_1d(&self, min_periods: usize, stable: bool) -> (f64, f64)
     where
         T: Number,
-        T::Inner: Number
+        T::Inner: Number,
     {
         let arr = self.as_dim1();
         let (mut m1, mut m2) = (0., 0.);
@@ -269,7 +269,7 @@ where
         T: Clone + IsNone,
     {
         for v in self.as_dim1().iter() {
-            if !v.clone().is_none() {
+            if !v.is_none() {
                 return v.clone();
             }
         }
@@ -283,7 +283,7 @@ where
         T: Clone + IsNone,
     {
         for v in self.as_dim1().iter().rev() {
-            if !v.clone().is_none() {
+            if !v.is_none() {
                 return v.clone();
             }
         }

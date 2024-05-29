@@ -1,14 +1,14 @@
+use super::BasicAggExt;
 use crate::prelude::*;
-use ndarray::{Data, DataMut, Ix1, RawData};
+use ndarray::{Data, DataMut, Ix1};
 use std::cmp::Ordering;
 use std::mem::MaybeUninit;
 use std::ops::Add;
-use super::BasicAggExt;
 // use utils::kh_sum;
 
 impl<T, S> ArrBase<S, Ix1>
 where
-    S: RawData<Elem = T>,
+    S: Data<Elem = T>,
 {
     // pub fn first_unwrap(&self) -> T
     // where
@@ -53,7 +53,7 @@ where
     #[inline]
     pub fn fold<U, F>(&self, init: U, mut f: F) -> U
     where
-        S: Data,
+        // S: Data,
         F: FnMut(U, &T) -> U,
     {
         let mut acc = init;
@@ -68,7 +68,7 @@ where
     #[inline]
     pub fn fold_with<U, S2, T2, F>(&self, other: ArrBase<S2, Ix1>, init: U, mut f: F) -> U
     where
-        S: Data,
+        // S: Data,
         S2: Data<Elem = T2>,
         F: FnMut(U, &T, &T2) -> U,
     {
@@ -90,7 +90,7 @@ where
     pub fn fold_valid<U, F>(&self, init: U, mut f: F) -> U
     where
         T: IsNone + Clone,
-        S: Data,
+        // S: Data,
         F: FnMut(U, T::Inner) -> U,
     {
         let mut acc = init;
@@ -107,7 +107,7 @@ where
     #[inline]
     pub fn fold_valid_with<U, S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, init: U, mut f: F) -> U
     where
-        S: Data,
+        // S: Data,
         S2: Data<Elem = T2>,
         T: IsNone + Clone,
         T2: IsNone + Clone,
@@ -133,7 +133,7 @@ where
     #[inline]
     pub fn n_fold_valid<U, F>(&self, init: U, mut f: F) -> (usize, U)
     where
-        S: Data,
+        // S: Data,
         T: IsNone + Clone,
         F: FnMut(U, T::Inner) -> U,
     {
@@ -159,7 +159,7 @@ where
         mut f: F,
     ) -> (usize, U)
     where
-        S: Data,
+        // S: Data,
         S2: Data<Elem = T2>,
         T: IsNone + Clone,
         T2: IsNone + Clone,
@@ -183,7 +183,7 @@ where
     pub fn acc<U, F>(&self, init: U, mut f: F) -> U
     where
         U: Add<Output = U>,
-        S: Data,
+        // S: Data,
         F: FnMut(&T) -> U,
     {
         self.fold(init, |acc, v| acc + f(v))
@@ -243,7 +243,7 @@ where
     #[inline(always)]
     pub fn apply<F>(&self, mut f: F)
     where
-        S: Data,
+        // S: Data,
         F: FnMut(&T),
     {
         self.fold((), move |(), elt| f(elt))
@@ -253,7 +253,7 @@ where
     #[inline]
     pub fn apply_with<S2, T2, F>(&self, other: ArrBase<S2, Ix1>, mut f: F)
     where
-        S: Data,
+        // S: Data,
         S2: Data<Elem = T2>,
         F: FnMut(&T, &T2),
     {
@@ -287,7 +287,7 @@ where
     pub fn apply_valid<F>(&self, mut f: F)
     where
         T: IsNone + Clone,
-        S: Data,
+        // S: Data,
         F: FnMut(T::Inner),
     {
         self.fold_valid((), move |(), elt| f(elt))
@@ -298,38 +298,38 @@ where
     pub fn n_apply_valid<F>(&self, mut f: F) -> usize
     where
         T: IsNone + Clone,
-        S: Data,
+        // S: Data,
         F: FnMut(T::Inner),
     {
         self.n_fold_valid((), move |(), elt| f(elt)).0
     }
 
-    // /// Apply a function to self and other only when both elements are valid
-    // #[inline(always)]
-    // pub fn apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F)
-    // where
-    //     S: Data,
-    //     S2: Data<Elem = T2>,
-    //     T: IsNone,
-    //     T2: IsNone,
-    //     F: FnMut(&T, &T2),
-    // {
-    //     self.fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
-    // }
+    /// Apply a function to self and other only when both elements are valid
+    #[inline(always)]
+    pub fn apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F)
+    where
+        // S: Data,
+        S2: Data<Elem = T2>,
+        T: IsNone + Clone,
+        T2: IsNone + Clone,
+        F: FnMut(T::Inner, T2::Inner),
+    {
+        self.fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
+    }
 
-    // /// Apply a function to self and other only when both elements are valid
-    // #[inline(always)]
-    // pub fn n_apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F) -> usize
-    // where
-    //     S: Data,
-    //     S2: Data<Elem = T2>,
-    //     T: IsNone,
-    //     T2: IsNone,
-    //     F: FnMut(&T, &T2),
-    // {
-    //     self.n_fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
-    //         .0
-    // }
+    /// Apply a function to self and other only when both elements are valid
+    #[inline(always)]
+    pub fn n_apply_valid_with<S2, T2, F>(&self, other: &ArrBase<S2, Ix1>, mut f: F) -> usize
+    where
+        // S: Data,
+        S2: Data<Elem = T2>,
+        T: IsNone + Clone,
+        T2: IsNone + Clone,
+        F: FnMut(T::Inner, T2::Inner),
+    {
+        self.n_fold_valid_with(other, (), move |(), elt1, elt2| f(elt1, elt2))
+            .0
+    }
 
     /// Apply function `f` on each element,
     /// if the function return `true`,
@@ -337,7 +337,7 @@ where
     #[inline(always)]
     pub fn count_by<F>(&self, mut f: F) -> i32
     where
-        S: Data,
+        // S: Data,
         F: FnMut(&T) -> bool,
     {
         self.fold(0, move |acc, elt| acc + (f(elt) as i32))
@@ -352,7 +352,7 @@ where
     pub fn apply_window_to<U, S2, F>(&self, out: &mut ArrBase<S2, Ix1>, window: usize, mut f: F)
     where
         U: Clone,
-        S: Data,
+        // S: Data,
         S2: DataMut<Elem = MaybeUninit<U>>,
         F: FnMut(&T, Option<&T>) -> U,
     {
@@ -388,7 +388,7 @@ where
         mut f: F,
     ) where
         U: Clone,
-        S: Data,
+        // S: Data,
         S2: Data<Elem = T2>,
         S3: DataMut<Elem = MaybeUninit<U>>,
         F: FnMut(&T, &T2, Option<&T>, Option<&T2>) -> U,
@@ -424,7 +424,7 @@ where
     where
         T: Number,
         T::Inner: Number,
-        S: Data,
+        // S: Data,
         S2: DataMut<Elem = MaybeUninit<f64>>,
         F: FnMut(f64, f64) -> f64,
     {
@@ -466,7 +466,7 @@ where
         T::Inner: Number,
         T2: Number,
         T2::Inner: Number,
-        S: Data,
+        // S: Data,
         S2: Data<Elem = T2>,
         S3: DataMut<Elem = MaybeUninit<f64>>,
         F: FnMut(f64, f64, f64, f64) -> f64,
@@ -508,7 +508,7 @@ where
     pub fn apply_revwindow_to<U, S2, F>(&self, out: &mut ArrBase<S2, Ix1>, window: usize, mut f: F)
     where
         U: Clone,
-        S: Data,
+        // S: Data,
         S2: DataMut<Elem = MaybeUninit<U>>,
         F: FnMut(&T, Option<&T>) -> U,
     {

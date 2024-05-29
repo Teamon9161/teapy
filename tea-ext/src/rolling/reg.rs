@@ -424,6 +424,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         D: DimMax<D2>,
         T: Number,
         T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         let arr = self.as_dim1();
         let x1 = x.as_dim1();
@@ -509,6 +511,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         D: DimMax<D2>,
         T: Number,
         T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         let arr = self.as_dim1();
         let x1 = x.as_dim1();
@@ -598,6 +602,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         D: DimMax<D2>,
         T: Number,
         T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         let arr = self.as_dim1();
         let x1 = x.as_dim1();
@@ -691,6 +697,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         D: DimMax<D2>,
         T: Number,
         T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         let arr = self.as_dim1();
         let x1 = x.as_dim1();
@@ -784,6 +792,8 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
         D: DimMax<D2>,
         T: Number,
         T2: Number,
+        T::Inner: Number,
+        T2::Inner: Number,
     {
         let arr = self.as_dim1();
         let x1 = x.as_dim1();
