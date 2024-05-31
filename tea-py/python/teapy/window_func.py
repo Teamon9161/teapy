@@ -6,8 +6,8 @@ __all__ = [
     "ts_mean",
     "ts_ewm",
     "ts_wma",
-    "ts_prod",
-    "ts_prod_mean",
+    # "ts_prod",
+    # "ts_prod_mean",
     "ts_std",
     "ts_var",
     "ts_skew",
@@ -16,9 +16,9 @@ __all__ = [
     "ts_argmax",
     "ts_min",
     "ts_argmin",
-    "ts_stable",
+    # "ts_stable",
     "ts_minmaxnorm",
-    "ts_meanstdnorm",
+    "ts_zscore",
     "ts_reg",
     "ts_tsf",
     "ts_reg_slope",
@@ -41,52 +41,52 @@ except AttributeError:
 
 
 @impl_by_lazy()
-def ts_sum(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_sum(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @impl_by_lazy()
-def ts_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_mean(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @impl_by_lazy()
-def ts_ewm(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_ewm(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @impl_by_lazy()
-def ts_wma(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_wma(arr, window, min_periods=1, axis=None, par=False):
+    pass
+
+
+# @impl_by_lazy()
+# def ts_prod(arr, window, min_periods=1, stable=False, axis=None, par=False):
+#     pass
+
+
+# @impl_by_lazy()
+# def ts_prod_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
+#     pass
+
+
+@impl_by_lazy()
+def ts_std(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @impl_by_lazy()
-def ts_prod(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_var(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @impl_by_lazy()
-def ts_prod_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_skew(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
 @impl_by_lazy()
-def ts_std(arr, window, min_periods=1, stable=False, axis=None, par=False):
-    pass
-
-
-@impl_by_lazy()
-def ts_var(arr, window, min_periods=1, stable=False, axis=None, par=False):
-    pass
-
-
-@impl_by_lazy()
-def ts_skew(arr, window, min_periods=1, stable=False, axis=None, par=False):
-    pass
-
-
-@impl_by_lazy()
-def ts_kurt(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_kurt(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
@@ -110,9 +110,9 @@ def ts_argmin(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 
-@impl_by_lazy()
-def ts_stable(arr, window, min_periods=1, stable=False, axis=None, par=False):
-    pass
+# @impl_by_lazy()
+# def ts_stable(arr, window, min_periods=1, stable=False, axis=None, par=False):
+#     pass
 
 
 @impl_by_lazy()
@@ -121,7 +121,7 @@ def ts_minmaxnorm(arr, window, min_periods=1, axis=None, par=False):
 
 
 @impl_by_lazy()
-def ts_meanstdnorm(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_zscore(arr, window, min_periods=1, axis=None, par=False):
     pass
 
 

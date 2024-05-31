@@ -6,28 +6,27 @@ from hypothesis import strategies as st
 from teapy import Expr
 from teapy.testing import assert_allclose3, make_arr
 
+# @given(make_arr(30, unique=True, stable=True), st.integers(1, 5), st.booleans())
+# def test_ts_stable(arr, window, stable):
+#     # test moving stable
+#     arr = pd.Series(arr, copy=False)
+#     min_periods = np.random.randint(1, window + 1)
+#     res1 = tp.ts_stable(arr, window, min_periods=min_periods, stable=stable)
+#     res2 = Expr(arr).ts_stable(window, min_periods=min_periods, stable=stable).eview()
+#     res3 = arr.rolling(window, min_periods=min_periods).apply(
+#         lambda x: x.mean() / x.std() if x.std() != 0 else np.nan
+#     )
+#     assert_allclose3(res1, res2, res3)
 
-@given(make_arr(30, unique=True, stable=True), st.integers(1, 5), st.booleans())
-def test_ts_stable(arr, window, stable):
-    # test moving stable
-    arr = pd.Series(arr, copy=False)
-    min_periods = np.random.randint(1, window + 1)
-    res1 = tp.ts_stable(arr, window, min_periods=min_periods, stable=stable)
-    res2 = Expr(arr).ts_stable(window, min_periods=min_periods, stable=stable).eview()
-    res3 = arr.rolling(window, min_periods=min_periods).apply(
-        lambda x: x.mean() / x.std() if x.std() != 0 else np.nan
-    )
-    assert_allclose3(res1, res2, res3)
 
-
-@given(make_arr(30, unique=True, stable=True), st.integers(1, 5), st.booleans())
-def test_ts_meanstdnorm(arr, window, stable):
+@given(make_arr(30, unique=True, stable=True), st.integers(1, 5))
+def test_ts_zscore(arr, window):
     # test moving meanstd normalization
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
-    res1 = tp.ts_meanstdnorm(arr, window, min_periods=min_periods, stable=stable)
+    res1 = tp.ts_zscore(arr, window, min_periods=min_periods)
     res2 = (
-        Expr(arr).ts_meanstdnorm(window, min_periods=min_periods, stable=stable).eview()
+        Expr(arr).ts_zscore(window, min_periods=min_periods).eview()
     )
     res3 = arr.rolling(window, min_periods=min_periods).apply(
         lambda x: (x.iloc[-1] - x.mean()) / x.std() if x.std() != 0 else np.nan

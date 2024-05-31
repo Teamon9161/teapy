@@ -8,7 +8,7 @@ use tea_core::utils::define_c;
 use lazy::Expr;
 
 #[arr_map2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]
-impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
+impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBase<S, D> {
     fn ts_cov<S2, D2, T2, SO>(
         &self,
         other: &ArrBase<S2, D2>,

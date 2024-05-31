@@ -369,16 +369,6 @@ impl PyExpr {
         }
         let arr = data.view_arr(ct_rs.as_ref())?;
         if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
-            // let arr = match_arrok!(
-            //     arr,
-            //     a,
-            //     { a.view().cast_object() },
-            //     Str,
-            //     String,
-            //     #[cfg(feature = "time")]
-            //     TimeDelta
-            // );
-            // let arr = arr.cast_object();
             return PyArray::from_owned_array_bound(
                 py,
                 arr.view().cast_object().into_owned_inner().unwrap().0,
@@ -1542,43 +1532,55 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
-    pub fn ts_argmin(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
+    pub fn ts_argmin(
+        &self,
+        window: usize,
+        min_periods: Option<usize>,
+        axis: i32,
+        par: bool,
+    ) -> Self {
         let mut out = self.clone();
         out.e.ts_argmin(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
-    pub fn ts_argmax(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
+    pub fn ts_argmax(
+        &self,
+        window: usize,
+        min_periods: Option<usize>,
+        axis: i32,
+        par: bool,
+    ) -> Self {
         let mut out = self.clone();
         out.e.ts_argmax(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
-    pub fn ts_min(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
+    pub fn ts_min(&self, window: usize, min_periods: Option<usize>, axis: i32, par: bool) -> Self {
         let mut out = self.clone();
         out.e.ts_min(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
-    pub fn ts_max(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
+    pub fn ts_max(&self, window: usize, min_periods: Option<usize>, axis: i32, par: bool) -> Self {
         let mut out = self.clone();
         out.e.ts_max(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, pct=false, rev=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, pct=false, rev=false, axis=0, par=false))]
     pub fn ts_rank(
         &self,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         pct: bool,
         rev: bool,
         axis: i32,
@@ -1586,33 +1588,34 @@ impl PyExpr {
     ) -> Self {
         let mut out = self.clone();
         out.e.ts_rank(window, min_periods, pct, rev, axis, par);
-        // if !pct {
-        //     out.e.ts_rank(window, min_periods, axis, par);
-        // } else {
-        //     out.e.ts_rank_pct(window, min_periods, axis, par);
-        // }
         out
     }
 
-    #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
-    pub fn ts_prod(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        let mut out = self.clone();
-        out.e.ts_prod(window, min_periods, axis, par);
-        out
-    }
+    // #[cfg(feature = "rolling")]
+    // #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
+    // pub fn ts_prod(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
+    //     let mut out = self.clone();
+    //     out.e.ts_prod(window, min_periods, axis, par);
+    //     out
+    // }
+
+    // #[cfg(feature = "rolling")]
+    // #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
+    // pub fn ts_prod_mean(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
+    //     let mut out = self.clone();
+    //     out.e.ts_prod_mean(window, min_periods, axis, par);
+    //     out
+    // }
 
     #[cfg(feature = "rolling")]
     #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
-    pub fn ts_prod_mean(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
-        let mut out = self.clone();
-        out.e.ts_prod_mean(window, min_periods, axis, par);
-        out
-    }
-
-    #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
-    pub fn ts_minmaxnorm(&self, window: usize, min_periods: usize, axis: i32, par: bool) -> Self {
+    pub fn ts_minmaxnorm(
+        &self,
+        window: usize,
+        min_periods: Option<usize>,
+        axis: i32,
+        par: bool,
+    ) -> Self {
         let mut out = self.clone();
         out.e.ts_minmaxnorm(window, min_periods, axis, par);
         out
@@ -1749,152 +1752,152 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_sum(
         &self,
         window: usize,
         min_periods: Option<usize>,
-        stable: bool,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_sum(window, min_periods, stable, axis, par);
+        out.e.ts_sum(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_mean(
         &self,
         window: usize,
         min_periods: Option<usize>,
-        stable: bool,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_mean(window, min_periods, stable, axis, par);
+        out.e.ts_mean(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_ewm(
         &self,
         window: usize,
         min_periods: Option<usize>,
-        stable: bool,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_ewm(window, min_periods, stable, axis, par);
+        out.e.ts_ewm(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_wma(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_wma(window, min_periods, stable, axis, par);
+        out.e.ts_wma(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_std(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_std(window, min_periods, stable, axis, par);
+        out.e.ts_std(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_var(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_var(window, min_periods, stable, axis, par);
+        out.e.ts_var(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_skew(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_skew(window, min_periods, stable, axis, par);
+        out.e.ts_skew(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_kurt(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_kurt(window, min_periods, stable, axis, par);
+        out.e.ts_kurt(window, min_periods, axis, par);
         out
     }
 
-    #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
-    pub fn ts_stable(
-        &self,
-        window: usize,
-        min_periods: usize,
-        stable: bool,
-        axis: i32,
-        par: bool,
-    ) -> Self {
-        let mut out = self.clone();
-        out.e.ts_stable(window, min_periods, stable, axis, par);
-        out
-    }
+    // #[cfg(feature = "rolling")]
+    // #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    // pub fn ts_stable(
+    //     &self,
+    //     window: usize,
+    //     min_periods: usize,
+    //     stable: bool,
+    //     axis: i32,
+    //     par: bool,
+    // ) -> Self {
+    //     let mut out = self.clone();
+    //     out.e.ts_stable(window, min_periods, stable, axis, par);
+    //     out
+    // }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
-    pub fn ts_meanstdnorm(
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
+    pub fn ts_zscore(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        // stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_meanstdnorm(window, min_periods, stable, axis, par);
+        out.e.ts_zscore(window, min_periods, axis, par);
         out
     }
 
