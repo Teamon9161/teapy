@@ -149,12 +149,6 @@ def ts_reg_intercept(arr, window, min_periods=1, stable=False, axis=None, par=Fa
 def ts_decay_linear(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
-
-@impl_by_lazy()
-def ts_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
-    pass
-
-
 @impl_by_lazy()
 def ts_ema(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass

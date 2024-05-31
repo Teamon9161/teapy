@@ -21,8 +21,10 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
     where
         SO: DataMut<Elem = MaybeUninit<T>>,
         T: Number,
-    {   
-        self.as_dim1().0.ts_sum_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
+    {
+        self.as_dim1()
+            .0
+            .ts_sum_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
     }
 
     #[inline]
@@ -36,8 +38,10 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
-        self.as_dim1().0.ts_mean_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
+    {
+        self.as_dim1()
+            .0
+            .ts_mean_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
     }
 
     #[inline]
@@ -51,8 +55,10 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for Arr
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {   
-        self.as_dim1().0.ts_ewm_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
+    {
+        self.as_dim1()
+            .0
+            .ts_ewm_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
         // let window = min(self.len(), window);
         // if window < min_periods {
         //     // 如果滚动窗口是1则返回全nan
