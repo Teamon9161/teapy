@@ -49,6 +49,15 @@ impl IsNone for Object {
         }
     }
 
+    #[inline]
+    fn as_opt(&self) -> Option<&Self::Inner> {
+        if self.is_none() {
+            None
+        } else {
+            Some(self)
+        }
+    }
+
     #[inline(always)]
     fn from_inner(inner: Self::Inner) -> Self {
         inner

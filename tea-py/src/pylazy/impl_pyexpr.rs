@@ -1753,7 +1753,7 @@ impl PyExpr {
     pub fn ts_sum(
         &self,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         stable: bool,
         axis: i32,
         par: bool,
@@ -1765,30 +1765,17 @@ impl PyExpr {
 
     #[cfg(feature = "rolling")]
     #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
-    pub fn ts_sma(
+    pub fn ts_mean(
         &self,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         stable: bool,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_sma(window, min_periods, stable, axis, par);
+        out.e.ts_mean(window, min_periods, stable, axis, par);
         out
-    }
-
-    #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
-    pub fn ts_mean(
-        &self,
-        window: usize,
-        min_periods: usize,
-        stable: bool,
-        axis: i32,
-        par: bool,
-    ) -> Self {
-        self.ts_sma(window, min_periods, stable, axis, par)
     }
 
     #[cfg(feature = "rolling")]
@@ -1796,7 +1783,7 @@ impl PyExpr {
     pub fn ts_ewm(
         &self,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         stable: bool,
         axis: i32,
         par: bool,

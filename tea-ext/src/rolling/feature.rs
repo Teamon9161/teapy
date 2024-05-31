@@ -1,195 +1,113 @@
 #[cfg(feature = "lazy")]
 use lazy::Expr;
-use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder};
+use ndarray::{Array1, Data, DataMut, Dimension, Ix1, ShapeBuilder};
 use std::cmp::min;
 use std::mem::MaybeUninit;
 use tea_core::prelude::*;
 use tea_core::utils::{define_c, kh_sum};
 
+use tevec::rolling::*;
+
 #[arr_map_ext(lazy = "view", type = "numeric")]
 impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> FeatureTs for ArrBase<S, D> {
+    #[inline]
     fn ts_sum<SO>(
         &self,
         out: &mut ArrBase<SO, Ix1>,
         window: usize,
-        min_periods: usize,
-        stable: bool,
-    ) -> f64
+        min_periods: Option<usize>,
+        _stable: bool,
+    ) -> T
     where
-        SO: DataMut<Elem = MaybeUninit<f64>>,
+        SO: DataMut<Elem = MaybeUninit<T>>,
         T: Number,
-    {
-        let window = min(self.len(), window);
-        if window < min_periods {
-            // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {
-                v.write(f64::NAN);
-            });
-        }
-        let mut sum = 0.;
-        let mut n = 0;
-        if !stable {
-            self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.not_none() {
-                    n += 1;
-                    sum += v.f64();
-                };
-                let res = if n >= min_periods { sum } else { f64::NAN };
-                if let Some(v) = v_rm {
-                    if v.not_none() {
-                        n -= 1;
-                        sum -= v.f64();
-                    };
-                }
-                res
-            });
-        } else {
-            define_c!(c, c1);
-            self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.not_none() {
-                    n += 1;
-                    sum = sum.kh_sum(v.f64(), c);
-                };
-                let res = if n >= min_periods { sum } else { f64::NAN };
-                if let Some(v) = v_rm {
-                    if v.not_none() {
-                        n -= 1;
-                        sum = sum.kh_sum(-v.f64(), c1);
-                    };
-                }
-                res
-            });
-        }
+    {   
+        self.as_dim1().0.ts_sum_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
     }
 
-    fn ts_sma<SO>(
+    #[inline]
+    fn ts_mean<SO>(
         &self,
         out: &mut ArrBase<SO, Ix1>,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        _stable: bool,
     ) -> f64
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {
-        let window = min(self.len(), window);
-        if window < min_periods {
-            // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {
-                v.write(f64::NAN);
-            });
-        }
-        let mut sum = 0.;
-        let mut n = 0;
-        if !stable {
-            self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.not_none() {
-                    n += 1;
-                    sum += v.f64();
-                };
-                let res = if n >= min_periods {
-                    sum / n.f64()
-                } else {
-                    f64::NAN
-                };
-                if let Some(v_rm) = v_rm {
-                    if v_rm.not_none() {
-                        n -= 1;
-                        sum -= v_rm.f64();
-                    };
-                }
-                res
-            });
-        } else {
-            define_c!(c, c1);
-            self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.not_none() {
-                    n += 1;
-                    sum = sum.kh_sum(v.f64(), c);
-                };
-                let res = if n >= min_periods {
-                    sum / n.f64()
-                } else {
-                    f64::NAN
-                };
-                if let Some(v) = v_rm {
-                    if v.not_none() {
-                        n -= 1;
-                        sum = sum.kh_sum(-v.f64(), c1);
-                    };
-                }
-                res
-            });
-        }
+    {   
+        self.as_dim1().0.ts_mean_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
     }
 
+    #[inline]
     fn ts_ewm<SO>(
         &self,
         out: &mut ArrBase<SO, Ix1>,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
+        _stable: bool,
     ) -> f64
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
         T: Number,
-    {
-        let window = min(self.len(), window);
-        if window < min_periods {
-            // 如果滚动窗口是1则返回全nan
-            return out.apply_mut(|v| {
-                v.write(f64::NAN);
-            });
-        }
-        // 错位相减核心公式：
-        // q_x(t) = 1 * new_element - alpha(q_x(t-1 without 1st element)) - 1st element * oma ^ (n-1)
-        let mut q_x = 0.; // 权重的分子部分 * 元素，使用错位相减法来计算
-        let alpha = 2. / window.f64();
-        let oma = 1. - alpha; // one minus alpha
-        let mut n = 0;
-        if !stable {
-            self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.not_none() {
-                    n += 1;
-                    q_x += v.f64() - alpha * q_x.f64();
-                };
-                let res = if n >= min_periods {
-                    q_x.f64() * alpha / (1. - oma.powi(n as i32))
-                } else {
-                    f64::NAN
-                };
-                if let Some(v) = v_rm {
-                    if v.not_none() {
-                        n -= 1;
-                        // 本应是window-1，不过本身window就要自然减一，调整一下顺序
-                        q_x -= v.f64() * oma.powi(n as i32);
-                    };
-                }
-                res
-            });
-        } else {
-            define_c!(c1, c2);
-            self.as_dim1().apply_window_to(out, window, |v, v_rm| {
-                if v.not_none() {
-                    n += 1;
-                    let v = v.f64();
-                    q_x = q_x.kh_sum(v.f64() - alpha * q_x, c1);
-                };
-                let res = if n >= min_periods {
-                    q_x.f64() * alpha / (1. - oma.powi(n as i32))
-                } else {
-                    f64::NAN
-                };
-                if let Some(v) = v_rm {
-                    if v.not_none() {
-                        n -= 1;
-                        q_x = q_x.kh_sum(-v.f64() * oma.powi(n as i32), c2);
-                    };
-                }
-                res
-            })
-        }
+    {   
+        self.as_dim1().0.ts_ewm_to::<Array1<_>>(window, min_periods, Some(out.0.view_mut()));
+        // let window = min(self.len(), window);
+        // if window < min_periods {
+        //     // 如果滚动窗口是1则返回全nan
+        //     return out.apply_mut(|v| {
+        //         v.write(f64::NAN);
+        //     });
+        // }
+        // // 错位相减核心公式：
+        // // q_x(t) = 1 * new_element - alpha(q_x(t-1 without 1st element)) - 1st element * oma ^ (n-1)
+        // let mut q_x = 0.; // 权重的分子部分 * 元素，使用错位相减法来计算
+        // let alpha = 2. / window.f64();
+        // let oma = 1. - alpha; // one minus alpha
+        // let mut n = 0;
+        // if !stable {
+        //     self.as_dim1().apply_window_to(out, window, |v, v_rm| {
+        //         if v.not_none() {
+        //             n += 1;
+        //             q_x += v.f64() - alpha * q_x.f64();
+        //         };
+        //         let res = if n >= min_periods {
+        //             q_x.f64() * alpha / (1. - oma.powi(n as i32))
+        //         } else {
+        //             f64::NAN
+        //         };
+        //         if let Some(v) = v_rm {
+        //             if v.not_none() {
+        //                 n -= 1;
+        //                 // 本应是window-1，不过本身window就要自然减一，调整一下顺序
+        //                 q_x -= v.f64() * oma.powi(n as i32);
+        //             };
+        //         }
+        //         res
+        //     });
+        // } else {
+        //     define_c!(c1, c2);
+        //     self.as_dim1().apply_window_to(out, window, |v, v_rm| {
+        //         if v.not_none() {
+        //             n += 1;
+        //             let v = v.f64();
+        //             q_x = q_x.kh_sum(v.f64() - alpha * q_x, c1);
+        //         };
+        //         let res = if n >= min_periods {
+        //             q_x.f64() * alpha / (1. - oma.powi(n as i32))
+        //         } else {
+        //             f64::NAN
+        //         };
+        //         if let Some(v) = v_rm {
+        //             if v.not_none() {
+        //                 n -= 1;
+        //                 q_x = q_x.kh_sum(-v.f64() * oma.powi(n as i32), c2);
+        //             };
+        //         }
+        //         res
+        //     })
+        // }
     }
 
     fn ts_wma<SO>(

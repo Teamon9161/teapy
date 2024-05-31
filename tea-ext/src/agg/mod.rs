@@ -12,6 +12,7 @@ use lazy::Expr;
 use ndarray::{Data, Dimension, Ix1, Zip};
 use tea_core::prelude::*;
 use tea_core::utils::{kh_sum, vec_fold, vec_nfold};
+use tevec::prelude::{Vec1View, Vec1ViewAggValid};
 
 #[ext_trait]
 impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
@@ -120,7 +121,8 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     #[cfg(feature = "map")]
     fn umax_1d(&self) -> T
     where
-        T: PartialEq + Clone + Number,
+        T: PartialEq,
+        T::Inner: Number,
     {
         use crate::map::MapExt1d;
         self.sorted_unique_1d().max_1d()
@@ -129,7 +131,8 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     #[cfg(feature = "map")]
     fn umin_1d(&self) -> T
     where
-        T: PartialEq + Clone + Number,
+        T: PartialEq,
+        T::Inner: Number,
     {
         use crate::map::MapExt1d;
         self.sorted_unique_1d().min_1d()
@@ -202,19 +205,25 @@ where
     /// return -1 if all of the elements are NaN
     fn argmax(&self) -> i32
     where
-        T: Number,
+        T: PartialOrd,
     {
-        let mut max = T::min_();
-        let mut max_idx = -1;
-        let mut current_idx = 0;
-        self.as_dim1().apply(|v| {
-            if *v > max {
-                max = *v;
-                max_idx = current_idx;
-            }
-            current_idx += 1;
-        });
-        max_idx
+        self.as_dim1()
+            .0
+            .to_iter()
+            .vargmax()
+            .map(|v| v as i32)
+            .unwrap_or(-1)
+        // let mut max = T::min_();
+        // let mut max_idx = -1;
+        // let mut current_idx = 0;
+        // self.as_dim1().apply(|v| {
+        //     if *v > max {
+        //         max = *v;
+        //         max_idx = current_idx;
+        //     }
+        //     current_idx += 1;
+        // });
+        // max_idx
     }
 
     /// return -1 if all of the elements are NaN
@@ -294,6 +303,7 @@ where
     fn quantile(&self, q: f64, method: QuantileMethod) -> f64
     where
         T: Number,
+        T::Inner: Number,
     {
         assert!((0. ..=1.).contains(&q), "q must be between 0 and 1");
         use QuantileMethod::*;
@@ -360,6 +370,7 @@ where
     fn median(&self) -> f64
     where
         T: Number,
+        T::Inner: Number,
     {
         self.quantile_1d(0.5, QuantileMethod::Linear)
     }

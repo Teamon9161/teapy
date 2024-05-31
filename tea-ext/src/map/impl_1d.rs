@@ -91,7 +91,8 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
     #[cfg(feature = "agg")]
     fn arg_partition_1d<SO>(&self, mut out: ArrBase<SO, Ix1>, kth: usize, sort: bool, rev: bool)
     where
-        T: Number,
+        T: IsNone + Copy + Send + Sync,
+        T::Inner: Number,
         SO: DataMut<Elem = i32>,
     {
         let n = self.count_notnan_1d() as usize;
@@ -99,7 +100,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
             if !sort {
                 let mut out_pos = 0;
                 for (i, v) in self.iter().enumerate() {
-                    if v.notnan() {
+                    if v.not_none() {
                         unsafe { *out.uget_mut(out_pos) = i as i32 }
                         out_pos += 1;
                     }
@@ -164,13 +165,16 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
     #[cfg(feature = "agg")]
     fn partition_1d<SO>(&self, mut out: ArrBase<SO, Ix1>, kth: usize, sort: bool, rev: bool)
     where
-        T: Number,
-        SO: DataMut<Elem = T>,
+        T: IsNone + Clone + Send + Sync,
+        T::Inner: Number,
+        SO: DataMut<Elem = MaybeUninit<T>>,
     {
         let n = self.count_notnan_1d() as usize;
         if n <= kth + 1 {
             if !sort {
-                out.apply_mut_with(self, |vo, v| *vo = *v);
+                out.apply_mut_with(self, |vo, v| {
+                    vo.write(v.clone());
+                });
             } else {
                 let mut arr = self.to_owned(); // clone the array
                 if !rev {
@@ -178,7 +182,9 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
                 } else {
                     arr.sort_unstable_by(|a, b| a.sort_cmp_rev(b));
                 }
-                out.apply_mut_with(&arr, |vo, v| *vo = *v);
+                out.apply_mut_with(&arr, |vo, v| {
+                    vo.write(v.clone());
+                });
             }
             return;
         }
@@ -189,7 +195,9 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         if sort {
             out_c.sort_unstable_by(sort_func)
         }
-        out.apply_mut_with(&Arr1::from_vec(out_c), |vo, v| *vo = *v);
+        out.apply_mut_with(&Arr1::from_vec(out_c), |vo, v| {
+            vo.write(v.clone());
+        });
     }
 
     /// Take value on a given axis and clone to a new array, just work on 1d array

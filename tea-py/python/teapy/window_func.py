@@ -3,7 +3,7 @@ from .wrapper import impl_by_lazy
 
 __all__ = [
     "ts_sum",
-    "ts_sma",
+    "ts_mean",
     "ts_ewm",
     "ts_wma",
     "ts_prod",
@@ -34,7 +34,7 @@ __all__ = [
 # alias
 try:
     _tp.ts_decay_linear = _tp.ts_wma
-    _tp.ts_mean = _tp.ts_sma
+    _tp.ts_sma = _tp.ts_mean
     _tp.ts_ema = _tp.ts_ewm
 except AttributeError:
     pass
@@ -46,7 +46,7 @@ def ts_sum(arr, window, min_periods=1, stable=False, axis=None, par=False):
 
 
 @impl_by_lazy()
-def ts_sma(arr, window, min_periods=1, stable=False, axis=None, par=False):
+def ts_mean(arr, window, min_periods=1, stable=False, axis=None, par=False):
     pass
 
 

@@ -20,31 +20,6 @@ type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
 ///
 /// Prefer this macro `izip!()` over `multizip` for the performance benefits
 /// of using the standard library `.zip()`.
-///
-/// ```
-/// #[macro_use] extern crate itertools;
-/// # fn main() {
-///
-/// // iterate over three sequences side-by-side
-/// let mut results = [0, 0, 0, 0];
-/// let inputs = [3, 7, 9, 6];
-///
-/// for (r, index, input) in izip!(&mut results, 0..10, &inputs) {
-///     *r = index * 10 + input;
-/// }
-///
-/// assert_eq!(results, [0 + 3, 10 + 7, 29, 36]);
-/// # }
-/// ```
-///
-/// **Note:** To enable the macros in this crate, use the `#[macro_use]`
-/// attribute when importing the crate:
-///
-/// ```no_run
-/// # #[allow(unused_imports)]
-/// #[macro_use] extern crate itertools;
-/// # fn main() { }
-/// ```
 macro_rules! izip {
     // @closure creates a tuple-flattening closure for .map() call. usage:
     // @closure partial_pattern => partial_tuple , rest , of , iterators

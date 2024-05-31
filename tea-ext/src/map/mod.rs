@@ -247,7 +247,8 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         par: bool,
     ) -> ArrD<i32>
     where
-        T: Number + Send + Sync,
+        T: IsNone + Copy + Send + Sync,
+        T::Inner: Number,
         D: Dimension,
     {
         let f_flag = !self.is_standard_layout();
@@ -270,7 +271,8 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     #[teapy(type = "numeric")]
     fn partition(&self, mut kth: usize, sort: bool, rev: bool, axis: i32, par: bool) -> ArrD<T>
     where
-        T: Number + Send + Sync,
+        T: IsNone + Clone + Send + Sync,
+        T::Inner: Number,
         D: Dimension,
     {
         let f_flag = !self.is_standard_layout();
@@ -281,17 +283,18 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         }
         new_dim.slice_mut()[axis.index()] = kth + 1;
         let shape = new_dim.into_shape().set_f(f_flag);
-        let mut out = Arr::<T, D>::default(shape);
+        // let mut out = Arr::<T, D>::default(shape);
+        let mut out = Arr::<T, D>::uninit(shape);
         let mut out_wr = out.view_mut();
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.partition_1d(out_1d, kth, sort, rev)
         });
-        out.to_dimd()
+        unsafe { out.assume_init().to_dimd() }
     }
 }
 
 #[arr_map_ext(lazy = "view", type = "numeric")]
-impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
+impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     fn cumsum<SO>(&self, out: &mut ArrBase<SO, Ix1>, stable: bool) -> T
     where
         SO: DataMut<Elem = MaybeUninit<T>>,
@@ -339,7 +342,8 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     fn argsort<SO>(&self, out: &mut ArrBase<SO, Ix1>, rev: bool) -> i32
     where
         SO: DataMut<Elem = MaybeUninit<i32>>,
-        T: Number,
+        T::Inner: Number,
+        T: Copy,
     {
         let arr = self.as_dim1();
         assert!(out.len() >= arr.len());
@@ -376,7 +380,8 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     fn rank<SO>(&self, out: &mut ArrBase<SO, Ix1>, pct: bool, rev: bool) -> f64
     where
         SO: DataMut<Elem = MaybeUninit<f64>>,
-        T: Number,
+        T: IsNone + PartialEq + Copy,
+        T::Inner: Number,
     {
         let arr = self.as_dim1();
         let len = arr.len();
@@ -408,7 +413,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
         }
 
         // if the smallest value is nan then all the elements are nan
-        if unsafe { *arr.uget(*idx_sorted.uget(0)) }.isnan() {
+        if unsafe { *arr.uget(*idx_sorted.uget(0)) }.is_none() {
             return out.apply_mut(|v| {
                 v.write(f64::NAN);
             });
@@ -423,7 +428,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
                     // safe because i_max = self.len()-2 and self.len() >= 2
                     (idx, idx1) = (*idx_sorted.uget(i), *idx_sorted.uget(i + 1));
                     let (v, v1) = (*arr.uget(idx), *arr.uget(idx1)); // 下一个值，safe because idx1 < arr.len()
-                    if v1.isnan() {
+                    if v1.is_none() {
                         // 下一个值是nan，说明后面的值全是nan
                         sum_rank += cur_rank;
                         cur_rank += 1;
@@ -479,7 +484,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
                     // safe because i_max = arr.len()-2 and arr.len() >= 2
                     (idx, idx1) = (*idx_sorted.uget(i), *idx_sorted.uget(i + 1));
                     let (v, v1) = (*arr.uget(idx), *arr.uget(idx1)); // 下一个值，safe because idx1 < arr.len()
-                    if v1.isnan() {
+                    if v1.is_none() {
                         // 下一个值是nan，说明后面的值全是nan
                         sum_rank += cur_rank;
                         cur_rank += 1;
@@ -536,7 +541,8 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     fn split_group<SO>(&self, out: &mut ArrBase<SO, Ix1>, group: usize, rev: bool) -> i32
     where
         SO: DataMut<Elem = MaybeUninit<i32>>,
-        T: Number,
+        T: PartialEq + Copy,
+        T::Inner: Number,
     {
         let arr = self.as_dim1();
         let valid_count = arr.count_notnan_1d();
