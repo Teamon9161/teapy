@@ -8,12 +8,12 @@ from teapy.testing import assert_allclose3, make_arr
 
 
 @given(make_arr(30), st.integers(1, 5), st.booleans())
-def test_ts_sma(arr, window, stable):
+def test_ts_mean(arr, window, stable):
     # test moving average
     arr = pd.Series(arr, copy=False)
     min_periods = np.random.randint(1, window + 1)
-    res1 = tp.ts_sma(arr, window, min_periods=min_periods, stable=stable)
-    res2 = Expr(arr).ts_sma(window, min_periods=min_periods, stable=stable).eview()
+    res1 = tp.ts_mean(arr, window, min_periods=min_periods, stable=stable)
+    res2 = Expr(arr).ts_mean(window, min_periods=min_periods, stable=stable).eview()
     res3 = arr.rolling(window, min_periods=min_periods).mean()
     assert_allclose3(res1, res2, res3)
 

@@ -6,9 +6,9 @@ from teapy.testing import assert_allclose
 def test_continuity():
     # test output continuity
     arr1 = np.array(np.random.randn(100, 20), order="c")
-    assert tp.ts_sma(arr1, window=3).flags["C_CONTIGUOUS"]
+    assert tp.ts_mean(arr1, window=3).flags["C_CONTIGUOUS"]
     arr2 = np.array(np.random.randn(100, 20), order="f")
-    assert tp.ts_sma(arr2, window=3).flags["F_CONTIGUOUS"]
+    assert tp.ts_mean(arr2, window=3).flags["F_CONTIGUOUS"]
     assert tp.ts_cov(arr2, arr1, window=5).flags["F_CONTIGUOUS"]
 
     # test argsort on discontinuous axis
