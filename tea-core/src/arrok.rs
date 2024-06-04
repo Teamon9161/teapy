@@ -5,7 +5,7 @@ use super::arbarray::ArbArray;
 use super::view::ArrViewD;
 #[cfg(any(feature = "concat", feature = "arw"))]
 use crate::{own::Arr1, utils::CollectTrustedToVec};
-use datatype::{match_datatype_arm, Cast, DataType, GetDataType, Object};
+use datatype::{Cast, DataType, GetDataType, Object};
 #[cfg(feature = "time")]
 use datatype::{DateTime, TimeDelta};
 use ndarray::{Axis, IxDyn, SliceArg};
@@ -226,28 +226,14 @@ impl<'a> ArrOk<'a> {
     #[inline]
     pub fn as_ptr<T: GetDataType>(&self) -> *const T {
         // we have known the datatype of the enum ,so only one arm will be executed
-        match_datatype_arm!(
-            all
-            self,
-            a,
-            ArrOk,
-            T,
-            { a.as_ptr() as *const T }
-        )
+        tevec::match_enum!(ArrOk, self, a, { a.as_ptr() as *const T })
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn as_mut_ptr<T: GetDataType>(&mut self) -> *mut T {
         // we have known the datatype of the enum ,so only one arm will be executed
-        match_datatype_arm!(
-            all
-            self,
-            a,
-            ArrOk,
-            T,
-            { a.as_mut_ptr() as *mut T }
-        )
+        tevec::match_enum!(ArrOk, self, a, { a.as_mut_ptr() as *mut T })
     }
 
     // /// reinterpret ArrOk to ArbArray<'a, T> directly.

@@ -35,7 +35,7 @@ tea-utils = { path = "../tea-utils"}
 tea-error = { path = "../tea-error", default-features = false }
 tea-macros = { path = "../tea-macros", default-features = false }
 
-tevec = { workspace = true, default-features = false, features = ["agg", "ndarray"]}
+tevec = { workspace = true, default-features = false, features = ["agg", "ndarray", "dyn"]}
 
 ndarray = { workspace = true }
 num = { workspace = true }

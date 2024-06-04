@@ -200,12 +200,12 @@ impl<S, D, T> AggExtNd<D, T> for ArrBase<S, D>
 where
     S: Data<Elem = T>,
     D: Dimension,
-    T: IsNone + Clone + Send + Sync,
+    T: IsNone + Send + Sync,
 {
     /// return -1 if all of the elements are NaN
     fn argmax(&self) -> i32
     where
-        T: PartialOrd,
+        T::Inner: PartialOrd,
     {
         self.as_dim1()
             .0
@@ -213,35 +213,30 @@ where
             .vargmax()
             .map(|v| v as i32)
             .unwrap_or(-1)
-        // let mut max = T::min_();
-        // let mut max_idx = -1;
-        // let mut current_idx = 0;
-        // self.as_dim1().apply(|v| {
-        //     if *v > max {
-        //         max = *v;
-        //         max_idx = current_idx;
-        //     }
-        //     current_idx += 1;
-        // });
-        // max_idx
     }
 
     /// return -1 if all of the elements are NaN
     fn argmin(&self) -> i32
     where
-        T: Number,
+        T::Inner: PartialOrd,
     {
-        let mut min = T::max_();
-        let mut min_idx = -1;
-        let mut current_idx = 0;
-        self.as_dim1().apply(|v| {
-            if *v < min {
-                min = *v;
-                min_idx = current_idx;
-            }
-            current_idx += 1;
-        });
-        min_idx
+        self.as_dim1()
+            .0
+            .to_iter()
+            .vargmin()
+            .map(|v| v as i32)
+            .unwrap_or(-1)
+        // let mut min = T::max_();
+        // let mut min_idx = -1;
+        // let mut current_idx = 0;
+        // self.as_dim1().apply(|v| {
+        //     if *v < min {
+        //         min = *v;
+        //         min_idx = current_idx;
+        //     }
+        //     current_idx += 1;
+        // });
+        // min_idx
     }
 
     /// first valid value
@@ -275,7 +270,7 @@ where
     #[inline]
     fn valid_first(&self) -> T
     where
-        T: Clone + IsNone,
+        T: IsNone,
     {
         for v in self.as_dim1().iter() {
             if !v.is_none() {
@@ -289,7 +284,7 @@ where
     #[inline]
     fn valid_last(&self) -> T
     where
-        T: Clone + IsNone,
+        T: IsNone,
     {
         for v in self.as_dim1().iter().rev() {
             if !v.is_none() {

@@ -555,7 +555,7 @@ pub(crate) fn expand_trait_ext(
     let expanded = if (!lazy_impls.is_empty()) && (!trait_methods.is_empty()) {
         quote! {
             // #attr
-            pub trait #trait_name #impl_generics {
+            pub trait #trait_name #impl_generics #where_clause {
                 #(#trait_methods)*
             }
 
@@ -575,7 +575,7 @@ pub(crate) fn expand_trait_ext(
     } else if lazy_impls.is_empty() {
         quote! {
             // #attr
-            pub trait #trait_name #impl_generics {
+            pub trait #trait_name #impl_generics #where_clause {
                 #(#trait_methods)*
             }
 

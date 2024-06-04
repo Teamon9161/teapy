@@ -101,7 +101,7 @@ impl Default for Object {
 }
 
 impl GetDataType for Object {
-    // type Physical = PyObject;
+    type Physical = PyObject;
     #[inline(always)]
     fn dtype() -> DataType {
         DataType::Object
