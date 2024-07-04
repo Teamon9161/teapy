@@ -10,17 +10,19 @@ license.workspace = true
 [features]
 # default = ["time", "method_1d", "ops", "blas", "concat", "arw"]
 default = ["time", "method_1d"]
+# default = []
 
 method_1d = []
-time = ["tea-dtype/time"]
+time = ["tea-dyn/time"]
 ops = []
-srd = ["tea-dtype/srd", "ndarray/serde"]
+srd = ["ndarray/serde"]
+# srd = ["tea-dtype/srd", "ndarray/serde"]
 blas = ["ndarray/blas", "ops", "lapack-sys", "intel-mkl"]
 concat = []
 arw = ["tea-error/arw", "arrow", "concat"]
 
 # blas choices
-openblas  = ["openblas-static"]
+openblas = ["openblas-static"]
 intel-mkl = ["intel-mkl-static"]
 
 openblas-static = ["openblas-src/static"]
@@ -30,21 +32,31 @@ intel-mkl-static = ["intel-mkl-src/mkl-static-lp64-seq"]
 intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
 
 [dependencies]
-tea-dtype = { path = "../tea-dtype", default-features = false}
-tea-utils = { path = "../tea-utils"}
+derive_more = { workspace = true }
+# tea-dtype = { path = "../tea-dtype", default-features = false }
+tea-utils = { path = "../tea-utils" }
 tea-error = { path = "../tea-error", default-features = false }
 tea-macros = { path = "../tea-macros", default-features = false }
 
-tevec = { workspace = true, default-features = false, features = ["agg", "ndarray", "dyn"]}
+# tevec = { workspace = true, default-features = false, features = [
+#     "agg",
+#     "ndarray",
+# ] }
+tea-dyn = { workspace = true, features = [
+    "ndarray",
+    "py",
+], default-features = false }
 
 ndarray = { workspace = true }
 num = { workspace = true }
 rayon = { workspace = true }
-libc = { workspace=true }
+libc = { workspace = true }
 
-pyo3 = { workspace = true}
-lapack-sys = { version="0.14.0", optional=true }
+pyo3 = { workspace = true }
+lapack-sys = { version = "0.14.0", optional = true }
 intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }
-openblas-src = { version = "0.10.4", optional = true, default-features = false, features = ["cblas"] }
+openblas-src = { version = "0.10.4", optional = true, default-features = false, features = [
+    "cblas",
+] }
 # statrs = { version = "0.16", optional=true }
-arrow = { workspace=true, default-features = false, optional = true }
+arrow = { workspace = true, default-features = false, optional = true }

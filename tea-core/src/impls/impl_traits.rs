@@ -1,6 +1,4 @@
-use datatype::Object;
-#[cfg(feature = "time")]
-use datatype::{DateTime, TimeDelta};
+use tea_dyn::prelude::Dtype;
 
 use crate::prelude::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, Dimension, RawData};
@@ -61,13 +59,13 @@ impl<T> From<T> for ArrD<T> {
 }
 
 // #[cfg(feature = "lazy")]
-impl<T> From<T> for ArbArray<'_, T> {
-    #[inline(always)]
-    fn from(v: T) -> Self {
-        let arr = arr0(v).wrap().to_dimd();
-        arr.into()
-    }
-}
+// impl<T> From<T> for ArbArray<'_, T> {
+//     #[inline(always)]
+//     fn from(v: T) -> Self {
+//         let arr = arr0(v).wrap().to_dimd();
+//         arr.into()
+//     }
+// }
 
 impl Default for ArrOk<'_> {
     #[inline(always)]
@@ -78,111 +76,209 @@ impl Default for ArrOk<'_> {
 }
 
 macro_rules! impl_from {
-    ($($(#[$meta:meta])? ($arm: ident, $ty: ty)),*) => {
-        impl<'a, T: GetDataType> From<ArbArray<'a, T>> for ArrOk<'a> {
-            #[allow(unreachable_patterns)]
-            fn from(arr: ArbArray<'a, T>) -> Self {
-                unsafe {
-                    match T::dtype() {
-                        $(
-                            $(#[$meta])? DataType::$arm => ArrOk::$arm(arr.into_dtype::<$ty>()),
-                        )*
-                        DataType::Str => ArrOk::Str(arr.into_dtype::<&'a str>()),
-                        _ => unimplemented!("Create ArrOk from this type of ArbArray is not implemented")
+    ($($(#[$meta:meta])? ($arm: ident, $dtype: ident $(($inner: path))?, $ty: ty, $func_name: ident)),* $(,)?) => {
+        impl<'a> ArrOk<'a> {
+            $(
+                $(#[$meta])?
+                pub fn $func_name(self) -> TResult<ArbArray<'a, $ty>> {
+                    if let ArrOk::$arm(v) = self {
+                        Ok(v)
+                    } else {
+                        tbail!("ArrOk is not of type {:?}", <$ty>::type_())
                     }
+                }
+            )*
+        }
+
+        impl<'a, T: Dtype + 'a> From<ArrD<T>> for ArrOk<'a> {
+            #[allow(unreachable_patterns)]
+            #[inline]
+            fn from(a: ArrD<T>) -> Self {
+                match T::type_() {
+                    $(
+                        $(#[$meta])? DataType::$dtype $(($inner))? => {
+                            // safety: we have checked the type
+                            // let a: ArbArray<'a, _> = a.into();
+                            let a = ArbArray::Owned(a);
+                            unsafe{ArrOk::$arm(a.into_dtype().into())}
+                        },
+                    )*
+                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
                 }
             }
         }
 
-        $(
-            // impl<'a> From<ArbArray<'a, $ty>> for ArrOk<'a> {
-            //     fn from(arr: ArbArray<$ty>) -> Self {
-            //         ArrOk::$arm(arr)
-            //     }
-            // }
-
-            $(#[$meta])?
-            impl<'a> From<ArrD<$ty>> for ArrOk<'a> {
-                #[inline(always)]
-                fn from(arr: ArrD<$ty>) -> Self {
-                    ArrOk::$arm(arr.into())
+        impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for ArrOk<'a> {
+            #[allow(unreachable_patterns)]
+            #[inline]
+            fn from(a: ArrViewD<'a, T>) -> Self {
+                match T::type_() {
+                    $(
+                        $(#[$meta])? DataType::$dtype $(($inner))? => {
+                            // safety: we have checked the type
+                            // let a: ArbArray<'a, _> = a.into();
+                            let a = ArbArray::View(a);
+                            unsafe{ArrOk::$arm(a.into_dtype().into())}
+                        },
+                    )*
+                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
                 }
             }
+        }
 
-            $(#[$meta])?
-            impl<'a> From<ArrViewD<'a, $ty>> for ArrOk<'a> {
-                #[inline(always)]
-                fn from(arr: ArrViewD<'a, $ty>) -> Self {
-                    ArrOk::$arm(arr.into())
+        impl<'a, T: Dtype + 'a> From<ArrViewMutD<'a, T>> for ArrOk<'a> {
+            #[allow(unreachable_patterns)]
+            #[inline]
+            fn from(a: ArrViewMutD<'a, T>) -> Self {
+                match T::type_() {
+                    $(
+                        $(#[$meta])? DataType::$dtype $(($inner))? => {
+                            // safety: we have checked the type
+                            // let a: ArbArray<'a, _> = a.into();
+                            let a = ArbArray::ViewMut(a);
+                            unsafe{ArrOk::$arm(a.into_dtype().into())}
+                        },
+                    )*
+                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
                 }
             }
-
-            $(#[$meta])?
-            impl<'a> From<ArrViewMutD<'a, $ty>> for ArrOk<'a> {
-                #[inline(always)]
-                fn from(arr: ArrViewMutD<'a, $ty>) -> Self {
-                    ArrOk::$arm(arr.into())
+        }
+        impl<'a, T: Dtype + 'a> From<Pin<Box<ViewOnBase<'a, T>>>> for ArrOk<'a> {
+            #[allow(unreachable_patterns)]
+            #[inline]
+            fn from(a: Pin<Box<ViewOnBase<'a, T>>>) -> Self {
+                match T::type_() {
+                    $(
+                        $(#[$meta])? DataType::$dtype $(($inner))? => {
+                            // safety: we have checked the type
+                            // let a: ArbArray<'a, _> = a.into();
+                            let a = ArbArray::ViewOnBase(a);
+                            unsafe{ArrOk::$arm(a.into_dtype().into())}
+                        },
+                    )*
+                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
                 }
             }
+        }
 
-            $(#[$meta])?
-            impl<'a> From<Pin<Box<ViewOnBase<'a, $ty>>>> for ArrOk<'a> {
-                #[inline(always)]
-                fn from(arr: Pin<Box<ViewOnBase<'a, $ty>>>) -> Self {
-                    ArrOk::$arm(arr.into())
-                }
-            }
-        )*
+        // $(
+        //     // impl<'a> From<ArbArray<'a, $ty>> for ArrOk<'a> {
+        //     //     fn from(arr: ArbArray<$ty>) -> Self {
+        //     //         ArrOk::$arm(arr)
+        //     //     }
+        //     // }
+
+        //     $(#[$meta])?
+        //     impl<'a> From<ArrD<$ty>> for ArrOk<'a> {
+        //         #[inline(always)]
+        //         fn from(arr: ArrD<$ty>) -> Self {
+        //             ArrOk::$arm(arr.into())
+        //         }
+        //     }
+
+        //     $(#[$meta])?
+        //     impl<'a> From<ArrViewD<'a, $ty>> for ArrOk<'a> {
+        //         #[inline(always)]
+        //         fn from(arr: ArrViewD<'a, $ty>) -> Self {
+        //             ArrOk::$arm(arr.into())
+        //         }
+        //     }
+
+        //     $(#[$meta])?
+        //     impl<'a> From<ArrViewMutD<'a, $ty>> for ArrOk<'a> {
+        //         #[inline(always)]
+        //         fn from(arr: ArrViewMutD<'a, $ty>) -> Self {
+        //             ArrOk::$arm(arr.into())
+        //         }
+        //     }
+
+        //     $(#[$meta])?
+        //     impl<'a> From<Pin<Box<ViewOnBase<'a, $ty>>>> for ArrOk<'a> {
+        //         #[inline(always)]
+        //         fn from(arr: Pin<Box<ViewOnBase<'a, $ty>>>) -> Self {
+        //             ArrOk::$arm(arr.into())
+        //         }
+        //     }
+        // )*
 
     };
 }
 
 impl_from!(
-    (Bool, bool),
-    (U8, u8),
-    (F32, f32),
-    (F64, f64),
-    (I32, i32),
-    (I64, i64),
-    (U64, u64),
-    (Usize, usize),
-    (Object, Object),
-    (String, String),
+    (Bool, Bool, bool, bool),
+    (F32, F32, f32, f32),
+    (F64, F64, f64, f64),
+    (I32, I32, i32, i32),
+    (I64, I64, i64, i64),
+    (U8, U8, u8, u8),
+    (U64, U64, u64, u64),
+    (Usize, Usize, usize, usize),
+    (String, String, String, string),
+    (OptBool, OptBool, Option<bool>, opt_bool),
+    (OptF32, OptF32, Option<f32>, opt_f32),
+    (OptF64, OptF64, Option<f64>, opt_f64),
+    (OptI32, OptI32, Option<i32>, opt_i32),
+    (OptI64, OptI64, Option<i64>, opt_i64),
+    (OptUsize, OptUsize, Option<usize>, opt_usize),
+    (VecUsize, VecUsize, Vec<usize>, vec_usize),
+    // #[cfg(feature = "py")]
+    (Object, Object, Object, object),
     #[cfg(feature = "time")]
-    (DateTime, DateTime),
+    (DateTimeMs, DateTime(TimeUnit::Millisecond), DateTime<unit::Millisecond>, datetime_ms),
     #[cfg(feature = "time")]
-    (TimeDelta, TimeDelta), //, (Str, &str)
-    (OptUsize, Option<usize>),
-    (VecUsize, Vec<usize>)
+    (DateTimeUs, DateTime(TimeUnit::Microsecond), DateTime<unit::Microsecond>, datetime_us),
+    #[cfg(feature = "time")]
+    (DateTimeNs, DateTime(TimeUnit::Nanosecond), DateTime<unit::Nanosecond>, datetime_ns),
+    #[cfg(feature = "time")]
+    (TimeDelta, TimeDelta, TimeDelta, timedelta)
 );
 
-impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {
-    #[inline(always)]
-    fn from(arr: ArrD<&'a str>) -> Self {
-        ArrOk::Str(arr.into())
-    }
-}
+// impl_from!(
+//     (Bool, bool),
+//     (U8, u8),
+//     (F32, f32),
+//     (F64, f64),
+//     (I32, i32),
+//     (I64, i64),
+//     (U64, u64),
+//     (Usize, usize),
+//     (Object, Object),
+//     (String, String),
+//     #[cfg(feature = "time")]
+//     (DateTimeMs, DateTime<unit::Millisecond>),
+//     #[cfg(feature = "time")]
+//     (TimeDelta, TimeDelta), //, (Str, &str)
+//     (OptUsize, Option<usize>),
+//     (VecUsize, Vec<usize>)
+// );
 
-impl<'a> From<ArrViewD<'a, &'a str>> for ArrOk<'a> {
-    #[inline(always)]
-    fn from(arr: ArrViewD<'a, &'a str>) -> Self {
-        ArrOk::Str(arr.into())
-    }
-}
+// impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {
+//     #[inline(always)]
+//     fn from(arr: ArrD<&'a str>) -> Self {
+//         ArrOk::Str(arr.into())
+//     }
+// }
 
-impl<'a> From<ArrViewMutD<'a, &'a str>> for ArrOk<'a> {
-    #[inline(always)]
-    fn from(arr: ArrViewMutD<'a, &'a str>) -> Self {
-        ArrOk::Str(arr.into())
-    }
-}
+// impl<'a> From<ArrViewD<'a, &'a str>> for ArrOk<'a> {
+//     #[inline(always)]
+//     fn from(arr: ArrViewD<'a, &'a str>) -> Self {
+//         ArrOk::Str(arr.into())
+//     }
+// }
 
-impl<'a> From<Pin<Box<ViewOnBase<'a, &'a str>>>> for ArrOk<'a> {
-    #[inline(always)]
-    fn from(arr: Pin<Box<ViewOnBase<'a, &'a str>>>) -> Self {
-        ArrOk::Str(arr.into())
-    }
-}
+// impl<'a> From<ArrViewMutD<'a, &'a str>> for ArrOk<'a> {
+//     #[inline(always)]
+//     fn from(arr: ArrViewMutD<'a, &'a str>) -> Self {
+//         ArrOk::Str(arr.into())
+//     }
+// }
+
+// impl<'a> From<Pin<Box<ViewOnBase<'a, &'a str>>>> for ArrOk<'a> {
+//     #[inline(always)]
+//     fn from(arr: Pin<Box<ViewOnBase<'a, &'a str>>>) -> Self {
+//         ArrOk::Str(arr.into())
+//     }
+// }
 
 #[cfg(feature = "srd")]
 impl<A, D, S> Serialize for ArrBase<S, D>

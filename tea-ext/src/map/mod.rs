@@ -303,21 +303,21 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
         let mut sum = T::zero();
         if !stable {
             out.apply_mut_with(&self.as_dim1(), |vo, v| {
-                if v.notnan() {
+                if v.not_none() {
                     sum += *v;
                     vo.write(sum);
                 } else {
-                    vo.write(T::nan());
+                    vo.write(T::none());
                 }
             });
         } else {
             let c = &mut T::zero();
             out.apply_mut_with(&self.as_dim1(), |vo, v| {
-                if v.notnan() {
+                if v.not_none() {
                     sum = sum.kh_sum(*v, c);
                     vo.write(sum);
                 } else {
-                    vo.write(T::nan());
+                    vo.write(T::none());
                 }
             });
         }
@@ -330,11 +330,11 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
     {
         let mut prod = T::one();
         out.apply_mut_with(&self.as_dim1(), |vo, v| {
-            if v.notnan() {
+            if v.not_none() {
                 prod *= *v;
                 vo.write(prod);
             } else {
-                vo.write(T::nan());
+                vo.write(T::none());
             }
         });
     }
@@ -478,7 +478,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
                 }
             }
         } else {
-            let notnan_count = arr.count_notnan_1d() as usize;
+            let not_none_count = arr.count_valid_1d() as usize;
             unsafe {
                 for i in 0..len - 1 {
                     // safe because i_max = arr.len()-2 and arr.len() >= 2
@@ -491,7 +491,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
                         for j in 0..repeat_num {
                             // safe because i >= repeat_num
                             let out = out.uget_mut(*idx_sorted.uget(i - j));
-                            out.write(sum_rank.f64() / (repeat_num * notnan_count).f64());
+                            out.write(sum_rank.f64() / (repeat_num * not_none_count).f64());
                         }
                         idx = i + 1;
                         nan_flag = true;
@@ -504,7 +504,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
                     } else if repeat_num == 1 {
                         // 无重复，可直接得出排名
                         let out = out.uget_mut(idx);
-                        out.write(cur_rank.f64() / notnan_count.f64());
+                        out.write(cur_rank.f64() / not_none_count.f64());
                         cur_rank += 1;
                     } else {
                         // 当前元素是最后一个重复元素
@@ -513,7 +513,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
                         for j in 0..repeat_num {
                             // safe because i >= repeat_num
                             let out = out.uget_mut(*idx_sorted.uget(i - j));
-                            out.write(sum_rank.f64() / (repeat_num * notnan_count).f64());
+                            out.write(sum_rank.f64() / (repeat_num * not_none_count).f64());
                         }
                         sum_rank = 0; // rank和归零
                         repeat_num = 1; // 重复计数归一
@@ -529,7 +529,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
                     for i in len - repeat_num..len {
                         // safe because repeat_num <= len
                         let out = out.uget_mut(*idx_sorted.uget(i));
-                        out.write(sum_rank.f64() / (repeat_num * notnan_count).f64());
+                        out.write(sum_rank.f64() / (repeat_num * not_none_count).f64());
                     }
                 }
             }
@@ -545,7 +545,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
         T::Inner: Number,
     {
         let arr = self.as_dim1();
-        let valid_count = arr.count_notnan_1d();
+        let valid_count = arr.count_valid_1d();
         let mut rank = Arr1::<f64>::uninit(arr.raw_dim());
         arr.rank_1d(&mut rank, false, rev);
         let rank = unsafe { rank.assume_init() };

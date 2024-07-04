@@ -5,10 +5,9 @@ use super::FuncNode;
 use crate::Context;
 #[cfg(feature = "blas")]
 use crate::OlsResult;
-use core::datatype::GetDataType;
 use core::{
     error::TpResult,
-    match_all, match_arrok,
+    match_arrok,
     prelude::{ArbArray, ArrD, ArrOk, ArrViewD},
     utils::CollectTrustedToVec,
 };
@@ -16,6 +15,7 @@ use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
+use tea_core::prelude::*;
 // use serde::Serialize;
 
 #[derive(Default)]
@@ -98,7 +98,7 @@ impl<'a> From<ArrOk<'a>> for Expr<'a> {
     }
 }
 
-impl<'a, T: GetDataType + 'a> From<ArrViewD<'a, T>> for Expr<'a> {
+impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for Expr<'a> {
     #[inline]
     fn from(arr: ArrViewD<'a, T>) -> Self {
         let data: Data = arr.into();
@@ -297,7 +297,7 @@ impl<'a> Expr<'a> {
                     e.eval_inplace(ctx.clone(), false)?;
                     let arr = e.view_arr(ctx.as_ref())?;
                     // need clone here
-                    match_arrok!(arr, a, { a.view().to_owned().into() })
+                    match_arrok!(arr; Dynamic(a) => { Ok(a.view().to_owned().into()) },).unwrap()
                 };
                 Ok(out)
             }
@@ -331,7 +331,9 @@ impl<'a> Expr<'a> {
                 // need clone here
                 let arr_vec = arr_vec
                     .into_iter()
-                    .map(|a| match_arrok!(a, a, { a.view().to_owned().into() }))
+                    .map(|a| {
+                        match_arrok!(a; Dynamic(a) => { Ok(a.view().to_owned().into()) },).unwrap()
+                    })
                     .collect_trusted();
                 Ok(arr_vec)
                 // // safety: the expression has been evaluated

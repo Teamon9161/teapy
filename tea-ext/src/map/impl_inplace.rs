@@ -9,21 +9,19 @@ use tea_core::prelude::*;
 /// Bfill: use backward value to fill nan.
 /// Vfill: use a specified value to fill nan
 #[derive(Copy, Clone)]
-#[allow(dead_code)]
 pub enum FillMethod {
     Ffill,
     Bfill,
     Vfill,
 }
 
-#[cfg(feature = "agg")]
-#[derive(Copy, Clone)]
-#[allow(dead_code)]
-pub enum WinsorizeMethod {
-    Quantile,
-    Median,
-    Sigma,
-}
+// #[cfg(feature = "agg")]
+// #[derive(Copy, Clone)]
+// pub enum WinsorizeMethod {
+//     Quantile,
+//     Median,
+//     Sigma,
+// }
 
 #[arr_inplace_ext(lazy = "view_mut")]
 impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<S, D> {
@@ -174,7 +172,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         let (min, max) = (T::fromas(min), T::fromas(max));
         assert!(min <= max, "min must smaller than max in clamp");
         assert!(
-            min.notnan() & max.notnan(),
+            min.not_none() & max.not_none(),
             "min and max should not be NaN in clamp"
         );
         self.as_dim1_mut().apply_mut(|v| {
@@ -191,7 +189,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     #[cfg(feature = "agg")]
     #[inline]
     /// Sandardize the array using zscore method on a given axis
-    fn zscore(&mut self, min_periods: usize, stable: bool)
+    fn zscore(&mut self, min_periods: usize)
     where
         T: Number,
         T::Inner: Number,
@@ -199,10 +197,10 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
     {
         use crate::agg::AggExt1d;
         let mut arr = self.as_dim1_mut();
-        let (mean, var) = arr.meanvar_1d(min_periods, stable);
+        let (mean, var) = arr.meanvar_1d(min_periods);
         if var == 0. {
             arr.apply_mut(|v| *v = 0.0.cast());
-        } else if var.isnan() {
+        } else if var.is_none() {
             arr.apply_mut(|v| *v = f64::NAN.cast());
         } else {
             arr.apply_mut(|v| *v = ((v.f64() - mean) / var.sqrt()).cast());
@@ -211,9 +209,9 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
 
     #[teapy(type = "numeric")]
     #[cfg(feature = "agg")]
-    fn winsorize(&mut self, method: WinsorizeMethod, method_params: Option<f64>, stable: bool)
+    fn winsorize(&mut self, method: WinsorizeMethod, method_params: Option<f64>)
     where
-        T: Number,
+        T: IsNone + Cast<f64> + Number,
         T::Inner: Number,
         f64: Cast<T>,
     {
@@ -223,11 +221,11 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         match method {
             Quantile => {
                 // default method is clip 1% and 99% quantile
-                use crate::QuantileMethod::*;
+                use QuantileMethod::*;
                 let method_params = method_params.unwrap_or(0.01);
                 let min = arr.quantile_1d(method_params, Linear);
                 let max = arr.quantile_1d(1. - method_params, Linear);
-                if min.notnan() && (min != max) {
+                if min.not_none() && (min != max) {
                     arr.clip_1d(min, max);
                 }
             }
@@ -235,7 +233,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
                 // default method is clip median - 3 * mad, median + 3 * mad
                 let method_params = method_params.unwrap_or(3.);
                 let median = arr.median_1d();
-                if median.notnan() {
+                if median.not_none() {
                     let mad = arr.mapv(|v| (v.f64() - median).abs()).median_1d();
                     let min = median - method_params * mad;
                     let max = median + method_params * mad;
@@ -245,8 +243,8 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
             Sigma => {
                 // default method is clip mean - 3 * std, mean + 3 * std
                 let method_params = method_params.unwrap_or(3.);
-                let (mean, var) = arr.meanvar_1d(2, stable);
-                if mean.notnan() {
+                let (mean, var) = arr.meanvar_1d(2);
+                if mean.not_none() {
                     let std = var.sqrt();
                     let min = mean - method_params * std;
                     let max = mean + method_params * std;

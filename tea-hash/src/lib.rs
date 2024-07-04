@@ -1,13 +1,10 @@
-extern crate tea_dtype as datatype;
+use tea_dyn::prelude::*;
 
 // use once_cell::sync::Lazy;
 // use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "ahasher")]
 use ahash::{AHasher, RandomState};
-use datatype::Cast;
-#[cfg(feature = "time")]
-use datatype::DateTime;
 #[cfg(feature = "ahasher")]
 // pub static BUILD_HASHER: Lazy<RandomState> =
 //     Lazy::new(|| RandomState::with_seeds(2313, 12515, 12545345, 1245));

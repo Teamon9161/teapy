@@ -24,8 +24,9 @@ blas = ["tea-core/blas", "tea-core/method_1d"]
 
 
 [dependencies]
+derive_more = { workspace = true, features = ["from"] }
 tea-core = { path = "../tea-core" }
-tea-hash = { path = "../tea-hash"}
+tea-hash = { path = "../tea-hash" }
 pyo3 = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }

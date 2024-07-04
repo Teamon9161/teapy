@@ -4,7 +4,11 @@ extern crate intel_mkl_src as _src;
 #[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
 extern crate openblas_src as _src;
 
-pub extern crate tea_dtype as datatype;
+use tea_dyn::prelude::Object;
+
+pub extern crate tea_dyn;
+
+// pub extern crate tea_dtype as datatype;
 pub extern crate tea_error as error;
 pub extern crate tea_utils as utils;
 
@@ -22,10 +26,12 @@ mod viewmut;
 
 pub mod prelude;
 
-#[cfg(feature = "time")]
-use datatype::{DateTime, TimeUnit};
+// #[cfg(feature = "time")]
+// use tevec::{DateTime, TimeUnit};
+// use datatype::{DateTime, TimeUnit};
 #[cfg(feature = "method_1d")]
 use iterators::{Iter, IterMut};
+use tea_dyn::prelude::*;
 pub use traits::WrapNdarray;
 
 use ndarray::{
@@ -33,7 +39,7 @@ use ndarray::{
     NewAxis, RawData, RemoveAxis, ShapeBuilder, SliceArg, Zip,
 };
 
-use datatype::{Cast, DataType, GetDataType, Object};
+// use datatype::{Cast, DataType, GetDataType, Object};
 use error::TpResult;
 use num::Zero;
 use prelude::{Arr, Arr1, ArrView, ArrView1, ArrViewMut, ArrViewMut1};
@@ -41,8 +47,8 @@ use pyo3::Python;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::{iter::zip, mem::MaybeUninit, sync::Arc};
 
-#[cfg(feature = "npy")]
-use ndarray_npy::{write_npy, WritableElement, WriteNpyError};
+// #[cfg(feature = "npy")]
+// use ndarray_npy::{write_npy, WritableElement, WriteNpyError};
 
 pub struct ArrBase<S, D>(pub ArrayBase<S, D>)
 where
@@ -108,16 +114,16 @@ where
         T::dtype()
     }
 
-    #[cfg(feature = "npy")]
-    #[inline(always)]
-    pub fn write_npy<P>(self, path: P) -> TpResult<()>
-    where
-        P: AsRef<std::path::Path>,
-        T: WritableElement,
-        S: Data,
-    {
-        write_npy(path, &self.0).map_err(|e| format!("{e}").as_str())?
-    }
+    // #[cfg(feature = "npy")]
+    // #[inline(always)]
+    // pub fn write_npy<P>(self, path: P) -> TpResult<()>
+    // where
+    //     P: AsRef<std::path::Path>,
+    //     T: WritableElement,
+    //     S: Data,
+    // {
+    //     write_npy(path, &self.0).map_err(|e| format!("{e}").as_str())?
+    // }
     /// Create a one-dimensional array from a vector (no copying needed).
     #[inline(always)]
     pub fn from_vec(v: Vec<T>) -> Arr1<T>
@@ -468,26 +474,26 @@ where
     //     self.map(|v| Object(v.to_object(py)))
     // }
 
-    /// Try to cast to datetime
-    #[cfg(feature = "time")]
-    pub fn to_datetime(&self, unit: TimeUnit) -> TpResult<Arr<DateTime, D>>
-    where
-        T: Cast<i64> + GetDataType + Clone,
-    {
-        match unit {
-            TimeUnit::Nanosecond => {
-                Ok(self.map(|v| DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()))
-            }
-            TimeUnit::Microsecond => {
-                Ok(self.map(|v| DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()))
-            }
-            TimeUnit::Millisecond => {
-                Ok(self.map(|v| DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()))
-            }
-            TimeUnit::Second => Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0))),
-            _ => Err("not support datetime unit".into()),
-        }
-    }
+    // /// Try to cast to datetime
+    // #[cfg(feature = "time")]
+    // pub fn to_datetime(&self, unit: TimeUnit) -> TpResult<Arr<DateTime, D>>
+    // where
+    //     T: Cast<i64> + GetDataType + Clone,
+    // {
+    //     match unit {
+    //         TimeUnit::Nanosecond => {
+    //             Ok(self.map(|v| DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()))
+    //         }
+    //         TimeUnit::Microsecond => {
+    //             Ok(self.map(|v| DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()))
+    //         }
+    //         TimeUnit::Millisecond => {
+    //             Ok(self.map(|v| DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()))
+    //         }
+    //         TimeUnit::Second => Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0))),
+    //         _ => Err("not support datetime unit".into()),
+    //     }
+    // }
 
     /// Try to cast to string
     #[inline(always)]

@@ -1,16 +1,14 @@
-use crate::datatype::{Cast, DataType, GetDataType};
 use crate::prelude::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
-// use error::TpResult;
+use derive_more::From;
 use ndarray::{s, Array, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
-// #[cfg(feature="srd")]
-// use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "arw")]
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::marker::PhantomPinned;
 use std::ops::Deref;
 use std::pin::Pin;
-use tevec::prelude::*;
+use tea_dyn::prelude::*;
 
+#[derive(From)]
 pub enum ArbArray<'a, T> {
     View(ArrViewD<'a, T>),
     ViewMut(ArrViewMutD<'a, T>),
@@ -20,23 +18,11 @@ pub enum ArbArray<'a, T> {
     ArrowChunk(Vec<Box<dyn arrow::array::Array>>),
 }
 
+#[derive(From)]
 pub enum ViewBase<'a, T> {
     ArbArray(ArbArray<'a, T>),
     #[cfg(feature = "arw")]
     Arrow(Box<dyn arrow::array::Array>),
-}
-
-impl<'a, T> From<ArbArray<'a, T>> for ViewBase<'a, T> {
-    fn from(arr: ArbArray<'a, T>) -> Self {
-        ViewBase::ArbArray(arr)
-    }
-}
-
-#[cfg(feature = "arw")]
-impl<T> From<Box<dyn arrow::array::Array>> for ViewBase<'_, T> {
-    fn from(arr: Box<dyn arrow::array::Array>) -> Self {
-        ViewBase::Arrow(arr)
-    }
 }
 
 pub struct ViewOnBase<'a, T> {
@@ -104,40 +90,6 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
     }
 }
 
-// #[cfg(feature="srd")]
-// impl<'a, T> Serialize for ArbArray<'a, T>
-// where
-//     T: Serialize + Clone,
-// {
-//     fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
-//     where
-//         Se: Serializer,
-//     {
-//         match self {
-//             ArbArray::View(arr_view) => arr_view.serialize(serializer),
-//             ArbArray::ViewMut(arr_view) => arr_view.serialize(serializer),
-//             ArbArray::Owned(arr) => arr.serialize(serializer),
-//             ArbArray::ViewOnBase(vb) => vb.view().serialize(serializer),
-//             ArbArray::ArrowChunk(_ac) => unreachable!("ArrowChunk is not serializable"),
-//         }
-//     }
-// }
-
-// #[cfg(feature="srd")]
-// impl<'a, 'de, T> Deserialize<'de> for ArbArray<'a, T>
-// where
-//     T: Deserialize<'de> + Clone,
-// {
-//     fn deserialize<D>(deserializer: D) -> Result<ArbArray<'a, T>, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//     {
-//         Ok(ArbArray::<T>::Owned(
-//             ArrayD::<T>::deserialize(deserializer)?.wrap(),
-//         ))
-//     }
-// }
-
 #[cfg(not(feature = "arw"))]
 impl<'a, T: Default> Default for ArbArray<'a, T> {
     #[inline(always)]
@@ -154,20 +106,6 @@ impl<'a, T> Default for ArbArray<'a, T> {
     }
 }
 
-// impl<'a, T: Clone> Clone for ArbArray<'a, T> {
-//     fn clone(&self) -> Self {
-//         match self{
-//             ArbArray::View(arr) => {
-//                 let ptr = arr.as_ptr();
-//                 let shape = arr.raw_dim();
-//                 unsafe{ArrViewD::<'a, T>::from_shape_ptr(shape, ptr).into()}
-//             },
-//             ArbArray::ViewMut(arr) => arr.to_owned().into(),
-//             ArbArray::Owned(arr) => arr.clone().into(),
-//         }
-//     }
-// }
-
 macro_rules! match_arbarray {
     ($arb_array: expr, $arr: ident, $body: tt) => {
         match_arbarray!($arb_array, $arr, $body, (View, ViewMut, Owned, ViewOnBase))
@@ -181,41 +119,6 @@ macro_rules! match_arbarray {
     };
 }
 pub(crate) use match_arbarray;
-
-impl<'a, T> From<ArrViewD<'a, T>> for ArbArray<'a, T> {
-    #[inline(always)]
-    fn from(arr: ArrViewD<'a, T>) -> Self {
-        ArbArray::View(arr)
-    }
-}
-
-impl<'a, T> From<ArrViewMutD<'a, T>> for ArbArray<'a, T> {
-    #[inline(always)]
-    fn from(arr: ArrViewMutD<'a, T>) -> Self {
-        ArbArray::ViewMut(arr)
-    }
-}
-
-impl<T> From<ArrD<T>> for ArbArray<'_, T> {
-    #[inline(always)]
-    fn from(arr: ArrD<T>) -> Self {
-        ArbArray::Owned(arr)
-    }
-}
-
-impl<'a, T> From<Pin<Box<ViewOnBase<'a, T>>>> for ArbArray<'a, T> {
-    #[inline(always)]
-    fn from(vb: Pin<Box<ViewOnBase<'a, T>>>) -> Self {
-        ArbArray::ViewOnBase(vb)
-    }
-}
-
-// #[cfg(feature = "arw")]
-// impl<'a> From<Vec<Box<dyn arrow::array::Array>>> for ArbArray<'a, _> {
-//     fn from(arr: Vec<Box<dyn arrow::array::Array>>) -> Self {
-//         ArbArray::ArrowChunk(arr)
-//     }
-// }
 
 impl<'a, T> ArbArray<'a, T> {
     // #[allow(unreachable_patterns)]    #[inline(always)]

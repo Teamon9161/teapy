@@ -1,21 +1,20 @@
-use std::fmt::Debug;
-// use serde::Serialize;
-
 use super::arbarray::ArbArray;
+#[cfg(feature = "arw")]
 use super::view::ArrViewD;
 #[cfg(any(feature = "concat", feature = "arw"))]
 use crate::{own::Arr1, utils::CollectTrustedToVec};
-use datatype::{Cast, DataType, GetDataType, Object};
-#[cfg(feature = "time")]
-use datatype::{DateTime, TimeDelta};
+use derive_more::From;
 use ndarray::{Axis, IxDyn, SliceArg};
+use std::fmt::Debug;
+// use tea_dyn::prelude::Object;
+use tea_dyn::prelude::*;
+
+// pub use tea_dyn::prelude::DynArray;
 
 #[cfg(feature = "arw")]
 use crate::ArrView1;
-#[cfg(feature = "option_dtype")]
-use datatype::{OptBool, OptF32, OptF64, OptI32, OptI64};
 
-#[derive(Clone)]
+#[derive(Clone, From)]
 pub enum ArrOk<'a> {
     Bool(ArbArray<'a, bool>),
     U8(ArbArray<'a, u8>),
@@ -26,76 +25,63 @@ pub enum ArrOk<'a> {
     F64(ArbArray<'a, f64>),
     I32(ArbArray<'a, i32>),
     I64(ArbArray<'a, i64>),
+    OptBool(ArbArray<'a, Option<bool>>),
+    OptF32(ArbArray<'a, Option<f32>>),
+    OptF64(ArbArray<'a, Option<f64>>),
+    OptI32(ArbArray<'a, Option<i32>>),
+    OptI64(ArbArray<'a, Option<i64>>),
     String(ArbArray<'a, String>),
-    Str(ArbArray<'a, &'a str>),
+    // Str(ArbArray<'a, &'a str>),
     Object(ArbArray<'a, Object>),
     VecUsize(ArbArray<'a, Vec<usize>>),
     #[cfg(feature = "time")]
-    DateTime(ArbArray<'a, DateTime>),
+    DateTimeMs(ArbArray<'a, DateTime<unit::Millisecond>>),
+    #[cfg(feature = "time")]
+    DateTimeUs(ArbArray<'a, DateTime<unit::Microsecond>>),
+    #[cfg(feature = "time")]
+    DateTimeNs(ArbArray<'a, DateTime<unit::Nanosecond>>),
+
     #[cfg(feature = "time")]
     TimeDelta(ArbArray<'a, TimeDelta>),
 }
 
-#[macro_export]
-macro_rules! match_all {
-    // select the match arm
-    ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($(#[$meta: meta])? $arm: ident),* $(,)?) => {
-        match $exprs {
-            $($(#[$meta])? $enum::$arm($e) => $body,)*
-            _ => unimplemented!("Not supported dtype")
-        }
-    };
+// #[macro_export]
+// macro_rules! match_all {
+//     // select the match arm
+//     ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($(#[$meta: meta])? $arm: ident),* $(,)?) => {
+//         match $exprs {
+//             $($(#[$meta])? $enum::$arm($e) => $body,)*
+//             _ => unimplemented!("Not supported dtype")
+//         }
+//     };
 
-    ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
-        {
-            match_all!(
-                $enum, $exprs, $e, $body,
-                F32, F64, I32, I64, U8, U64, Bool, Usize, Str, String, Object, OptUsize, VecUsize,
-                #[cfg(feature="time")] DateTime,
-                #[cfg(feature="time")] TimeDelta,
-            )
-        }
-    };
+//     ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
+//         {
+//             match_all!(
+//                 $enum, $exprs, $e, $body,
+//                 F32, F64, I32, I64, U8, U64, Bool, Usize, Str, String, Object, OptUsize, VecUsize,
+//                 #[cfg(feature="time")] DateTime,
+//                 #[cfg(feature="time")] TimeDelta,
+//             )
+//         }
+//     };
 
-    ($enum: ident, ($exprs1: expr, $e1: ident, $($arm1: ident),*), ($exprs2: expr, $e2: ident, $($arm2: ident),*), $body: tt) => {
-        match_all!($enum, $exprs1, $e1, {match_all!($enum, $exprs2, $e2, $body, $($arm2),*)}, $($arm1),*)
-    };
-}
+//     ($enum: ident, ($exprs1: expr, $e1: ident, $($arm1: ident),*), ($exprs2: expr, $e2: ident, $($arm2: ident),*), $body: tt) => {
+//         match_all!($enum, $exprs1, $e1, {match_all!($enum, $exprs2, $e2, $body, $($arm2),*)}, $($arm1),*)
+//     };
+// }
 
 #[macro_export]
 macro_rules! match_arrok {
-    (numeric $($tt: tt)*) => {
-        match_all!(ArrOk, $($tt)*,
-            F32, F64, I32, I64, U64, Usize,
-            // OptUsize,
-        )
-    };
-    (int $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, Usize)};
-    (float $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64)};
-    (bool $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, Bool)};
-    (hash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8, U64)};
-    (tphash $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, U64, Usize, String, Str, #[cfg(feature="time")] DateTime, Bool, U8, U64)};
-    (castable $($tt: tt)*) => {match_all!(
-        ArrOk, $($tt)*,
-        F32, F64, I32, I64, U64, Usize, String,
-        Bool, OptUsize,
-        #[cfg(feature="time")] DateTime,
-        #[cfg(feature="time")] TimeDelta,
-    )};
-    (nostr $($tt: tt)*) => {match_all!(
-        ArrOk, $($tt)*,
-        F32, F64, I32, I64, U64, Usize, String, U8, Bool, OptUsize, VecUsize, Object,
-        #[cfg(feature="time")] DateTime,
-        #[cfg(feature="time")] TimeDelta,
-    )};
-    (pyelement $($tt: tt)*) => {match_all!(ArrOk, $($tt)*, F32, F64, I32, I64, U64, Usize, Bool, Object)};
-    ($($tt: tt)*) => {match_all!(ArrOk, $($tt)*)};
+    ($($tt: tt)*) => {
+        $crate::tea_dyn::match_enum!(ArrOk, $($tt)*)
+    }
 }
 
 impl<'a> Debug for ArrOk<'a> {
     #[allow(unreachable_patterns)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match_arrok!(self, arbarray, { arbarray.fmt(f) })
+        match_arrok!(self; Dynamic(a) => { Ok(a.fmt(f)) },).unwrap()
     }
 }
 
@@ -103,86 +89,88 @@ impl<'a> ArrOk<'a> {
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn raw_dim(&self) -> IxDyn {
-        match_arrok!(self, a, { a.raw_dim() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.raw_dim()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn ndim(&self) -> usize {
-        match_arrok!(self, a, { a.ndim() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.ndim()) },).unwrap()
     }
 
     #[allow(unreachable_patterns, clippy::len_without_is_empty)]
     #[inline]
     pub fn len(&self) -> usize {
-        match_arrok!(self, a, { a.len() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.len()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn len_of(&self, axis: Axis) -> usize {
-        match_arrok!(self, a, { a.len_of(axis) })
+        match_arrok!(self; Dynamic(a) => { Ok(a.len_of(axis)) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn shape(&self) -> &[usize] {
-        match_arrok!(self, a, { a.shape() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.shape()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn norm_axis(&self, axis: i32) -> Axis {
-        match_arrok!(self, a, { a.norm_axis(axis) })
+        match_arrok!(self; Dynamic(a) => { Ok(a.norm_axis(axis)) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     pub fn prepare(&mut self) {
-        match_arrok!(self, a, { a.prepare() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.prepare()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn get_type(&self) -> &'static str {
-        match_arrok!(self, a, { a.get_type() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.get_type()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn dtype(&self) -> DataType {
-        match_arrok!(self, a, { a.dtype() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.dtype()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn deref(&self) -> ArrOk<'_> {
-        match_arrok!(self, a, { a.deref().into() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.deref().into()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn slice<I: SliceArg<IxDyn>>(&self, info: I) -> ArrOk<'_> {
-        match_arrok!(self, a, { a.slice(info).into() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.slice(info).into()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn is_owned(&self) -> bool {
-        match_arrok!(self, a, { a.is_owned() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.is_owned()) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn into_owned<'b>(self) -> ArrOk<'b> {
-        match_arrok!(self, a, {
+        match_arrok!(self; Dynamic(a) => {
             let a: ArrOk<'a> = a.into_owned().into();
             // this is safe because we only need it for &str type
             // and the lifetime of str should be longer than both
             // 'a and 'b
             // remove this transmute once we add a different lifetime
             // for &str datatype
-            unsafe { std::mem::transmute::<ArrOk<'a>, ArrOk<'b>>(a) }
-        })
+            Ok(unsafe { std::mem::transmute::<ArrOk<'a>, ArrOk<'b>>(a) })
+            // Ok(a)
+        },)
+        .unwrap()
     }
 
     #[inline]
@@ -214,10 +202,6 @@ impl<'a> ArrOk<'a> {
             ArrOk::Usize(a) => a.into(),
             ArrOk::U64(a) => a.into(),
             ArrOk::OptUsize(a) => a.into(),
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptF32(a) => a.cast::<OptI32>().into(),
-            #[cfg(feature = "option_dtype")]
-            ArrOk::OptF64(a) => a.cast::<OptI64>().into(),
             _ => self.cast_i64().into(),
         }
     }
@@ -226,14 +210,14 @@ impl<'a> ArrOk<'a> {
     #[inline]
     pub fn as_ptr<T: GetDataType>(&self) -> *const T {
         // we have known the datatype of the enum ,so only one arm will be executed
-        tevec::match_enum!(ArrOk, self, a, { a.as_ptr() as *const T })
+        match_arrok!(self; Dynamic(a) => { Ok(a.as_ptr() as *const T) },).unwrap()
     }
 
     #[allow(unreachable_patterns)]
     #[inline]
     pub fn as_mut_ptr<T: GetDataType>(&mut self) -> *mut T {
         // we have known the datatype of the enum ,so only one arm will be executed
-        tevec::match_enum!(ArrOk, self, a, { a.as_mut_ptr() as *mut T })
+        match_arrok!(self; Dynamic(a) => { Ok(a.as_mut_ptr() as *mut T) },).unwrap()
     }
 
     // /// reinterpret ArrOk to ArbArray<'a, T> directly.
@@ -248,10 +232,10 @@ impl<'a> ArrOk<'a> {
     //     })
     // }
 
-    #[inline]
-    pub fn cast_str(self) -> ArbArray<'a, &'a str> {
-        match_arrok!(self, a, { a }, Str)
-    }
+    // #[inline]
+    // pub fn cast_str(self) -> ArbArray<'a, &'a str> {
+    //     match_arrok!(self; Str(a) => { Ok(a) },).unwrap()
+    // }
 
     // #[inline]
     // pub fn cast_object(self) -> ArbArray<'a, PyValue> {
@@ -260,7 +244,7 @@ impl<'a> ArrOk<'a> {
 
     #[inline]
     pub fn cast_vecusize(self) -> ArbArray<'a, Vec<usize>> {
-        match_arrok!(self, a, { a }, VecUsize)
+        match_arrok!(self; VecUsize(a) => { Ok(a) },).unwrap()
     }
 
     #[inline]
@@ -281,31 +265,10 @@ impl<'a> ArrOk<'a> {
         }
     }
 
-    #[allow(unreachable_patterns, clippy::missing_transmute_annotations)]
+    #[allow(unreachable_patterns)]
     #[inline]
     pub fn view(&self) -> ArrOk<'_> {
-        match self {
-            ArrOk::Bool(arr) => arr.view().into(),
-            ArrOk::F32(arr) => arr.view().into(),
-            ArrOk::F64(arr) => arr.view().into(),
-            ArrOk::I32(arr) => arr.view().into(),
-            ArrOk::I64(arr) => arr.view().into(),
-            ArrOk::U64(arr) => arr.view().into(),
-            ArrOk::Usize(arr) => arr.view().into(),
-            ArrOk::OptUsize(arr) => arr.view().into(),
-            ArrOk::String(arr) => arr.view().into(),
-            ArrOk::Str(arr) => unsafe {
-                std::mem::transmute::<_, ArrViewD<'_, &'_ str>>(arr.view()).into()
-            },
-            ArrOk::Object(arr) => arr.view().into(),
-            ArrOk::VecUsize(arr) => arr.view().into(),
-            #[cfg(feature = "time")]
-            ArrOk::DateTime(arr) => arr.view().into(),
-            #[cfg(feature = "time")]
-            ArrOk::TimeDelta(arr) => arr.view().into(),
-            _ => unimplemented!("view is not implemented for this dtype"),
-        }
-        // match_arr!(&self, arr, { arr.view().into() })
+        match_arrok!(self; Dynamic(a) => { Ok(a.view().into()) },).unwrap()
     }
 }
 
@@ -359,25 +322,34 @@ impl_same_dtype_concat_1d!(
     I64,
     Usize,
     String,
-    Str,
+    // Str,
     Object,
+    OptBool,
+    OptI32,
+    OptI64,
+    OptF32,
+    OptF64,
     OptUsize,
     VecUsize,
     #[cfg(feature = "time")]
-    DateTime,
+    DateTimeMs,
+    #[cfg(feature = "time")]
+    DateTimeUs,
+    #[cfg(feature = "time")]
+    DateTimeNs,
     #[cfg(feature = "time")]
     TimeDelta,
 );
 
-impl<'a> Cast<ArbArray<'a, &'a str>> for ArrOk<'a> {
-    #[inline]
-    fn cast(self) -> ArbArray<'a, &'a str> {
-        match self {
-            ArrOk::Str(e) => e,
-            _ => unimplemented!("Cast to str is unimplemented"),
-        }
-    }
-}
+// impl<'a> Cast<ArbArray<'a, &'a str>> for ArrOk<'a> {
+//     #[inline]
+//     fn cast(self) -> ArbArray<'a, &'a str> {
+//         match self {
+//             ArrOk::Str(e) => e,
+//             _ => unimplemented!("Cast to str is unimplemented"),
+//         }
+//     }
+// }
 
 impl<'a> Cast<ArbArray<'a, Vec<usize>>> for ArrOk<'a> {
     #[inline]
@@ -411,7 +383,7 @@ macro_rules! impl_from_arrow {
 
             pub fn from_arrow(arr: Box<dyn arrow::array::Array>) -> ArrOk<'a> {
                 use arrow::datatypes::DataType as ArrowDT;
-                use crate::{prelude::ViewOnBase, datatype::{IsNone, TvNumber}};
+                use crate::prelude::ViewOnBase;
                 use arrow::array::PrimitiveArray;
                 match arr.data_type() {
                     $(ArrowDT::$arrow_dt => {
@@ -495,45 +467,34 @@ macro_rules! impl_from_arrow {
                         use arrow::datatypes::TimeUnit;
                         assert!(arw_tz.is_none(), "Timezone is not supported yet");
                         let a = arr.as_any().downcast_ref::<PrimitiveArray<i64>>().unwrap();
-                        let data = match arw_unit {
+                        match arw_unit {
                             TimeUnit::Second => {
-                                a.into_iter().map(|v| {
-                                    if let Some(v) = v {
-                                        DateTime::from_timestamp_opt(*v, 0)
-                                    } else {
-                                        None.into()
-                                    }
-                                }).collect_trusted()
+                                unimplemented!("Timeunit second is not supported yet")
+                                // let data = a.into_iter().map(|v| {
+                                //     DateTime::<unit::Second>::from_opt_i64(v.cloned())
+                                // }).collect_trusted();
+                                // Arr1::from_vec(data).to_dimd().into()
                             },
                             TimeUnit::Millisecond => {
-                                a.into_iter().map(|v| {
-                                    if let Some(v) = v {
-                                        DateTime::from_timestamp_ms(*v).unwrap_or_default()
-                                    } else {
-                                        DateTime(None)
-                                    }
-                                }).collect_trusted()
+                                let data = a.into_iter().map(|v| {
+                                    DateTime::<unit::Millisecond>::from_opt_i64(v.cloned())
+                                }).collect_trusted();
+                                Arr1::from_vec(data).to_dimd().into()
                             },
                             TimeUnit::Microsecond => {
-                                a.into_iter().map(|v| {
-                                    if let Some(v) = v {
-                                        DateTime::from_timestamp_us(*v).unwrap_or_default()
-                                    } else {
-                                        DateTime(None)
-                                    }
-                                }).collect_trusted()
+                                let data = a.into_iter().map(|v| {
+                                    DateTime::<unit::Microsecond>::from_opt_i64(v.cloned())
+                                }).collect_trusted();
+                                Arr1::from_vec(data).to_dimd().into()
                             },
                             TimeUnit::Nanosecond => {
-                                a.into_iter().map(|v| {
-                                    if let Some(v) = v {
-                                        DateTime::from_timestamp_ns(*v).unwrap_or_default()
-                                    } else {
-                                        DateTime(None)
-                                    }
-                                }).collect_trusted()
+                                let data = a.into_iter().map(|v| {
+                                    DateTime::<unit::Nanosecond>::from_opt_i64(v.cloned())
+                                }).collect_trusted();
+                                Arr1::from_vec(data).to_dimd().into()
                             },
-                        };
-                        Arr1::from_vec(data).to_dimd().into()
+                        }
+                        // Arr1::from_vec(data).to_dimd().into()
                     }
                     _ => unimplemented!("Arrow datatype {:?} is not supported yet", arr.data_type())
                 }
@@ -556,11 +517,11 @@ macro_rules! impl_arrok_cast {
             {
                 #[inline]
                 fn cast(self) -> ArbArray<'a, $T> {
-                    match_arrok!(self, a, { a.cast::<$T>() },
-                        U8, F32, F64, I32, I64, U64, Usize, OptUsize, Bool, String, Str, Object,
-                        #[cfg(feature="time")] DateTime,
-                        #[cfg(feature="time")] TimeDelta
-                    )
+                    match_arrok!(self; Cast(a) => { Ok(a.cast::<$T>()) },
+                        // U8, F32, F64, I32, I64, U64, Usize, OptUsize, Bool, String, Str, Object,
+                        // #[cfg(feature="time")] DateTime,
+                        // #[cfg(feature="time")] TimeDelta
+                    ).unwrap()
                 }
             }
 
@@ -594,8 +555,17 @@ impl_arrok_cast!(
     usize: cast_usize,
     bool: cast_bool,
     String: cast_string,
+    Option<bool>: cast_opt_bool,
+    Option<f32>: cast_opt_f32,
+    Option<f64>: cast_opt_f64,
+    Option<i32>: cast_opt_i32,
+    Option<i64>: cast_opt_i64,
     #[cfg(feature="time")]
-    DateTime: cast_datetime_default,
+    DateTime<unit::Millisecond>: cast_datetime_ms,
+    #[cfg(feature="time")]
+    DateTime<unit::Microsecond>: cast_datetime_us,
+    #[cfg(feature="time")]
+    DateTime<unit::Nanosecond>: cast_datetime_ns,
     Option<usize>: cast_optusize,
     Object: cast_object,
     #[cfg(feature="time")]

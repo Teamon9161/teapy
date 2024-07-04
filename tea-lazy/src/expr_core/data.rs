@@ -7,9 +7,10 @@ use crate::OlsResult;
 use crate::{ColumnSelector, Context};
 use core::prelude::*;
 use core::utils::CollectTrustedToVec;
-use std::{fmt::Debug, sync::Arc};
+use derive_more::From;
+use std::{convert, fmt::Debug, sync::Arc};
 
-#[derive(Clone)]
+#[derive(Clone, From)]
 pub enum Data<'a> {
     Expr(Expr<'a>),         // an expression based on another expression
     Arr(ArrOk<'a>),         // classical expression based on an array
@@ -314,41 +315,32 @@ impl<'a> Data<'a> {
     }
 }
 
-impl<'a> From<ArrOk<'a>> for Data<'a> {
-    #[inline(always)]
-    fn from(arr: ArrOk<'a>) -> Self {
-        Data::Arr(arr)
-    }
-}
+// impl<'a> From<ArrOk<'a>> for Data<'a> {
+//     #[inline(always)]
+//     fn from(arr: ArrOk<'a>) -> Self {
+//         Data::Arr(arr)
+//     }
+// }
 
-impl<'a> From<Expr<'a>> for Data<'a> {
-    #[inline(always)]
-    fn from(expr: Expr<'a>) -> Self {
-        Data::Expr(expr)
-    }
-}
+// impl<'a> From<Expr<'a>> for Data<'a> {
+//     #[inline(always)]
+//     fn from(expr: Expr<'a>) -> Self {
+//         Data::Expr(expr)
+//     }
+// }
 
-impl<'a, T: ExprElement + 'a> From<T> for Data<'a> {
-    #[inline(always)]
-    fn from(t: T) -> Self {
-        let a: ArbArray<'a, T> = t.into();
-        a.into()
-    }
-}
+// impl<'a, T: ExprElement + 'a> From<T> for Data<'a> {
+//     #[inline(always)]
+//     fn from(t: T) -> Self {
+//         let a: ArbArray<'a, T> = t.into();
+//         a.into()
+//     }
+// }
 
-#[cfg(feature = "option_dtype")]
-impl<'a, T> From<Option<T>> for Data<'a>
+impl<'a, T: Dtype + 'a> From<ArrD<T>> for Data<'a>
 where
-    T: GetNone + ExprElement + 'a,
+    ArrD<T>: Into<ArbArray<'a, T>>,
 {
-    #[inline(always)]
-    fn from(v: Option<T>) -> Self {
-        let v = v.unwrap_or_else(T::none);
-        v.into()
-    }
-}
-
-impl<'a, T: GetDataType + 'a> From<ArrD<T>> for Data<'a> {
     #[inline]
     fn from(arr: ArrD<T>) -> Self {
         let arb: ArbArray<'a, T> = arr.into();

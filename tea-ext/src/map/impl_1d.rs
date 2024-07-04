@@ -95,7 +95,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         T::Inner: Number,
         SO: DataMut<Elem = i32>,
     {
-        let n = self.count_notnan_1d() as usize;
+        let n = self.count_valid_1d() as usize;
         if n <= kth + 1 {
             if !sort {
                 let mut out_pos = 0;
@@ -112,17 +112,21 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
                 let mut idx_sorted = Vec::from_iter(0..self.len() as i32);
                 // let mut arr = self.0.to_owned().wrap();  // clone the array
                 if !rev {
-                    idx_sorted.sort_unstable_by(|a: &i32, b: &i32| {
-                        let (va, vb) =
-                            unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                        va.sort_cmp(&vb)
-                    })
+                    idx_sorted
+                        .sort_unstable_by(|a: &i32, b: &i32| {
+                            let (va, vb) =
+                                unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
+                            va.sort_cmp(&vb)
+                        })
+                        .unwrap();
                 } else {
-                    idx_sorted.sort_unstable_by(|a: &i32, b: &i32| {
-                        let (va, vb) =
-                            unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                        va.sort_cmp_rev(&vb)
-                    })
+                    idx_sorted
+                        .sort_unstable_by(|a: &i32, b: &i32| {
+                            let (va, vb) =
+                                unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
+                            va.sort_cmp_rev(&vb)
+                        })
+                        .unwrap();
                 }
                 for (i, v) in idx_sorted.iter().take(n).enumerate() {
                     unsafe { *out.uget_mut(i) = *v }
@@ -144,7 +148,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
             idx_sorted.select_nth_unstable_by(kth, sort_func);
             idx_sorted.truncate(kth + 1);
             if sort {
-                idx_sorted.sort_unstable_by(sort_func)
+                idx_sorted.sort_unstable_by(sort_func).unwrap();
             }
             out.apply_mut_with(&Arr1::from_vec(idx_sorted), |vo, v| *vo = *v);
         } else {
@@ -155,7 +159,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
             idx_sorted.select_nth_unstable_by(kth, sort_func);
             idx_sorted.truncate(kth + 1);
             if sort {
-                idx_sorted.sort_unstable_by(sort_func)
+                idx_sorted.sort_unstable_by(sort_func).unwrap();
             }
             out.apply_mut_with(&Arr1::from_vec(idx_sorted), |vo, v| *vo = *v);
         }
@@ -165,11 +169,11 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
     #[cfg(feature = "agg")]
     fn partition_1d<SO>(&self, mut out: ArrBase<SO, Ix1>, kth: usize, sort: bool, rev: bool)
     where
-        T: IsNone + Clone + Send + Sync,
+        T: IsNone + Send + Sync,
         T::Inner: Number,
         SO: DataMut<Elem = MaybeUninit<T>>,
     {
-        let n = self.count_notnan_1d() as usize;
+        let n = self.count_valid_1d() as usize;
         if n <= kth + 1 {
             if !sort {
                 out.apply_mut_with(self, |vo, v| {
@@ -193,7 +197,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         out_c.select_nth_unstable_by(kth, sort_func);
         out_c.truncate(kth + 1);
         if sort {
-            out_c.sort_unstable_by(sort_func)
+            out_c.sort_unstable_by(sort_func).unwrap();
         }
         out.apply_mut_with(&Arr1::from_vec(out_c), |vo, v| {
             vo.write(v.clone());

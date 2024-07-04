@@ -1,10 +1,10 @@
 // use crate::impl_reduce_nd;
 use crate::prelude::{Arr1, ArrBase, ArrD, WrapNdarray};
-use datatype::{BoolType, IsNone, Number, TvNumber};
+// use datatype::{BoolType, IsNone, Number, TvNumber};
 use ndarray::{Data, Dimension, Ix1, Zip};
 use num::Zero;
+use tea_dyn::prelude::*;
 use tea_macros::arr_agg_ext;
-use tevec::prelude::*;
 
 impl<T: Clone, S: Data<Elem = T>> ArrBase<S, Ix1> {
     /// sum of the array on a given axis, return valid_num n and the sum of the array
@@ -14,10 +14,10 @@ impl<T: Clone, S: Data<Elem = T>> ArrBase<S, Ix1> {
         T::Inner: Number,
     {
         if let Some(slc) = self.0.try_as_slice() {
-            slc.to_iter().vfold_n(T::Inner::zero(), |acc, x| acc + x)
+            slc.titer().vfold_n(T::Inner::zero(), |acc, x| acc + x)
         } else {
             // fall back to normal calculation
-            self.0.to_iter().vfold_n(T::Inner::zero(), |acc, x| acc + x)
+            self.0.titer().vfold_n(T::Inner::zero(), |acc, x| acc + x)
         }
     }
 }
@@ -33,9 +33,9 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggE
     {
         let arr1 = self.as_dim1().0;
         let res = if let Some(slc) = arr1.try_as_slice() {
-            slc.to_iter().vmax()
+            slc.titer().vmax()
         } else {
-            arr1.to_iter().vmax()
+            arr1.titer().vmax()
         };
         T::from_opt(res)
     }
@@ -47,9 +47,9 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggE
     {
         let arr1 = self.as_dim1().0;
         let res = if let Some(slc) = arr1.try_as_slice() {
-            slc.to_iter().vmin()
+            slc.titer().vmin()
         } else {
-            arr1.to_iter().vmin()
+            arr1.titer().vmin()
         };
         T::from_opt(res)
     }
@@ -83,18 +83,19 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggE
     where
         T::Inner: PartialEq,
     {
-        self.as_dim1().0.to_iter().vcount_value(value) as i32
+        self.as_dim1().0.titer().vcount_value(value) as i32
     }
 
     /// count a value of an array on a given axis
     #[inline]
-    pub fn count_nan(&self) -> i32 {
-        self.as_dim1().0.to_iter().count_none() as i32
+    pub fn count_none(&self) -> i32 {
+        self.as_dim1().0.titer().count_none() as i32
     }
+
     /// count a value of an array on a given axis
     #[inline]
-    pub fn count_notnan(&self) -> i32 {
-        Vec1ViewAggValid::count(self.as_dim1().0.to_iter()) as i32
+    pub fn count_valid(&self) -> i32 {
+        self.as_dim1().0.titer().count_valid() as i32
     }
 
     #[inline]
@@ -102,7 +103,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggE
     where
         T: BoolType,
     {
-        self.as_dim1().0.to_iter().any()
+        self.as_dim1().0.titer().any()
     }
 
     #[inline]
@@ -110,6 +111,6 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggE
     where
         T: BoolType,
     {
-        self.as_dim1().0.to_iter().all()
+        self.as_dim1().0.titer().all()
     }
 }

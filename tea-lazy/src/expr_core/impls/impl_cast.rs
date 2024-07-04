@@ -1,16 +1,15 @@
 use crate::Expr;
 use core::prelude::*;
-use core::{match_all, match_arrok};
 
 macro_rules! impl_cast {
-    ($($(#[$meta: meta])? $func: ident: $dtype: ident),* $(,)?) => {
+    ($($(#[$meta: meta])? $func: ident: $dtype: ident $(($inner: path))?),* $(,)?) => {
         impl<'a> Expr<'a> {
             $(
                 $(#[$meta])?
                 pub fn $func(&mut self) -> &mut Self {
                     self.chain_f_ctx(|(arr, ctx)| {
                         let dtype = arr.view_arr(ctx.as_ref())?.dtype();
-                        if dtype == DataType::$dtype {
+                        if dtype == DataType::$dtype $(($inner))? {
                             return Ok((arr, ctx));
                         } else {
                             Ok((arr.into_arr(ctx.clone())?.$func().into(), ctx))
@@ -33,7 +32,9 @@ impl_cast!(
     cast_string: String,
     cast_bool: Bool,
     cast_object: Object,
-    #[cfg(feature="time")] cast_datetime_default: DateTime,
+    #[cfg(feature="time")] cast_datetime_ms: DateTime(TimeUnit::Millisecond),
+    #[cfg(feature="time")] cast_datetime_us: DateTime(TimeUnit::Microsecond),
+    #[cfg(feature="time")] cast_datetime_ns: DateTime(TimeUnit::Nanosecond),
     #[cfg(feature="time")] cast_timedelta: TimeDelta,
     cast_optusize: OptUsize,
     cast_vecusize: VecUsize,

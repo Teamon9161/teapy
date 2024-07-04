@@ -8,8 +8,8 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["extend", "methods"]
-# default = ["agg", "lazy"]
+# default = ["extend", "methods"]
+default = ["agg", "map", "rolling", "create"]
 
 extend = ["lazy_time"]
 methods = ["agg", "map", "rolling", "create", "concat"]
@@ -17,28 +17,33 @@ methods = ["agg", "map", "rolling", "create", "concat"]
 lazy = ["tea-lazy"]
 lazy_time = ["lazy", "time", "tea-lazy/time"]
 
-time = ["tea-core/time", "tevec/time"]
+time = ["tea-core/time", "tea-dyn/time"]
 # option_dtype = ["tea-core/option_dtype"]
 
-agg = []  # aggregate functions
-map = ["tea-core/ops", "tevec/map"]  # map functions
-rolling = ["num", "tevec/rolling"]  # rolling functions
+agg = ["tea-dyn/agg"]                    # aggregate functions
+map = ["tea-core/ops", "tea-dyn/map"]    # map functions
+rolling = ["num", "tea-dyn/rolling"]     # rolling functions
 create = ["lazy"]
 stat = ["statrs"]
-concat = ["tea-core/concat", "tea-hash"]  # used in rolling_common
+concat = ["tea-core/concat", "tea-hash"] # used in rolling_common
 
 [dependencies]
 pyo3 = { workspace = true }
-tevec = { workspace = true, default-features=false, features = ["ndarray"] }
-tea-core = { path = "../tea-core", default-features=false, features=["method_1d"] }
-tea-hash = { path = "../tea-hash", optional=true, default-features = false}
-tea-lazy = { path = "../tea-lazy", optional=true, default-features=false, features=["extend"]}
+# tevec = { workspace = true, default-features = false, features = ["ndarray"] }
+tea-dyn = { workspace = true }
+tea-core = { path = "../tea-core", default-features = false, features = [
+    "method_1d",
+] }
+tea-hash = { path = "../tea-hash", optional = true, default-features = false }
+tea-lazy = { path = "../tea-lazy", optional = true, default-features = false, features = [
+    "extend",
+] }
 tea-macros = { path = "../tea-macros" }
-ndarray = { workspace=true }
+ndarray = { workspace = true }
 paste = { workspace = true }
 rayon = { workspace = true }
-num = { workspace = true, optional = true}
-statrs = { version = "0.16", optional=true }
+num = { workspace = true, optional = true }
+statrs = { version = "0.17", optional = true }
 
 # [dependencies.tevec]
 # git = "https://github.com/Teamon9161/tevec.git"

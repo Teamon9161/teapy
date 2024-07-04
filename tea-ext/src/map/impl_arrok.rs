@@ -10,7 +10,7 @@ impl<'a> ArrOkExt for ArrOk<'a> {
             return Err("The slice must be dim 0 or dim 1 when select on axis".into());
         }
         let mut slc = slc.deref();
-        let out = match_arrok!(self, a, {
+        let out = match_arrok!(self; Dynamic(a) => {
             let a_view = a.view();
             let axis_ = a_view.norm_axis(axis);
             let length = a_view.len_of(axis_);
@@ -21,14 +21,14 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                 match a_view.dtype() {
                     DataType::I32 => {
                         if slc_view.len() == 1 {
-                            unsafe { a_view.into_dtype::<i32>() }
+                            Ok(unsafe { a_view.into_dtype::<i32>() }
                                 .cast::<f64>()
                                 .index_axis(axis_, slc_view.to_dim1()?[0].unwrap())
                                 .to_owned()
                                 .wrap()
-                                .into()
+                                .into())
                         } else {
-                            unsafe {
+                            Ok(unsafe {
                                 a_view
                                     .into_dtype::<i32>()
                                     .cast::<f64>()
@@ -38,19 +38,19 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                                         false,
                                     )
                             }
-                            .into()
+                            .into())
                         }
                     }
                     DataType::I64 => {
                         if slc_view.len() == 1 {
-                            unsafe { a_view.into_dtype::<i64>() }
+                            Ok(unsafe { a_view.into_dtype::<i64>() }
                                 .cast::<f64>()
                                 .index_axis(axis_, slc_view.to_dim1()?[0].unwrap())
                                 .to_owned()
                                 .wrap()
-                                .into()
+                                .into())
                         } else {
-                            unsafe {
+                            Ok(unsafe {
                                 a_view
                                     .into_dtype::<i64>()
                                     .cast::<f64>()
@@ -60,32 +60,32 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                                         false,
                                     )
                             }
-                            .into()
+                            .into())
                         }
                     }
                     _ => {
                         if slc_view.len() == 1 {
-                            a_view
+                            Ok(a_view
                                 .index_axis(axis_, slc_view.to_dim1()?[0].unwrap())
                                 .to_owned()
                                 .wrap()
-                                .into()
+                                .into())
                         } else {
-                            unsafe {
+                            Ok(unsafe {
                                 a_view.take_option_clone_unchecked(
                                     slc_view.to_dim1()?,
                                     axis_.index() as i32,
                                     false,
                                 )
                             }
-                            .into()
+                            .into())
                         }
                     }
                 }
             } else if matches!(&slc, ArrOk::Bool(_)) {
                 let slc = slc.cast_bool();
                 let slc_view = slc.view();
-                a_view.filter(&slc_view.to_dim1()?, axis, false).into()
+                Ok(a_view.filter(&slc_view.to_dim1()?, axis, false).into())
             } else {
                 if check {
                     slc = match slc {
@@ -109,25 +109,26 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                 let slc = slc.cast_usize();
                 let slc_view = slc.view();
                 if slc_view.len() == 1 {
-                    a_view
+                    Ok(a_view
                         .index_axis(axis_, slc_view.to_dim1()?[0])
                         .to_owned()
                         .wrap()
-                        .into()
+                        .into())
                 } else {
                     if check {
-                        a_view
+                        Ok(a_view
                             .select(axis_, slc_view.to_dim1()?.as_slice().unwrap())
                             .wrap()
-                            .into()
+                            .into())
                     } else {
-                        a_view
+                        Ok(a_view
                             .select_unchecked(axis_, slc_view.to_dim1()?.as_slice().unwrap())
-                            .into()
+                            .into())
                     }
                 }
             }
-        });
+        },)
+        .unwrap();
         Ok(out)
     }
 
@@ -142,63 +143,61 @@ impl<'a> ArrOkExt for ArrOk<'a> {
             let mut order = Ordering::Equal;
             for arr in by.iter() {
                 let rtn = match &arr {
-                    String(_) => {
-                        match_arrok!(
-                            arr,
-                            arr,
-                            {
-                                let key_view = arr
-                                    .view()
-                                    .to_dim1()
-                                    .expect("Currently only 1 dim array can be sort key");
-                                let (va, vb) = unsafe { (key_view.uget(*a), key_view.uget(*b)) };
-                                if !rev {
-                                    va.cmp(vb)
-                                } else {
-                                    va.cmp(vb).reverse()
-                                }
-                            },
-                            String // DateTime
-                        )
-                    }
-                    #[cfg(feature = "time")]
-                    DateTime(_) => {
-                        match_arrok!(
-                            arr,
-                            arr,
-                            {
-                                let key_view = arr
-                                    .view()
-                                    .to_dim1()
-                                    .expect("Currently only 1 dim array can be sort key");
-                                let (va, vb) = unsafe { (key_view.uget(*a), key_view.uget(*b)) };
-                                if !rev {
-                                    va.cmp(vb)
-                                } else {
-                                    va.cmp(vb).reverse()
-                                }
-                            },
-                            DateTime // TimeDelta
-                        )
-                    }
-                    _ => {
-                        match_arrok!(
-                            numeric arr,
-                            arr,
-                            {
-                                let key_view = arr.view().to_dim1().expect(
-                                    "Currently only 1 dim array can be sort key",
-                                );
-                                let (va, vb) =
-                                    unsafe { (key_view.uget(*a), key_view.uget(*b)) };
-                                if !rev {
-                                    va.sort_cmp(vb)
-                                } else {
-                                    va.sort_cmp_rev(vb)
-                                }
+                    String(_) => match_arrok!(
+                        arr;
+                        String(arr) =>
+                        {
+                            let key_view = arr
+                                .view()
+                                .to_dim1()
+                                .expect("Currently only 1 dim array can be sort key");
+                            let (va, vb) = unsafe { (key_view.uget(*a), key_view.uget(*b)) };
+                            if !rev {
+                                Ok(va.cmp(vb))
+                            } else {
+                                Ok(va.cmp(vb).reverse())
                             }
+                        },
+                    )
+                    .unwrap(),
+                    #[cfg(feature = "time")]
+                    DateTimeMs(_) | DateTimeUs(_) | DateTimeNs(_) => {
+                        match_arrok!(
+                            arr;
+                            Time(arr) =>
+                            {
+                                let key_view = arr
+                                    .view()
+                                    .to_dim1()
+                                    .expect("Currently only 1 dim array can be sort key");
+                                let (va, vb) = unsafe { (key_view.uget(*a), key_view.uget(*b)) };
+                                if !rev {
+                                    Ok(va.cmp(vb))
+                                } else {
+                                    Ok(va.cmp(vb).reverse())
+                                }
+                            },
+                            // DateTime // TimeDelta
                         )
+                        .unwrap()
                     }
+                    _ => match_arrok!(
+                        arr;
+                        Numeric(arr) =>
+                        {
+                            let key_view = arr.view().to_dim1().expect(
+                                "Currently only 1 dim array can be sort key",
+                            );
+                            let (va, vb) =
+                                unsafe { (key_view.uget(*a), key_view.uget(*b)) };
+                            if !rev {
+                                Ok(va.sort_cmp(vb))
+                            } else {
+                                Ok(va.sort_cmp_rev(vb))
+                            }
+                        },
+                    )
+                    .unwrap(),
                 };
                 if rtn != Ordering::Equal {
                     order = rtn;

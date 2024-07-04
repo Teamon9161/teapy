@@ -20,7 +20,10 @@ impl<'a> Expr<'a> {
         out.iter_mut().enumerate().for_each(|(i, e)| {
             e.chain_f_ctx(move |(data, ctx)| {
                 let arr = data.view_arr_vec(ctx.as_ref())?.remove(i);
-                Ok((match_arrok!(arr, a, { a.view().to_owned().into() }), ctx))
+                Ok((
+                    match_arrok!(arr; Dynamic(a) => { Ok(a.view().to_owned().into()) },).unwrap(),
+                    ctx,
+                ))
             });
         });
         out

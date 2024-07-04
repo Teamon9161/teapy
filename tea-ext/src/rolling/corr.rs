@@ -46,7 +46,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {
-                    if va.notnan() && vb.notnan() {
+                    if va.not_none() && vb.not_none() {
                         n += 1;
                         let (va, vb) = (va.f64(), vb.f64());
                         sum_a += va;
@@ -59,7 +59,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                         f64::NAN
                     };
                     if let (Some(va), Some(vb)) = (va_rm, vb_rm) {
-                        if va.notnan() && vb.notnan() {
+                        if va.not_none() && vb.not_none() {
                             n -= 1;
                             let (va, vb) = (va.f64(), vb.f64());
                             sum_a -= va;
@@ -77,7 +77,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {
-                    if va.notnan() && vb.notnan() {
+                    if va.not_none() && vb.not_none() {
                         n += 1;
                         sum_a = sum_a.kh_sum(va, c1);
                         sum_b = sum_b.kh_sum(vb, c2);
@@ -88,7 +88,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                     } else {
                         f64::NAN
                     };
-                    if va_rm.notnan() && vb_rm.notnan() {
+                    if va_rm.not_none() && vb_rm.not_none() {
                         n -= 1;
                         sum_a = sum_a.kh_sum(-va_rm, c4);
                         sum_b = sum_b.kh_sum(-vb_rm, c5);
@@ -138,7 +138,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {
-                    if va.notnan() && vb.notnan() {
+                    if va.not_none() && vb.not_none() {
                         n += 1;
                         let (va, vb) = (va.f64(), vb.f64());
                         sum_a += va;
@@ -166,7 +166,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                         f64::NAN
                     };
                     if let (Some(va), Some(vb)) = (va_rm, vb_rm) {
-                        if va.notnan() && vb.notnan() {
+                        if va.not_none() && vb.not_none() {
                             n -= 1;
                             let (va, vb) = (va.f64(), vb.f64());
                             sum_a -= va;
@@ -186,7 +186,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                 out,
                 window,
                 |va, vb, va_rm, vb_rm| {
-                    if va.notnan() && vb.notnan() {
+                    if va.not_none() && vb.not_none() {
                         n += 1;
                         sum_a = sum_a.kh_sum(va, c1);
                         sum2_a = sum2_a.kh_sum(va * va, c2);
@@ -212,7 +212,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> CorrTs for ArrBas
                     } else {
                         f64::NAN
                     };
-                    if va_rm.notnan() && vb_rm.notnan() {
+                    if va_rm.not_none() && vb_rm.not_none() {
                         n -= 1;
                         sum_a = sum_a.kh_sum(-va_rm, c6);
                         sum2_a = sum2_a.kh_sum(-va_rm * va_rm, c7);

@@ -26,7 +26,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
         for i in 0..window - 1 {
             // 安全性：i不会超过arr和out的长度
             let v = unsafe { *arr.uget(i) };
-            if v.notnan() {
+            if v.not_none() {
                 n += 1
             };
             if v < min {
@@ -43,13 +43,13 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
             // 安全性：start和end不会超过self和out的长度
             unsafe {
                 let v = *arr.uget(end);
-                if v.notnan() {
+                if v.not_none() {
                     n += 1
                 };
                 if min_idx < start {
                     // 最小值已经失效，重新找到最小值
                     let v = *arr.uget(start);
-                    min = if v.isnan() { T::max_() } else { v };
+                    min = if v.is_none() { T::max_() } else { v };
                     for i in start..=end {
                         let v = *arr.uget(i);
                         if v <= min {
@@ -66,7 +66,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 } else {
                     out.write(f64::NAN);
                 };
-                if arr.uget(start).notnan() {
+                if arr.uget(start).not_none() {
                     n -= 1
                 };
             }
@@ -92,7 +92,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
         for i in 0..window - 1 {
             // 安全性：i不会超过arr和out的长度
             let v = unsafe { *arr.uget(i) };
-            if v.notnan() {
+            if v.not_none() {
                 n += 1
             };
             if v > max {
@@ -109,13 +109,13 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
             // 安全性：start和end不会超过self和out的长度
             unsafe {
                 let v = *arr.uget(end);
-                if v.notnan() {
+                if v.not_none() {
                     n += 1
                 };
                 if max_idx < start {
                     // 最大值已经失效，重新找到最大值
                     let v = *arr.uget(start);
-                    max = if v.isnan() { T::min_() } else { v };
+                    max = if v.is_none() { T::min_() } else { v };
                     for i in start..=end {
                         let v = *arr.uget(i);
                         if v >= max {
@@ -132,7 +132,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 } else {
                     out.write(f64::NAN);
                 };
-                if arr.uget(start).notnan() {
+                if arr.uget(start).not_none() {
                     n -= 1
                 };
             }
@@ -158,7 +158,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
         for i in 0..window - 1 {
             // 安全性：i不会超过arr和out的长度
             let v = unsafe { *arr.uget(i) };
-            if v.notnan() {
+            if v.not_none() {
                 n += 1
             };
             if v < min {
@@ -175,13 +175,13 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
             // 安全性：start和end不会超过self和out的长度
             unsafe {
                 let v = *arr.uget(end);
-                if v.notnan() {
+                if v.not_none() {
                     n += 1
                 };
                 if min_idx < start {
                     // 最小值已经失效，重新找到最小值
                     let v = *arr.uget(start);
-                    min = if v.isnan() { T::max_() } else { v };
+                    min = if v.is_none() { T::max_() } else { v };
                     for i in start..=end {
                         let v = *arr.uget(i);
                         if v <= min {
@@ -198,7 +198,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 } else {
                     out.write(f64::NAN);
                 };
-                if arr.uget(start).notnan() {
+                if arr.uget(start).not_none() {
                     n -= 1
                 };
             }
@@ -224,7 +224,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
         for i in 0..window - 1 {
             // 安全性：i不会超过arr和out的长度
             let v = unsafe { *arr.uget(i) };
-            if v.notnan() {
+            if v.not_none() {
                 n += 1
             };
             if v > max {
@@ -241,13 +241,13 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
             // 安全性：start和end不会超过self和out的长度
             unsafe {
                 let v = *arr.uget(end);
-                if v.notnan() {
+                if v.not_none() {
                     n += 1
                 };
                 if max_idx < start {
                     // 最大值已经失效，重新找到最大值
                     let v = *arr.uget(start);
-                    max = if v.isnan() { T::min_() } else { v };
+                    max = if v.is_none() { T::min_() } else { v };
                     for i in start..=end {
                         let v = *arr.uget(i);
                         if v >= max {
@@ -264,7 +264,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 } else {
                     out.write(f64::NAN);
                 };
-                if arr.uget(start).notnan() {
+                if arr.uget(start).not_none() {
                     n -= 1
                 };
             }
@@ -298,7 +298,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 let v = *arr.uget(i);
                 let mut n_repeat = 1; // 当前值的重复次数
                 let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     for j in 0..i {
                         let a = *arr.uget(j);
@@ -334,7 +334,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                 let v = *arr.uget(end);
                 let mut n_repeat = 1; // 当前值的重复次数
                 let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
-                if v.notnan() {
+                if v.not_none() {
                     n += 1;
                     for i in start..end {
                         let a = *arr.uget(i);
@@ -363,7 +363,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
                     out.write(f64::NAN);
                 };
                 let v = *arr.uget(start);
-                if v.notnan() {
+                if v.not_none() {
                     n -= 1;
                 };
             }
@@ -390,7 +390,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
     //             let v = *arr.uget(i);
     //             let mut n_repeat = 1; // 当前值的重复次数
     //             let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
-    //             if v.notnan() {
+    //             if v.not_none() {
     //                 n += 1;
     //                 for j in 0..i {
     //                     let a = *arr.uget(j);
@@ -417,7 +417,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
     //             let v = *arr.uget(end);
     //             let mut n_repeat = 1; // 当前值的重复次数
     //             let mut rank = 1.; // 先假设为第一名，每当有元素比他更小，排名就加1
-    //             if v.notnan() {
+    //             if v.not_none() {
     //                 n += 1;
     //                 for i in start..end {
     //                     let a = *arr.uget(i);
@@ -437,7 +437,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> CmpTs for ArrBase<S, D> {
     //                 out.write(f64::NAN);
     //             };
     //             let v = *arr.uget(start);
-    //             if v.notnan() {
+    //             if v.not_none() {
     //                 n -= 1;
     //             };
     //         }

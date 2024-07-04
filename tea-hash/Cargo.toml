@@ -8,13 +8,13 @@ license.workspace = true
 
 [features]
 default = ["time", "ahasher"]
-time = ["tea-dtype/time"]
+time = ["tea-dyn/time"]
 
 ahasher = ["ahash"]
-gxhasher = ["gxhash"]  # not implemented yet
+gxhasher = ["gxhash"] # not implemented yet
 
 [dependencies]
-tea-dtype = {path = "../tea-dtype"}
-ahash = {workspace = true, optional = true}
-# once_cell = {workspace = true}
-gxhash = {version = "2.2", optional = true}
+# tea-dtype = {path = "../tea-dtype"}
+tea-dyn = { workspace = true, optional = true }
+ahash = { workspace = true, optional = true }
+gxhash = { version = "3.4.1", optional = true }

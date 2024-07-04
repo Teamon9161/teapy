@@ -52,8 +52,7 @@ pub trait CollectTrustedToVec: Iterator + TrustedLen {
 impl<T: Iterator + TrustedLen + Sized> CollectTrustedToVec for T {}
 unsafe impl<K, V: Sized> TrustedLen for std::collections::hash_map::IntoIter<K, V> {}
 unsafe impl<K, V: Sized> TrustedLen for std::collections::hash_map::IntoValues<K, V> {}
-#[cfg(feature = "method_1d")]
-unsafe impl<T: Sized, D> TrustedLen for crate::iterators::IntoIter<T, D> {}
+// unsafe impl<T: Sized, D> TrustedLen for crate::iterators::IntoIter<T, D> {}
 unsafe impl<T1, T2> TrustedLen for std::iter::Map<T1, T2> {}
 unsafe impl<'a, T1: Sized, T2: Sized> TrustedLen for std::collections::hash_map::Keys<'a, T1, T2> {}
 

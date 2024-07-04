@@ -33,18 +33,18 @@ pub struct ExprInner<'a> {
 //     }
 // }
 
-impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
-    #[inline]
-    fn from(arr: T) -> Self {
-        let a: ArbArray<'a, T> = arr.into();
-        ExprInner {
-            base: Data::Arr(a.into()),
-            name: None,
-            nodes: Vec::new(),
-            ctx_ref: None,
-        }
-    }
-}
+// impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
+//     #[inline]
+//     fn from(arr: T) -> Self {
+//         let a: ArbArray<'a, T> = arr.into();
+//         ExprInner {
+//             base: Data::Arr(a.into()),
+//             name: None,
+//             nodes: Vec::new(),
+//             ctx_ref: None,
+//         }
+//     }
+// }
 
 impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a> {
     #[inline]
