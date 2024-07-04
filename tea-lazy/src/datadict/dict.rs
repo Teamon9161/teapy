@@ -6,13 +6,13 @@ use std::sync::Arc;
 // use serde::Serialize;
 
 use crate::{Context, Expr};
-use core::{
+use tea_core::{
     error::{StrError, TpResult},
     utils::CollectTrustedToVec,
 };
 
-#[cfg(feature = "agg")]
-use crate::CorrMethod;
+// #[cfg(feature = "agg")]
+// use crate::CorrMethod;
 
 use super::get_set::{GetMutOutput, GetOutput, SetInput};
 use super::selector::ColumnSelector;

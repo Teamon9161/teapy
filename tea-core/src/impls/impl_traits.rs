@@ -2,8 +2,6 @@ use tea_dyn::prelude::Dtype;
 
 use crate::prelude::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, Dimension, RawData};
-#[cfg(feature = "srd")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -58,7 +56,7 @@ impl<T> From<T> for ArrD<T> {
     }
 }
 
-// #[cfg(feature = "lazy")]
+// // #[cfg(feature = "lazy")]
 // impl<T> From<T> for ArbArray<'_, T> {
 //     #[inline(always)]
 //     fn from(v: T) -> Self {
@@ -160,47 +158,6 @@ macro_rules! impl_from {
                 }
             }
         }
-
-        // $(
-        //     // impl<'a> From<ArbArray<'a, $ty>> for ArrOk<'a> {
-        //     //     fn from(arr: ArbArray<$ty>) -> Self {
-        //     //         ArrOk::$arm(arr)
-        //     //     }
-        //     // }
-
-        //     $(#[$meta])?
-        //     impl<'a> From<ArrD<$ty>> for ArrOk<'a> {
-        //         #[inline(always)]
-        //         fn from(arr: ArrD<$ty>) -> Self {
-        //             ArrOk::$arm(arr.into())
-        //         }
-        //     }
-
-        //     $(#[$meta])?
-        //     impl<'a> From<ArrViewD<'a, $ty>> for ArrOk<'a> {
-        //         #[inline(always)]
-        //         fn from(arr: ArrViewD<'a, $ty>) -> Self {
-        //             ArrOk::$arm(arr.into())
-        //         }
-        //     }
-
-        //     $(#[$meta])?
-        //     impl<'a> From<ArrViewMutD<'a, $ty>> for ArrOk<'a> {
-        //         #[inline(always)]
-        //         fn from(arr: ArrViewMutD<'a, $ty>) -> Self {
-        //             ArrOk::$arm(arr.into())
-        //         }
-        //     }
-
-        //     $(#[$meta])?
-        //     impl<'a> From<Pin<Box<ViewOnBase<'a, $ty>>>> for ArrOk<'a> {
-        //         #[inline(always)]
-        //         fn from(arr: Pin<Box<ViewOnBase<'a, $ty>>>) -> Self {
-        //             ArrOk::$arm(arr.into())
-        //         }
-        //     }
-        // )*
-
     };
 }
 
@@ -232,82 +189,3 @@ impl_from!(
     #[cfg(feature = "time")]
     (TimeDelta, TimeDelta, TimeDelta, timedelta)
 );
-
-// impl_from!(
-//     (Bool, bool),
-//     (U8, u8),
-//     (F32, f32),
-//     (F64, f64),
-//     (I32, i32),
-//     (I64, i64),
-//     (U64, u64),
-//     (Usize, usize),
-//     (Object, Object),
-//     (String, String),
-//     #[cfg(feature = "time")]
-//     (DateTimeMs, DateTime<unit::Millisecond>),
-//     #[cfg(feature = "time")]
-//     (TimeDelta, TimeDelta), //, (Str, &str)
-//     (OptUsize, Option<usize>),
-//     (VecUsize, Vec<usize>)
-// );
-
-// impl<'a> From<ArrD<&'a str>> for ArrOk<'a> {
-//     #[inline(always)]
-//     fn from(arr: ArrD<&'a str>) -> Self {
-//         ArrOk::Str(arr.into())
-//     }
-// }
-
-// impl<'a> From<ArrViewD<'a, &'a str>> for ArrOk<'a> {
-//     #[inline(always)]
-//     fn from(arr: ArrViewD<'a, &'a str>) -> Self {
-//         ArrOk::Str(arr.into())
-//     }
-// }
-
-// impl<'a> From<ArrViewMutD<'a, &'a str>> for ArrOk<'a> {
-//     #[inline(always)]
-//     fn from(arr: ArrViewMutD<'a, &'a str>) -> Self {
-//         ArrOk::Str(arr.into())
-//     }
-// }
-
-// impl<'a> From<Pin<Box<ViewOnBase<'a, &'a str>>>> for ArrOk<'a> {
-//     #[inline(always)]
-//     fn from(arr: Pin<Box<ViewOnBase<'a, &'a str>>>) -> Self {
-//         ArrOk::Str(arr.into())
-//     }
-// }
-
-#[cfg(feature = "srd")]
-impl<A, D, S> Serialize for ArrBase<S, D>
-where
-    A: Serialize,
-    D: Dimension + Serialize,
-    S: Data<Elem = A>,
-{
-    #[inline(always)]
-    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
-    where
-        Se: Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
-
-#[cfg(feature = "srd")]
-impl<'de, A, Di, S> Deserialize<'de> for ArrBase<S, Di>
-where
-    A: Deserialize<'de>,
-    Di: Dimension + Deserialize<'de>,
-    S: DataOwned<Elem = A>,
-{
-    #[inline(always)]
-    fn deserialize<D>(deserializer: D) -> Result<ArrBase<S, Di>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        ArrayBase::<S, Di>::deserialize(deserializer).map(|a| a.wrap())
-    }
-}

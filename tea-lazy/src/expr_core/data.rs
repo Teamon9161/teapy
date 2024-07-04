@@ -5,23 +5,26 @@ use super::{Expr, ExprElement, FuncNode};
 use crate::OlsResult;
 
 use crate::{ColumnSelector, Context};
-use core::prelude::*;
-use core::utils::CollectTrustedToVec;
 use derive_more::From;
-use std::{convert, fmt::Debug, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
+use tea_core::prelude::*;
 
-#[derive(Clone, From)]
+#[derive(From, Clone)]
 pub enum Data<'a> {
-    Expr(Expr<'a>),         // an expression based on another expression
-    Arr(ArrOk<'a>),         // classical expression based on an array
-    ArrVec(Vec<ArrOk<'a>>), // an expression based on a vector of array
+    // an expression based on another expression
+    Expr(Expr<'a>),
+    // classical expression based on an array
+    Arr(ArrOk<'a>),
+    // an expression based on a vector of array
+    ArrVec(Vec<ArrOk<'a>>),
     ArcArr(Arc<ArrOk<'a>>),
-    // ArcArrVec(Vec<Arc<ArrOk<'a>>>)   ,        // multi expressions share the same array
-    Context(ColumnSelector<'a>), // an expression based on a context (e.g. groupby
+    // multi expressions share the same array
+    // ArcArrVec(Vec<Arc<ArrOk<'a>>>),
+    // an expression based on a context (e.g. groupby)
+    Context(ColumnSelector<'a>),
     #[cfg(feature = "blas")]
-    OlsRes(Arc<OlsResult<'a>>), // only for least squares
-                                 // #[cfg(feature = "arw")]
-                                 // Arrow(Arc<dyn Array>),
+    // only for least squares
+    OlsRes(Arc<OlsResult<'a>>),
 }
 
 impl<'a> Debug for Data<'a> {
@@ -230,7 +233,7 @@ impl<'a> Data<'a> {
                     .view_arr_vec(None)?
                     .into_iter()
                     .map(|a| a.deref().into_owned())
-                    .collect_trusted())
+                    .collect_trusted_to_vec())
             }
             _ => Err("The output of the expression is not an array vector".into()),
         }
@@ -308,7 +311,7 @@ impl<'a> Data<'a> {
                     .into_exprs()
                     .iter()
                     .map(|e| e.view_arr(None).unwrap())
-                    .collect_trusted())
+                    .collect_trusted_to_vec())
             }
             _ => Err("The output of the expression is not an array".into()),
         }
@@ -329,17 +332,21 @@ impl<'a> Data<'a> {
 //     }
 // }
 
-// impl<'a, T: ExprElement + 'a> From<T> for Data<'a> {
-//     #[inline(always)]
-//     fn from(t: T) -> Self {
-//         let a: ArbArray<'a, T> = t.into();
-//         a.into()
-//     }
-// }
+impl<'a, T: ExprElement + 'a> From<T> for Data<'a>
+where
+    ArbArray<'a, T>: Into<Data<'a>>,
+{
+    #[inline(always)]
+    fn from(t: T) -> Self {
+        let a = ArbArray::from_scalar(t);
+        a.into()
+    }
+}
 
 impl<'a, T: Dtype + 'a> From<ArrD<T>> for Data<'a>
 where
     ArrD<T>: Into<ArbArray<'a, T>>,
+    ArrOk<'a>: From<ArbArray<'a, T>>,
 {
     #[inline]
     fn from(arr: ArrD<T>) -> Self {
@@ -348,14 +355,20 @@ where
     }
 }
 
-impl<'a, T: GetDataType + 'a> From<ArbArray<'a, T>> for Data<'a> {
+impl<'a, T: Dtype + 'a> From<ArbArray<'a, T>> for Data<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arb: ArbArray<'a, T>) -> Self {
         Data::Arr(arb.into())
     }
 }
 
-impl<'a, T: GetDataType + 'a> From<ArrViewD<'a, T>> for Data<'a> {
+impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for Data<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline(always)]
     fn from(arr: ArrViewD<'a, T>) -> Self {
         let a: ArbArray<'a, T> = arr.into();
@@ -363,7 +376,10 @@ impl<'a, T: GetDataType + 'a> From<ArrViewD<'a, T>> for Data<'a> {
     }
 }
 
-impl<'a, T: GetDataType + 'a> From<ArrViewMutD<'a, T>> for Data<'a> {
+impl<'a, T: Dtype + 'a> From<ArrViewMutD<'a, T>> for Data<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arr: ArrViewMutD<'a, T>) -> Self {
         let arb: ArbArray<'a, T> = arr.into();
@@ -371,26 +387,26 @@ impl<'a, T: GetDataType + 'a> From<ArrViewMutD<'a, T>> for Data<'a> {
     }
 }
 
-impl<'a> From<Vec<ArrOk<'a>>> for Data<'a> {
-    #[inline(always)]
-    fn from(arr_vec: Vec<ArrOk<'a>>) -> Self {
-        Data::ArrVec(arr_vec)
-    }
-}
+// impl<'a> From<Vec<ArrOk<'a>>> for Data<'a> {
+//     #[inline(always)]
+//     fn from(arr_vec: Vec<ArrOk<'a>>) -> Self {
+//         Data::ArrVec(arr_vec)
+//     }
+// }
 
-impl<'a> From<Arc<ArrOk<'a>>> for Data<'a> {
-    #[inline(always)]
-    fn from(arr: Arc<ArrOk<'a>>) -> Self {
-        Data::ArcArr(arr)
-    }
-}
+// impl<'a> From<Arc<ArrOk<'a>>> for Data<'a> {
+//     #[inline(always)]
+//     fn from(arr: Arc<ArrOk<'a>>) -> Self {
+//         Data::ArcArr(arr)
+//     }
+// }
 
-impl<'a> From<ColumnSelector<'a>> for Data<'a> {
-    #[inline(always)]
-    fn from(col: ColumnSelector<'a>) -> Self {
-        Data::Context(col)
-    }
-}
+// impl<'a> From<ColumnSelector<'a>> for Data<'a> {
+//     #[inline(always)]
+//     fn from(col: ColumnSelector<'a>) -> Self {
+//         Data::Context(col)
+//     }
+// }
 
 #[cfg(feature = "blas")]
 impl<'a> From<OlsResult<'a>> for Data<'a> {

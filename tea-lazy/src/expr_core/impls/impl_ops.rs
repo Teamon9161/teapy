@@ -1,6 +1,6 @@
 use crate::Expr;
-use core::prelude::*;
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Not, Sub};
+use tea_core::prelude::*;
 
 macro_rules! impl_cmp {
     ($func: ident $(, $(#[$meta: meta])? $dtype: ident)*) => {
@@ -185,11 +185,11 @@ impl<'a> Add for Expr<'a> {
                     + rhs_arr.deref().cast_usize().view().0)
                     .wrap()
                     .into(),
-                (String(_), String(_)) => arr
-                    .cast_string()
-                    .view()
-                    .add_string(&rhs_arr.deref().cast_string().view())
-                    .into(),
+                // (String(_), String(_)) => arr
+                //     .cast_string()
+                //     .view()
+                //     .add_string(&rhs_arr.deref().cast_string().view())
+                //     .into(),
                 #[cfg(feature = "time")]
                 (DateTimeMs(_), TimeDelta(_)) => arr
                     .cast_datetime_ms()

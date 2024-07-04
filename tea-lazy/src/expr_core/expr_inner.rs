@@ -1,7 +1,7 @@
 use super::Data;
 use crate::{Context, ExprElement};
-use core::prelude::{ArbArray, ArrD, ArrOk, TpResult};
 use std::{fmt::Debug, sync::Arc};
+use tea_core::prelude::*;
 // use serde::{Serialize, ser::SerializeStruct};
 #[cfg(feature = "blas")]
 use crate::OlsResult;
@@ -33,20 +33,27 @@ pub struct ExprInner<'a> {
 //     }
 // }
 
-// impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a> {
-//     #[inline]
-//     fn from(arr: T) -> Self {
-//         let a: ArbArray<'a, T> = arr.into();
-//         ExprInner {
-//             base: Data::Arr(a.into()),
-//             name: None,
-//             nodes: Vec::new(),
-//             ctx_ref: None,
-//         }
-//     }
-// }
+impl<'a, T: ExprElement + 'a> From<T> for ExprInner<'a>
+where
+    Data<'a>: From<ArbArray<'a, T>>,
+{
+    #[inline]
+    fn from(arr: T) -> Self {
+        // let a: ArbArray<'a, T> = arr.into();
+        let data: Data<'a> = arr.into();
+        ExprInner {
+            base: data,
+            name: None,
+            nodes: Vec::new(),
+            ctx_ref: None,
+        }
+    }
+}
 
-impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a> {
+impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arr: ArrD<T>) -> Self {
         let a: ArbArray<'a, T> = arr.into();
@@ -59,7 +66,10 @@ impl<'a, T: ExprElement + 'a> From<ArrD<T>> for ExprInner<'a> {
     }
 }
 
-impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for ExprInner<'a> {
+impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for ExprInner<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arr: ArbArray<'a, T>) -> Self {
         ExprInner {

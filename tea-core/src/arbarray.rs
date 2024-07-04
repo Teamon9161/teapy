@@ -1,4 +1,4 @@
-use crate::prelude::{ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
+use crate::prelude::{arr0, ArrD, ArrOk, ArrViewD, ArrViewMutD, WrapNdarray};
 use derive_more::From;
 use ndarray::{s, Array, Axis, IxDyn, NewAxis, ShapeBuilder, SliceArg};
 #[cfg(feature = "arw")]
@@ -33,13 +33,14 @@ pub struct ViewOnBase<'a, T> {
 
 impl<'a, T> Deref for ViewOnBase<'a, T> {
     type Target = ArrViewD<'a, T>;
-
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.view.as_ref().unwrap()
     }
 }
 
 impl<'a, T: Clone> Clone for ArbArray<'a, T> {
+    #[inline]
     fn clone(&self) -> Self {
         self.view().to_owned().into()
     }
@@ -121,7 +122,7 @@ macro_rules! match_arbarray {
 pub(crate) use match_arbarray;
 
 impl<'a, T> ArbArray<'a, T> {
-    // #[allow(unreachable_patterns)]    #[inline(always)]
+    #[inline]
     pub fn raw_dim(&self) -> IxDyn {
         self.view().raw_dim()
     }
@@ -129,9 +130,9 @@ impl<'a, T> ArbArray<'a, T> {
     #[inline(always)]
     pub fn dtype(&self) -> DataType
     where
-        T: GetDataType,
+        T: Dtype,
     {
-        T::dtype()
+        T::type_()
     }
 
     #[cfg(not(feature = "arw"))]
@@ -157,28 +158,38 @@ impl<'a, T> ArbArray<'a, T> {
     }
 
     #[allow(unreachable_patterns)]
+    #[inline]
     pub fn ndim(&self) -> usize {
         match_arbarray!(self, a, { a.ndim() })
     }
 
     #[allow(unreachable_patterns)]
+    #[inline]
     pub fn shape(&self) -> &[usize] {
         match_arbarray!(self, a, { a.shape() })
     }
 
     #[allow(unreachable_patterns, clippy::len_without_is_empty)]
+    #[inline]
     pub fn len(&self) -> usize {
         match_arbarray!(self, a, { a.len() })
     }
 
     #[allow(unreachable_patterns)]
+    #[inline]
     pub fn len_of(&self, axis: Axis) -> usize {
         match_arbarray!(self, a, { a.len_of(axis) })
     }
 
     #[allow(unreachable_patterns)]
+    #[inline]
     pub fn norm_axis(&self, axis: i32) -> Axis {
         match_arbarray!(self, a, { a.norm_axis(axis) })
+    }
+
+    #[inline]
+    pub fn from_scalar(scalar: T) -> Self {
+        ArbArray::Owned(arr0(scalar).to_dimd())
     }
 
     #[inline]
@@ -203,7 +214,7 @@ impl<'a, T> ArbArray<'a, T> {
     #[inline]
     pub fn is_float(&self) -> bool
     where
-        T: GetDataType,
+        T: Dtype,
     {
         self.dtype().is_float()
     }
@@ -211,7 +222,7 @@ impl<'a, T> ArbArray<'a, T> {
     #[inline]
     pub fn is_int(&self) -> bool
     where
-        T: GetDataType,
+        T: Dtype,
     {
         self.dtype().is_int()
     }

@@ -1,5 +1,5 @@
 use crate::Expr;
-use core::error::TpResult;
+use tea_core::error::TpResult;
 
 pub enum GetOutput<'a, 'b> {
     Expr(&'b Expr<'a>),

@@ -6,10 +6,7 @@ use crate::{own::Arr1, utils::CollectTrustedToVec};
 use derive_more::From;
 use ndarray::{Axis, IxDyn, SliceArg};
 use std::fmt::Debug;
-// use tea_dyn::prelude::Object;
 use tea_dyn::prelude::*;
-
-// pub use tea_dyn::prelude::DynArray;
 
 #[cfg(feature = "arw")]
 use crate::ArrView1;
@@ -44,32 +41,6 @@ pub enum ArrOk<'a> {
     #[cfg(feature = "time")]
     TimeDelta(ArbArray<'a, TimeDelta>),
 }
-
-// #[macro_export]
-// macro_rules! match_all {
-//     // select the match arm
-//     ($enum: ident, $exprs: expr, $e: ident, $body: tt, $($(#[$meta: meta])? $arm: ident),* $(,)?) => {
-//         match $exprs {
-//             $($(#[$meta])? $enum::$arm($e) => $body,)*
-//             _ => unimplemented!("Not supported dtype")
-//         }
-//     };
-
-//     ($enum: ident, $exprs: expr, $e: ident, $body: tt) => {
-//         {
-//             match_all!(
-//                 $enum, $exprs, $e, $body,
-//                 F32, F64, I32, I64, U8, U64, Bool, Usize, Str, String, Object, OptUsize, VecUsize,
-//                 #[cfg(feature="time")] DateTime,
-//                 #[cfg(feature="time")] TimeDelta,
-//             )
-//         }
-//     };
-
-//     ($enum: ident, ($exprs1: expr, $e1: ident, $($arm1: ident),*), ($exprs2: expr, $e2: ident, $($arm2: ident),*), $body: tt) => {
-//         match_all!($enum, $exprs1, $e1, {match_all!($enum, $exprs2, $e2, $body, $($arm2),*)}, $($arm1),*)
-//     };
-// }
 
 #[macro_export]
 macro_rules! match_arrok {

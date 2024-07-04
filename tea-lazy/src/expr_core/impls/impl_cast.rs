@@ -1,5 +1,5 @@
 use crate::Expr;
-use core::prelude::*;
+use tea_core::prelude::*;
 
 macro_rules! impl_cast {
     ($($(#[$meta: meta])? $func: ident: $dtype: ident $(($inner: path))?),* $(,)?) => {
@@ -65,29 +65,29 @@ impl<'a> Expr<'a> {
         self
     }
 
-    #[cfg(feature = "time")]
-    pub fn cast_datetime(&mut self, unit: Option<TimeUnit>) -> &mut Self {
-        if let Some(unit) = unit {
-            self.chain_f_ctx(move |(arr, ctx)| {
-                let arr = arr.view_arr(ctx.as_ref())?;
-                let out = match_arrok!(
-                    arr,
-                    a,
-                    { a.view().to_datetime(unit)? },
-                    F32,
-                    F64,
-                    I32,
-                    I64,
-                    Usize,
-                    DateTime
-                );
-                Ok((out.into(), ctx))
-            });
-            self
-        } else {
-            self.cast_datetime_default()
-        }
-    }
+    // #[cfg(feature = "time")]
+    // pub fn cast_datetime(&mut self, unit: Option<TimeUnit>) -> &mut Self {
+    //     if let Some(unit) = unit {
+    //         self.chain_f_ctx(move |(arr, ctx)| {
+    //             let arr = arr.view_arr(ctx.as_ref())?;
+    //             let out = match_arrok!(
+    //                 arr,
+    //                 a,
+    //                 { a.view().to_datetime(unit)? },
+    //                 F32,
+    //                 F64,
+    //                 I32,
+    //                 I64,
+    //                 Usize,
+    //                 DateTime
+    //             );
+    //             Ok((out.into(), ctx))
+    //         });
+    //         self
+    //     } else {
+    //         self.cast_datetime_default()
+    //     }
+    // }
 
     // #[allow(unreachable_patterns)]
     // pub fn cast_object_eager(&mut self, py: Python) -> TpResult<&mut Self> {

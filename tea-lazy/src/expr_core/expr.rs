@@ -5,12 +5,6 @@ use super::FuncNode;
 use crate::Context;
 #[cfg(feature = "blas")]
 use crate::OlsResult;
-use core::{
-    error::TpResult,
-    match_arrok,
-    prelude::{ArbArray, ArrD, ArrOk, ArrViewD},
-    utils::CollectTrustedToVec,
-};
 use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::ops::Deref;
@@ -52,7 +46,10 @@ impl<'a> Clone for Expr<'a> {
 //     }
 // }
 
-impl<'a, T: ExprElement + 'a> From<T> for Expr<'a> {
+impl<'a, T: ExprElement + 'a> From<T> for Expr<'a>
+where
+    Data<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arr: T) -> Self {
         let e: ExprInner<'a> = arr.into();
@@ -60,7 +57,10 @@ impl<'a, T: ExprElement + 'a> From<T> for Expr<'a> {
     }
 }
 
-impl<'a, T: ExprElement + 'a> From<ArrD<T>> for Expr<'a> {
+impl<'a, T: ExprElement + 'a> From<ArrD<T>> for Expr<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arr: ArrD<T>) -> Self {
         let e: ExprInner<'a> = arr.into();
@@ -68,7 +68,10 @@ impl<'a, T: ExprElement + 'a> From<ArrD<T>> for Expr<'a> {
     }
 }
 
-impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for Expr<'a> {
+impl<'a, T: ExprElement + 'a> From<ArbArray<'a, T>> for Expr<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arr: ArbArray<'a, T>) -> Self {
         let e: ExprInner<'a> = arr.into();
@@ -98,7 +101,10 @@ impl<'a> From<ArrOk<'a>> for Expr<'a> {
     }
 }
 
-impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for Expr<'a> {
+impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for Expr<'a>
+where
+    ArrOk<'a>: From<ArbArray<'a, T>>,
+{
     #[inline]
     fn from(arr: ArrViewD<'a, T>) -> Self {
         let data: Data = arr.into();
@@ -123,7 +129,10 @@ impl<'a> Debug for Expr<'a> {
 
 impl<'a> Expr<'a> {
     #[inline]
-    pub fn new_from_owned<T: ExprElement + 'a>(arr: ArrD<T>, name: Option<String>) -> Self {
+    pub fn new_from_owned<T: ExprElement + 'a>(arr: ArrD<T>, name: Option<String>) -> Self
+    where
+        ArrOk<'a>: From<ArbArray<'a, T>>,
+    {
         let e: ExprInner<'a> = arr.into();
         let mut e: Expr<'a> = e.into();
         e.set_name(name);
@@ -138,7 +147,10 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
-    pub fn new<T: ExprElement + 'a>(arr: ArbArray<'a, T>, name: Option<String>) -> Self {
+    pub fn new<T: ExprElement + 'a>(arr: ArbArray<'a, T>, name: Option<String>) -> Self
+    where
+        ArrOk<'a>: From<ArbArray<'a, T>>,
+    {
         let e: ExprInner<'a> = arr.into();
         let mut e: Expr<'a> = e.into();
         e.set_name(name);
@@ -334,7 +346,7 @@ impl<'a> Expr<'a> {
                     .map(|a| {
                         match_arrok!(a; Dynamic(a) => { Ok(a.view().to_owned().into()) },).unwrap()
                     })
-                    .collect_trusted();
+                    .collect_trusted_to_vec();
                 Ok(arr_vec)
                 // // safety: the expression has been evaluated
                 // Ok(unsafe{std::mem::transmute(arr_view)})
