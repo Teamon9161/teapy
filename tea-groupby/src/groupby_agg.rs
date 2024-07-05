@@ -17,63 +17,65 @@ impl<'a> GroupbyAggExt for Expr<'a> {
         let duration: TimeDelta = duration.into();
         self.chain_f_ctx(move |(data, ctx)| {
             let closed = closed.clone();
-            let arr = data.view_arr(ctx.as_ref())?.deref().cast_datetime_default();
-            let ts = arr.view().to_dim1()?;
-            if ts.is_empty() {
-                let label = Arr1::from_vec(Vec::<DateTime>::with_capacity(0))
-                    .to_dimd()
-                    .into();
-                let start_vec = Arr1::from_vec(Vec::<usize>::with_capacity(0))
-                    .to_dimd()
-                    .into();
-                return Ok((Data::ArrVec(vec![label, start_vec]), ctx));
-            }
+            let arr = data.view_arr(ctx.as_ref())?.deref().cast_datetime(None);
+            match_arrok!(arr; Time(arr) => {
+                let ts = arr.view().to_dim1()?;
+                if ts.is_empty() {
+                    let label = Arr1::from_vec(Vec::<DateTime>::with_capacity(0))
+                        .to_dimd()
+                        .into();
+                    let start_vec = Arr1::from_vec(Vec::<usize>::with_capacity(0))
+                        .to_dimd()
+                        .into();
+                    return Ok((Data::ArrVec(vec![label, start_vec]), ctx));
+                }
 
-            let mut label = vec![];
-            let mut start_vec = vec![];
-            match closed.to_lowercase().as_str() {
-                "left" => {
-                    let mut start = ts.first_1d().duration_trunc(duration.clone());
-                    label.push(start);
-                    start_vec.push(0);
-                    for i in 0..ts.len() {
-                        let t = unsafe { *ts.uget(i) };
-                        if t < start + duration.clone() {
-                            continue;
-                        } else {
-                            start_vec.push(i);
-                            start = t.duration_trunc(duration.clone());
-                            label.push(start);
-                        }
-                    }
-                }
-                "right" => {
-                    let mut start = ts.first_1d().duration_trunc(duration.clone());
-                    if start == *ts.get(0).unwrap() {
-                        start = start - duration.clone();
-                    }
-                    label.push(start);
-                    start_vec.push(0);
-                    for i in 0..ts.len() {
-                        let t = unsafe { *ts.uget(i) };
-                        if (t <= start + duration.clone()) | (t == start) {
-                            continue;
-                        } else {
-                            start_vec.push(i);
-                            start = t.duration_trunc(duration.clone());
-                            if start == t {
-                                start = start - duration.clone();
+                let mut label = vec![];
+                let mut start_vec = vec![];
+                match closed.to_lowercase().as_str() {
+                    "left" => {
+                        let mut start = ts.first_1d().duration_trunc(duration.clone());
+                        label.push(start);
+                        start_vec.push(0);
+                        for i in 0..ts.len() {
+                            let t = unsafe { *ts.uget(i) };
+                            if t < start + duration.clone() {
+                                continue;
+                            } else {
+                                start_vec.push(i);
+                                start = t.duration_trunc(duration.clone());
+                                label.push(start);
                             }
-                            label.push(start);
                         }
                     }
+                    "right" => {
+                        let mut start = ts.first_1d().duration_trunc(duration.clone());
+                        if start == *ts.get(0).unwrap() {
+                            start = start - duration.clone();
+                        }
+                        label.push(start);
+                        start_vec.push(0);
+                        for i in 0..ts.len() {
+                            let t = unsafe { *ts.uget(i) };
+                            if (t <= start + duration.clone()) | (t == start) {
+                                continue;
+                            } else {
+                                start_vec.push(i);
+                                start = t.duration_trunc(duration.clone());
+                                if start == t {
+                                    start = start - duration.clone();
+                                }
+                                label.push(start);
+                            }
+                        }
+                    }
+                    _ => unimplemented!(),
                 }
-                _ => unimplemented!(),
-            }
-            start_vec.push(ts.len()); // the end of the array, this element is not the start of the group
-            let label: ArrOk<'a> = Arr1::from_vec(label).to_dimd().into();
-            let start_vec: ArrOk<'a> = Arr1::from_vec(start_vec).to_dimd().into();
-            Ok((Data::ArrVec(vec![label, start_vec]), ctx))
+                start_vec.push(ts.len()); // the end of the array, this element is not the start of the group
+                let label: ArrOk<'a> = Arr1::from_vec(label).to_dimd().into();
+                let start_vec: ArrOk<'a> = Arr1::from_vec(start_vec).to_dimd().into();
+                Ok((Data::ArrVec(vec![label, start_vec]), ctx))
+            },)
         });
         self
     }
@@ -107,7 +109,7 @@ impl<'a> GroupbyAggExt for Expr<'a> {
             agg_expr.simplify();
             let init_data = agg_expr.get_chain_base();
             let nodes = agg_expr.collect_chain_nodes(vec![]);
-            let out: ArrOk<'a> = match_arrok!(arr, arr, {
+            let out: ArrOk<'a> = match_arrok!(arr; Dynamic(arr) => {
                 let arr = arr.view().to_dim1()?;
                 let out = group_start_view
                     .as_slice()
@@ -145,16 +147,11 @@ impl<'a> GroupbyAggExt for Expr<'a> {
                             (data, ctx) = f((data, ctx)).unwrap();
                         }
                         data.into_arr(ctx).unwrap()
-                        // let o = out_e
-                        //     .view_arr(Some(&current_ctx))
-                        //     .unwrap()
-                        //     .deref()
-                        //     .into_owned();
-                        // o
                     })
                     .collect_trusted();
-                ArrOk::same_dtype_concat_1d(out)
-            });
+                Ok(ArrOk::same_dtype_concat_1d(out))
+            },)
+            .unwrap();
             Ok((out.into(), ctx.clone()))
         });
         self
