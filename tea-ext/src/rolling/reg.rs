@@ -14,7 +14,7 @@ use crate::agg::*;
 #[cfg(feature = "lazy")]
 use lazy::Expr;
 
-#[arr_map_ext(lazy = "view", type = "numeric")]
+#[arr_map_ext(lazy = "view", type = "PureNumeric")]
 impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase<S, D> {
     #[inline]
     fn ts_reg<SO>(
@@ -341,7 +341,7 @@ impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> RegTs for ArrBase
     }
 }
 
-#[arr_map2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]
+#[arr_map2_ext(lazy = "view2", type = "PureNumeric", type2 = "PureNumeric")]
 impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
     fn ts_regx_beta<S2, D2, T2, SO>(
         &self,

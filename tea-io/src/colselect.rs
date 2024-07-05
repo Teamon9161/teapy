@@ -1,4 +1,4 @@
-use tea_core::error::TpResult;
+use tea_core::prelude::TResult;
 use tea_core::utils::CollectTrustedToVec;
 // use tea_lazy::SingleCol;
 #[cfg(feature = "arw")]
@@ -48,7 +48,7 @@ impl<T> From<Option<T>> for ColSelect<'_> {
 
 impl<'a> ColSelect<'a> {
     #[cfg(feature = "arw")]
-    pub fn into_proj(self, schema: &Schema) -> TpResult<Option<Vec<usize>>> {
+    pub fn into_proj(self, schema: &Schema) -> TResult<Option<Vec<usize>>> {
         use super::arrow_io::utils::columns_to_projection;
         match self {
             ColSelect::Idx(idx) => {

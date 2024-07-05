@@ -1,7 +1,7 @@
 use arrow::datatypes::Schema;
-use tea_core::error::TpResult;
+use tea_core::prelude::{tbail, TResult};
 
-pub(crate) fn columns_to_projection(columns: &[&str], schema: &Schema) -> TpResult<Vec<usize>> {
+pub(crate) fn columns_to_projection(columns: &[&str], schema: &Schema) -> TResult<Vec<usize>> {
     use tea_hash::TpHashMap;
 
     let mut prj = Vec::with_capacity(columns.len());
@@ -13,7 +13,7 @@ pub(crate) fn columns_to_projection(columns: &[&str], schema: &Schema) -> TpResu
 
         for column in columns {
             let Some(&i) = column_names.get(column) else {
-                return Err(format!("unable to find column {:?}", column).into());
+                tbail!("unable to find column {:?}", column);
             };
             prj.push(i);
         }

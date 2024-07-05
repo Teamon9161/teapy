@@ -1,7 +1,6 @@
-use error::TpResult;
-
 use super::prelude::{ArrBase, WrapNdarray};
 use ndarray::{Dimension, Ix0, Ix1, Ix2, IxDyn, RawArrayViewMut, StrideShape, ViewRepr};
+use tea_dyn::prelude::TResult;
 
 pub type ArrViewMut<'a, T, D> = ArrBase<ViewRepr<&'a mut T>, D>;
 pub type ArrViewMut1<'a, T> = ArrViewMut<'a, T, Ix1>;
@@ -65,7 +64,7 @@ impl<'a, T> ArrViewMut<'a, T, Ix0> {
 
 impl<'a, T> ArrViewMutD<'a, T> {
     #[inline(always)]
-    pub fn into_scalar(self) -> TpResult<&'a mut T> {
+    pub fn into_scalar(self) -> TResult<&'a mut T> {
         Ok(self.to_dim0()?.into_scalar())
     }
 }

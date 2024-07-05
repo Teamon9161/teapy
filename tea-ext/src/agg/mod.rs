@@ -4,7 +4,7 @@ mod impl_lazy;
 
 #[cfg(feature = "lazy")]
 pub use corr::AutoExprAgg2Ext;
-pub use corr::{Agg2Ext, CorrMethod, CorrToolExt1d};
+pub use corr::{Agg2Ext, CorrToolExt1d};
 #[cfg(feature = "lazy")]
 pub use impl_lazy::{corr, AutoExprAggExt, DataDictCorrExt, ExprAggExt};
 #[cfg(feature = "lazy")]
@@ -113,7 +113,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     }
 }
 
-#[arr_agg_ext(lazy = "view", type = "numeric")]
+#[arr_agg_ext(lazy = "view", type = "Numeric")]
 impl<S, D, T> AggExtNd<D, T> for ArrBase<S, D>
 where
     S: Data<Elem = T>,
@@ -275,9 +275,9 @@ where
 
     /// count NaN number of an array on a given axis
     #[lazy_only]
-    fn count_nan(&self) {}
+    fn count_none(&self) {}
 
     /// count not NaN number of an array on a given axis
     #[lazy_only]
-    fn count_notnan(&self) {}
+    fn count_valid(&self) {}
 }

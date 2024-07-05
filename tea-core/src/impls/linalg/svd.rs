@@ -1,23 +1,24 @@
 use super::{into_matrix, MatrixLayout};
-use crate::TpResult;
+use crate::TResult;
 use crate::{
     prelude::{Arr1, ArrD},
     utils::{vec_uninit, VecAssumeInit},
 };
 use lapack_sys::dgesvd_;
 use libc::c_char;
+use tea_dyn::prelude::{tbail, terr};
 
 impl ArrD<f64> {
     pub fn svd_into(
         self,
         full: bool,
         calc_uvt: bool,
-    ) -> TpResult<(Option<Self>, Self, Option<Self>)> {
+    ) -> TResult<(Option<Self>, Self, Option<Self>)> {
         let mut arr = self.to_dim2()?;
         let layout = arr.layout()?;
         let mut_arr = arr
             .as_slice_memory_order_mut()
-            .expect("Array should be contiguous when svd");
+            .ok_or_else(|| terr!("Array should be contiguous when svd"))?;
         let (m, n) = (layout.lda(), layout.len());
         let k = m.min(n);
         let (_u_col, vt_row) = if calc_uvt {
@@ -78,7 +79,7 @@ impl ArrD<f64> {
             );
         }
         if info != 0 {
-            panic!("SVD error: info = {info}");
+            tbail!("SVD error in step 1: info = {:?}", info);
         }
         let lwork = work_size[0] as i32;
         let mut work = vec_uninit::<f64>(lwork.try_into().unwrap());
@@ -106,7 +107,7 @@ impl ArrD<f64> {
             );
         }
         if info != 0 {
-            panic!("SVD error: info = {info}");
+            tbail!("SVD error in step 2: info = {:?}", info);
         }
         let s = unsafe { s.assume_init() };
         let s = Arr1::from_vec(s).to_dimd();

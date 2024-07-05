@@ -5,7 +5,7 @@ use num::traits::{abs, real::Real, Signed};
 // use std::cmp::PartialOrd;
 
 #[cfg(feature = "ops")]
-use crate::prelude::{Arr, ArrD, ArrView, ArrViewMut, TpResult, WrapNdarray};
+use crate::prelude::{Arr, ArrD, ArrView, ArrViewMut, TResult, WrapNdarray};
 #[cfg(feature = "ops")]
 use ndarray::{DataMut, DimMax, Dimension, Ix2, Zip};
 
@@ -62,10 +62,12 @@ where
 {
     #[cfg(feature = "ops")]
     // #[allow(clippy::useless_conversion)]
-    pub fn dot<S2>(&self, other: &ArrBase<S2, IxDyn>) -> TpResult<ArrD<T>>
+    pub fn dot<S2>(&self, other: &ArrBase<S2, IxDyn>) -> TResult<ArrD<T>>
     where
         S2: Data<Elem = T>,
     {
+        use tea_dyn::prelude::tbail;
+
         match (self.ndim(), other.ndim()) {
             (1, 1) => Ok(self
                 .view()
@@ -94,7 +96,7 @@ where
                 .dot(&other.view().to_dim::<Ix2>().unwrap().0)
                 .wrap()
                 .to_dimd()),
-            _ => Err(error::StrError::from("dot for this dim is not suppported")),
+            _ => tbail!("dot for this dim is not suppported"),
         }
         // .into()
     }

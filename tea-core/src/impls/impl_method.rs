@@ -1,5 +1,6 @@
-use crate::prelude::{Arr, ArrBase, ArrView, TpResult, WrapNdarray};
+use crate::prelude::{Arr, ArrBase, ArrView, TResult, WrapNdarray};
 use ndarray::{Data, DimMax, Dimension, IntoDimension, RawData, Zip};
+use tea_dyn::prelude::tbail;
 
 type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
 
@@ -62,7 +63,7 @@ macro_rules! izip {
 /// Uses the [NumPy broadcasting rules]
 //  (https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html#general-broadcasting-rules).
 #[allow(unused_mut)]
-pub fn co_broadcast<D1, D2, Output>(shape1: &D1, shape2: &D2) -> TpResult<Output>
+pub fn co_broadcast<D1, D2, Output>(shape1: &D1, shape2: &D2) -> TResult<Output>
 where
     D1: Dimension,
     D2: Dimension,
@@ -83,7 +84,7 @@ where
             if *out == 1 {
                 *out = *s2
             } else if *s2 != 1 {
-                return Err("IncompatibleShape in co_broadcast".into());
+                tbail!("IncompatibleShape in co_broadcast");
             }
         }
     }
@@ -136,7 +137,7 @@ impl<A, S: RawData<Elem = A>, D: Dimension> ArrBase<S, D> {
     pub fn broadcast_with<'a, 'b, B, S2, E>(
         &'a self,
         other: &'b ArrBase<S2, E>,
-    ) -> TpResult<(
+    ) -> TResult<(
         ArrView<'a, A, DimMaxOf<D, E>>,
         ArrView<'b, B, DimMaxOf<D, E>>,
     )>
@@ -153,14 +154,14 @@ impl<A, S: RawData<Elem = A>, D: Dimension> ArrBase<S, D> {
         } else if let Some(view1) = self.broadcast(shape.clone()) {
             view1
         } else {
-            return Err("IncompatibleShape in broadcast_with".into());
+            tbail!("IncompatibleShape in broadcast_with");
         };
         let view2 = if shape.slice() == other.raw_dim().slice() {
             other.view().to_dim::<<D as DimMax<E>>::Output>().unwrap()
         } else if let Some(view2) = other.broadcast(shape) {
             view2
         } else {
-            return Err("IncompatibleShape in broadcast_with".into());
+            tbail!("IncompatibleShape in broadcast_with");
         };
         Ok((view1, view2))
     }

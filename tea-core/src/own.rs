@@ -1,9 +1,8 @@
 use std::mem::MaybeUninit;
 
-use error::TpResult;
-
 use super::prelude::{ArrBase, WrapNdarray};
 use ndarray::{arr0 as nd_arr0, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
+use tea_dyn::prelude::TResult;
 
 pub type Arr<T, D> = ArrBase<OwnedRepr<T>, D>;
 pub type ArrD<T> = Arr<T, IxDyn>;
@@ -108,7 +107,7 @@ pub fn arr0<T>(t: T) -> Arr<T, Ix0> {
 
 impl<T> ArrD<T> {
     #[inline(always)]
-    pub fn into_scalar(self) -> TpResult<T> {
+    pub fn into_scalar(self) -> TResult<T> {
         Ok(self.to_dim0()?.into_scalar())
     }
 }

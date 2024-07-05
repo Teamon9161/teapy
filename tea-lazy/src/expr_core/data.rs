@@ -201,31 +201,35 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<ArrOk<'a>> {
+    pub fn into_arr(self, ctx: Option<Context<'a>>) -> TResult<ArrOk<'a>> {
         match self {
             Data::Arr(arr) => Ok(arr),
             Data::Expr(e) => e.into_arr(ctx),
 
             Data::Context(col) => {
-                let ctx1 = ctx.clone().ok_or("The context is not provided")?;
+                let ctx1 = ctx
+                    .clone()
+                    .ok_or_else(|| terr!("The context is not provided"))?;
                 let out = ctx1.get(col.clone())?;
                 // need clone here
                 Ok(out.into_expr()?.view_arr(None)?.deref().into_owned())
             }
             // #[cfg(feature = "arw")]
             // Data::Arrow(arr) => Ok(ArrOk::from_arrow(arr)),
-            _ => Err("The output of the expression is not an array".into()),
+            _ => tbail!("The output of the expression is not an array"),
         }
     }
 
     #[inline]
-    pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TpResult<Vec<ArrOk<'a>>> {
+    pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TResult<Vec<ArrOk<'a>>> {
         match self {
             Data::ArrVec(arr) => Ok(arr),
             Data::Expr(e) => e.into_arr_vec(ctx),
 
             Data::Context(col) => {
-                let ctx1 = ctx.clone().ok_or("The context is not provided")?;
+                let ctx1 = ctx
+                    .clone()
+                    .ok_or_else(|| terr!("The context is not provided"))?;
                 let out = ctx1.get(col.clone())?;
                 // need clone here
                 Ok(out
@@ -235,77 +239,72 @@ impl<'a> Data<'a> {
                     .map(|a| a.deref().into_owned())
                     .collect_trusted_to_vec())
             }
-            _ => Err("The output of the expression is not an array vector".into()),
+            _ => tbail!("The output of the expression is not an array vector"),
         }
     }
 
     #[cfg(feature = "blas")]
     #[inline]
-    pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
+    pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TResult<Arc<OlsResult<'a>>> {
         match self {
             Data::OlsRes(res) => Ok(res),
             Data::Expr(e) => e.into_ols_res(ctx),
             Data::Context(col) => {
-                let ctx1 = ctx.clone().ok_or("The context is not provided")?;
+                let ctx1 = ctx
+                    .clone()
+                    .ok_or_else(|| terr!("The context is not provided"))?;
                 let out = ctx1.get(col.clone())?;
                 Ok(out.into_expr()?.view_ols_res(None)?)
             }
-            _ => Err(format!(
+            _ => tbail!(
                 "The output of the expression is not an OlsResult: {:?}",
                 &self
-            )
-            .into()),
+            ),
         }
     }
 
     #[cfg(feature = "blas")]
     #[inline]
-    pub fn view_ols_res<'b>(
-        &'b self,
-        ctx: Option<&'b Context<'a>>,
-    ) -> TpResult<Arc<OlsResult<'a>>> {
+    pub fn view_ols_res<'b>(&'b self, ctx: Option<&'b Context<'a>>) -> TResult<Arc<OlsResult<'a>>> {
         match self {
             Data::OlsRes(res) => Ok(res.clone()),
             Data::Expr(e) => e.view_ols_res(ctx),
             Data::Context(col) => {
                 let out = ctx
-                    .ok_or("The context is not provided")?
+                    .ok_or_else(|| terr!("The context is not provided"))?
                     .get(col.clone())?
                     .into_expr()?;
                 out.view_ols_res(None)
             }
-            _ => Err("The output of the expression is not an OlsResult".into()),
+            _ => tbail!("The output of the expression is not an OlsResult"),
         }
     }
 
     #[inline]
-    pub fn view_arr<'b>(&'b self, ctx: Option<&'b Context<'a>>) -> TpResult<&'b ArrOk<'a>> {
+    pub fn view_arr<'b>(&'b self, ctx: Option<&'b Context<'a>>) -> TResult<&'b ArrOk<'a>> {
         match self {
             Data::Arr(arr) => Ok(arr),
             Data::Expr(e) => e.view_arr(ctx),
 
             Data::Context(col) => {
                 let out = ctx
-                    .ok_or("The context is not provided")?
+                    .ok_or_else(|| terr!("The context is not provided"))?
                     .get(col.clone())?
                     .into_expr()?;
                 out.view_arr(None)
             }
-            _ => Err(format!("The output of the expression is not an array, {:?}", self).into()),
+            _ => tbail!("The output of the expression is not an array, {:?}", self),
         }
     }
 
     #[inline]
-    pub fn view_arr_vec<'b>(
-        &'b self,
-        ctx: Option<&'b Context<'a>>,
-    ) -> TpResult<Vec<&'b ArrOk<'a>>> {
+    pub fn view_arr_vec<'b>(&'b self, ctx: Option<&'b Context<'a>>) -> TResult<Vec<&'b ArrOk<'a>>> {
         match self {
             Data::ArrVec(arr_vec) => Ok(arr_vec.iter().collect::<Vec<_>>()),
             Data::Expr(e) => e.view_arr_vec(ctx),
 
             Data::Context(col) => {
-                let ctx = ctx.ok_or("The context is not provided")?;
+                let ctx = ctx.ok_or_else(|| terr!("The context is not provided"))?;
                 let out = ctx.get(col.clone())?;
                 Ok(out
                     .into_exprs()
@@ -313,24 +312,10 @@ impl<'a> Data<'a> {
                     .map(|e| e.view_arr(None).unwrap())
                     .collect_trusted_to_vec())
             }
-            _ => Err("The output of the expression is not an array".into()),
+            _ => tbail!("The output of the expression is not an array"),
         }
     }
 }
-
-// impl<'a> From<ArrOk<'a>> for Data<'a> {
-//     #[inline(always)]
-//     fn from(arr: ArrOk<'a>) -> Self {
-//         Data::Arr(arr)
-//     }
-// }
-
-// impl<'a> From<Expr<'a>> for Data<'a> {
-//     #[inline(always)]
-//     fn from(expr: Expr<'a>) -> Self {
-//         Data::Expr(expr)
-//     }
-// }
 
 impl<'a, T: ExprElement + 'a> From<T> for Data<'a>
 where
@@ -386,27 +371,6 @@ where
         Data::Arr(arb.into())
     }
 }
-
-// impl<'a> From<Vec<ArrOk<'a>>> for Data<'a> {
-//     #[inline(always)]
-//     fn from(arr_vec: Vec<ArrOk<'a>>) -> Self {
-//         Data::ArrVec(arr_vec)
-//     }
-// }
-
-// impl<'a> From<Arc<ArrOk<'a>>> for Data<'a> {
-//     #[inline(always)]
-//     fn from(arr: Arc<ArrOk<'a>>) -> Self {
-//         Data::ArcArr(arr)
-//     }
-// }
-
-// impl<'a> From<ColumnSelector<'a>> for Data<'a> {
-//     #[inline(always)]
-//     fn from(col: ColumnSelector<'a>) -> Self {
-//         Data::Context(col)
-//     }
-// }
 
 #[cfg(feature = "blas")]
 impl<'a> From<OlsResult<'a>> for Data<'a> {

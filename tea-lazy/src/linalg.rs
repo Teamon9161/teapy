@@ -79,7 +79,7 @@ impl<'a> Expr<'a> {
             let x_view = match x.ndim() {
                 1 => x.view().to_dim1().unwrap().insert_axis(Axis(1)).wrap(),
                 2 => x.view().to_dim::<Ix2>().unwrap(),
-                _ => return Err("Too much dimension in lstsq".into()),
+                _ => tbail!("Too much dimension in lstsq"),
             };
             let out = OlsResult::new(
                 x_view

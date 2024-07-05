@@ -8,8 +8,6 @@ use tea_dyn::prelude::Object;
 
 pub extern crate tea_dyn;
 
-// pub extern crate tea_dtype as datatype;
-pub extern crate tea_error as error;
 pub extern crate tea_utils as utils;
 
 #[macro_use]
@@ -39,8 +37,6 @@ use ndarray::{
     NewAxis, RawData, RemoveAxis, ShapeBuilder, SliceArg, Zip,
 };
 
-// use datatype::{Cast, DataType, GetDataType, Object};
-use error::TpResult;
 use num::Zero;
 use prelude::{Arr, Arr1, ArrView, ArrView1, ArrViewMut, ArrViewMut1};
 use pyo3::Python;
@@ -116,7 +112,7 @@ where
 
     // #[cfg(feature = "npy")]
     // #[inline(always)]
-    // pub fn write_npy<P>(self, path: P) -> TpResult<()>
+    // pub fn write_npy<P>(self, path: P) -> TResult<()>
     // where
     //     P: AsRef<std::path::Path>,
     //     T: WritableElement,
@@ -178,11 +174,11 @@ where
     ///
     /// Note that the original array must be dim0.
     #[inline]
-    pub fn to_dim0(self) -> TpResult<ArrBase<S, Ix0>> {
+    pub fn to_dim0(self) -> TResult<ArrBase<S, Ix0>> {
         if self.ndim() == 1 {
             Ok(self.to_dim1()?.0.slice_move(s![0]).wrap())
         } else {
-            self.to_dim::<Ix0>().map_err(|e| format!("{e}").into())
+            self.to_dim::<Ix0>().map_err(|e| terr!("{}", e))
         }
     }
 
@@ -190,16 +186,16 @@ where
     ///
     /// Note that the original array must be dim1.
     #[inline]
-    pub fn to_dim1(self) -> TpResult<ArrBase<S, Ix1>> {
+    pub fn to_dim1(self) -> TResult<ArrBase<S, Ix1>> {
         if self.ndim() == 0 {
             Ok(self.to_dim0()?.0.slice_move(s![NewAxis]).wrap())
         } else {
-            self.to_dim::<Ix1>().map_err(|e| format!("{e}").into())
+            self.to_dim::<Ix1>().map_err(|e| terr!("{}", e))
         }
     }
 
     #[inline(always)]
-    pub fn try_as_dim1(&self) -> TpResult<ArrView1<T>>
+    pub fn try_as_dim1(&self) -> TResult<ArrView1<T>>
     where
         S: Data,
     {
@@ -220,7 +216,7 @@ where
     }
 
     #[inline(always)]
-    pub fn try_as_dim1_mut(&mut self) -> TpResult<ArrViewMut1<T>>
+    pub fn try_as_dim1_mut(&mut self) -> TResult<ArrViewMut1<T>>
     where
         S: DataMut,
     {
@@ -245,8 +241,8 @@ where
     ///
     /// Note that the original array must be dim2.
     #[inline(always)]
-    pub fn to_dim2(self) -> TpResult<ArrBase<S, Ix2>> {
-        self.to_dim::<Ix2>().map_err(|e| format!("{e}").into())
+    pub fn to_dim2(self) -> TResult<ArrBase<S, Ix2>> {
+        self.to_dim::<Ix2>().map_err(|e| terr!("{}", e))
     }
 
     /// Change the array to dimD.
@@ -257,10 +253,9 @@ where
 
     /// Change the array to another dim.
     #[inline]
-    pub fn to_dim<D2: Dimension>(self) -> TpResult<ArrBase<S, D2>> {
+    pub fn to_dim<D2: Dimension>(self) -> TResult<ArrBase<S, D2>> {
         let res = self.0.into_dimensionality::<D2>();
-        res.map(|arr| ArrBase(arr))
-            .map_err(|e| format!("{e}").into())
+        res.map(|arr| ArrBase(arr)).map_err(|e| terr!("{}", e))
     }
 }
 
@@ -476,7 +471,7 @@ where
 
     // /// Try to cast to datetime
     // #[cfg(feature = "time")]
-    // pub fn to_datetime(&self, unit: TimeUnit) -> TpResult<Arr<DateTime, D>>
+    // pub fn to_datetime(&self, unit: TimeUnit) -> TResult<Arr<DateTime, D>>
     // where
     //     T: Cast<i64> + GetDataType + Clone,
     // {

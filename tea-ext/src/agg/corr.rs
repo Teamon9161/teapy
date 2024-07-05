@@ -5,13 +5,6 @@ use std::iter::zip;
 use tea_core::prelude::*;
 use tea_core::utils::kh_sum;
 
-#[derive(Copy, Clone)]
-pub enum CorrMethod {
-    Pearson,
-    #[cfg(feature = "map")]
-    Spearman,
-}
-
 #[ext_trait]
 impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
     /// Remove NaN values in two 1d arrays.
@@ -63,7 +56,7 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
     }
 }
 
-#[arr_agg2_ext(lazy = "view2", type = "numeric", type2 = "numeric")]
+#[arr_agg2_ext(lazy = "view2", type = "PureNumeric", type2 = "PureNumeric")]
 impl<T: IsNone + Clone + Send + Sync, D: Dimension, S: Data<Elem = T>> Agg2Ext for ArrBase<S, D> {
     /// covariance of 2 array
     fn cov<S2, D2, T2>(&self, other: &ArrBase<S2, D2>, min_periods: usize, stable: bool) -> f64

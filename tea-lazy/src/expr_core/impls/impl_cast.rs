@@ -65,36 +65,12 @@ impl<'a> Expr<'a> {
         self
     }
 
-    // #[cfg(feature = "time")]
-    // pub fn cast_datetime(&mut self, unit: Option<TimeUnit>) -> &mut Self {
-    //     if let Some(unit) = unit {
-    //         self.chain_f_ctx(move |(arr, ctx)| {
-    //             let arr = arr.view_arr(ctx.as_ref())?;
-    //             let out = match_arrok!(
-    //                 arr,
-    //                 a,
-    //                 { a.view().to_datetime(unit)? },
-    //                 F32,
-    //                 F64,
-    //                 I32,
-    //                 I64,
-    //                 Usize,
-    //                 DateTime
-    //             );
-    //             Ok((out.into(), ctx))
-    //         });
-    //         self
-    //     } else {
-    //         self.cast_datetime_default()
-    //     }
-    // }
-
-    // #[allow(unreachable_patterns)]
-    // pub fn cast_object_eager(&mut self, py: Python) -> TpResult<&mut Self> {
-    //     self.eval_inplace(None)?;
-    //     let arr = self.view_arr(None)?;
-    //     let out = match_arrok!(arr, a, { a.view().to_object(py) });
-    //     self.lock().set_base(out.into());
-    //     Ok(self)
-    // }
+    #[cfg(feature = "time")]
+    pub fn cast_datetime(&mut self, unit: Option<TimeUnit>) -> &mut Self {
+        self.chain_f_ctx(move |(arr, ctx)| {
+            let arr = arr.into_arr(ctx.clone())?;
+            Ok((arr.cast_datetime(unit).into(), ctx))
+        });
+        self
+    }
 }

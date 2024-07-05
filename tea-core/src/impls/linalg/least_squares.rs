@@ -1,10 +1,11 @@
 use super::{transpose, transpose_over, MatrixLayout};
 use crate::{
-    prelude::{Arr, Arr1, Arr2, ArrD, ArrView1, ArrView2, StrError, TpResult, WrapNdarray},
+    prelude::{Arr, Arr1, Arr2, ArrD, ArrView1, ArrView2, TResult, WrapNdarray},
     utils::{vec_uninit, VecAssumeInit},
 };
 use lapack_sys::dgelsd_;
 use ndarray::{s, Axis, Ix0, ShapeBuilder};
+use tea_dyn::prelude::{tbail, terr};
 // use std::mem::transmute;
 
 #[derive(Debug, Clone)]
@@ -23,14 +24,13 @@ pub struct LeastSquaresResult {
 }
 
 impl Arr2<f64> {
-    pub fn least_squares(&mut self, rhs: &mut ArrD<f64>) -> TpResult<LeastSquaresResult> {
+    pub fn least_squares(&mut self, rhs: &mut ArrD<f64>) -> TResult<LeastSquaresResult> {
         if self.shape()[0] != rhs.shape()[0] {
-            return Err(format!(
+            tbail!(
                 "Invalid shape in least_squares, x shape: {:?}, y shape: {:?}",
                 &self.shape(),
                 &rhs.shape()
-            )
-            .into());
+            );
         }
         // special case for m = 0
         if self.shape()[0] == 0 {
@@ -108,7 +108,7 @@ impl Arr2<f64> {
                     compute_residual_array1(m, n, res.rank, rhs).map(|r| r.to_dimd());
                 Ok(res)
             }
-            _ => Err("Invalid dimension in least squares".into()),
+            _ => tbail!("Invalid dimension in least squares"),
         }
     }
 }
@@ -144,14 +144,14 @@ pub fn least_squares_impl(
     a_layout: MatrixLayout,
     b: &mut ArrD<f64>,
     b_layout: MatrixLayout,
-) -> TpResult<LeastSquaresResult> {
+) -> TResult<LeastSquaresResult> {
     // dbg!("a: {:?}, b: {:?}", &a, &b);
     let mut_a = a
         .as_slice_memory_order_mut()
-        .ok_or_else(|| StrError::from("Array should be contiguous when lstsq"))?;
+        .ok_or_else(|| terr!("Array should be contiguous when lstsq"))?;
     let mut_b = b
         .as_slice_memory_order_mut()
-        .ok_or_else(|| StrError::from("Array should be contiguous when lstsq"))?;
+        .ok_or_else(|| terr!("Array should be contiguous when lstsq"))?;
     let (m, n) = a_layout.size();
     let (m_, nrhs) = b_layout.size();
     let k = m.min(n);

@@ -1,5 +1,5 @@
 use crate::Expr;
-use tea_core::error::TpResult;
+use tea_core::prelude::{tbail, TResult};
 
 pub enum GetOutput<'a, 'b> {
     Expr(&'b Expr<'a>),
@@ -30,14 +30,14 @@ impl<'a, 'b> GetOutput<'a, 'b> {
     }
 
     #[inline]
-    pub fn into_expr(self) -> TpResult<&'b Expr<'a>> {
+    pub fn into_expr(self) -> TResult<&'b Expr<'a>> {
         match self {
             GetOutput::Expr(expr) => Ok(expr),
             GetOutput::Exprs(mut exprs) => {
                 if exprs.len() == 1 {
                     Ok(exprs.pop().unwrap())
                 } else {
-                    Err("The output should not be a vector of expressions!".into())
+                    tbail!("The output should not be a vector of expressions!")
                 }
             }
         }
@@ -54,14 +54,14 @@ impl<'a, 'b> GetMutOutput<'a, 'b> {
     }
 
     #[inline]
-    pub fn into_expr(self) -> TpResult<&'b mut Expr<'a>> {
+    pub fn into_expr(self) -> TResult<&'b mut Expr<'a>> {
         match self {
             GetMutOutput::Expr(expr) => Ok(expr),
             GetMutOutput::Exprs(mut exprs) => {
                 if exprs.len() == 1 {
                     Ok(exprs.pop().unwrap())
                 } else {
-                    Err("The output should not be a vector of expressions!".into())
+                    tbail!("The output should not be a vector of expressions!")
                 }
             }
         }
@@ -108,14 +108,14 @@ impl<'a> From<Vec<Expr<'a>>> for SetInput<'a> {
 
 impl<'a> SetInput<'a> {
     #[inline]
-    pub fn into_expr(self) -> TpResult<Expr<'a>> {
+    pub fn into_expr(self) -> TResult<Expr<'a>> {
         match self {
             SetInput::Expr(expr) => Ok(expr),
             SetInput::Exprs(mut exprs) => {
                 if exprs.len() == 1 {
                     Ok(exprs.pop().unwrap())
                 } else {
-                    Err("The input should not be a vector of expressions!".into())
+                    tbail!("The input should not be a vector of expressions!")
                 }
             }
         }

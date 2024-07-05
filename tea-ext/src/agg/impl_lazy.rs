@@ -12,16 +12,16 @@ impl<'a> AggExt for Expr<'a> {
 
     fn ndim(&self) {}
 
-    #[teapy(type = "numeric")]
+    #[teapy(type = "Numeric")]
     fn sum(&self, stable: bool, axis: i32, par: bool) {}
 
-    #[teapy(type = "numeric")]
+    #[teapy(type = "Numeric")]
     fn mean(&self, min_periods: usize, stable: bool, axis: i32, par: bool) {}
 
-    #[teapy(type = "numeric")]
+    #[teapy(type = "Numeric")]
     fn min(&self, axis: i32, par: bool) {}
 
-    #[teapy(type = "numeric")]
+    #[teapy(type = "Numeric")]
     fn max(&self, axis: i32, par: bool) {}
 }
 
@@ -31,10 +31,10 @@ impl<'a> ExprAggExt for Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
             let value = value.view_arr(ctx.as_ref())?;
-            let out = match_arrok!(castable arr, a, {
-                let value = match_arrok!(castable value, v, {v.deref().into_owned().into_scalar()?.cast()});
-                a.view().count_v(value, axis, par)
-            });
+            let out = match_arrok!(arr; Cast(a) => {
+                let value = match_arrok!(value; Cast(v) => {Ok(v.deref().into_owned().into_scalar()?.cast())},).unwrap();
+                Ok(a.view().count_v(value, axis, par))
+            },).unwrap();
             Ok((out.into(), ctx))
         });
         self
@@ -44,7 +44,7 @@ impl<'a> ExprAggExt for Expr<'a> {
         self.cast_bool().chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
             Ok((
-                match_arrok!(arr, arr, { arr.view().any(axis, par).into() }, Bool),
+                match_arrok!(arr; Bool(arr) => { Ok(arr.view().any(axis, par).into()) },).unwrap(),
                 ctx,
             ))
         });
@@ -55,7 +55,7 @@ impl<'a> ExprAggExt for Expr<'a> {
         self.cast_bool().chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
             Ok((
-                match_arrok!(arr, arr, { arr.view().all(axis, par).into() }, Bool),
+                match_arrok!(arr; Bool(arr) => { Ok(arr.view().all(axis, par).into()) },).unwrap(),
                 ctx,
             ))
         });
@@ -66,10 +66,11 @@ impl<'a> ExprAggExt for Expr<'a> {
     fn shape(&mut self) -> &mut Self {
         self.chain_f_ctx(|(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
-            let out: ArrOk<'a> = match_arrok!(arr, a, {
+            let out: ArrOk<'a> = match_arrok!(arr; Dynamic(a) => {
                 let shape = a.view().shape().to_owned();
-                Arr1::from_vec(shape).to_dimd().into()
-            });
+                Ok(Arr1::from_vec(shape).to_dimd().into())
+            },)
+            .unwrap();
             Ok((out.into(), ctx))
         });
         self
@@ -93,11 +94,11 @@ pub fn corr<'a>(
                 let corr = if i != j {
                     let arri = *unsafe{all_arr.get_unchecked(i)};
                     let arrj = *unsafe{all_arr.get_unchecked(j)};
-                    match_arrok!(numeric arri, arri, {
-                        match_arrok!(numeric arrj, arrj, {
-                            arri.deref().view().to_dim1()?.corr_1d(&arrj.deref().view().to_dim1()?, method, min_periods, stable)
-                        })
-                    })
+                    match_arrok!(arri; PureNumeric(arri) => {
+                        match_arrok!(arrj; PureNumeric(arrj) => {
+                            Ok(arri.deref().view().to_dim1()?.corr_1d(&arrj.deref().view().to_dim1()?, method, min_periods, stable))
+                        },)
+                    },).unwrap()
                 } else {
                     1.0
                 };

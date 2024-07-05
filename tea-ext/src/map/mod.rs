@@ -167,7 +167,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         value: &ArrBase<S3, D3>,
         axis: i32,
         par: bool,
-    ) -> TpResult<()>
+    ) -> TResult<()>
     where
         T: Clone + Send + Sync,
         D2: Dimension,
@@ -183,21 +183,13 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
             value
         } else {
             // the number of value array's elements are equal to the number of true values in mask
-            let mask = mask
-                .view()
-                .to_dim1()
-                .map_err(|e| StrError::from(format!("{e}")))?;
+            let mask = mask.view().to_dim1().map_err(|e| terr!("{e}"))?;
             // .expect("mask should be dim1 when set value to masked data");
-            let value = value
-                .view()
-                .to_dim1()
-                .map_err(|e| StrError::from(format!("{e}")))?;
+            let value = value.view().to_dim1().map_err(|e| terr!("{e}"))?;
             // .expect("value should be dim1 when set value to masked data");
             let true_num = mask.count_v_1d(true) as usize;
             if true_num != value.len_of(axis) {
-                return Err(StrError::from(
-                    "number of value are not equal to number of true mask",
-                ));
+                tbail!("number of value are not equal to number of true mask",);
             }
             let ndim = self.ndim();
             if par && (ndim > 1) {
@@ -237,7 +229,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
-    #[teapy(type = "numeric")]
+    #[teapy(type = "Numeric")]
     fn arg_partition(
         &self,
         mut kth: usize,
@@ -268,10 +260,10 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     }
 
     #[cfg(feature = "agg")]
-    #[teapy(type = "numeric")]
+    #[teapy(type = "Numeric")]
     fn partition(&self, mut kth: usize, sort: bool, rev: bool, axis: i32, par: bool) -> ArrD<T>
     where
-        T: IsNone + Clone + Send + Sync,
+        T: IsNone + Send + Sync,
         T::Inner: Number,
         D: Dimension,
     {
@@ -293,7 +285,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     }
 }
 
-#[arr_map_ext(lazy = "view", type = "numeric")]
+#[arr_map_ext(lazy = "view", type = "PureNumeric")]
 impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd for ArrBase<S, D> {
     fn cumsum<SO>(&self, out: &mut ArrBase<SO, Ix1>, stable: bool) -> T
     where
@@ -602,7 +594,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> MapExtNd 
 }
 
 #[cfg(feature = "lazy")]
-#[ext_trait(lazy_only, lazy = "f64_func", type = "numeric")]
+#[ext_trait(lazy_only, lazy = "f64_func", type = "PureNumeric")]
 impl<'a> F64FuncExt for Expr<'a> {
     fn sqrt(&self) {}
 

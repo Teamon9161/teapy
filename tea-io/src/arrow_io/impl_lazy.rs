@@ -1,6 +1,6 @@
 use crate::{ColSelect, SingleCol};
 use std::path::Path;
-use tea_core::error::TpResult;
+use tea_core::prelude::TResult;
 use tea_core::utils::CollectTrustedToVec;
 use tea_lazy::{DataDict, Expr};
 
@@ -28,7 +28,7 @@ impl<'a> ExprIPCExt for Expr<'a> {
     }
 }
 
-pub fn scan_ipc_lazy<'a, P>(path: P, columns: ColSelect<'_>) -> TpResult<Vec<Expr<'a>>>
+pub fn scan_ipc_lazy<'a, P>(path: P, columns: ColSelect<'_>) -> TResult<Vec<Expr<'a>>>
 where
     P: AsRef<Path> + Send + Sync + Clone + 'a,
 {
@@ -47,7 +47,7 @@ where
 
 #[ext_trait]
 impl<'a> DataDictIPCExt for DataDict<'a> {
-    pub fn read_ipc<P: AsRef<Path>>(path: P, columns: ColSelect<'_>) -> TpResult<DataDict<'a>> {
+    pub fn read_ipc<P: AsRef<Path>>(path: P, columns: ColSelect<'_>) -> TResult<DataDict<'a>> {
         let (schema, arr_vec) = super::read_ipc(path, columns)?;
         let data: Vec<Expr<'a>> = schema
             .fields
@@ -58,7 +58,7 @@ impl<'a> DataDictIPCExt for DataDict<'a> {
         Ok(DataDict::new(data, None))
     }
 
-    pub fn scan_ipc<P>(path: P, columns: ColSelect<'_>) -> TpResult<DataDict<'a>>
+    pub fn scan_ipc<P>(path: P, columns: ColSelect<'_>) -> TResult<DataDict<'a>>
     where
         P: AsRef<Path> + Send + Sync + Clone + 'a,
     {

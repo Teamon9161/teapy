@@ -19,7 +19,7 @@ srd = ["ndarray/serde"]
 # srd = ["tea-dtype/srd", "ndarray/serde"]
 blas = ["ndarray/blas", "ops", "lapack-sys", "intel-mkl"]
 concat = []
-arw = ["tea-error/arw", "arrow", "concat"]
+arw = ["arrow", "concat"]
 
 # blas choices
 openblas = ["openblas-static"]
@@ -35,7 +35,7 @@ intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
 derive_more = { workspace = true }
 # tea-dtype = { path = "../tea-dtype", default-features = false }
 tea-utils = { path = "../tea-utils" }
-tea-error = { path = "../tea-error", default-features = false }
+# tea-error = { path = "../tea-error", default-features = false }
 tea-macros = { path = "../tea-macros", default-features = false }
 
 # tevec = { workspace = true, default-features = false, features = [

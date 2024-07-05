@@ -13,14 +13,15 @@ pub(crate) fn impl_view(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     quote! {
         #lazy_sig
         {
             self.chain_f_ctx(move |(data, ctx)| {
                 let arr = data.view_arr(ctx.as_ref())?;
-                match_arrok!(#arr_type arr, a, { Ok((a.view().#fn_name(#(#params),*).into(), ctx)) })
+                // match_arrok!(#arr_type arr, a, { Ok((a.view().#fn_name(#(#params),*).into(), ctx)) })
+                match_arrok!(arr; #arr_type(a) => { Ok((a.view().#fn_name(#(#params),*).into(), ctx)) },)
             });
             self
         }
@@ -38,12 +39,12 @@ pub(crate) fn impl_view2(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     let other_type = if let Some(other_type) = other_type {
         other_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     quote! {
         #lazy_sig
@@ -51,11 +52,16 @@ pub(crate) fn impl_view2(
             self.chain_f_ctx(move |(data, ctx)| {
                 let arr = data.view_arr(ctx.as_ref())?;
                 let other_arr = #other.view_arr(ctx.as_ref())?;
-                match_arrok!(#arr_type arr, a, {
-                    match_arrok!(#other_type other_arr, b, {
+                match_arrok!(arr; #arr_type(a) => {
+                    match_arrok!(other_arr; #other_type(b) => {
                         Ok((a.view().#fn_name(&b.view(), #(#params),*).into(), ctx))
-                    })
-                })
+                    },)
+                },)
+                // match_arrok!(#arr_type arr, a, {
+                //     match_arrok!(#other_type other_arr, b, {
+                //         Ok((a.view().#fn_name(&b.view(), #(#params),*).into(), ctx))
+                //     })
+                // })
             });
             self
         }
@@ -72,14 +78,15 @@ pub(crate) fn impl_f64func(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     quote! {
         #lazy_sig
         {
             self.chain_f_ctx(move |(data, ctx)| {
                 let arr = data.view_arr(ctx.as_ref())?;
-                match_arrok!(#arr_type arr, a, { Ok((a.view().map(|v| v.f64().#fn_name(#(#params),*)).into(), ctx)) })
+                match_arrok!(arr; #arr_type(a) => { Ok((a.view().map(|v| v.f64().#fn_name(#(#params),*)).into(), ctx)) },)
+                // match_arrok!(#arr_type arr, a, { Ok((a.view().map(|v| v.f64().#fn_name(#(#params),*)).into(), ctx)) })
             });
             self
         }
@@ -96,14 +103,18 @@ pub(crate) fn impl_viewmut(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     quote! {
         #lazy_sig
         {
             self.chain_f_ctx(move |(data, ctx)| {
                 let mut arr = data.into_arr(ctx.clone())?;
-                match_arrok!(#arr_type &mut arr, a, { a.view_mut().#fn_name(#(#params),*) });
+                // match_arrok!(#arr_type &mut arr, a, { a.view_mut().#fn_name(#(#params),*) });
+                match_arrok!(&mut arr; #arr_type(a) => {
+                    a.view_mut().#fn_name(#(#params),*);
+                    Ok(())
+                },).unwrap();
                 Ok((arr.into(), ctx))
             });
             self
@@ -127,7 +138,7 @@ pub(crate) fn impl_rolling_by_startidx_agg(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     quote! {
         #lazy_sig
@@ -139,15 +150,14 @@ pub(crate) fn impl_rolling_by_startidx_agg(
                     let roll_start_arr = roll_start.view().to_dim1()?;
                     let len = arr.len();
                     if len != roll_start_arr.len() {
-                        return Err(format!(
-                            "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
+                        tbail!(
+                            "rolling_select_agg: arr.len(): {} != roll_start.len(): {}",
                             arr.len(),
                             roll_start_arr.len()
-                        )
-                        .into());
+                        );
                     }
 
-                    let out: ArrOk<'a> = match_arrok!(#arr_type arr, arr, {
+                    let out: ArrOk<'a> = match_arrok!(arr; #arr_type(arr) => {
                         let arr = arr.view().to_dim1()?;
                         let out = zip(roll_start_arr, 0..len)
                         .map(|(mut start, end)| {
@@ -158,8 +168,8 @@ pub(crate) fn impl_rolling_by_startidx_agg(
                             current_arr.#fn_name(#(#params),*)
                         })
                         .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
+                        Ok(Arr1::from_vec(out).to_dimd().into())
+                    },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
             );
@@ -185,7 +195,7 @@ pub(crate) fn impl_rolling_by_startidx_agg2(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     let other_type = if let Some(other_type) = other_type {
         other_type
@@ -203,15 +213,14 @@ pub(crate) fn impl_rolling_by_startidx_agg2(
                     let roll_start_arr = roll_start.view().to_dim1()?;
                     let len = arr.len();
                     if len != roll_start_arr.len() {
-                        return Err(format!(
-                            "rolling_select_agg: arr.len() != roll_start.len(): {} != {}",
+                        tbail!(
+                            "rolling_select_agg: arr.len(): {} != roll_start.len(): {}",
                             arr.len(),
                             roll_start_arr.len()
-                        )
-                        .into());
+                        );
                     }
 
-                    let out: ArrOk<'a> = match_arrok!(#arr_type arr, arr, {
+                    let out: ArrOk<'a> = match_arrok!(arr; #arr_type(arr) => {
                         let arr = arr.view().to_dim1()?;
                         let out = zip(roll_start_arr, 0..len)
                         .map(|(mut start, end)| {
@@ -219,15 +228,15 @@ pub(crate) fn impl_rolling_by_startidx_agg2(
                                 start = end;  // the start idx should be inbound
                             }
                             let current_arr = arr.slice(s![start..end + 1]).wrap();
-                            match_arrok!(#other_type &other, other, {
+                            match_arrok!(&other; #other_type(other) => {
                                 let other = other.view().to_dim1().unwrap();
                                 let other_arr = other.slice(s![start..end + 1]).wrap();
-                                current_arr.#fn_name(&other_arr, #(#params),*)
-                            })
+                                Ok(current_arr.#fn_name(&other_arr, #(#params),*))
+                            },).unwrap()
                         })
                         .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
+                        Ok(Arr1::from_vec(out).to_dimd().into())
+                    },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
             );
@@ -252,7 +261,7 @@ pub(crate) fn impl_rolling_by_vecusize_agg(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     quote! {
         #lazy_sig
@@ -262,7 +271,7 @@ pub(crate) fn impl_rolling_by_vecusize_agg(
                     let arr = data.view_arr(ctx.as_ref())?.deref();
                     let idxs = #idxs.view_arr(ctx.as_ref())?.deref().cast_vecusize();
                     let idxs_arr = idxs.view().to_dim1()?;
-                    let out: ArrOk<'a> = match_arrok!(#arr_type arr, arr, {
+                    let out: ArrOk<'a> = match_arrok!(arr; #arr_type(arr) => {
                         let arr = arr.view().to_dim1()?;
                         let out: Vec<_> = idxs_arr
                             .iter()
@@ -271,8 +280,8 @@ pub(crate) fn impl_rolling_by_vecusize_agg(
                                 current_arr.#fn_name(#(#params),*)
                             })
                             .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
+                        Ok(Arr1::from_vec(out).to_dimd().into())
+                    },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
             );
@@ -297,7 +306,7 @@ pub(crate) fn impl_group_by_startidx_agg(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     quote! {
         #lazy_sig
@@ -313,7 +322,7 @@ pub(crate) fn impl_group_by_startidx_agg(
                         group_idx.view_arr(ctx.as_ref())?.deref().cast_usize()
                     };
                     let group_start_view = group_start.view().to_dim1()?;
-                    let out: ArrOk<'a> = match_arrok!(#arr_type arr, arr, {
+                    let out: ArrOk<'a> = match_arrok!(arr; #arr_type(arr) => {
                         let arr = arr.view().to_dim1()?;
                         let out = group_start_view.as_slice().unwrap().windows(2)
                         .map(|v| {
@@ -322,8 +331,8 @@ pub(crate) fn impl_group_by_startidx_agg(
                             current_arr.#fn_name(#(#params),*)
                         })
                         .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
+                        Ok(Arr1::from_vec(out).to_dimd().into())
+                    },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
             );
@@ -349,7 +358,7 @@ pub(crate) fn impl_group_by_startidx_agg2(
     let arr_type = if let Some(arr_type) = arr_type {
         arr_type
     } else {
-        quote! {}
+        quote! {Dynamic}
     };
     let other_type = if let Some(other_type) = other_type {
         other_type
@@ -370,21 +379,21 @@ pub(crate) fn impl_group_by_startidx_agg2(
                     };
                     let group_start_view = group_start.view().to_dim1()?;
 
-                    let out: ArrOk<'a> = match_arrok!(#arr_type arr, arr, {
+                    let out: ArrOk<'a> = match_arrok!(arr; #arr_type(arr) => {
                         let arr = arr.view().to_dim1()?;
                         let out = group_start_view.as_slice().unwrap().windows(2)
                         .map(|v| {
                             let (start, next_start) = (v[0], v[1]);
                             let current_arr = arr.slice(s![start..next_start]).wrap();
-                            match_arrok!(#other_type &other, other, {
+                            match_arrok!(&other; #other_type(other) => {
                                 let other = other.view().to_dim1().unwrap();
                                 let other_arr = other.slice(s![start..next_start]).wrap();
-                                current_arr.#fn_name(&other_arr, #(#params),*)
-                            })
+                                Ok(current_arr.#fn_name(&other_arr, #(#params),*))
+                            },).unwrap()
                         })
                         .collect_trusted();
-                        Arr1::from_vec(out).to_dimd().into()
-                    });
+                        Ok(Arr1::from_vec(out).to_dimd().into())
+                    },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
             );

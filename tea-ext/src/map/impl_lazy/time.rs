@@ -7,35 +7,30 @@ impl<'a> ExprTimeExt for Expr<'a> {
     fn strptime(&mut self, fmt: Option<String>) -> &mut Self {
         self.cast_string().chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?;
-            let out: ArrOk<'a> = match_arrok!(
-                arr,
-                a,
-                {
-                    let out = a.view().strptime(fmt.as_deref());
-                    out.into()
-                },
-                String
-            );
+            let out: ArrOk<'a> = match_arrok!(arr; String(a) => {
+                let out = a.view().strptime(fmt.as_deref());
+                Ok(out.into())
+            },)
+            .unwrap();
             Ok((out.into(), ctx))
         });
         self
     }
 
     fn strftime(&mut self, fmt: Option<String>) -> &mut Self {
-        self.cast_datetime_default()
-            .chain_f_ctx(move |(data, ctx)| {
-                let arr = data.view_arr(ctx.as_ref())?;
-                let out: ArrOk<'a> = match_arrok!(
-                    arr,
-                    a,
-                    {
-                        let out = a.view().strftime(fmt.as_deref());
-                        out.into()
-                    },
-                    DateTime
-                );
-                Ok((out.into(), ctx))
-            });
+        self.cast_datetime(None).chain_f_ctx(move |(data, ctx)| {
+            let arr = data.view_arr(ctx.as_ref())?;
+            let out: ArrOk<'a> = match_arrok!(
+                arr;
+                Time(a) =>
+                {
+                    let out = a.view().strftime(fmt.as_deref());
+                    Ok(out.into())
+                },
+            )
+            .unwrap();
+            Ok((out.into(), ctx))
+        });
         self
     }
 }

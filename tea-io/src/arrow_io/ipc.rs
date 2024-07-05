@@ -9,9 +9,9 @@ use std::{fs::File, path::Path, sync::Arc};
 use tea_core::prelude::*;
 
 #[inline]
-pub fn read_ipc_schema<P: AsRef<Path>>(path: P) -> TpResult<Schema> {
+pub fn read_ipc_schema<P: AsRef<Path>>(path: P) -> TResult<Schema> {
     let mut file = File::open(path)?;
-    let metadata = read::read_file_metadata(&mut file)?;
+    let metadata = read::read_file_metadata(&mut file).map_err(|e| terr!("{:?}", e))?;
     Ok(metadata.schema)
 }
 
@@ -25,17 +25,19 @@ pub fn read_ipc_schema<P: AsRef<Path>>(path: P) -> TpResult<Schema> {
 pub fn read_ipc<'a, P: AsRef<Path>>(
     path: P,
     columns: ColSelect<'_>,
-) -> TpResult<(Schema, Vec<ArrOk<'a>>)> {
+) -> TResult<(Schema, Vec<ArrOk<'a>>)> {
     let mut file = File::open(path)?;
     let mmap = Arc::new(unsafe { Mmap::map(&file)? });
 
     // read the files' metadata. At this point, we can distribute the read whatever we like.
-    let metadata = read::read_file_metadata(&mut file)?;
+    let metadata = read::read_file_metadata(&mut file).map_err(|e| terr!("{:?}", e))?;
     let blocks_num = metadata.blocks.len();
     let mut schema = metadata.schema.clone();
     let proj = columns.into_proj(&schema)?;
 
-    let dictionaries = unsafe { mmap_dictionaries_unchecked(&metadata, mmap.clone())? };
+    let dictionaries = unsafe {
+        mmap_dictionaries_unchecked(&metadata, mmap.clone()).map_err(|e| terr!("{:?}", e))?
+    };
     let chunk = unsafe { mmap_unchecked(&metadata, &dictionaries, mmap.clone(), 0) };
     let chunk = match chunk {
         Ok(chunk) => chunk,
@@ -49,7 +51,7 @@ pub fn read_ipc<'a, P: AsRef<Path>>(
                         let mut arrs = reader
                             .map(|batch| batch.unwrap().into_arrays())
                             .collect::<Vec<_>>();
-                        let arrs = (0..arrs.first().unwrap().len())
+                        let arrs = (0..arrs.get(0).unwrap().len())
                             .map(|_| {
                                 let mut out = Vec::with_capacity(arrs.len());
                                 // out.push(arrs.pop().unwrap());
@@ -74,10 +76,10 @@ pub fn read_ipc<'a, P: AsRef<Path>>(
                     };
                     return Ok((schema, out));
                 } else {
-                    return Err(e.to_owned().into());
+                    tbail!("{:?}", e);
                 }
             } else {
-                return Err(e.into());
+                tbail!("{:?}", e);
             }
         }
     };

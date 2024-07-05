@@ -15,17 +15,6 @@ use tea_core::prelude::*;
 #[derive(Default)]
 pub struct Expr<'a>(Arc<Mutex<ExprInner<'a>>>);
 
-// impl<'a> Serialize for Expr<'a> {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//         {
-//             let e = self.lock();
-//             let data = e.view_data(None).unwrap();
-//             data.serialize(serializer)
-//         }
-// }
-
 impl<'a> Clone for Expr<'a> {
     #[inline]
     fn clone<'b>(&'b self) -> Expr<'a> {
@@ -228,7 +217,7 @@ impl<'a> Expr<'a> {
     #[inline]
     pub fn chain_f_ctx<F>(&mut self, f: F)
     where
-        F: Fn(FuncOut<'a>) -> TpResult<FuncOut<'a>> + Send + Sync + 'a,
+        F: Fn(FuncOut<'a>) -> TResult<FuncOut<'a>> + Send + Sync + 'a,
     {
         if let Some(e) = Arc::get_mut(&mut self.0) {
             e.get_mut().chain_f_ctx(f);
@@ -253,7 +242,7 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
-    pub fn eval_inplace(&mut self, ctx: Option<Context<'a>>) -> TpResult<&mut Self> {
+    pub fn eval_inplace(&mut self, ctx: Option<Context<'a>>) -> TResult<&mut Self> {
         if let Some(e) = Arc::get_mut(&mut self.0) {
             e.get_mut().eval_inplace(ctx, false)?;
         } else {
@@ -265,7 +254,7 @@ impl<'a> Expr<'a> {
     /// this will freeze the context of the expression,
     /// the expression can not be evaluated again in other context
     #[inline]
-    pub fn eval_inplace_freeze(&mut self, ctx: Option<Context<'a>>) -> TpResult<&mut Self> {
+    pub fn eval_inplace_freeze(&mut self, ctx: Option<Context<'a>>) -> TResult<&mut Self> {
         if let Some(e) = Arc::get_mut(&mut self.0) {
             e.get_mut().eval_inplace(ctx, true)?;
         } else {
@@ -274,33 +263,9 @@ impl<'a> Expr<'a> {
         Ok(self)
     }
 
-    // pub fn cxt_ref_to_owned(&mut self) -> TpResult<&mut Self> {
-    //     if let Some(e) = Arc::get_mut(&mut self.0) {
-    //         e.get_mut().ctx_ref_to_owned()?;
-    //     } else {
-    //         // unreachable!("the result may be incorrect in context evaluation")
-    //         self.0.lock().ctx_ref_to_owned()?;
-    //     }
-    //     Ok(self)
-    // }
-    // pub fn into_out(self, ctx: Option<Context<'a>>) -> TpResult<Data<'a>> {
-    //     match Arc::try_unwrap(self.0) {
-    //         Ok(inner) => inner.into_inner().into_out(ctx),
-    //         Err(expr) => {
-    //             let mut e = expr.lock();
-    //             e.eval_inplace(ctx)?;
-    //             let data = e.view_data()?;
-    //             Ok(data.clone())
-    //             // let arr_view = arr.view();
-    //             // // safety: the expression has been evaluated
-    //             // Ok(unsafe{std::mem::transmute(arr_view)})
-    //         }
-    //     }
-    // }
-
     #[allow(unreachable_patterns)]
     #[inline]
-    pub fn into_arr(self, ctx: Option<Context<'a>>) -> TpResult<ArrOk<'a>> {
+    pub fn into_arr(self, ctx: Option<Context<'a>>) -> TResult<ArrOk<'a>> {
         match Arc::try_unwrap(self.0) {
             Ok(inner) => inner.into_inner().into_arr(ctx),
             Err(expr) => {
@@ -319,7 +284,7 @@ impl<'a> Expr<'a> {
     #[allow(unreachable_patterns)]
     #[cfg(feature = "blas")]
     #[inline]
-    pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
+    pub fn into_ols_res(self, ctx: Option<Context<'a>>) -> TResult<Arc<OlsResult<'a>>> {
         match Arc::try_unwrap(self.0) {
             Ok(inner) => inner.into_inner().into_ols_res(ctx),
             Err(expr) => {
@@ -333,7 +298,7 @@ impl<'a> Expr<'a> {
 
     #[allow(unreachable_patterns)]
     #[inline]
-    pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TpResult<Vec<ArrOk<'a>>> {
+    pub fn into_arr_vec(self, ctx: Option<Context<'a>>) -> TResult<Vec<ArrOk<'a>>> {
         match Arc::try_unwrap(self.0) {
             Ok(inner) => inner.into_inner().into_arr_vec(ctx),
             Err(expr) => {
@@ -348,14 +313,12 @@ impl<'a> Expr<'a> {
                     })
                     .collect_trusted_to_vec();
                 Ok(arr_vec)
-                // // safety: the expression has been evaluated
-                // Ok(unsafe{std::mem::transmute(arr_view)})
             }
         }
     }
 
     #[inline]
-    pub fn view_data(&self, context: Option<&Context<'a>>) -> TpResult<&Data<'a>> {
+    pub fn view_data(&self, context: Option<&Context<'a>>) -> TResult<&Data<'a>> {
         let e = self.lock();
         let data = e.view_data(context)?;
         // safety: the array can only be read when the expression is already evaluated
@@ -365,18 +328,15 @@ impl<'a> Expr<'a> {
 
     #[inline]
     #[cfg(feature = "blas")]
-    pub fn view_ols_res(&self, ctx: Option<&Context<'a>>) -> TpResult<Arc<OlsResult<'a>>> {
+    pub fn view_ols_res(&self, ctx: Option<&Context<'a>>) -> TResult<Arc<OlsResult<'a>>> {
         let mut e = self.lock();
         e.eval_inplace(ctx.cloned(), false)?;
         let data = e.view_ols_res(ctx)?;
         Ok(data)
-        // safety: the array can only be read when the expression is already evaluated
-        // so the data of the array should not be changed
-        // unsafe { Ok(std::mem::transmute(data)) }
     }
 
     #[inline]
-    pub fn view_arr(&self, ctx: Option<&Context<'a>>) -> TpResult<&ArrOk<'a>> {
+    pub fn view_arr(&self, ctx: Option<&Context<'a>>) -> TResult<&ArrOk<'a>> {
         let mut e = self.lock();
         e.eval_inplace(ctx.cloned(), false)?;
         let arr = e.view_arr(ctx)?;
@@ -386,7 +346,7 @@ impl<'a> Expr<'a> {
     }
 
     #[inline]
-    pub fn view_arr_vec(&self, ctx: Option<&Context<'a>>) -> TpResult<Vec<&ArrOk<'a>>> {
+    pub fn view_arr_vec(&self, ctx: Option<&Context<'a>>) -> TResult<Vec<&ArrOk<'a>>> {
         let mut e = self.lock();
         e.eval_inplace(ctx.cloned(), false)?;
         let arr = e.view_arr_vec(ctx)?;

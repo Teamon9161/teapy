@@ -3,13 +3,11 @@ use regex::Regex;
 use std::fmt::Debug;
 use std::iter::zip;
 use std::sync::Arc;
+use tea_core::prelude::{tbail, terr};
 // use serde::Serialize;
 
 use crate::{Context, Expr};
-use tea_core::{
-    error::{StrError, TpResult},
-    utils::CollectTrustedToVec,
-};
+use tea_core::{prelude::TResult, utils::CollectTrustedToVec};
 
 // #[cfg(feature = "agg")]
 // use crate::CorrMethod;
@@ -128,7 +126,7 @@ impl<'a> DataDict<'a> {
     }
 
     /// If the name of expression has changed after evaluating, we should update the column_map.
-    pub fn update_column_map(&mut self, ori_name: String, new_name: String) -> TpResult<()> {
+    pub fn update_column_map(&mut self, ori_name: String, new_name: String) -> TResult<()> {
         if ori_name != new_name {
             if let Some(map) = Arc::get_mut(&mut self.map) {
                 let i = map.remove(&ori_name).unwrap();
@@ -213,7 +211,7 @@ impl<'a> DataDict<'a> {
 
     // /// drop some columns inplace, return the name of the dropped columns
     // #[inline]
-    // pub fn drop_inplace(&mut self, col: ColumnSelector) -> TpResult<Vec<String>> {
+    // pub fn drop_inplace(&mut self, col: ColumnSelector) -> TResult<Vec<String>> {
     //     let drop_cols = self.get_selector_out_name(col);
     //     self.data = self
     //         .data
@@ -225,18 +223,18 @@ impl<'a> DataDict<'a> {
 
     /// Adjust when idx < 0
     #[inline]
-    fn valid_idx(&self, col_idx: i32) -> TpResult<usize> {
+    fn valid_idx(&self, col_idx: i32) -> TResult<usize> {
         let mut col_idx = col_idx;
         if col_idx < 0 {
             col_idx += self.len() as i32;
             if col_idx < 0 {
-                return Err("Column doesn't exist!".into());
+                tbail!("Column doesn't exist!");
             }
         }
         Ok(col_idx as usize)
     }
 
-    pub fn get<'b>(&'b self, col: ColumnSelector<'b>) -> TpResult<GetOutput<'a, 'b>> {
+    pub fn get<'b>(&'b self, col: ColumnSelector<'b>) -> TResult<GetOutput<'a, 'b>> {
         match col {
             ColumnSelector::Index(col_idx) => {
                 let col_idx = self.valid_idx(col_idx)?;
@@ -249,13 +247,13 @@ impl<'a> DataDict<'a> {
             ColumnSelector::NameOwned(col_name) => {
                 // self.get(col_name.clone().as_str().into())
                 if col_name.starts_with('^') & col_name.ends_with('$') {
-                    let re = Regex::new(col_name.as_str())
-                        .map_err(|_| StrError("Invalid regex!".into()))?;
+                    let re = Regex::new(col_name.as_str()).map_err(|_| terr!("Invalid regex!"))?;
                     return self.get(ColumnSelector::Regex(re));
                 }
-                let col_idx = *self.map.get(&col_name).ok_or_else(|| -> StrError {
-                    format!("Column {col_name} doesn't exist!").into()
-                })?;
+                let col_idx = *self
+                    .map
+                    .get(&col_name)
+                    .ok_or_else(|| terr!("Column {} doesn't exist!", col_name))?;
                 Ok(self
                     .data
                     .get(col_idx)
@@ -264,12 +262,13 @@ impl<'a> DataDict<'a> {
             }
             ColumnSelector::Name(col_name) => {
                 if col_name.starts_with('^') & col_name.ends_with('$') {
-                    let re = Regex::new(col_name).map_err(|_| StrError("Invalid regex!".into()))?;
+                    let re = Regex::new(col_name).map_err(|_| terr!("Invalid regex!"))?;
                     return self.get(ColumnSelector::Regex(re));
                 }
-                let col_idx = *self.map.get(col_name).ok_or_else(|| -> StrError {
-                    format!("Column {col_name} doesn't exist!").into()
-                })?;
+                let col_idx = *self
+                    .map
+                    .get(col_name)
+                    .ok_or_else(|| terr!("Column {} doesn't exist!", col_name))?;
                 Ok(self
                     .data
                     .get(col_idx)
@@ -309,7 +308,7 @@ impl<'a> DataDict<'a> {
         }
     }
 
-    pub fn get_mut<'b>(&'b mut self, col: ColumnSelector<'b>) -> TpResult<GetMutOutput<'a, 'b>> {
+    pub fn get_mut<'b>(&'b mut self, col: ColumnSelector<'b>) -> TResult<GetMutOutput<'a, 'b>> {
         match col {
             ColumnSelector::Index(col_idx) => {
                 let col_idx = self.valid_idx(col_idx)?;
@@ -318,23 +317,24 @@ impl<'a> DataDict<'a> {
             ColumnSelector::NameOwned(col_name) => {
                 // self.get_mut(col_name.as_str().into())
                 if col_name.starts_with('^') & col_name.ends_with('$') {
-                    let re = Regex::new(col_name.as_str())
-                        .map_err(|_| StrError("Invalid regex!".into()))?;
+                    let re = Regex::new(col_name.as_str()).map_err(|_| terr!("Invalid regex!"))?;
                     return self.get_mut(ColumnSelector::Regex(re));
                 }
-                let col_idx = *self.map.get(&col_name).ok_or_else(|| -> StrError {
-                    format!("Column {col_name} doesn't exist!").into()
-                })?;
+                let col_idx = *self
+                    .map
+                    .get(&col_name)
+                    .ok_or_else(|| terr!("Column {col_name} doesn't exist!"))?;
                 Ok(unsafe { self.data.get_unchecked_mut(col_idx).into() })
             }
             ColumnSelector::Name(col_name) => {
                 if col_name.starts_with('^') & col_name.ends_with('$') {
-                    let re = Regex::new(col_name).map_err(|_| StrError("Invalid regex!".into()))?;
+                    let re = Regex::new(col_name).map_err(|_| terr!("Invalid regex!"))?;
                     return self.get_mut(ColumnSelector::Regex(re));
                 }
-                let col_idx = *self.map.get(col_name).ok_or_else(|| -> StrError {
-                    format!("Column {col_name} doesn't exist!").into()
-                })?;
+                let col_idx = *self
+                    .map
+                    .get(col_name)
+                    .ok_or_else(|| terr!("Column {col_name} doesn't exist!"))?;
                 Ok(unsafe { self.data.get_unchecked_mut(col_idx).into() })
             }
             ColumnSelector::All => Ok(self.data.iter_mut().collect::<Vec<_>>().into()),
@@ -405,11 +405,11 @@ impl<'a> DataDict<'a> {
     }
 
     /// Set a new column or replace an existed column using col name
-    pub fn set(&mut self, col: ColumnSelector<'_>, expr: SetInput<'a>) -> TpResult<()> {
+    pub fn set(&mut self, col: ColumnSelector<'_>, expr: SetInput<'a>) -> TResult<()> {
         match col {
             ColumnSelector::Name(name) => {
                 if name.starts_with('^') & name.ends_with('$') {
-                    let re = Regex::new(name).map_err(|_| StrError("Invalid regex!".into()))?;
+                    let re = Regex::new(name).map_err(|_| terr!("Invalid regex!"))?;
                     return self.set(ColumnSelector::Regex(re), expr);
                 }
                 let mut expr = expr.into_expr()?;
@@ -423,7 +423,7 @@ impl<'a> DataDict<'a> {
                     .flat_map(|n| self.get_selector_out_name(n.into()))
                     .collect::<Vec<_>>();
                 if name_vec.len() != exprs.len() {
-                    return Err("The number of expressions to set doesn't match the number of selected columns!".into());
+                    tbail!("The number of expressions to set doesn't match the number of selected columns!");
                 }
                 for (col_name, expr) in zip(name_vec, exprs) {
                     self.set(col_name.into(), expr.into())?
@@ -437,7 +437,7 @@ impl<'a> DataDict<'a> {
                     .flat_map(|n| self.get_selector_out_name(n.into()))
                     .collect::<Vec<_>>();
                 if name_vec.len() != exprs.len() {
-                    return Err("The number of expressions to set doesn't match the number of selected columns!".into());
+                    tbail!("The number of expressions to set doesn't match the number of selected columns!");
                 }
                 for (col_name, expr) in zip(name_vec, exprs) {
                     self.set(col_name.into(), expr.into())?
@@ -466,7 +466,7 @@ impl<'a> DataDict<'a> {
             ColumnSelector::VecIndex(vec_idx) => {
                 let exprs = expr.into_exprs();
                 if vec_idx.len() != exprs.len() {
-                    return Err("The number of expressions to set doesn't match the number of selected columns!".into());
+                    tbail!("The number of expressions to set doesn't match the number of selected columns!");
                 }
                 for (idx, expr) in zip(vec_idx, exprs) {
                     self.set(idx.into(), expr.into())?
@@ -478,7 +478,7 @@ impl<'a> DataDict<'a> {
                 let exprs = expr.into_exprs();
                 let set_col_vec = self.get_selector_out_name(ColumnSelector::Regex(re));
                 if exprs.len() != set_col_vec.len() {
-                    return Err("The number of expressions to set doesn't match the number of selected columns!".into());
+                    tbail!("The number of expressions to set doesn't match the number of selected columns!");
                 }
                 for (col_name, expr) in zip(set_col_vec, exprs) {
                     self.set(col_name.into(), expr.into())?
@@ -488,10 +488,7 @@ impl<'a> DataDict<'a> {
             ColumnSelector::All => {
                 let exprs = expr.into_exprs();
                 if exprs.len() != self.len() {
-                    return Err(
-                        "The number of expressions to set doesn't match the number of columns!"
-                            .into(),
-                    );
+                    tbail!("The number of expressions to set doesn't match the number of columns!",);
                 }
                 let columns = self.columns_owned();
                 for (col_name, expr) in zip(columns, exprs) {
@@ -503,13 +500,13 @@ impl<'a> DataDict<'a> {
     }
 
     #[inline]
-    pub fn eval(self, col: ColumnSelector, context: bool) -> TpResult<Self> {
+    pub fn eval(self, col: ColumnSelector, context: bool) -> TResult<Self> {
         let mut df = self.clone();
         df.eval_inplace(col, context)?;
         Ok(df)
     }
 
-    pub fn eval_inplace(&mut self, col: ColumnSelector, context: bool) -> TpResult<()> {
+    pub fn eval_inplace(&mut self, col: ColumnSelector, context: bool) -> TResult<()> {
         // is there a good way to avoid clone at all cases? Currently we can not get a immutable reference
         // of self and a mutable reference of self at the same time.
         let context: Option<Context<'a>> = if context { self.clone().into() } else { None };
@@ -538,10 +535,10 @@ impl<'a> DataDict<'a> {
     /// Insert a new expr or update the old value,
     /// the column name will be the name of the value expression.
     /// The caller must ensure that the name of the value is not None;
-    pub fn insert_inplace(&mut self, expr: Expr<'a>) -> TpResult<()> {
+    pub fn insert_inplace(&mut self, expr: Expr<'a>) -> TResult<()> {
         let new_name = expr
             .name()
-            .ok_or(StrError("The name of the value expression is None!".into()))?;
+            .ok_or_else(|| terr!("The name of the value expression is None!"))?;
         let len = self.len();
         if let Some(map) = Arc::get_mut(&mut self.map) {
             let col_idx = *map.get(&new_name).unwrap_or(&len);

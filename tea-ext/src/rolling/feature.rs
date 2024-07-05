@@ -7,10 +7,10 @@ use tea_core::prelude::*;
 use tevec::rolling::*;
 
 macro_rules! auto_define_rolling_funcs {
-    ($feature: ident: 
+    ($feature: ident:
         $($func: ident ($($param: ident: $ty: ty),*) -> $tv_func: ident),*
     ) => {
-        #[arr_map_ext(lazy = "view", type = "numeric")]
+        #[arr_map_ext(lazy = "view", type = "Numeric")]
         impl<T: IsNone + Send + Sync, S: Data<Elem = T>, D: Dimension> $feature for ArrBase<S, D>
         where T::Cast<f64>: Send + Sync,
         {

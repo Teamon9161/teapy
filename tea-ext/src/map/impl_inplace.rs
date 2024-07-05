@@ -185,7 +185,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         })
     }
 
-    #[teapy(type = "numeric")]
+    #[teapy(type = "PureNumeric")]
     #[cfg(feature = "agg")]
     #[inline]
     /// Sandardize the array using zscore method on a given axis
@@ -207,7 +207,7 @@ impl<T: Send + Sync, S: DataMut<Elem = T>, D: Dimension> InplaceExt for ArrBase<
         }
     }
 
-    #[teapy(type = "numeric")]
+    #[teapy(type = "PureNumeric")]
     #[cfg(feature = "agg")]
     fn winsorize(&mut self, method: WinsorizeMethod, method_params: Option<f64>)
     where

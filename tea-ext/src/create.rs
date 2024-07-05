@@ -13,13 +13,13 @@ impl<'a> CreateExt for Expr<'a> {
             let ndim = shape.ndim();
             if ndim == 0 {
                 let shape = shape.into_owned().into_scalar()?;
-                match_arrok!(value, v, {
+                match_arrok!(value; Dynamic(v) => {
                     let v = v.into_owned().into_scalar()?;
                     Ok((Arr::from_elem(shape, v).to_dimd().into(), ctx))
-                })
+                },)
             } else if ndim == 1 {
                 let shape = shape.view().to_dim1()?;
-                match_arrok!(value, v, {
+                match_arrok!(value; Dynamic(v) => {
                     let v = v.into_owned().into_scalar()?;
                     Ok((
                         Arr::from_elem(shape.to_slice().unwrap(), v)
@@ -27,9 +27,9 @@ impl<'a> CreateExt for Expr<'a> {
                             .into(),
                         ctx,
                     ))
-                })
+                },)
             } else {
-                Err("The dim of shape should not be greater than 1".into())
+                tbail!("The dim of shape should not be greater than 1")
             }
         });
         e

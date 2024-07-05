@@ -18,12 +18,12 @@ impl<'a> ExprViewExt for Expr<'a> {
                 .cast_i32()
                 .into_owned()
                 .into_scalar()?;
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let index = arr.view().norm_index(index, axis);
                 let view = unsafe { transmute(arr.view().index_axis(axis, index).wrap()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -33,7 +33,7 @@ impl<'a> ExprViewExt for Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
             let shape = shape.view_arr(ctx.as_ref())?.deref().cast_usize();
-            let out: ArrOk<'a> = match_arrok!(arr, arr, {
+            let out: ArrOk<'a> = match_arrok!(arr; Dynamic(arr) => {
                 let ndim = shape.ndim();
                 if ndim == 0 {
                     let shape = shape.into_owned().to_dim0()?.into_scalar();
@@ -42,12 +42,12 @@ impl<'a> ExprViewExt for Expr<'a> {
                             arr.view()
                                 .0
                                 .into_shape(shape)
-                                .map_err(|e| StrError::from(format!("{e:?}")))?
+                                .map_err(|e| terr!("{e:?}"))?
                                 .wrap()
                                 .to_dimd(),
                         )
                     };
-                    ViewOnBase::new(arr, view).into()
+                    Ok(ViewOnBase::new(arr, view).into())
                 } else if ndim == 1 {
                     let shape = shape.view().to_dim1()?;
                     let view = unsafe {
@@ -55,17 +55,18 @@ impl<'a> ExprViewExt for Expr<'a> {
                             arr.view()
                                 .0
                                 .into_shape(shape.to_slice().unwrap())
-                                .map_err(|e| StrError::from(format!("{e:?}")))?
+                                .map_err(|e| terr!("{e:?}"))?
                                 .wrap()
                                 .to_dimd(),
                         )
                     };
 
-                    ViewOnBase::new(arr, view).into()
+                    Ok(ViewOnBase::new(arr, view).into())
                 } else {
-                    return Err("shape must be 0 or 1 dim".into());
+                    tbail!("shape must be 0 or 1 dim");
                 }
-            });
+            },)
+            .unwrap();
             Ok((out.into(), ctx))
         });
         self
@@ -76,11 +77,11 @@ impl<'a> ExprViewExt for Expr<'a> {
     fn t(&mut self) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let view = unsafe { transmute(arr.view().0.t().wrap()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -93,11 +94,11 @@ impl<'a> ExprViewExt for Expr<'a> {
     fn diag(&mut self) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let view = unsafe { transmute(arr.view().0.diag().wrap().to_dimd()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -109,14 +110,14 @@ impl<'a> ExprViewExt for Expr<'a> {
     fn swap_axes(&mut self, ax: i32, bx: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let mut view: ArrViewD<_> = unsafe { transmute(arr.view()) };
                 let ax = view.norm_axis(ax).index();
                 let bx = view.norm_axis(bx).index();
                 view.0.swap_axes(ax, bx);
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -131,7 +132,7 @@ impl<'a> ExprViewExt for Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
             let axes = axes.view_arr(ctx.as_ref())?.deref().cast_i32();
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let axes = axes
                     .view()
                     .to_dim1()?
@@ -146,7 +147,7 @@ impl<'a> ExprViewExt for Expr<'a> {
                 };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -157,12 +158,12 @@ impl<'a> ExprViewExt for Expr<'a> {
     fn insert_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let axis = arr.view().norm_axis(axis);
                 let view = unsafe { transmute(arr.view().0.insert_axis(axis).wrap()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -173,12 +174,12 @@ impl<'a> ExprViewExt for Expr<'a> {
     fn remove_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let axis = arr.view().norm_axis(axis);
                 let view = unsafe { transmute(arr.view().0.remove_axis(axis).wrap()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -190,7 +191,7 @@ impl<'a> ExprViewExt for Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
             let shape = shape.view_arr(ctx.as_ref())?.deref().cast_usize();
-            let out: ArrOk<'a> = match_arrok!(arr, arr, {
+            let out: ArrOk<'a> = match_arrok!(arr; Dynamic(arr) => {
                 let shape_view = shape.view();
                 let ndim = shape.ndim();
                 if ndim == 0 {
@@ -200,14 +201,14 @@ impl<'a> ExprViewExt for Expr<'a> {
                             arr.view()
                                 .0
                                 .broadcast(*shape)
-                                .ok_or(StrError::from(format!(
+                                .ok_or_else(|| terr!(
                                     "Can not broadcast to shape: {shape:?}"
-                                )))?
+                                ))?
                                 .wrap()
                                 .to_dimd(),
                         )
                     };
-                    ViewOnBase::new(arr, view).into()
+                    Ok(ViewOnBase::new(arr, view).into())
                 } else if ndim == 1 {
                     let shape = shape_view.to_dim1()?;
                     let view = unsafe {
@@ -215,19 +216,20 @@ impl<'a> ExprViewExt for Expr<'a> {
                             arr.view()
                                 .0
                                 .broadcast(shape.to_slice().unwrap())
-                                .ok_or(StrError::from(format!(
+                                .ok_or_else(|| terr!(
                                     "Can not broadcast to shape: {shape:?}"
-                                )))?
+                                ))?
                                 .wrap()
                                 .to_dimd(),
                         )
                     };
 
-                    ViewOnBase::new(arr, view).into()
+                    Ok(ViewOnBase::new(arr, view).into())
                 } else {
-                    return Err("shape must be 0 or 1 dim".into());
+                    tbail!("shape must be dim 0 or dim 1");
                 }
-            });
+            },)
+            .unwrap();
             Ok((out.into(), ctx))
         });
         self
@@ -266,11 +268,11 @@ impl<'a> ExprViewExt for Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
             let slc_info = adjust_slice(slc.clone(), arr.shape(), arr.ndim());
-            match_arrok!(arr, arr, {
+            match_arrok!(arr; Dynamic(arr) => {
                 let view = unsafe { transmute(arr.view().0.slice_move(slc_info).wrap()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
-            })
+            },)
         });
         self
     }

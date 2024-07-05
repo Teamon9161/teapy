@@ -1,10 +1,10 @@
 use crate::{
-    prelude::{Arr2, ArrBase, TpResult, WrapNdarray},
+    prelude::{Arr2, ArrBase, TResult, WrapNdarray},
     utils::{vec_uninit, VecAssumeInit},
 };
-use error::StrError;
 use ndarray::{ArrayBase, Data, Dimension};
 use std::mem::MaybeUninit;
+use tea_dyn::prelude::{tbail, terr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MatrixLayout {
@@ -213,19 +213,19 @@ pub fn transpose_over<T: Copy>(layout: MatrixLayout, from: &[T], to: &mut [T]) -
     transposed
 }
 
-pub fn into_matrix<T>(l: MatrixLayout, a: Vec<T>) -> TpResult<Arr2<T>> {
+pub fn into_matrix<T>(l: MatrixLayout, a: Vec<T>) -> TResult<Arr2<T>> {
     use ndarray::ShapeBuilder;
     match l {
         MatrixLayout::C { row, lda } => {
             Ok(ArrayBase::from_shape_vec((row as usize, lda as usize), a)
-                .map_err(|e| StrError::from(format!("{e:?}")))?
+                .map_err(|e| terr!("{:?}", e))?
                 .wrap())
         }
         MatrixLayout::F { col, lda } => Ok(ArrayBase::from_shape_vec(
             (lda as usize, col as usize).f(),
             a,
         )
-        .map_err(|e| StrError::from(format!("{e:?}")))?
+        .map_err(|e| terr!("{:?}", e))?
         .wrap()),
     }
 }
@@ -235,7 +235,7 @@ where
     S: Data<Elem = T>,
     D: Dimension,
 {
-    pub fn layout(&self) -> TpResult<MatrixLayout> {
+    pub fn layout(&self) -> TResult<MatrixLayout> {
         let shape = self.shape();
         let strides = self.strides();
         match self.ndim() {
@@ -257,9 +257,9 @@ where
                         lda: arr2d.ncols() as i32,
                     });
                 }
-                Err("Invalid stride of ndim2".into())
+                tbail!("Invalid stride of ndim2")
             }
-            _ => Err("Invalid dimension".into()),
+            _ => tbail!("Invalid dimension"),
         }
     }
 }

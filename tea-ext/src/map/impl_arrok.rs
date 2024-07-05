@@ -5,9 +5,9 @@ use tea_core::prelude::*;
 #[ext_trait]
 impl<'a> ArrOkExt for ArrOk<'a> {
     #[allow(unreachable_patterns, clippy::collapsible_else_if)]
-    fn select(&self, slc: &Self, axis: i32, check: bool) -> TpResult<ArrOk<'a>> {
+    fn select(&self, slc: &Self, axis: i32, check: bool) -> TResult<ArrOk<'a>> {
         if slc.ndim() > 1 {
-            return Err("The slice must be dim 0 or dim 1 when select on axis".into());
+            tbail!("The slice must be dim 0 or dim 1 when select on axis");
         }
         let mut slc = slc.deref();
         let out = match_arrok!(self; Dynamic(a) => {
@@ -132,7 +132,7 @@ impl<'a> ArrOkExt for ArrOk<'a> {
         Ok(out)
     }
 
-    fn get_sort_idx<'r>(by: &'r [&'r ArrOk<'a>], rev: bool) -> TpResult<Vec<usize>> {
+    fn get_sort_idx<'r>(by: &'r [&'r ArrOk<'a>], rev: bool) -> TResult<Vec<usize>> {
         // if self.ndim() != 1 {
         //     return Err("Currently only 1 dim Expr can be sorted".into());
         // }
@@ -172,9 +172,9 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                                     .expect("Currently only 1 dim array can be sort key");
                                 let (va, vb) = unsafe { (key_view.uget(*a), key_view.uget(*b)) };
                                 if !rev {
-                                    Ok(va.cmp(vb))
+                                    Ok(va.sort_cmp(vb))
                                 } else {
-                                    Ok(va.cmp(vb).reverse())
+                                    Ok(va.sort_cmp_rev(vb))
                                 }
                             },
                             // DateTime // TimeDelta

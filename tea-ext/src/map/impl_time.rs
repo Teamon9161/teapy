@@ -2,12 +2,17 @@ use ndarray::{Data, Dimension};
 use tea_core::prelude::*;
 
 #[ext_trait]
-impl<S, D> TimeExt for ArrBase<S, D>
+impl<S, D, U: TimeUnitTrait> TimeExt for ArrBase<S, D>
 where
-    S: Data<Elem = DateTime>,
+    S: Data<Elem = DateTime<U>>,
     D: Dimension,
 {
-    fn strftime(&self, fmt: Option<&str>) -> Arr<String, D> {
+    #[inline]
+    fn strftime(&self, fmt: Option<&str>) -> Arr<String, D>
+    where
+        DateTime<U>: TryInto<CrDateTime<Utc>>,
+        <DateTime<U> as TryInto<CrDateTime<Utc>>>::Error: std::fmt::Debug,
+    {
         self.map(|dt| dt.strftime(fmt))
     }
 

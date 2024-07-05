@@ -241,6 +241,45 @@ impl<'a> ArrOk<'a> {
     pub fn view(&self) -> ArrOk<'_> {
         match_arrok!(self; Dynamic(a) => { Ok(a.view().into()) },).unwrap()
     }
+
+    #[cfg(feature = "time")]
+    pub fn cast_datetime(self, unit: Option<TimeUnit>) -> Self {
+        if let Some(unit) = unit {
+            match_arrok!(
+                &self;
+                DateTimeMs(a) => {
+                    if unit == TimeUnit::Millisecond {
+                        return self;
+                    } else {
+                        Ok(a.view().to_datetime(Some(unit)).into())
+                    }
+                },
+                DateTimeUs(a) => {
+                    if unit == TimeUnit::Microsecond {
+                        return self;
+                    } else {
+                        Ok(a.view().to_datetime(Some(unit)).into())
+                    }
+                },
+                DateTimeNs(a) => {
+                    if unit == TimeUnit::Nanosecond {
+                        return self;
+                    } else {
+                        Ok(a.view().to_datetime(Some(unit)).into())
+                    }
+                },
+                Numeric(a) => { Ok(a.view().to_datetime(Some(unit)).into()) },
+            )
+            .unwrap()
+        } else {
+            let dtype = self.dtype();
+            if dtype.is_time() {
+                return self;
+            } else {
+                match_arrok!(self; Numeric(a) => {Ok(a.cast_datetime_ns().into())},).unwrap()
+            }
+        }
+    }
 }
 
 #[cfg(feature = "concat")]

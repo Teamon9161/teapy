@@ -1,15 +1,13 @@
 use std::mem::MaybeUninit;
 
-use crate::{
-    prelude::{ArrD, TpResult},
-    utils::vec_uninit,
-};
+use crate::{prelude::ArrD, utils::vec_uninit};
 
 use super::prelude::{ArrBase, WrapNdarray};
 use ndarray::{
     s, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, NewAxis, RawArrayView, ShapeBuilder, StrideShape,
     ViewRepr,
 };
+use tea_dyn::prelude::TResult;
 
 pub type ArrView<'a, T, D> = ArrBase<ViewRepr<&'a T>, D>;
 pub type ArrView1<'a, T> = ArrView<'a, T, Ix1>;
@@ -86,7 +84,7 @@ impl<'a, T> ArrView<'a, T, Ix0> {
 
 impl<'a, T> ArrViewD<'a, T> {
     #[inline(always)]
-    pub fn into_scalar(self) -> TpResult<&'a T> {
+    pub fn into_scalar(self) -> TResult<&'a T> {
         Ok(self.to_dim0()?.into_scalar())
     }
 
