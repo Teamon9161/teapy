@@ -55,7 +55,7 @@ impl<'a> ExprGroupByExt for Expr<'a> {
             agg_expr.simplify();
             let init_data = agg_expr.get_chain_base();
             let nodes = agg_expr.collect_chain_nodes(vec![]);
-            let out: ArrOk<'a> = match_arrok!(arr, arr, {
+            let out: ArrOk<'a> = match_arrok!(arr; Dynamic(arr) => {
                 let arr = arr.view().to_dim1()?;
                 let out = idxs_arr
                     .iter() // do not use into_iter here, as we need to keep the idxs_arr alive until we use to_owned
@@ -65,7 +65,7 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                         } else {
                             std::iter::once(arr.select_unchecked(Axis(0), idx).to_dimd().into())
                                 .chain(others_ref.iter().map(|arr| {
-                                    match_arrok!(arr, o, {
+                                    match_arrok!(arr; Dynamic(o) => {
                                         let arr: ArrOk = o
                                             .view()
                                             .to_dim1()
@@ -73,8 +73,9 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                                             .select_unchecked(Axis(0), idx)
                                             .to_dimd()
                                             .into();
-                                        arr.into()
-                                    })
+                                        Ok(arr.into())
+                                    },)
+                                    .unwrap()
                                 }))
                                 .collect::<Vec<_>>()
                         };
@@ -108,8 +109,9 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                         // o
                     })
                     .collect_trusted();
-                ArrOk::same_dtype_concat_1d(out)
-            });
+                Ok(ArrOk::same_dtype_concat_1d(out))
+            },)
+            .unwrap();
             Ok((out.into(), ctx.clone()))
         });
         self

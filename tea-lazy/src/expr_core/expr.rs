@@ -90,7 +90,7 @@ impl<'a> From<ArrOk<'a>> for Expr<'a> {
     }
 }
 
-impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for Expr<'a>
+impl<'a, T: 'a> From<ArrViewD<'a, T>> for Expr<'a>
 where
     ArrOk<'a>: From<ArbArray<'a, T>>,
 {

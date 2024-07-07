@@ -15,9 +15,9 @@ impl<'a> ExprUniqueExt for Expr<'a> {
     pub fn sorted_unique(&mut self) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
-            match_arrok!(arr, a, {
+            match_arrok!(arr; Dynamic(a) => {
                 Ok((a.view().to_dim1()?.sorted_unique_1d().to_dimd().into(), ctx))
-            })
+            },)
         });
         self
     }
@@ -26,7 +26,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
     pub fn get_sorted_unique_idx(&mut self, keep: String) -> &mut Self {
         self.chain_f_ctx(move |(arr, ctx)| {
             let arr = arr.into_arr(ctx.clone())?;
-            match_arrok!(arr, a, {
+            match_arrok!(arr; Dynamic(a) => {
                 Ok((
                     a.view()
                         .to_dim1()?
@@ -35,7 +35,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                         .into(),
                     ctx,
                 ))
-            })
+            },)
         });
         self
     }
@@ -55,14 +55,14 @@ impl<'a> ExprUniqueExt for Expr<'a> {
             let arr = data.view_arr(ctx.as_ref()).unwrap();
             let len = arr.len();
             let out_idx = if others_ref.is_empty() {
+                let arr: ArrOk = if arr.is_float() {
+                    match_arrok!(arr; PureFloat(a) => {Ok(a.view().to_dim1()?.tphash_1d().to_dimd().into())},).unwrap()
+                } else {
+                    arr.deref()
+                };
                 if &keep == "first" {
                     let mut out_idx = Vec::with_capacity(len);
-                    let arr: ArrOk = if arr.is_float() {
-                        match_arrok!(float arr, a, {a.view().to_dim1()?.tphash_1d().to_dimd().into()})
-                    } else {
-                        arr.deref()
-                    };
-                    match_arrok!(hash arr, a, {
+                    match_arrok!(arr; Hash(a) => {
                         let a = a.view().to_dim1()?;
                         if a.dtype().is_float() {
                             let a = a.tphash_1d();
@@ -84,10 +84,11 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                                 }
                             }
                         }
-                    });
+                        Ok(())
+                    },);
                     out_idx
                 } else if &keep == "last" {
-                    match_arrok!(hash arr, a, {
+                    match_arrok!(arr; Hash(a) => {
                         let a = a.view().to_dim1()?;
                         let mut map = TpHashMap::<_, usize>::with_capacity_and_hasher(len, BUILD_HASHER.clone());
                         for i in 0..len {
@@ -104,15 +105,15 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                         }
                         let mut out_idx = map.into_values().collect_trusted();
                         out_idx.sort_unstable();
-                        out_idx
-                    })
+                        Ok(out_idx)
+                    },).unwrap()
                 } else {
-                    return Err("keep must be either first or last".into());
+                    tbail!("keep must be either first or last");
                 }
             } else {
                 let (len, hashed_keys) = super::prepare_groupby(&others_ref, false);
                 let arr = data.view_arr(ctx.as_ref())?;
-                let arr_key = match_arrok!(tphash arr, a, {a.view().to_dim1()?.tphash_1d()});
+                let arr_key = match_arrok!(arr; TpHash(a) => {Ok(a.view().to_dim1()?.tphash_1d())},).unwrap();
                 let mut out_idx = Vec::with_capacity(len);
                 if &keep == "first" {
                     let mut map = TpHashMap::<Vec<u64>, u8>::with_capacity_and_hasher(len, BUILD_HASHER.clone());
@@ -151,7 +152,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                     out_idx = map.into_values().collect_trusted();
                     out_idx.sort_unstable()
                 } else {
-                    return Err("keep must be either first or last".into());
+                    tbail!("keep must be either first or last");
                 }
                 out_idx
             };

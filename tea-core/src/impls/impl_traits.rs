@@ -73,6 +73,46 @@ impl Default for ArrOk<'_> {
     }
 }
 
+impl<'a, T> From<ArrViewD<'a, T>> for ArrOk<'a>
+where
+    Self: From<ArbArray<'a, T>>,
+{
+    #[inline]
+    fn from(ty: ArrViewD<'a, T>) -> Self {
+        ArbArray::<'a, T>::from(ty).into()
+    }
+}
+
+impl<'a, T> From<ArrViewMutD<'a, T>> for ArrOk<'a>
+where
+    Self: From<ArbArray<'a, T>>,
+{
+    #[inline]
+    fn from(ty: ArrViewMutD<'a, T>) -> Self {
+        ArbArray::<'a, T>::from(ty).into()
+    }
+}
+
+impl<'a, T: 'a> From<ArrD<T>> for ArrOk<'a>
+where
+    Self: From<ArbArray<'a, T>>,
+{
+    #[inline]
+    fn from(ty: ArrD<T>) -> Self {
+        ArbArray::<'a, T>::from(ty).into()
+    }
+}
+
+impl<'a, T> From<Pin<Box<ViewOnBase<'a, T>>>> for ArrOk<'a>
+where
+    Self: From<ArbArray<'a, T>>,
+{
+    #[inline]
+    fn from(ty: Pin<Box<ViewOnBase<'a, T>>>) -> Self {
+        ArbArray::<'a, T>::from(ty).into()
+    }
+}
+
 macro_rules! impl_from {
     ($($(#[$meta:meta])? ($arm: ident, $dtype: ident $(($inner: path))?, $ty: ty, $func_name: ident)),* $(,)?) => {
         impl<'a> ArrOk<'a> {
@@ -86,77 +126,6 @@ macro_rules! impl_from {
                     }
                 }
             )*
-        }
-
-        impl<'a, T: Dtype + 'a> From<ArrD<T>> for ArrOk<'a> {
-            #[allow(unreachable_patterns)]
-            #[inline]
-            fn from(a: ArrD<T>) -> Self {
-                match T::type_() {
-                    $(
-                        $(#[$meta])? DataType::$dtype $(($inner))? => {
-                            // safety: we have checked the type
-                            // let a: ArbArray<'a, _> = a.into();
-                            let a = ArbArray::Owned(a);
-                            unsafe{ArrOk::$arm(a.into_dtype().into())}
-                        },
-                    )*
-                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
-                }
-            }
-        }
-
-        impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for ArrOk<'a> {
-            #[allow(unreachable_patterns)]
-            #[inline]
-            fn from(a: ArrViewD<'a, T>) -> Self {
-                match T::type_() {
-                    $(
-                        $(#[$meta])? DataType::$dtype $(($inner))? => {
-                            // safety: we have checked the type
-                            // let a: ArbArray<'a, _> = a.into();
-                            let a = ArbArray::View(a);
-                            unsafe{ArrOk::$arm(a.into_dtype().into())}
-                        },
-                    )*
-                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
-                }
-            }
-        }
-
-        impl<'a, T: Dtype + 'a> From<ArrViewMutD<'a, T>> for ArrOk<'a> {
-            #[allow(unreachable_patterns)]
-            #[inline]
-            fn from(a: ArrViewMutD<'a, T>) -> Self {
-                match T::type_() {
-                    $(
-                        $(#[$meta])? DataType::$dtype $(($inner))? => {
-                            // safety: we have checked the type
-                            // let a: ArbArray<'a, _> = a.into();
-                            let a = ArbArray::ViewMut(a);
-                            unsafe{ArrOk::$arm(a.into_dtype().into())}
-                        },
-                    )*
-                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
-                }
-            }
-        }
-        impl<'a, T: Dtype + 'a> From<Pin<Box<ViewOnBase<'a, T>>>> for ArrOk<'a> {
-            #[allow(unreachable_patterns)]
-            #[inline]
-            fn from(a: Pin<Box<ViewOnBase<'a, T>>>) -> Self {
-                match T::type_() {
-                    $(
-                        $(#[$meta])? DataType::$dtype $(($inner))? => {
-                            // safety: we have checked the type
-                            // let a: ArbArray<'a, _> = a.into();
-                            let a = ArbArray::ViewOnBase(a);
-                            unsafe{ArrOk::$arm(a.into_dtype().into())}
-                        },
-                    )*
-                    type_ => unimplemented!("Create ArrOk from type {:?} is not implemented", type_),
-                }
-            }
         }
     };
 }

@@ -102,7 +102,7 @@ impl_tphash!(uint u8, u16, u32, u64, usize);
 impl_tphash!(int i32, i64, isize);
 impl_tphash!(default String, &str, Vec<u64>, [u64]);
 #[cfg(feature = "time")]
-impl_tphash!(int DateTime);
+impl_tphash!(int DateTime<unit::Millisecond>, DateTime<unit::Microsecond>, DateTime<unit::Nanosecond>);
 
 impl TpHash for f64 {
     #[inline]

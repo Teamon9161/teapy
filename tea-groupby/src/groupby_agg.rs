@@ -157,49 +157,53 @@ impl<'a> GroupbyAggExt for Expr<'a> {
         self
     }
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_max(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_min(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_umax(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_umin(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_median(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_quantile(&mut self, group_idx: Self, q: f64, method: QuantileMethod) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "nostr")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "Dynamic")]
     fn group_by_startidx_first(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "nostr")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "Dynamic")]
     fn group_by_startidx_valid_first(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "nostr")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "Dynamic")]
     fn group_by_startidx_last(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "nostr")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "Dynamic")]
     fn group_by_startidx_valid_last(&mut self, group_idx: Self) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_sum(&mut self, group_idx: Self, stable: bool) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_mean(&mut self, group_idx: Self, min_periods: usize, stable: bool) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
-    fn group_by_startidx_var(&mut self, group_idx: Self, min_periods: usize, stable: bool) {}
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
+    fn group_by_startidx_var(&mut self, group_idx: Self, min_periods: usize) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg", type = "numeric")]
-    fn group_by_startidx_std(&mut self, group_idx: Self, min_periods: usize, stable: bool) {}
+    #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
+    fn group_by_startidx_std(&mut self, group_idx: Self, min_periods: usize) {}
 
-    #[lazy_only(lazy = "group_by_startidx_agg2", type = "numeric", type2 = "numeric")]
+    #[lazy_only(
+        lazy = "group_by_startidx_agg2",
+        type = "PureNumeric",
+        type2 = "PureNumeric"
+    )]
     fn group_by_startidx_cov(
         &mut self,
         other: Self,
@@ -209,7 +213,11 @@ impl<'a> GroupbyAggExt for Expr<'a> {
     ) {
     }
 
-    #[lazy_only(lazy = "group_by_startidx_agg2", type = "numeric", type2 = "numeric")]
+    #[lazy_only(
+        lazy = "group_by_startidx_agg2",
+        type = "PureNumeric",
+        type2 = "PureNumeric"
+    )]
     fn group_by_startidx_corr(
         &mut self,
         other: Self,

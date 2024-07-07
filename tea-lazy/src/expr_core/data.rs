@@ -328,7 +328,7 @@ where
     }
 }
 
-impl<'a, T: Dtype + 'a> From<ArrD<T>> for Data<'a>
+impl<'a, T: 'a> From<ArrD<T>> for Data<'a>
 where
     ArrD<T>: Into<ArbArray<'a, T>>,
     ArrOk<'a>: From<ArbArray<'a, T>>,
@@ -340,7 +340,7 @@ where
     }
 }
 
-impl<'a, T: Dtype + 'a> From<ArbArray<'a, T>> for Data<'a>
+impl<'a, T: 'a> From<ArbArray<'a, T>> for Data<'a>
 where
     ArrOk<'a>: From<ArbArray<'a, T>>,
 {
@@ -350,7 +350,7 @@ where
     }
 }
 
-impl<'a, T: Dtype + 'a> From<ArrViewD<'a, T>> for Data<'a>
+impl<'a, T: 'a> From<ArrViewD<'a, T>> for Data<'a>
 where
     ArrOk<'a>: From<ArbArray<'a, T>>,
 {
@@ -361,7 +361,7 @@ where
     }
 }
 
-impl<'a, T: Dtype + 'a> From<ArrViewMutD<'a, T>> for Data<'a>
+impl<'a, T: 'a> From<ArrViewMutD<'a, T>> for Data<'a>
 where
     ArrOk<'a>: From<ArbArray<'a, T>>,
 {

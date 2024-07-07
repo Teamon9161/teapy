@@ -55,7 +55,7 @@ use tea_hash::{TpHash, TpHashMap, BUILD_HASHER};
 
 // Faster than collecting from a flattened iterator.
 pub fn flatten<T: Clone, R: AsRef<[T]>>(bufs: &[R], len: Option<usize>) -> Vec<T> {
-    let len = len.unwrap_or_else(|| bufs.iter().map(|b| b.as_ref().len()).sum());
+    let len = len.unwrap_or_else(|| Iterator::sum(bufs.iter().map(|b| b.as_ref().len())));
     let mut out = Vec::with_capacity(len);
     for b in bufs {
         out.extend_from_slice(b.as_ref());
@@ -97,16 +97,16 @@ pub fn prepare_groupby(
         .iter()
         .map(|arr| {
             match_arrok!(
-                hash
-                arr,
-                a,
+                arr;
+                Hash(a) =>
                 {
                     let a = a.view()
                         .to_dim1()
                         .expect("groupby key should be dim1");
-                    a.tphash_1d()
-                }
+                    Ok(a.tphash_1d())
+                },
             )
+            .unwrap()
         })
         .collect::<Vec<_>>();
     if keys.is_empty() {
@@ -216,7 +216,7 @@ pub fn groupby(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
     let by_len = keys.len();
     let mut vec = if by_len == 1 {
         let key = keys[0];
-        match_arrok!(hash key, key_arr, {
+        match_arrok!(key; Hash(key_arr) => {
             let mut group_dict =
                 TpHashMap::<_, (usize, Vec<usize>)>::with_capacity_and_hasher(init_size, BUILD_HASHER.clone());
             let arr = key_arr.view().to_dim1().unwrap();
@@ -235,13 +235,13 @@ pub fn groupby(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
                     }
                 }
             }
-            group_dict.into_values().collect_trusted()
-        })
+            Ok(group_dict.into_values().collect_trusted())
+        },).unwrap()
     } else if by_len == 2 {
         let key0 = keys[0];
         let key1 = keys[1];
-        match_arrok!(hash key0, key0_arr, {
-            match_arrok!(hash key1, key1_arr, {
+        match_arrok!(key0; Hash(key0_arr) => {
+            match_arrok!(key1; Hash(key1_arr) => {
                 let mut group_dict =
                     TpHashMap::<_, (usize, Vec<usize>)>::with_capacity_and_hasher(init_size, BUILD_HASHER.clone());
                 let arr0 = key0_arr.view().to_dim1().unwrap();
@@ -263,16 +263,16 @@ pub fn groupby(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
                         }
                     }
                 }
-                group_dict.into_values().collect_trusted()
-            })
-        })
+                Ok(group_dict.into_values().collect_trusted())
+            },)
+        },).unwrap()
     } else if by_len == 3 {
         let key0 = keys[0];
         let key1 = keys[1];
         let key2 = keys[2];
-        match_arrok!(hash key0, key0_arr, {
-            match_arrok!(hash key1, key1_arr, {
-                match_arrok!(hash key2, key2_arr, {
+        match_arrok!(key0; Hash(key0_arr) => {
+            match_arrok!(key1; Hash(key1_arr) => {
+                match_arrok!(key2; Hash(key2_arr) => {
                     let mut group_dict =
                         TpHashMap::<_, (usize, Vec<usize>)>::with_capacity_and_hasher(init_size, BUILD_HASHER.clone());
                     let arr0 = key0_arr.view().to_dim1().unwrap();
@@ -296,10 +296,10 @@ pub fn groupby(keys: &[&ArrOk<'_>], sort: bool) -> Vec<(usize, Vec<usize>)> {
                             }
                         }
                     }
-                    group_dict.into_values().collect_trusted()
-                })
-            })
-        })
+                    Ok(group_dict.into_values().collect_trusted())
+                },)
+            },)
+        },).unwrap()
     } else {
         let (len, hashed_keys) = prepare_groupby(keys, false);
         let group_dict = collect_hashmap_keys(len, &hashed_keys, None);

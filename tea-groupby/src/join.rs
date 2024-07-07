@@ -24,7 +24,7 @@ fn collect_left_right_keys<'a, 'r>(
     ctx: Option<&'r Context<'a>>,
     left_other: &'r Option<Vec<Expr<'a>>>,
     right: &'r Vec<Expr<'a>>,
-) -> TpResult<(Vec<&'r ArrOk<'a>>, Vec<&'r ArrOk<'a>>)> {
+) -> TResult<(Vec<&'r ArrOk<'a>>, Vec<&'r ArrOk<'a>>)> {
     let left_len = left_other.as_ref().map(|a| a.len()).unwrap_or(0);
     let all_keys = if let Some(left_other) = left_other.as_ref() {
         left_other
@@ -139,8 +139,8 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
     let mut output: Vec<Option<usize>> = Vec::with_capacity(len);
     // fast path for only one key
     if key_len == 1 {
-        match_arrok!(hash left_keys[0], lk_arr, {
-            match_arrok!(hash right_keys[0], rk_arr, {
+        match_arrok!(left_keys[0]; Hash(lk_arr) => {
+            match_arrok!(right_keys[0]; Hash(rk_arr) => {
                 if lk_arr.dtype() != rk_arr.dtype() {
                     panic!("the dtype of left key and right key should be equal")
                 }
@@ -181,8 +181,9 @@ pub fn join_left<'a>(left_keys: &[&ArrOk<'a>], right_keys: &[&ArrOk<'a>]) -> Vec
                         }
                     }
                 }
-            })
-        });
+                Ok(())
+            },)
+        },).unwrap();
     } else {
         let (len, hashed_left_keys) = prepare_groupby(left_keys, false);
         let (right_len, hashed_right_keys) = prepare_groupby(right_keys, false);
@@ -248,8 +249,8 @@ pub fn join_outer<'a>(
 
     // fast path for only one key
     let (left_idx, right_idx): (Vec<_>, Vec<_>) = if key_len == 1 {
-        match_arrok!(hash left_keys[0], lk_arr, {
-            match_arrok!(hash right_keys[0], rk_arr, {
+        match_arrok!(left_keys[0]; Hash(lk_arr) => {
+            match_arrok!(right_keys[0]; Hash(rk_arr) => {
                 if lk_arr.dtype() != rk_arr.dtype() {
                     panic!("the dtype of left key and right key should be equal")
                 }
@@ -298,11 +299,11 @@ pub fn join_outer<'a>(
                     }
                 }).collect_trusted();
                 outer_keys.push(Arr1::from_vec(outer_key).to_dimd().into());
-                key_idx.iter().map(|(_idx, _is_left, value)| {
+                Ok(key_idx.iter().map(|(_idx, _is_left, value)| {
                     outer_dict.get(value).unwrap().clone()
-                }).unzip()
-            })
-        })
+                }).unzip())
+            },)
+        },).unwrap()
     } else {
         let (len, hashed_left_keys) = prepare_groupby(left_keys, false);
         let (right_len, hashed_right_keys) = prepare_groupby(right_keys, false);
@@ -349,8 +350,9 @@ pub fn join_outer<'a>(
             }
         }
         for i in 0..key_len {
-            outer_keys.push(match_arrok!(castable left_keys[i], larr, {
-                match_arrok!(castable right_keys[i], rarr, {
+            outer_keys.push(
+                match_arrok!(left_keys[i]; Cast(larr) => {
+                match_arrok!(right_keys[i]; Cast(rarr) => {
                     let arr_left = larr.view().to_dim1().unwrap();
                     let arr_right = rarr.view().to_dim1().unwrap();
                     let a = key_idx.iter().map(|(idx, is_left, _hash)| {
@@ -362,9 +364,11 @@ pub fn join_outer<'a>(
                             }
                         }
                     }).collect_trusted();
-                    Arr1::from_vec(a).to_dimd().into()
-                })
-            }));
+                    Ok(Arr1::from_vec(a).to_dimd().into())
+                },)
+            },)
+                .unwrap(),
+            );
         }
         key_idx
             .iter()
