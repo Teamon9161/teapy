@@ -24,7 +24,7 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                 groupby(&keys, sort)
             };
             let output = group_idx.into_iter().map(|v| v.1).collect_trusted();
-            let output = Arr1::from_vec(output).to_dimd();
+            let output = Arr1::from_vec(output).into_dyn();
             Ok((output.into(), ctx))
         });
         self
@@ -61,9 +61,12 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                     .iter() // do not use into_iter here, as we need to keep the idxs_arr alive until we use to_owned
                     .map(|idx| {
                         let exprs: Vec<Expr<'_>> = if others_ref.is_empty() {
-                            vec![arr.select_unchecked(Axis(0), idx).to_dimd().into()]
+                            let slice = arr.select_unchecked(Axis(0), idx).into_dyn();
+                            let arr_ok: ArrOk<'_> = slice.into();
+                            vec![arr_ok.into()]
+                            // vec![arr.select_unchecked(Axis(0), idx).to_dimd().into()]
                         } else {
-                            std::iter::once(arr.select_unchecked(Axis(0), idx).to_dimd().into())
+                            std::iter::once(arr.select_unchecked(Axis(0), idx).into_dyn().into())
                                 .chain(others_ref.iter().map(|arr| {
                                     match_arrok!(arr; Dynamic(o) => {
                                         let arr: ArrOk = o
@@ -71,7 +74,7 @@ impl<'a> ExprGroupByExt for Expr<'a> {
                                             .to_dim1()
                                             .unwrap()
                                             .select_unchecked(Axis(0), idx)
-                                            .to_dimd()
+                                            .into_dyn()
                                             .into();
                                         Ok(arr.into())
                                     },)

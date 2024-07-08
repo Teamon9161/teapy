@@ -68,7 +68,7 @@ impl<'a> ExprAggExt for Expr<'a> {
             let arr = data.view_arr(ctx.as_ref())?;
             let out: ArrOk<'a> = match_arrok!(arr; Dynamic(a) => {
                 let shape = a.view().shape().to_owned();
-                Ok(Arr1::from_vec(shape).to_dimd().into())
+                Ok(Arr1::from_vec(shape).into_dyn().into())
             },)
             .unwrap();
             Ok((out.into(), ctx))
@@ -108,7 +108,7 @@ pub fn corr<'a>(
                 }
             }
         }
-        let corr_arr: ArrD<f64> = unsafe { corr_arr.assume_init()}.to_dimd();
+        let corr_arr: ArrD<f64> = unsafe { corr_arr.assume_init()}.into_dyn();
         Ok((corr_arr.into(), ctx))
     });
     out

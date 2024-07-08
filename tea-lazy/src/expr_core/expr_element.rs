@@ -21,6 +21,5 @@ impl ExprElement for Option<usize> {}
 impl ExprElement for Vec<usize> {}
 impl ExprElement for Object {}
 #[cfg(feature = "time")]
-impl ExprElement for DateTime {}
-#[cfg(feature = "time")]
+impl<U: TimeUnitTrait> ExprElement for DateTime<U> where DateTime<U>: Dtype {}
 impl ExprElement for TimeDelta {}

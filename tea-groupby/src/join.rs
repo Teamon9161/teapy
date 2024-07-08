@@ -60,7 +60,7 @@ impl<'a> ExprJoinExt for Expr<'a> {
             let (left_keys, right_keys) =
                 collect_left_right_keys(&data, ctx.as_ref(), &left_other, &right)?;
             let idx = join_left(&left_keys, &right_keys);
-            Ok((Arr1::from_vec(idx).to_dimd().into(), ctx))
+            Ok((Arr1::from_vec(idx).into_dyn().into(), ctx))
         });
         self
     }
@@ -82,25 +82,25 @@ impl<'a> ExprJoinExt for Expr<'a> {
                 let mut output = Vec::<ArrOk>::with_capacity(key_len + 2);
                 let sort_idx = ArrOk::get_sort_idx(&outer_keys.iter().collect::<Vec<_>>(), rev)?;
                 let left_idx = Arr1::from_vec(left_idx)
-                    .to_dimd()
+                    .into_dyn()
                     .select_unchecked(Axis(0), &sort_idx)
                     .0
                     .into_raw_vec();
                 let right_idx = Arr1::from_vec(right_idx)
-                    .to_dimd()
+                    .into_dyn()
                     .select_unchecked(Axis(0), &sort_idx)
                     .0
                     .into_raw_vec();
-                let slc: ArrOk = Arr1::from_vec(sort_idx).to_dimd().into();
+                let slc: ArrOk = Arr1::from_vec(sort_idx).into_dyn().into();
                 for key in outer_keys {
                     output.push(key.select(&slc, 0, false)?)
                 }
-                output.push(Arr1::from_vec(left_idx).to_dimd().into());
-                output.push(Arr1::from_vec(right_idx).to_dimd().into());
+                output.push(Arr1::from_vec(left_idx).into_dyn().into());
+                output.push(Arr1::from_vec(right_idx).into_dyn().into());
                 output
             } else {
-                outer_keys.push(Arr1::from_vec(left_idx).to_dimd().into());
-                outer_keys.push(Arr1::from_vec(right_idx).to_dimd().into());
+                outer_keys.push(Arr1::from_vec(left_idx).into_dyn().into());
+                outer_keys.push(Arr1::from_vec(right_idx).into_dyn().into());
                 outer_keys
             };
             Ok((output.into(), ctx))
@@ -298,7 +298,7 @@ pub fn join_outer<'a>(
                         }
                     }
                 }).collect_trusted();
-                outer_keys.push(Arr1::from_vec(outer_key).to_dimd().into());
+                outer_keys.push(Arr1::from_vec(outer_key).into_dyn().into());
                 Ok(key_idx.iter().map(|(_idx, _is_left, value)| {
                     outer_dict.get(value).unwrap().clone()
                 }).unzip())
@@ -364,7 +364,7 @@ pub fn join_outer<'a>(
                             }
                         }
                     }).collect_trusted();
-                    Ok(Arr1::from_vec(a).to_dimd().into())
+                    Ok(Arr1::from_vec(a).into_dyn().into())
                 },)
             },)
                 .unwrap(),

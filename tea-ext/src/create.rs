@@ -15,7 +15,7 @@ impl<'a> CreateExt for Expr<'a> {
                 let shape = shape.into_owned().into_scalar()?;
                 match_arrok!(value; Dynamic(v) => {
                     let v = v.into_owned().into_scalar()?;
-                    Ok((Arr::from_elem(shape, v).to_dimd().into(), ctx))
+                    Ok((Arr::from_elem(shape, v).into_dyn().into(), ctx))
                 },)
             } else if ndim == 1 {
                 let shape = shape.view().to_dim1()?;
@@ -23,7 +23,7 @@ impl<'a> CreateExt for Expr<'a> {
                     let v = v.into_owned().into_scalar()?;
                     Ok((
                         Arr::from_elem(shape.to_slice().unwrap(), v)
-                            .to_dimd()
+                            .into_dyn()
                             .into(),
                         ctx,
                     ))
@@ -50,7 +50,10 @@ impl<'a> CreateExt for Expr<'a> {
             let step = step
                 .map(|s| s.deref().cast_f64().into_owned().into_scalar().unwrap())
                 .unwrap_or(1.);
-            Ok((Array1::range(start, end, step).wrap().to_dimd().into(), ctx))
+            Ok((
+                Array1::range(start, end, step).wrap().into_dyn().into(),
+                ctx,
+            ))
         });
         e
     }

@@ -12,15 +12,15 @@ pub(crate) fn reduce_nd_method(
         {
             let axis = self.norm_axis(axis);
             if self.is_empty() || self.len_of(axis) == 0 {
-                return Arr1::from_vec(vec![]).to_dimd();
+                return Arr1::from_vec(vec![]).into_dyn();
             }
             if self.ndim() == 1 {
-                return ndarray::arr0(self.view().to_dim1().unwrap().#fn_1d_name(#(#params),*)).wrap().to_dimd();
+                return ndarray::arr0(self.view().to_dim1().unwrap().#fn_1d_name(#(#params),*)).wrap().into_dyn();
             }
             if !par {
-                Zip::from(self.lanes(axis)).map_collect(move |lane| lane.wrap().#fn_1d_name(#(#params.clone()),*)).wrap().to_dimd()
+                Zip::from(self.lanes(axis)).map_collect(move |lane| lane.wrap().#fn_1d_name(#(#params.clone()),*)).wrap().into_dyn()
             } else {
-                Zip::from(self.lanes(axis)).par_map_collect(move |lane| lane.wrap().#fn_1d_name(#(#params.clone()),*)).wrap().to_dimd()
+                Zip::from(self.lanes(axis)).par_map_collect(move |lane| lane.wrap().#fn_1d_name(#(#params.clone()),*)).wrap().into_dyn()
             }
         }
     }
@@ -46,16 +46,16 @@ pub(crate) fn reduce2_nd_method(
             };
             let axis = lhs.norm_axis(axis);
             if lhs.is_empty() || lhs.len_of(axis) == 0 {
-                return Arr1::from_vec(vec![]).to_dimd();
+                return Arr1::from_vec(vec![]).into_dyn();
             }
             if lhs.ndim() == 1 {
                 let rhs = rhs.view().to_dim1().unwrap();
-                return ndarray::arr0(lhs.to_dim1().unwrap().#fn_1d_name(&rhs, #(#params),*)).wrap().to_dimd();
+                return ndarray::arr0(lhs.to_dim1().unwrap().#fn_1d_name(&rhs, #(#params),*)).wrap().into_dyn();
             }
             if !par {
-                Zip::from(lhs.lanes(axis)).and(rhs.lanes(axis)).map_collect(|lane1, lane2| lane1.wrap().#fn_1d_name(&lane2.wrap(), #(#params.clone()),*)).wrap().to_dimd()
+                Zip::from(lhs.lanes(axis)).and(rhs.lanes(axis)).map_collect(|lane1, lane2| lane1.wrap().#fn_1d_name(&lane2.wrap(), #(#params.clone()),*)).wrap().into_dyn()
             } else {
-                Zip::from(lhs.lanes(axis)).and(rhs.lanes(axis)).par_map_collect(|lane1, lane2| lane1.wrap().#fn_1d_name(&lane2.wrap(), #(#params.clone()),*)).wrap().to_dimd()
+                Zip::from(lhs.lanes(axis)).and(rhs.lanes(axis)).par_map_collect(|lane1, lane2| lane1.wrap().#fn_1d_name(&lane2.wrap(), #(#params.clone()),*)).wrap().into_dyn()
             }
         }
     }
@@ -111,7 +111,7 @@ pub(crate) fn map_nd_method(
                     x_1d.#fn_1d_name(&mut out_1d, #(#params.clone()),*)
                 });
             }
-            unsafe{out_arr.assume_init()}.to_dimd()
+            unsafe{out_arr.assume_init()}.into_dyn()
         }
     }
 }
@@ -152,7 +152,7 @@ pub(crate) fn map2_nd_method(
                     x_1d.#fn_1d_name(&y_1d, &mut out_1d, #(#params.clone()),*)
                 });
             }
-            unsafe{out.assume_init()}.to_dimd()
+            unsafe{out.assume_init()}.into_dyn()
         }
     }
 }

@@ -64,7 +64,7 @@ impl<'a> RollingExt for Expr<'a> {
                                 start = end; // the start idx should be inbound
                             }
                             let exprs: Vec<Expr<'_>> =
-                                vec![arr.slice(s![start..end + 1]).to_dimd().into()];
+                                vec![arr.slice(s![start..end + 1]).into_dyn().into()];
                             let current_ctx = if map.is_some() {
                                 DataDict {
                                     data: exprs,
@@ -97,7 +97,7 @@ impl<'a> RollingExt for Expr<'a> {
                             }
                             let slice = s![start..end + 1];
                             let exprs: Vec<Expr<'_>> =
-                                std::iter::once(arr.slice(slice).to_dimd().into())
+                                std::iter::once(arr.slice(slice).into_dyn().into())
                                     .chain(others_ref.iter().map(|a| a.slice(slice).into()))
                                     .collect::<Vec<_>>();
                             let current_ctx = if map.is_some() {
@@ -153,7 +153,7 @@ impl<'a> RollingExt for Expr<'a> {
                     .chain(1..len - window + 1)
                     .collect_trusted()
             };
-            Ok((Arr1::from_vec(out).to_dimd().into(), ctx))
+            Ok((Arr1::from_vec(out).into_dyn().into(), ctx))
         });
         window
     }
@@ -170,7 +170,7 @@ impl<'a> RollingExt for Expr<'a> {
             match_arrok!(arr; Time(arr) => {
                 let view = arr.view().to_dim1()?;
                 if view.len() == 0 {
-                    return Ok((Arr1::from_vec(Vec::<usize>::new()).to_dimd().into(), ctx));
+                    return Ok((Arr1::from_vec(Vec::<usize>::new()).into_dyn().into(), ctx));
                 }
                 let out = match start_by {
                     // rollling the full duration
@@ -216,7 +216,7 @@ impl<'a> RollingExt for Expr<'a> {
                             .collect_trusted()
                     }
                 };
-                return Ok((Arr1::from_vec(out).to_dimd().into(), ctx))
+                return Ok((Arr1::from_vec(out).into_dyn().into(), ctx))
             },)
         });
         self
@@ -231,7 +231,7 @@ impl<'a> RollingExt for Expr<'a> {
             match_arrok!(arr; Time(arr) => {
                 let view = arr.view().to_dim1()?;
             if view.len() == 0 {
-                return Ok((Arr1::from_vec(Vec::<usize>::new()).to_dimd().into(), ctx));
+                return Ok((Arr1::from_vec(Vec::<usize>::new()).into_dyn().into(), ctx));
             }
             let mut start_time = view[0];
             let mut start = 0;
@@ -261,7 +261,7 @@ impl<'a> RollingExt for Expr<'a> {
                         .into_raw_vec()
                 })
                 .collect_trusted();
-                Ok((Arr1::from_vec(out).to_dimd().into(), ctx))
+                Ok((Arr1::from_vec(out).into_dyn().into(), ctx))
             },)
         });
         self
@@ -281,7 +281,7 @@ impl<'a> RollingExt for Expr<'a> {
             match_arrok!(data; Time(data) => {
                 let arr = data.view().to_dim1()?;
                 if arr.len() == 0 {
-                    return Ok((Arr1::from_vec(Vec::<usize>::new()).to_dimd().into(), ctx));
+                    return Ok((Arr1::from_vec(Vec::<usize>::new()).into_dyn().into(), ctx));
                 }
                 let mut out = vec![vec![]; arr.len()];
                 let max_n_offset = window.clone() / offset.clone();
@@ -318,7 +318,7 @@ impl<'a> RollingExt for Expr<'a> {
                         }
                     }
                 });
-                Ok((Arr1::from_vec(out).to_dimd().into(), ctx))
+                Ok((Arr1::from_vec(out).into_dyn().into(), ctx))
             },)
         });
         self

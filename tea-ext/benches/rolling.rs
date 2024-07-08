@@ -13,7 +13,7 @@ fn bench_rolling_apply_with_start(b: &mut Bencher) {
     let length = 100000;
     let window = 200;
     let v: ArrOk = Arr1::from_vec((1..=length).collect::<Vec<_>>())
-        .to_dimd()
+        .into_dyn()
         .into();
     let mut v: Expr = v.into();
     v.rename("v".to_string());
@@ -21,7 +21,7 @@ fn bench_rolling_apply_with_start(b: &mut Bencher) {
         .take(window)
         .chain(0..(length - window))
         .collect::<Vec<_>>();
-    let start: ArrOk = Arr1::from_vec(start).to_dimd().into();
+    let start: ArrOk = Arr1::from_vec(start).into_dyn().into();
     let start: Expr = start.into();
     let agg_expr: Data = ColumnSelector::Index(0).into();
     let mut agg_expr: Expr = agg_expr.into();
@@ -66,7 +66,7 @@ fn bench_rolling_apply_mean(b: &mut Bencher) {
     let length = 100000;
     let window = 200;
     let v: ArrOk = Arr1::from_vec((1..=length).collect::<Vec<_>>())
-        .to_dimd()
+        .into_dyn()
         .into();
     let mut v: Expr = v.into();
     v.rename("v".to_string());
@@ -74,7 +74,7 @@ fn bench_rolling_apply_mean(b: &mut Bencher) {
         .take(window)
         .chain(0..(length - window))
         .collect::<Vec<_>>();
-    let start: ArrOk = Arr1::from_vec(start).to_dimd().into();
+    let start: ArrOk = Arr1::from_vec(start).into_dyn().into();
     let start: Expr = start.into();
     let mut v1 = v.clone();
     v1.rolling_select_mean(start.clone(), 1, false);

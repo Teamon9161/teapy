@@ -1,25 +1,18 @@
 use super::super::from_py::{PyArrayOk, PyList};
-// use super::datadict::{IntoPyDataDict, PyDataDict, PyVecExprToRs};
 use super::export::*;
 use pyo3::types::{PyList as PyList3, PyTuple};
 use tea_core::prelude::*;
 use tea_lazy::{ColumnSelector, Data, Expr};
 
 #[cfg(feature = "agg")]
-use tea_ext::agg::{corr, CorrMethod};
+use tea_ext::agg::corr;
 
 #[cfg(feature = "arw")]
 use crate::from_py::PyColSelect;
-#[cfg(feature = "time")]
-use tea_core::datatype::DateTimeToRs;
-#[cfg(feature = "arw")]
-use tea_core::prelude::StrError;
 #[cfg(feature = "create")]
 use tea_ext::create::*;
 #[cfg(feature = "map")]
 use tea_ext::map::*;
-// #[cfg(feature = "io")]
-// use tea_io::*;
 
 #[pyfunction]
 /// A util function to convert python object to PyExpr without copy
@@ -221,7 +214,7 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
         }
     } else if let Ok(pylist) = obj.extract::<PyList>() {
         match_pylist!(pylist, l, {
-            Ok(Expr::new_from_owned(Arr1::from_vec(l).to_dimd(), None).into())
+            Ok(Expr::new_from_owned(Arr1::from_vec(l).into_dyn(), None).into())
         })
     } else if let Ok(val) = obj.extract::<i32>() {
         Ok(Expr::new(val.into(), None).into())

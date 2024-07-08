@@ -50,19 +50,49 @@ where
             TimeUnit::Nanosecond => self
                 .view()
                 .map(|v| Cast::<DateTime<unit::Nanosecond>>::cast(v.clone()))
-                .to_dimd()
+                .into_dyn()
                 .into(),
             TimeUnit::Microsecond => self
                 .view()
                 .map(|v| Cast::<DateTime<unit::Microsecond>>::cast(v.clone()))
-                .to_dimd()
+                .into_dyn()
                 .into(),
             TimeUnit::Millisecond => self
                 .view()
                 .map(|v| Cast::<DateTime<unit::Millisecond>>::cast(v.clone()))
-                .to_dimd()
+                .into_dyn()
                 .into(),
             _ => unimplemented!("cast to unit {:?} not implemented", unit),
         }
     }
 }
+
+#[cfg(all(feature = "py", feature = "time"))]
+impl<'a> From<ArbArray<'a, NPDatetime<units::Milliseconds>>> for DynArray<'a> {
+    #[inline]
+    fn from(a: ArbArray<'a, NPDatetime<units::Milliseconds>>) -> Self {
+        // safety: datetime and npdatetime has the same size
+        let a: ArbArray<'a, DateTime<unit::Millisecond>> = unsafe { a.into_dtype() };
+        DynArray::DateTimeMs(a)
+    }
+}
+
+// #[cfg(all(feature = "py", feature = "time"))]
+// impl<'a> From<ArbArray<'a, NPDatetime<units::Microseconds>>> for DynArray<'a> {
+//     #[inline]
+//     fn from(a: ArbArray<'a, NPDatetime<units::Microseconds>>) -> Self {
+//         // safety: datetime and npdatetime has the same size
+//         let a: ArbArray<'a, DateTime<unit::Microsecond>> = unsafe { a.into_dtype() };
+//         DynArray::DateTimeUs(a)
+//     }
+// }
+
+// #[cfg(all(feature = "py", feature = "time"))]
+// impl<'a> From<ArbArray<'a, NPDatetime<units::Nanoseconds>>> for DynArray<'a> {
+//     #[inline]
+//     fn from(a: ArbArray<'a, NPDatetime<units::Nanoseconds>>) -> Self {
+//         // safety: datetime and npdatetime has the same size
+//         let a: ArbArray<'a, DateTime<unit::Nanosecond>> = unsafe { a.into_dtype() };
+//         DynArray::DateTimeNs(a)
+//     }
+// }

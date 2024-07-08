@@ -27,10 +27,11 @@ class LazyFunc:
 
 
 class Selector:
-    def __init__(self, name=None):
+    def __init__(self, name=None, context=None):
         self.name = name
         self.current_func = None
         self.lazy_funcs = []
+        self.context = context
 
     def __repr__(self) -> str:
         if len(self.lazy_funcs):
@@ -67,9 +68,10 @@ class Selector:
         assert (
             self.current_func is None
         ), f"current_func: {self.current_func} is not None"
-        single_flag = False
+        single_flag = False # indicate the number of expr
         if self.name is not None:
-            if not context:
+            # self context should have the highest priority
+            if (not context and not (self.context is not None and self.context)) or (self.context is not None and not self.context):
                 base_exprs = dd[self.name]
                 if isinstance(base_exprs, Expr):
                     base_exprs = [base_exprs]
@@ -96,17 +98,22 @@ class Selector:
         for j, lf in enumerate(self.lazy_funcs):
             if not hasattr(lf, "args"):
                 continue
+            # should not selector to context selector in groupby context and rolling context
+            if lf.name in ['apply', 'agg'] and j>=1 and self.lazy_funcs[j-1].name in ['groupby', 'group_by', 'rolling']:
+                current_context = True
+            else:
+                current_context = context
             # convert argument to Expr
             for i, arg in enumerate(lf.args):
                 if isinstance(arg, Selector):
-                    lf.args[i] = convert_one(arg, dd=dd, context=context)
+                    lf.args[i] = convert_one(arg, dd=dd, context=current_context)
                 elif isinstance(arg, (list, tuple)) and any(
                     isinstance(a, Selector) for a in arg
                 ):
                     if isinstance(arg, tuple):
                         arg = list(arg)
                     lf.args[i] = [
-                        convert_one(e, dd=dd, context=context)
+                        convert_one(e, dd=dd, context=current_context)
                         if isinstance(e, Selector)
                         else e
                         for e in arg
@@ -114,14 +121,14 @@ class Selector:
             # convert keyword argument to Expr
             for k, v in lf.kwargs.items():
                 if isinstance(v, Selector):
-                    lf.kwargs[k] = convert_one(v, dd=dd, context=context)
+                    lf.kwargs[k] = convert_one(v, dd=dd, context=current_context)
                 elif isinstance(v, (list, tuple)) and any(
                     isinstance(e, Selector) for e in v
                 ):
                     if isinstance(v, tuple):
                         v = list(v)
                     lf.kwargs[k] = [
-                        convert_one(e, dd=dd, context=context)
+                        convert_one(e, dd=dd, context=current_context)
                         if isinstance(e, Selector)
                         else e
                         for e in v

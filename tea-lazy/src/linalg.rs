@@ -50,7 +50,7 @@ impl<'a> OlsResult<'a> {
 
     #[inline(always)]
     pub fn singular_values(&self) -> ArrViewD<'_, f64> {
-        self.singular_values.view().to_dimd()
+        self.singular_values.view().into_dyn()
     }
 
     #[inline(always)]
@@ -106,7 +106,7 @@ impl<'a> Expr<'a> {
         self.chain_f_ctx(|(data, ctx)| {
             let res = data.into_ols_res(ctx.clone())?;
             match Arc::try_unwrap(res) {
-                Ok(res) => Ok((res.singular_values.to_dimd().into(), ctx)),
+                Ok(res) => Ok((res.singular_values.into_dyn().into(), ctx)),
                 Err(res) => Ok((res.singular_values().to_owned().into(), ctx)),
             }
         });
@@ -117,7 +117,7 @@ impl<'a> Expr<'a> {
         self.chain_f_ctx(|(data, ctx)| {
             let res = data.view_ols_res(ctx.as_ref())?;
             match Arc::try_unwrap(res) {
-                Ok(res) => Ok((res.solution.to_dimd().into(), ctx)),
+                Ok(res) => Ok((res.solution.into_dyn().into(), ctx)),
                 Err(res) => Ok((res.solution().to_owned().into(), ctx)),
             }
         });
@@ -131,7 +131,7 @@ impl<'a> Expr<'a> {
                 Ok(res) => Ok((
                     res.residual_sum_of_squares
                         .unwrap_or(f64::NAN.into())
-                        .to_dimd()
+                        .into_dyn()
                         .into(),
                     ctx,
                 )),
@@ -172,7 +172,7 @@ impl<'a> Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.view_arr(ctx.as_ref())?.deref().cast_f64();
             let out: Arr2<f64> = conjugate(&arr.view().to_dim2()?);
-            Ok((out.to_dimd().into(), ctx))
+            Ok((out.into_dyn().into(), ctx))
         });
         self
     }
@@ -209,10 +209,10 @@ impl<'a> Expr<'a> {
                 .t()
                 .dot(&(s.to_owned().0.insert_axis(Axis(1)) * u.t()))
                 .wrap()
-                .to_dimd()
+                .into_dyn()
                 .into();
             if return_s {
-                Ok((vec![out, s.to_dimd().into()].into(), ctx))
+                Ok((vec![out, s.into_dyn().into()].into(), ctx))
             } else {
                 Ok((out.into(), ctx))
             }
@@ -251,7 +251,7 @@ impl<'a> Expr<'a> {
                     .0;
                 s = s + *weights.get(lag).unwrap() * (temp.to_owned() + temp.t());
             }
-            let out: ArrOk<'a> = s.wrap().to_dimd().into();
+            let out: ArrOk<'a> = s.wrap().into_dyn().into();
             Ok((out.into(), ctx))
         });
         self

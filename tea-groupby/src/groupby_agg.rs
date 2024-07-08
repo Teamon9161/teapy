@@ -4,12 +4,15 @@ use tea_core::prelude::*;
 use tea_core::utils::CollectTrustedToVec;
 use tea_ext::agg::*;
 use tea_hash::TpHashMap;
-use tea_lazy::{Data, DataDict, Expr};
+#[cfg(feature = "time")]
+use tea_lazy::Data;
+use tea_lazy::{DataDict, Expr};
 
 #[ext_trait]
 impl<'a> GroupbyAggExt for Expr<'a> {
     /// This func should return an array indicates the start of each group
     /// and a label array indicates the label of each group
+    #[cfg(feature = "time")]
     pub fn get_group_by_time_idx<TD>(&mut self, duration: TD, closed: String) -> &mut Self
     where
         TD: Into<TimeDelta>,
@@ -22,10 +25,10 @@ impl<'a> GroupbyAggExt for Expr<'a> {
                 let ts = arr.view().to_dim1()?;
                 if ts.is_empty() {
                     let label = Arr1::from_vec(Vec::<DateTime>::with_capacity(0))
-                        .to_dimd()
+                        .into_dyn()
                         .into();
                     let start_vec = Arr1::from_vec(Vec::<usize>::with_capacity(0))
-                        .to_dimd()
+                        .into_dyn()
                         .into();
                     return Ok((Data::ArrVec(vec![label, start_vec]), ctx));
                 }
@@ -72,8 +75,8 @@ impl<'a> GroupbyAggExt for Expr<'a> {
                     _ => unimplemented!(),
                 }
                 start_vec.push(ts.len()); // the end of the array, this element is not the start of the group
-                let label: ArrOk<'a> = Arr1::from_vec(label).to_dimd().into();
-                let start_vec: ArrOk<'a> = Arr1::from_vec(start_vec).to_dimd().into();
+                let label: ArrOk<'a> = Arr1::from_vec(label).into_dyn().into();
+                let start_vec: ArrOk<'a> = Arr1::from_vec(start_vec).into_dyn().into();
                 Ok((Data::ArrVec(vec![label, start_vec]), ctx))
             },)
         });
@@ -118,10 +121,10 @@ impl<'a> GroupbyAggExt for Expr<'a> {
                     .map(|v| {
                         let (start, next_start) = (v[0], v[1]);
                         let exprs: Vec<Expr<'_>> = if others_ref.is_empty() {
-                            vec![arr.slice(s![start..next_start]).to_dimd().into()]
+                            vec![arr.slice(s![start..next_start]).into_dyn().into()]
                         } else {
                             let slice = s![start..next_start];
-                            std::iter::once(arr.slice(slice).to_dimd().into())
+                            std::iter::once(arr.slice(slice).into_dyn().into())
                                 .chain(others_ref.iter().map(|a| a.slice(slice).into()))
                                 .collect::<Vec<_>>()
                         };

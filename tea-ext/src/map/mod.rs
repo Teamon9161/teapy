@@ -38,14 +38,14 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     where
         T: IsNone,
     {
-        self.map(|v| v.is_none()).to_dimd()
+        self.map(|v| v.is_none()).into_dyn()
     }
 
     fn not_nan(&self) -> ArrD<bool>
     where
         T: IsNone,
     {
-        self.map(|v| !v.is_none()).to_dimd()
+        self.map(|v| !v.is_none()).into_dyn()
     }
 
     #[lazy_exclude]
@@ -53,7 +53,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
     where
         T: PartialEq,
     {
-        self.map(|v| other.contains(v)).to_dimd()
+        self.map(|v| other.contains(v)).into_dyn()
     }
 
     #[lazy_exclude]
@@ -78,7 +78,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.wrap().filter_1d(out_1d, mask.view())
         });
-        out.to_dimd()
+        out.into_dyn()
     }
 
     /// Take value on a given axis and clone to a new array,
@@ -111,7 +111,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.wrap().take_clone_1d_unchecked(out_1d, slc.view())
         });
-        out.to_dimd()
+        out.into_dyn()
     }
 
     /// Take value on a given axis and clone to a new array,
@@ -156,7 +156,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
                 arr_zip.par_for_each(|a, b| f(a.wrap(), b.wrap()));
             }
         }
-        unsafe { out.assume_init() }.to_dimd()
+        unsafe { out.assume_init() }.into_dyn()
         // out
     }
 
@@ -256,7 +256,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.arg_partition_1d(out_1d, kth, sort, rev)
         });
-        out.to_dimd()
+        out.into_dyn()
     }
 
     #[cfg(feature = "agg")]
@@ -281,7 +281,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.partition_1d(out_1d, kth, sort, rev)
         });
-        unsafe { out.assume_init().to_dimd() }
+        unsafe { out.assume_init().into_dyn() }
     }
 }
 

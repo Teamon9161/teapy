@@ -52,7 +52,7 @@ impl<S: RawData, D> DerefMut for ArrBase<S, D> {
 impl<T> From<T> for ArrD<T> {
     #[inline(always)]
     fn from(v: T) -> Self {
-        arr0(v).wrap().to_dimd()
+        arr0(v).wrap().into_dyn()
     }
 }
 

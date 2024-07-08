@@ -91,7 +91,7 @@ impl<'a, T> ArrViewD<'a, T> {
     #[inline]
     pub fn no_dim0(self) -> ArrViewD<'a, T> {
         if self.ndim() == 0 {
-            self.0.slice_move(s!(NewAxis)).wrap().to_dimd()
+            self.0.slice_move(s!(NewAxis)).wrap().into_dyn()
         } else {
             self
         }

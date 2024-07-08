@@ -175,7 +175,7 @@ where
     /// Note that the original array must be dim0.
     #[inline]
     pub fn to_dim0(self) -> TResult<ArrBase<S, Ix0>> {
-        if self.ndim() == 1 {
+        if self.ndim() == 1 && self.len() == 1 {
             Ok(self.to_dim1()?.0.slice_move(s![0]).wrap())
         } else {
             self.to_dim::<Ix0>().map_err(|e| terr!("{}", e))
@@ -200,11 +200,6 @@ where
         S: Data,
     {
         self.view().to_dim1()
-        // if self.ndim() == 1 {
-        //     Ok(unsafe { std::mem::transmute(self) })
-        // } else {
-        //     Err("The array is not dim1".into())
-        // }
     }
 
     #[inline(always)]
@@ -221,12 +216,6 @@ where
         S: DataMut,
     {
         self.view_mut().to_dim1()
-        // if self.ndim() == 1 {
-        //     // self.view_mut().to_dim1()
-        //     Ok(unsafe { std::mem::transmute(self) })
-        // } else {
-        //     Err("The array is not dim1".into())
-        // }
     }
 
     #[inline(always)]
@@ -246,9 +235,16 @@ where
     }
 
     /// Change the array to dimD.
+    #[deprecated(since = "0.8", note = "Please use `into_dyn` instead")]
     #[inline(always)]
     pub fn to_dimd(self) -> ArrBase<S, IxDyn> {
         self.to_dim::<IxDyn>().unwrap() // this should never fail
+    }
+
+    /// Change the array to dimD.
+    #[inline(always)]
+    pub fn into_dyn(self) -> ArrBase<S, IxDyn> {
+        self.0.into_dyn().wrap() // this should never fail
     }
 
     /// Change the array to another dim.

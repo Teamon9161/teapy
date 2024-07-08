@@ -44,7 +44,7 @@ impl<'a> ExprViewExt for Expr<'a> {
                                 .into_shape(shape)
                                 .map_err(|e| terr!("{e:?}"))?
                                 .wrap()
-                                .to_dimd(),
+                                .into_dyn(),
                         )
                     };
                     Ok(ViewOnBase::new(arr, view).into())
@@ -57,7 +57,7 @@ impl<'a> ExprViewExt for Expr<'a> {
                                 .into_shape(shape.to_slice().unwrap())
                                 .map_err(|e| terr!("{e:?}"))?
                                 .wrap()
-                                .to_dimd(),
+                                .into_dyn(),
                         )
                     };
 
@@ -95,7 +95,7 @@ impl<'a> ExprViewExt for Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
             match_arrok!(arr; Dynamic(arr) => {
-                let view = unsafe { transmute(arr.view().0.diag().wrap().to_dimd()) };
+                let view = unsafe { transmute(arr.view().0.diag().wrap().into_dyn()) };
                 let out: ArrOk<'a> = ViewOnBase::new(arr, view).into();
                 Ok((out.into(), ctx))
             },)
@@ -205,7 +205,7 @@ impl<'a> ExprViewExt for Expr<'a> {
                                     "Can not broadcast to shape: {shape:?}"
                                 ))?
                                 .wrap()
-                                .to_dimd(),
+                                .into_dyn(),
                         )
                     };
                     Ok(ViewOnBase::new(arr, view).into())
@@ -220,7 +220,7 @@ impl<'a> ExprViewExt for Expr<'a> {
                                     "Can not broadcast to shape: {shape:?}"
                                 ))?
                                 .wrap()
-                                .to_dimd(),
+                                .into_dyn(),
                         )
                     };
 

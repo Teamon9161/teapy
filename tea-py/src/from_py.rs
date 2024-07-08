@@ -11,9 +11,7 @@ use pyo3::{
     exceptions::PyValueError, prelude::PyAnyMethods, Bound, FromPyObject, PyAny, PyObject,
     PyResult, Python, ToPyObject,
 };
-// use std::sync::Arc;
-#[cfg(feature = "option_dtype")]
-use tea_core::datatype::{OptF64, OptI64};
+
 use tea_core::prelude::*;
 #[cfg(feature = "arw")]
 use tea_io::ColSelect;
@@ -84,15 +82,18 @@ macro_rules! match_pyarray {
 }
 
 impl<'py> PyArrayOk<'py> {
+    #[inline]
     pub fn is_object(&self) -> bool {
         matches!(self, PyArrayOk::Object(_))
     }
 
+    #[inline]
     pub fn is_datetime(&self) -> bool {
         use PyArrayOk::*;
         matches!(self, DateTimeMs(_) | DateTimeNs(_) | DateTimeUs(_))
     }
 
+    #[inline]
     pub fn into_object(self) -> PyResult<&'py PyArrayDyn<Object>> {
         if let PyArrayOk::Object(obj_arr) = self {
             Ok(obj_arr)
@@ -101,6 +102,7 @@ impl<'py> PyArrayOk<'py> {
         }
     }
 
+    #[inline]
     pub fn object_to_string_arr(self) -> PyResult<ArrD<String>> {
         if let Ok(obj_arr) = self.into_object() {
             // let arr_readonly = obj_arr.readonly();
@@ -183,18 +185,6 @@ impl<'py> FromPyObject<'py> for PyContext<'py> {
                 ct: None,
                 obj_map: Default::default(),
             })
-        // } else if let Ok(dd) = ob.extract::<PyDataDict>() {
-        //     Ok(Self {
-        //         // safety: we can cast 'py to 'static as we are running in python
-        //         ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
-        //         obj_map: dd.obj_map,
-        //     })
-        // } else if ob.hasattr("_dd")? && ob.get_type().name()? == "DataDict" {
-        //     let dd = ob.getattr("_dd")?.extract::<PyDataDict>()?;
-        //     Ok(Self {
-        //         ct: unsafe { Some(std::mem::transmute(Arc::new(dd.dd))) },
-        //         obj_map: dd.obj_map,
-        //     })
         } else {
             Err(PyValueError::new_err(
                 "Cannot extract a Context from the object",

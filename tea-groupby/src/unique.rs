@@ -16,7 +16,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
         self.chain_f_ctx(move |(data, ctx)| {
             let arr = data.into_arr(ctx.clone())?;
             match_arrok!(arr; Dynamic(a) => {
-                Ok((a.view().to_dim1()?.sorted_unique_1d().to_dimd().into(), ctx))
+                Ok((a.view().to_dim1()?.sorted_unique_1d().into_dyn().into(), ctx))
             },)
         });
         self
@@ -31,7 +31,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                     a.view()
                         .to_dim1()?
                         .get_sorted_unique_idx_1d(keep.clone())
-                        .to_dimd()
+                        .into_dyn()
                         .into(),
                     ctx,
                 ))
@@ -56,7 +56,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
             let len = arr.len();
             let out_idx = if others_ref.is_empty() {
                 let arr: ArrOk = if arr.is_float() {
-                    match_arrok!(arr; PureFloat(a) => {Ok(a.view().to_dim1()?.tphash_1d().to_dimd().into())},).unwrap()
+                    match_arrok!(arr; PureFloat(a) => {Ok(a.view().to_dim1()?.tphash_1d().into_dyn().into())},).unwrap()
                 } else {
                     arr.deref()
                 };
@@ -85,7 +85,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                             }
                         }
                         Ok(())
-                    },);
+                    },).unwrap();
                     out_idx
                 } else if &keep == "last" {
                     match_arrok!(arr; Hash(a) => {
@@ -156,7 +156,7 @@ impl<'a> ExprUniqueExt for Expr<'a> {
                 }
                 out_idx
             };
-            let arr = Arr1::from_vec(out_idx).to_dimd();
+            let arr = Arr1::from_vec(out_idx).into_dyn();
             Ok((arr.into(), ctx))
         });
         self

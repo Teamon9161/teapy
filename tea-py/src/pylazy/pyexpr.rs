@@ -31,7 +31,10 @@ pub trait IntoPyExpr {
     fn into_pyexpr(self) -> PyExpr;
 }
 
-impl<T: ExprElement + 'static> IntoPyExpr for T {
+impl<T: ExprElement + 'static> IntoPyExpr for T
+where
+    Expr<'static>: From<T>,
+{
     fn into_pyexpr(self) -> PyExpr {
         let e: Expr = self.into();
         e.into()
@@ -125,9 +128,13 @@ impl PyExpr {
             self.add_obj(obj);
         }
         if freeze {
-            self.e.eval_inplace_freeze(ct_rs).map_err(StrError::to_py)?;
+            self.e
+                .eval_inplace_freeze(ct_rs)
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
         } else {
-            self.e.eval_inplace(ct_rs).map_err(StrError::to_py)?;
+            self.e
+                .eval_inplace(ct_rs)
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
         }
         if self.e.is_owned() {
             self.obj = None

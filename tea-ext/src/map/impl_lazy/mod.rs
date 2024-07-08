@@ -95,7 +95,7 @@ impl<'a> ExprInplaceExt for Expr<'a> {
             let slc_info = adjust_slice(slc.clone(), arr.shape(), arr.ndim());
             match_arrok!(&mut arr; Cast(arr) => {
                 let mut arr_view_mut = arr.view_mut();
-                let mut arr_mut = arr_view_mut.slice_mut(slc_info).wrap().to_dimd();
+                let mut arr_mut = arr_view_mut.slice_mut(slc_info).wrap().into_dyn();
                 match_arrok!(value; Cast(v) => {
                     let v = v.deref().cast();
                     arr_mut.assign(&v.view());
@@ -299,7 +299,7 @@ impl<'a> ExprMapExt for Expr<'a> {
                 .into_scalar()?;
             let out: ArrOk<'a> = match_arrok!(arr; Numeric(a) => {
                 match ndim {
-                    1 => Ok(a.view().to_dim1()?.dropna_1d().to_dimd().into()),
+                    1 => Ok(a.view().to_dim1()?.dropna_1d().into_dyn().into()),
                     2 => {
                         let a = a.view().to_dim2()?;
                         let axis_n = a.norm_axis(axis);
@@ -310,7 +310,7 @@ impl<'a> ExprMapExt for Expr<'a> {
                             (Axis(1), DropNaMethod::All) => a.not_nan().any(0, par),
                             _ => tbail!("axis should be 0 or 1 and how should be any or all"),
                         };
-                        Ok(a.filter(&mask.as_dim1(), axis, par).to_dimd().into())
+                        Ok(a.filter(&mask.as_dim1(), axis, par).into_dyn().into())
                     },
                     dim => tbail!(
                         "dropna only support 1d and 2d array currently, but the array is dim {dim}"
@@ -430,7 +430,7 @@ impl<'a> ExprMapExt for Expr<'a> {
                 .map(|e| e.view_arr(ctx.as_ref()).unwrap())
                 .collect::<Vec<_>>();
             let idx = ArrOk::get_sort_idx(&by, rev)?;
-            Ok((Arr1::from_vec(idx).to_dimd().into(), ctx))
+            Ok((Arr1::from_vec(idx).into_dyn().into(), ctx))
         });
         e
     }

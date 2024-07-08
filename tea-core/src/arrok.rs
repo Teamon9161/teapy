@@ -302,13 +302,13 @@ macro_rules! impl_same_dtype_concat_1d {
                                     let a = if let $arm(a) = a {a.into_owned()} else {unreachable!()};
                                     a.into_scalar().unwrap()
                                 }).collect_trusted();
-                                Arr1::from_vec(out).to_dimd().into()
+                                Arr1::from_vec(out).into_dyn().into()
                             } else {
                                 let out = arr_vec.into_iter().map(|a| {
                                     let a = if let $arm(a) = a {a.into_owned()} else {unreachable!()};
                                     a.to_dim1().unwrap().0.into_raw_vec().into_iter()
                                 }).flatten().collect();
-                                Arr1::from_vec(out).to_dimd().into()
+                                Arr1::from_vec(out).into_dyn().into()
                             }
                         }),*
                         // _ => unimplemented!()
@@ -402,10 +402,10 @@ macro_rules! impl_from_arrow {
                         let nulls = a.validity();
                         if nulls.is_some() {
                             let data = a.into_iter().map(|v| v.cloned().unwrap_or_else(|| <$real>::none())).collect_trusted();
-                            Arr1::from_vec(data).to_dimd().into()
+                            Arr1::from_vec(data).into_dyn().into()
                         } else {
                             let view: ArrViewD<'a, $real> = unsafe {
-                                std::mem::transmute(ArrView1::from_slice(data.len(), data).to_dimd())
+                                std::mem::transmute(ArrView1::from_slice(data.len(), data).into_dyn())
                             };
                             let out = ViewOnBase::new_from_arrow(arr, view);
                             out.into()
@@ -418,10 +418,10 @@ macro_rules! impl_from_arrow {
                         let nulls = a.validity();
                         if nulls.is_some() {
                             let data = a.into_iter().map(|v| v.map(|v| v.f64()).unwrap_or(f64::NAN)).collect_trusted();
-                            Arr1::from_vec(data).to_dimd().into()
+                            Arr1::from_vec(data).into_dyn().into()
                         } else {
                             let view: ArrViewD<'a, i32> = unsafe {
-                                std::mem::transmute(ArrView1::from_slice(data.len(), data).to_dimd())
+                                std::mem::transmute(ArrView1::from_slice(data.len(), data).into_dyn())
                             };
                             let out = ViewOnBase::new_from_arrow(arr, view);
                             out.into()
@@ -434,10 +434,10 @@ macro_rules! impl_from_arrow {
                         let nulls = a.validity();
                         if nulls.is_some() {
                             let data = a.into_iter().map(|v| v.map(|v| v.f64()).unwrap_or(f64::NAN)).collect_trusted();
-                            Arr1::from_vec(data).to_dimd().into()
+                            Arr1::from_vec(data).into_dyn().into()
                         } else {
                             let view: ArrViewD<'a, i64> = unsafe {
-                                std::mem::transmute(ArrView1::from_slice(data.len(), data).to_dimd())
+                                std::mem::transmute(ArrView1::from_slice(data.len(), data).into_dyn())
                             };
                             let out = ViewOnBase::new_from_arrow(arr, view);
                             out.into()
@@ -455,7 +455,7 @@ macro_rules! impl_from_arrow {
                             unreachable!("can not read feather with null bool");
                         } else {
                             let view: ArrViewD<'a, u8> = unsafe {
-                                std::mem::transmute(ArrView1::from_slice(len, data).to_dimd())
+                                std::mem::transmute(ArrView1::from_slice(len, data).into_dyn())
                             };
                             let out = ViewOnBase::new_from_arrow(arr, view);
                             out.into()
@@ -465,12 +465,12 @@ macro_rules! impl_from_arrow {
                         // todo: remove unneeded clone here
                         let a = arr.as_any().downcast_ref::<arrow::array::Utf8Array<i32>>().unwrap();
                         let data = a.into_iter().map(|s| s.map(|s| s.to_string()).unwrap_or_default()).collect_trusted();
-                        Arr1::from_vec(data).to_dimd().into()
+                        Arr1::from_vec(data).into_dyn().into()
                     },
                     ArrowDT::LargeUtf8 => {
                         let a = arr.as_any().downcast_ref::<arrow::array::Utf8Array<i64>>().unwrap();
                         let data = a.into_iter().map(|s| s.map(|s| s.to_string()).unwrap_or_default()).collect_trusted();
-                        Arr1::from_vec(data).to_dimd().into()
+                        Arr1::from_vec(data).into_dyn().into()
                     }
                     #[cfg(feature="time")]
                     ArrowDT::Timestamp(arw_unit, arw_tz) => {
@@ -483,28 +483,28 @@ macro_rules! impl_from_arrow {
                                 // let data = a.into_iter().map(|v| {
                                 //     DateTime::<unit::Second>::from_opt_i64(v.cloned())
                                 // }).collect_trusted();
-                                // Arr1::from_vec(data).to_dimd().into()
+                                // Arr1::from_vec(data).into_dyn().into()
                             },
                             TimeUnit::Millisecond => {
                                 let data = a.into_iter().map(|v| {
                                     DateTime::<unit::Millisecond>::from_opt_i64(v.cloned())
                                 }).collect_trusted();
-                                Arr1::from_vec(data).to_dimd().into()
+                                Arr1::from_vec(data).into_dyn().into()
                             },
                             TimeUnit::Microsecond => {
                                 let data = a.into_iter().map(|v| {
                                     DateTime::<unit::Microsecond>::from_opt_i64(v.cloned())
                                 }).collect_trusted();
-                                Arr1::from_vec(data).to_dimd().into()
+                                Arr1::from_vec(data).into_dyn().into()
                             },
                             TimeUnit::Nanosecond => {
                                 let data = a.into_iter().map(|v| {
                                     DateTime::<unit::Nanosecond>::from_opt_i64(v.cloned())
                                 }).collect_trusted();
-                                Arr1::from_vec(data).to_dimd().into()
+                                Arr1::from_vec(data).into_dyn().into()
                             },
                         }
-                        // Arr1::from_vec(data).to_dimd().into()
+                        // Arr1::from_vec(data).into_dyn().into()
                     }
                     _ => unimplemented!("Arrow datatype {:?} is not supported yet", arr.data_type())
                 }

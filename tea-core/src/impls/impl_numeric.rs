@@ -81,21 +81,21 @@ where
                 .0
                 .dot(&other.view().to_dim::<Ix2>().unwrap().0)
                 .wrap()
-                .to_dimd()),
+                .into_dyn()),
             (2, 1) => Ok(self
                 .view()
                 .to_dim2()?
                 .0
                 .dot(&other.view().to_dim1().unwrap().0)
                 .wrap()
-                .to_dimd()),
+                .into_dyn()),
             (2, 2) => Ok(self
                 .view()
                 .to_dim2()?
                 .0
                 .dot(&other.view().to_dim::<Ix2>().unwrap().0)
                 .wrap()
-                .to_dimd()),
+                .into_dyn()),
             _ => tbail!("dot for this dim is not suppported"),
         }
         // .into()

@@ -189,7 +189,7 @@ impl<'a, T> ArbArray<'a, T> {
 
     #[inline]
     pub fn from_scalar(scalar: T) -> Self {
-        ArbArray::Owned(arr0(scalar).to_dimd())
+        ArbArray::Owned(arr0(scalar).into_dyn())
     }
 
     #[inline]
@@ -307,7 +307,13 @@ impl<'a, T> ArbArray<'a, T> {
         ArrOk<'a>: Cast<Self>,
     {
         if self.ndim() == 0 {
-            ArbArray::Owned(self.into_owned().0.slice_move(s!(NewAxis)).wrap().to_dimd())
+            ArbArray::Owned(
+                self.into_owned()
+                    .0
+                    .slice_move(s!(NewAxis))
+                    .wrap()
+                    .into_dyn(),
+            )
         } else {
             self
         }
@@ -320,7 +326,7 @@ impl<'a, T> ArbArray<'a, T> {
     {
         // safety: the view has lifetime 'b, this is safe as self exists
         let view: ArrViewD<'b, T> =
-            unsafe { std::mem::transmute(self.view().slice(info).to_dimd()) };
+            unsafe { std::mem::transmute(self.view().slice(info).into_dyn()) };
         view.into()
     }
 

@@ -37,13 +37,13 @@ impl Arr2<f64> {
             let k = self.shape()[0].min(self.shape()[1]);
             return Ok(LeastSquaresResult {
                 singular_values: Arr1::from_vec(vec![f64::NAN; k]),
-                solution: Some(Arr1::from_vec(vec![f64::NAN; self.shape()[1]]).to_dimd()),
+                solution: Some(Arr1::from_vec(vec![f64::NAN; self.shape()[1]]).into_dyn()),
                 rank: 0,
                 residual_sum_of_squares: {
                     if rhs.ndim() == 1 {
                         Some(f64::NAN.into())
                     } else {
-                        Some(Arr1::from_vec(vec![f64::NAN; rhs.shape()[1]]).to_dimd())
+                        Some(Arr1::from_vec(vec![f64::NAN; rhs.shape()[1]]).into_dyn())
                     }
                 },
             });
@@ -60,22 +60,22 @@ impl Arr2<f64> {
                         x.write(*y);
                     });
                     let new_rhs = unsafe { new_rhs.assume_init() };
-                    let mut new_rhs = new_rhs.to_dimd();
+                    let mut new_rhs = new_rhs.into_dyn();
                     let a_layout = self.layout()?;
                     let b_layout = new_rhs.layout()?.resized(new_rhs.len() as i32, 1);
                     let mut out = least_squares_impl(self, a_layout, &mut new_rhs, b_layout)?;
-                    out.solution = Some(new_rhs.slice(s![0..n]).to_owned().to_dimd());
+                    out.solution = Some(new_rhs.slice(s![0..n]).to_owned().into_dyn());
                     out
                 } else {
                     let a_layout = self.layout()?;
                     let b_layout = rhs.layout()?.resized(rhs.len() as i32, 1);
                     let mut out = least_squares_impl(self, a_layout, rhs, b_layout)?;
-                    out.solution = Some(rhs.slice(s![0..n]).to_owned().to_dimd());
+                    out.solution = Some(rhs.slice(s![0..n]).to_owned().into_dyn());
                     out
                 };
                 let rhs = rhs.view().to_dim1()?;
                 res.residual_sum_of_squares =
-                    compute_residual_scalar(m, n, res.rank, rhs).map(|r| r.to_dimd());
+                    compute_residual_scalar(m, n, res.rank, rhs).map(|r| r.into_dyn());
                 Ok(res)
             }
             2 => {
@@ -93,7 +93,7 @@ impl Arr2<f64> {
                         x.write(*y);
                     });
                     let new_rhs = unsafe { new_rhs.assume_init() };
-                    let mut new_rhs = new_rhs.to_dimd();
+                    let mut new_rhs = new_rhs.into_dyn();
                     let a_layout = self.layout()?;
                     let b_layout = new_rhs.layout()?;
                     least_squares_impl(self, a_layout, &mut new_rhs, b_layout)?
@@ -102,10 +102,10 @@ impl Arr2<f64> {
                     let b_layout = rhs.layout()?;
                     least_squares_impl(self, a_layout, rhs, b_layout)?
                 };
-                res.solution = Some(rhs.slice(s![0..n]).to_owned().to_dimd());
+                res.solution = Some(rhs.slice(s![0..n]).to_owned().into_dyn());
                 let rhs = rhs.view().to_dim2()?;
                 res.residual_sum_of_squares =
-                    compute_residual_array1(m, n, res.rank, rhs).map(|r| r.to_dimd());
+                    compute_residual_array1(m, n, res.rank, rhs).map(|r| r.into_dyn());
                 Ok(res)
             }
             _ => tbail!("Invalid dimension in least squares"),

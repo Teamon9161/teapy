@@ -59,7 +59,7 @@ pub unsafe fn calc_ret_single(
         let closing_cost = closing_cost.e.view_arr(ctx.as_ref())?.deref().cast_f64(); // 平仓价格的1d array
         let closing_cost_arr = closing_cost.view().to_dim1()?; // 平仓价格的1d array
         if pos_arr.is_empty() {
-            return Ok((Arr1::from_vec(Vec::<f64>::new()).to_dimd().into(), ctx));
+            return Ok((Arr1::from_vec(Vec::<f64>::new()).into_dyn().into(), ctx));
         }
         // 账户变动信息
         let mut cash = init_cash.f64();
@@ -129,7 +129,7 @@ pub unsafe fn calc_ret_single(
                         // closing_cost - opening_cost
                     })
                     .wrap()
-                    .to_dimd()
+                    .into_dyn()
                     .into(),
                 ctx,
             ))
@@ -184,7 +184,7 @@ pub unsafe fn calc_ret_single(
                         // cash
                     })
                     .wrap()
-                    .to_dimd()
+                    .into_dyn()
                     .into(),
                 ctx,
             ))
@@ -234,7 +234,7 @@ pub unsafe fn calc_ret_single_with_spread(
         let spread = spread.e.view_arr(ctx.as_ref())?.deref().cast_f64();
         let spread_arr = spread.view().to_dim1()?;
         if pos_arr.is_empty() {
-            return Ok((Arr1::from_vec(Vec::<f64>::new()).to_dimd().into(), ctx));
+            return Ok((Arr1::from_vec(Vec::<f64>::new()).into_dyn().into(), ctx));
         }
         // 账户变动信息
         let mut cash = init_cash.f64();
@@ -306,7 +306,7 @@ pub unsafe fn calc_ret_single_with_spread(
                         },
                     )
                     .wrap()
-                    .to_dimd()
+                    .into_dyn()
                     .into(),
                 ctx,
             ))
@@ -362,7 +362,7 @@ pub unsafe fn calc_ret_single_with_spread(
                         // cash
                     })
                     .wrap()
-                    .to_dimd()
+                    .into_dyn()
                     .into(),
                 ctx,
             ))

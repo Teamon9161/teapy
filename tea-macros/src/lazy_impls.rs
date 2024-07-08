@@ -168,7 +168,7 @@ pub(crate) fn impl_rolling_by_startidx_agg(
                             current_arr.#fn_name(#(#params),*)
                         })
                         .collect_trusted();
-                        Ok(Arr1::from_vec(out).to_dimd().into())
+                        Ok(Arr1::from_vec(out).into_dyn().into())
                     },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
@@ -235,7 +235,7 @@ pub(crate) fn impl_rolling_by_startidx_agg2(
                             },).unwrap()
                         })
                         .collect_trusted();
-                        Ok(Arr1::from_vec(out).to_dimd().into())
+                        Ok(Arr1::from_vec(out).into_dyn().into())
                     },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
@@ -280,7 +280,7 @@ pub(crate) fn impl_rolling_by_vecusize_agg(
                                 current_arr.#fn_name(#(#params),*)
                             })
                             .collect_trusted();
-                        Ok(Arr1::from_vec(out).to_dimd().into())
+                        Ok(Arr1::from_vec(out).into_dyn().into())
                     },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
@@ -331,7 +331,7 @@ pub(crate) fn impl_group_by_startidx_agg(
                             current_arr.#fn_name(#(#params),*)
                         })
                         .collect_trusted();
-                        Ok(Arr1::from_vec(out).to_dimd().into())
+                        Ok(Arr1::from_vec(out).into_dyn().into())
                     },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }
@@ -392,7 +392,7 @@ pub(crate) fn impl_group_by_startidx_agg2(
                             },).unwrap()
                         })
                         .collect_trusted();
-                        Ok(Arr1::from_vec(out).to_dimd().into())
+                        Ok(Arr1::from_vec(out).into_dyn().into())
                     },).unwrap();
                     Ok((out.into(), ctx.clone()))
                 }

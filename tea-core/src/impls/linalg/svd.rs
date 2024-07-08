@@ -110,7 +110,7 @@ impl ArrD<f64> {
             tbail!("SVD error in step 2: info = {:?}", info);
         }
         let s = unsafe { s.assume_init() };
-        let s = Arr1::from_vec(s).to_dimd();
+        let s = Arr1::from_vec(s).into_dyn();
         if !calc_uvt {
             Ok((None, s, None))
         } else {
@@ -139,8 +139,8 @@ impl ArrD<f64> {
             };
             let (m, n) = layout.size();
             let (u_col, vt_row) = if full { (m, n) } else { (k, k) };
-            let u: Self = into_matrix(layout.resized(m, u_col), u.unwrap())?.to_dimd();
-            let vt: Self = into_matrix(layout.resized(vt_row, n), vt.unwrap())?.to_dimd();
+            let u: Self = into_matrix(layout.resized(m, u_col), u.unwrap())?.into_dyn();
+            let vt: Self = into_matrix(layout.resized(vt_row, n), vt.unwrap())?.into_dyn();
             Ok((Some(u), s, Some(vt)))
         }
     }

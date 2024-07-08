@@ -14,6 +14,7 @@ use pyo3::{
 };
 use tea_hash::TpHashMap;
 
+use tea_core::prelude::PyExpr as _PyExpr;
 use tea_core::prelude::*;
 
 #[cfg(feature = "map")]
@@ -35,8 +36,8 @@ use tea_ext::ExprTimeExt;
 #[cfg(all(feature = "rolling", feature = "agg", feature = "time"))]
 use tea_ext::RollingTimeStartBy;
 
-#[cfg(feature = "time")]
-use tea_core::datatype::DateTimeToPy;
+// #[cfg(feature = "time")]
+// use tea_core::datatype::DateTimeToPy;
 
 #[cfg(feature = "groupby")]
 use tea_groupby::*;

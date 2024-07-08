@@ -24,7 +24,7 @@ fn produce_data() -> (ArrOk<'static>, ArrOk<'static>) {
             .flatten()
             .collect::<Vec<_>>(),
     )
-    .to_dimd();
+    .into_dyn();
     let arr1: ArrOk = data1.into();
     let data2: ArrD<_> = Arr1::from_vec(
         std::iter::repeat(sy2)
@@ -32,7 +32,7 @@ fn produce_data() -> (ArrOk<'static>, ArrOk<'static>) {
             .flatten()
             .collect::<Vec<_>>(),
     )
-    .to_dimd();
+    .into_dyn();
     let arr2: ArrOk = data2.into();
     (arr1, arr2)
 }

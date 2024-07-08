@@ -94,14 +94,14 @@ impl<'a> ArrOkExt for ArrOk<'a> {
                             .view()
                             .to_dim1()?
                             .map(|s| a_view.ensure_index(*s, length))
-                            .to_dimd()
+                            .into_dyn()
                             .into(),
                         ArrOk::I64(slc) => slc
                             .deref()
                             .view()
                             .to_dim1()?
                             .map(|s| a_view.ensure_index(*s as i32, length))
-                            .to_dimd()
+                            .into_dyn()
                             .into(),
                         _ => slc,
                     };
