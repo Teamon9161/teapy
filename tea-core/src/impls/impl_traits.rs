@@ -56,14 +56,30 @@ impl<T> From<T> for ArrD<T> {
     }
 }
 
-// // #[cfg(feature = "lazy")]
-// impl<T> From<T> for ArbArray<'_, T> {
-//     #[inline(always)]
-//     fn from(v: T) -> Self {
-//         let arr = arr0(v).wrap().to_dimd();
-//         arr.into()
-//     }
-// }
+trait SingleElement {}
+impl SingleElement for bool {}
+impl SingleElement for f32 {}
+impl SingleElement for f64 {}
+impl SingleElement for i32 {}
+impl SingleElement for i64 {}
+impl SingleElement for u8 {}
+impl SingleElement for u64 {}
+impl SingleElement for usize {}
+impl SingleElement for String {}
+#[cfg(feature = "time")]
+impl<U: TimeUnitTrait> SingleElement for DateTime<U> {}
+#[cfg(feature = "time")]
+impl SingleElement for TimeDelta {}
+
+impl<T: SingleElement> SingleElement for Option<T> {}
+
+impl<T: SingleElement> From<T> for ArbArray<'_, T> {
+    #[inline(always)]
+    fn from(v: T) -> Self {
+        let arr = arr0(v).wrap().into_dyn();
+        arr.into()
+    }
+}
 
 impl Default for ArrOk<'_> {
     #[inline(always)]

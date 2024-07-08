@@ -3,6 +3,8 @@ use super::pyfunc::{parse_expr, parse_expr_list, parse_expr_nocopy};
 use crate::from_py::{NoDim0, PyContext};
 // use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
+#[cfg(feature = "time")]
+use numpy::datetime::{units, Datetime as NPDatetime};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 #[cfg(feature = "ops")]
@@ -14,7 +16,7 @@ use pyo3::{
 };
 use tea_hash::TpHashMap;
 
-use tea_core::prelude::PyExpr as _PyExpr;
+// use tea_core::prelude::PyExpr as _PyExpr;
 use tea_core::prelude::*;
 
 #[cfg(feature = "map")]
@@ -234,9 +236,7 @@ impl PyExpr {
     }
 
     #[pyo3(signature=(context=None))]
-    // #[cfg(feature = "time")]
     pub fn view_in(
-        // slf: PyRefMut<'_, Self>,
         slf: Bound<'_, PyExpr>,
         context: Option<&Bound<'_, PyAny>>,
         py: Python,
@@ -255,63 +255,103 @@ impl PyExpr {
         let data = slf_ref
             .e
             .view_data(ct_rs.as_ref())
-            .map_err(StrError::to_py)?;
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
         let container = slf.into_any();
         if matches!(&data, Data::ArrVec(_)) {
             if let Data::ArrVec(arr_vec) = data {
                 let out = arr_vec
                     .iter()
                     .map(|arr| {
-                        match_arrok!(pyelement arr, a, {
-                            unsafe{
-                                // PyArray::borrow_from_array(&a.view().0, container)
-                                PyArray::borrow_from_array_bound(&a.view().0, container.clone())
-                                .no_dim0(py)
-                                .unwrap()
-                            }
-                        })
+                        match_arrok!(arr;
+                            (PureNumeric | Bool | U8 | U64 | Object)(a) => {
+                                Ok(unsafe{
+                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    .no_dim0(py)
+                                    .unwrap()
+                                })
+                            },
+                            #[cfg(feature = "time")]
+                            DateTimeMs(arr) => {
+                                // safety: Numpy Datetime has the same memory layout with tevec DateTime
+                                let a: &ArbArray<'_, NPDatetime<units::Milliseconds>> = unsafe{std::mem::transmute(arr)};
+                                Ok(unsafe{
+                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    .no_dim0(py)
+                                    .unwrap()
+                                })
+                            },
+                            #[cfg(feature = "time")]
+                            DateTimeUs(arr) => {
+                                // safety: Numpy Datetime has the same memory layout with tevec DateTime
+                                let a: &ArbArray<'_, NPDatetime<units::Microseconds>> = unsafe{std::mem::transmute(arr)};
+                                Ok(unsafe{
+                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    .no_dim0(py)
+                                    .unwrap()
+                                })
+                            },
+                            #[cfg(feature = "time")]
+                            DateTimeNs(arr) => {
+                                // safety: Numpy Datetime has the same memory layout with tevec DateTime
+                                let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(arr)};
+                                Ok(unsafe{
+                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    .no_dim0(py)
+                                    .unwrap()
+                                })
+                            },
+                            // TODO（Teamon): still some dtypes are not covered
+                        )
+                        .unwrap()
                     })
                     .collect_trusted();
                 return Ok(out.into_py(py));
             }
         }
-        let arr = data.view_arr(ct_rs.as_ref())?;
-        if matches!(arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
-            // let arr = match_arrok!(
-            //     arr,
-            //     a,
-            //     { a.view().to_object(py) },
-            //     Str,
-            //     String,
-            //     #[cfg(feature = "time")]
-            //     TimeDelta
-            // );
-            return PyArray::from_owned_array_bound(
-                py,
-                arr.view().cast_object().into_owned_inner().unwrap().0,
-            )
-            .no_dim0(py);
-        }
-        #[cfg(feature = "time")]
-        if let ArrOk::DateTime(arr) = arr {
-            let arr = arr
-                .view()
-                .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
-            return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
-        }
-        match_arrok!(
-            pyelement arr,
-            a,
-            {
-                unsafe {
-                    Ok(PyArray::borrow_from_array_bound(
-                        &a.view().0,
-                        container,
-                    )
+        let arr = data
+            .view_arr(ct_rs.as_ref())
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        unsafe {
+            match_arrok!(
+                arr;
+                (PureNumeric | Bool | U8 | U64 | Object)(a) => {
+                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container)
                     .no_dim0(py)?)
-                }
-            }
-        )
+                },
+                #[cfg(feature = "time")]
+                DateTimeMs(a) => {
+                    let a: &ArbArray<'_, NPDatetime<units::Milliseconds>> = std::mem::transmute(a);
+                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container).no_dim0(py)?)
+                },
+                #[cfg(feature = "time")]
+                DateTimeUs(a) => {
+                    let a: &ArbArray<'_, NPDatetime<units::Microseconds>> = std::mem::transmute(a);
+                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container).no_dim0(py)?)
+                },
+                #[cfg(feature = "time")]
+                DateTimeNs(a) => {
+                    let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = std::mem::transmute(a);
+                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container).no_dim0(py)?)
+                },
+                // can not view string and timedelta dtype for technical reasons
+                String(a) => {
+                    return PyArray::from_owned_array_bound(
+                        py,
+                        a.view().cast::<Object>().0,
+                    )
+                    .no_dim0(py);
+                },
+                #[cfg(feature = "time")]
+                TimeDelta(a) => {
+                    return PyArray::from_owned_array_bound(
+                        py,
+                        a.view().cast::<Object>().0,
+                    )
+                    .no_dim0(py);
+                },
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+        }
     }
 
     #[getter]
@@ -332,11 +372,9 @@ impl PyExpr {
     // }
 
     #[allow(unreachable_patterns)]
-    #[pyo3(signature=(unit=None, context=None))]
-    // #[cfg(feature = "time")]
+    #[pyo3(signature=(context=None))]
     pub fn value<'py>(
         &'py mut self,
-        unit: Option<&'py str>,
         context: Option<&Bound<'py, PyAny>>,
         py: Python<'py>,
     ) -> PyResult<PyObject> {
@@ -350,67 +388,112 @@ impl PyExpr {
             Default::default()
         };
         let (ct_rs, _obj_map) = (ct.ct, ct.obj_map);
-        self.e.eval_inplace(ct_rs.clone())?;
-        let data = self.e.view_data(ct_rs.as_ref()).map_err(StrError::to_py)?;
+        self.e
+            .eval_inplace(ct_rs.clone())
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let data = self
+            .e
+            .view_data(ct_rs.as_ref())
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
         if matches!(&data, Data::ArrVec(_)) {
             if let Data::ArrVec(_) = data {
-                let arr_vec = data.view_arr_vec(ct_rs.as_ref()).map_err(StrError::to_py)?;
+                let arr_vec = data
+                    .view_arr_vec(ct_rs.as_ref())
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
                 let out = arr_vec
                     .into_iter()
                     .map(|arr| {
-                        match_arrok!(pyelement arr, a, {
-                            PyArray::from_owned_array_bound(py, a.view().to_owned().0)
-                            .no_dim0(py)
-                            .unwrap()
-                        })
+                        match_arrok!(
+                            arr;
+                            (PureNumeric | Bool | U8 | U64 | Object)(a) => {
+                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                .no_dim0(py)
+                                .unwrap())
+                            },
+                            #[cfg(feature = "time")]
+                            DateTimeMs(a) => {
+                                let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
+                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                .no_dim0(py)
+                                .unwrap())
+                            },
+                            #[cfg(feature = "time")]
+                            DateTimeUs(a) => {
+                                let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
+                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                .no_dim0(py)
+                                .unwrap())
+                            },
+                            #[cfg(feature = "time")]
+                            DateTimeNs(a) => {
+                                let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
+                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                .no_dim0(py)
+                                .unwrap())
+                            },
+                            // TODO（Teamon): still some dtypes are not covered
+                        ).unwrap()
                     })
                     .collect_trusted();
                 return Ok(out.into_py(py));
             }
         }
-        let arr = data.view_arr(ct_rs.as_ref())?;
-        if matches!(&arr, ArrOk::Str(_) | ArrOk::String(_) | ArrOk::TimeDelta(_)) {
-            return PyArray::from_owned_array_bound(
-                py,
-                arr.view().cast_object().into_owned_inner().unwrap().0,
-            )
-            .no_dim0(py);
-        }
-        #[cfg(feature = "time")]
-        if let ArrOk::DateTime(arr) = &arr {
-            match unit.unwrap_or("us").to_lowercase().as_str() {
-                "ms" => {
-                    let arr = arr
-                        .view()
-                        .map(|v| v.into_np_datetime::<numpy::datetime::units::Milliseconds>());
-                    return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
-                }
-                "us" => {
-                    let arr = arr
-                        .view()
-                        .map(|v| v.into_np_datetime::<numpy::datetime::units::Microseconds>());
-                    return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
-                }
-                "ns" => {
-                    let arr = arr
-                        .view()
-                        .map(|v| v.into_np_datetime::<numpy::datetime::units::Nanoseconds>());
-                    return PyArray::from_owned_array_bound(py, arr.0).no_dim0(py);
-                }
-                _ => unimplemented!("not support datetime unit"),
-            }
-        }
-        match_arrok!(
-            pyelement arr,
-            a,
-            {
+        let arr = data
+            .view_arr(ct_rs.as_ref())
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        Ok(match_arrok!(
+            arr;
+            (PureNumeric | Bool | U8 | U64 | Object)(a) => {
                 Ok(PyArray::from_owned_array_bound(
                     py,
                     a.view().to_owned().0
                 )
                 .no_dim0(py)?)
-            }
-        )
+            },
+            #[cfg(feature = "time")]
+            DateTimeMs(a) => {
+                let a: &ArbArray<'_, NPDatetime<units::Milliseconds>> = unsafe{std::mem::transmute(a)};
+                Ok(PyArray::from_owned_array_bound(
+                    py,
+                    a.view().to_owned().0
+                )
+                .no_dim0(py)?)
+            },
+            #[cfg(feature = "time")]
+            DateTimeUs(a) => {
+                let a: &ArbArray<'_, NPDatetime<units::Microseconds>> = unsafe{std::mem::transmute(a)};
+                Ok(PyArray::from_owned_array_bound(
+                    py,
+                    a.view().to_owned().0
+                )
+                .no_dim0(py)?)
+            },
+            #[cfg(feature = "time")]
+            DateTimeNs(a) => {
+                let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
+                Ok(PyArray::from_owned_array_bound(
+                    py,
+                    a.view().to_owned().0
+                )
+                .no_dim0(py)?)
+            },
+            // can not view string and timedelta dtype for technical reasons
+            String(a) => {
+                return PyArray::from_owned_array_bound(
+                    py,
+                    a.view().cast::<Object>().0,
+                )
+                .no_dim0(py);
+            },
+            #[cfg(feature = "time")]
+            TimeDelta(a) => {
+                return PyArray::from_owned_array_bound(
+                    py,
+                    a.view().cast::<Object>().0,
+                )
+                .no_dim0(py);
+            },
+        ).unwrap())
     }
 
     #[getter]
@@ -741,7 +824,7 @@ impl PyExpr {
     #[pyo3(signature=())]
     pub fn __getstate__(&mut self, py: Python) -> PyResult<PyObject> {
         let name = self.e.name();
-        let arr = self.value(None, None, py)?;
+        let arr = self.value(None, py)?;
         let state = PyDict::new(py);
         state.set_item("name", name)?;
         state.set_item("arr", arr)?;
@@ -1045,7 +1128,15 @@ impl PyExpr {
     #[pyo3(signature=(axis=0, par=false))]
     pub fn count_nan(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.count_nan(axis, par);
+        e.e.count_none(axis, par);
+        e
+    }
+
+    #[cfg(feature = "agg")]
+    #[pyo3(signature=(axis=0, par=false))]
+    pub fn count_none(&self, axis: i32, par: bool) -> Self {
+        let mut e = self.clone();
+        e.e.count_none(axis, par);
         e
     }
 
@@ -1053,7 +1144,15 @@ impl PyExpr {
     #[pyo3(signature=(axis=0, par=false))]
     pub fn count_notnan(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.count_notnan(axis, par);
+        e.e.count_valid(axis, par);
+        e
+    }
+
+    #[cfg(feature = "agg")]
+    #[pyo3(signature=(axis=0, par=false))]
+    pub fn count_valid(&self, axis: i32, par: bool) -> Self {
+        let mut e = self.clone();
+        e.e.count_valid(axis, par);
         e
     }
 
@@ -1275,11 +1374,11 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "map", feature = "agg"))]
-    #[pyo3(signature=(min_periods=3, stable=false, axis=0, par=false, _warning=true))]
+    #[pyo3(signature=(min_periods=3, axis=0, par=false, _warning=true))]
     pub fn zscore(
         &self,
         min_periods: usize,
-        stable: bool,
+        // stable: bool,
         axis: i32,
         par: bool,
         _warning: bool,
@@ -1293,57 +1392,56 @@ impl PyExpr {
         //     )?;
         // }
         let mut e = self.clone();
-        e.e.zscore(min_periods, stable, axis, par);
+        e.e.zscore(min_periods, axis, par);
         Ok(e)
     }
 
     #[cfg(all(feature = "map", feature = "agg"))]
-    #[pyo3(signature=(method=WinsorizeMethod::Quantile, method_params=0.01, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(method=Wrap(WinsorizeMethod::Quantile), method_params=0.01, axis=0, par=false))]
     #[allow(clippy::too_many_arguments)]
     pub fn winsorize(
         &self,
-        method: WinsorizeMethod,
+        method: Wrap<WinsorizeMethod>,
         method_params: Option<f64>,
-        stable: bool,
         axis: i32,
         par: bool,
         // _warning: bool,
         _py: Python,
     ) -> PyResult<Self> {
         let mut e = self.clone();
-        e.e.winsorize(method, method_params, stable, axis, par);
+        e.e.winsorize(method.0, method_params, axis, par);
         Ok(e)
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(min_periods=1, stable=false, axis=0, par=false))]
-    pub fn var(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=1, axis=0, par=false))]
+    pub fn var(&self, min_periods: usize, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.var(min_periods, stable, axis, par);
+        e.e.var(min_periods, axis, par);
         e
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(min_periods=2, stable=false, axis=0, par=false))]
-    pub fn std(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=2, axis=0, par=false))]
+    pub fn std(&self, min_periods: usize, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.std(min_periods, stable, axis, par);
+        e.e.std(min_periods, axis, par);
         e
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(min_periods=3, stable=false, axis=0, par=false))]
-    pub fn skew(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=3, axis=0, par=false))]
+    pub fn skew(&self, min_periods: usize, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.skew(min_periods, stable, axis, par);
+        e.e.skew(min_periods, axis, par);
         e
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(min_periods=4, stable=false, axis=0, par=false))]
-    pub fn kurt(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=4, axis=0, par=false))]
+    pub fn kurt(&self, min_periods: usize, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.kurt(min_periods, stable, axis, par);
+        e.e.kurt(min_periods, axis, par);
         e
     }
 
@@ -1356,10 +1454,10 @@ impl PyExpr {
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(q, method=QuantileMethod::Linear, axis=0, par=false))]
-    pub fn quantile(&self, q: f64, method: QuantileMethod, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(q, method=Wrap(QuantileMethod::Linear), axis=0, par=false))]
+    pub fn quantile(&self, q: f64, method: Wrap<QuantileMethod>, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.quantile(q, method, axis, par);
+        e.e.quantile(q, method.0, axis, par);
         e
     }
 
@@ -1413,11 +1511,11 @@ impl PyExpr {
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(other, method=CorrMethod::Pearson, min_periods=3, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(other, method=Wrap(CorrMethod::Pearson), min_periods=3, stable=false, axis=0, par=false))]
     pub unsafe fn corr(
         &self,
         other: &PyAny,
-        method: CorrMethod,
+        method: Wrap<CorrMethod>,
         min_periods: usize,
         stable: bool,
         axis: i32,
@@ -1426,7 +1524,7 @@ impl PyExpr {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut e = self.clone();
-        e.e.corr(other.e, method, min_periods, stable, axis, par);
+        e.e.corr(other.e, method.0, min_periods, stable, axis, par);
         Ok(e.add_obj_into(obj))
     }
 
@@ -1903,11 +2001,11 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, stable=false, axis=0, par=false))]
     pub fn ts_reg(
         &self,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         stable: bool,
         axis: i32,
         par: bool,
@@ -2499,32 +2597,22 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
-    #[pyo3(signature=(idx, min_periods=2, stable=false))]
-    pub unsafe fn _group_by_startidx_std(
-        &self,
-        idx: &PyAny,
-        min_periods: usize,
-        stable: bool,
-    ) -> PyResult<Self> {
+    #[pyo3(signature=(idx, min_periods=2))]
+    pub unsafe fn _group_by_startidx_std(&self, idx: &PyAny, min_periods: usize) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
-        out.e.group_by_startidx_std(idx.e, min_periods, stable);
+        out.e.group_by_startidx_std(idx.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
-    #[pyo3(signature=(idx, min_periods=2, stable=false))]
-    pub unsafe fn _group_by_startidx_var(
-        &self,
-        idx: &PyAny,
-        min_periods: usize,
-        stable: bool,
-    ) -> PyResult<Self> {
+    #[pyo3(signature=(idx, min_periods=2))]
+    pub unsafe fn _group_by_startidx_var(&self, idx: &PyAny, min_periods: usize) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
-        out.e.group_by_startidx_var(idx.e, min_periods, stable);
+        out.e.group_by_startidx_var(idx.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2609,12 +2697,12 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
-    #[pyo3(signature=(idx, other, method=CorrMethod::Pearson, min_periods=3, stable=false))]
+    #[pyo3(signature=(idx, other, method=Wrap(CorrMethod::Pearson), min_periods=3, stable=false))]
     pub unsafe fn _group_by_startidx_corr(
         &self,
         idx: &PyAny,
         other: &PyAny,
-        method: CorrMethod,
+        method: Wrap<CorrMethod>,
         min_periods: usize,
         stable: bool,
     ) -> PyResult<Self> {
@@ -2624,7 +2712,7 @@ impl PyExpr {
         let obj2 = other.obj();
         let mut out = self.clone();
         out.e
-            .group_by_startidx_corr(other.e, idx.e, method, min_periods, stable);
+            .group_by_startidx_corr(other.e, idx.e, method.0, min_periods, stable);
         out.add_obj(obj).add_obj(obj2);
         Ok(out)
     }
@@ -2668,17 +2756,16 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(roll_start, min_periods=2, stable=false))]
+    #[pyo3(signature=(roll_start, min_periods=2))]
     pub unsafe fn _rolling_select_std(
         &self,
         roll_start: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_std(roll_start.e, min_periods, stable);
+        out.e.rolling_select_std(roll_start.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2703,12 +2790,12 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(roll_start, other, method=CorrMethod::Pearson, min_periods=2, stable=false))]
+    #[pyo3(signature=(roll_start, other, method=Wrap(CorrMethod::Pearson), min_periods=2, stable=false))]
     pub unsafe fn _rolling_select_corr(
         &self,
         roll_start: &PyAny,
         other: &PyAny,
-        method: CorrMethod,
+        method: Wrap<CorrMethod>,
         min_periods: usize,
         stable: bool,
     ) -> PyResult<Self> {
@@ -2718,7 +2805,7 @@ impl PyExpr {
         let obj2 = other.obj();
         let mut out = self.clone();
         out.e
-            .rolling_select_corr(other.e, roll_start.e, method, min_periods, stable);
+            .rolling_select_corr(other.e, roll_start.e, method.0, min_periods, stable);
         out.add_obj(obj).add_obj(obj2);
         Ok(out)
     }
@@ -2763,17 +2850,16 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(roll_start, min_periods=2, stable=false))]
+    #[pyo3(signature=(roll_start, min_periods=2))]
     pub unsafe fn _rolling_select_var(
         &self,
         roll_start: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_var(roll_start.e, min_periods, stable);
+        out.e.rolling_select_var(roll_start.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2858,17 +2944,17 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(roll_start, q, method=QuantileMethod::Linear))]
+    #[pyo3(signature=(roll_start, q, method=Wrap(QuantileMethod::Linear)))]
     pub unsafe fn _rolling_select_quantile(
         &self,
         roll_start: &PyAny,
         q: f64,
-        method: QuantileMethod,
+        method: Wrap<QuantileMethod>,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_quantile(roll_start.e, q, method);
+        out.e.rolling_select_quantile(roll_start.e, q, method.0);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2903,34 +2989,30 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(idxs, min_periods=1, stable=false))]
+    #[pyo3(signature=(idxs, min_periods=1))]
     pub unsafe fn _rolling_select_by_vecusize_var(
         &self,
         idxs: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
-        out.e
-            .rolling_select_by_vecusize_var(idxs.e, min_periods, stable);
+        out.e.rolling_select_by_vecusize_var(idxs.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(idxs, min_periods=1, stable=false))]
+    #[pyo3(signature=(idxs, min_periods=1))]
     pub unsafe fn _rolling_select_by_vecusize_std(
         &self,
         idxs: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
-        out.e
-            .rolling_select_by_vecusize_std(idxs.e, min_periods, stable);
+        out.e.rolling_select_by_vecusize_std(idxs.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
@@ -3015,17 +3097,18 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(idxs, q, method=QuantileMethod::Linear))]
+    #[pyo3(signature=(idxs, q, method=Wrap(QuantileMethod::Linear)))]
     pub unsafe fn _rolling_select_by_vecusize_quantile(
         &self,
         idxs: &PyAny,
         q: f64,
-        method: QuantileMethod,
+        method: Wrap<QuantileMethod>,
     ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
-        out.e.rolling_select_by_vecusize_quantile(idxs.e, q, method);
+        out.e
+            .rolling_select_by_vecusize_quantile(idxs.e, q, method.0);
         Ok(out.add_obj_into(obj))
     }
 }

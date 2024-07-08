@@ -126,91 +126,45 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                     );
                 };
             }
-        } else {
-            #[cfg(feature = "time")]
-            {
-                if pyarr.is_datetime() {
-                    // we don't need to reference to the pyobject here because we made a copy
-                    use PyArrayOk::*;
-                    {
-                        let out: PyExpr = match pyarr {
-                            DateTimeMs(arr) => Expr::new_from_owned(
-                                arr.readonly()
-                                    .as_array()
-                                    .map(|v| (*v).to_rs().unwrap())
-                                    .wrap(),
-                                None,
-                            )
-                            .into(),
-                            DateTimeNs(arr) => Expr::new_from_owned(
-                                arr.readonly()
-                                    .as_array()
-                                    .map(|v| (*v).to_rs().unwrap())
-                                    .wrap(),
-                                None,
-                            )
-                            .into(),
-                            DateTimeUs(arr) => Expr::new_from_owned(
-                                arr.readonly()
-                                    .as_array()
-                                    .map(|v| (*v).to_rs().unwrap())
-                                    .wrap(),
-                                None,
-                            )
-                            .into(),
-                            _ => unreachable!(),
-                        };
-                        return Ok(out);
-                    }
-                }
-            }
         }
-
         if copy {
-            match_pyarray!(
-                pyarr,
-                arr,
-                { Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into()) },
-                F64,
-                F32,
-                I64,
-                I32,
-                Bool
-            )
+            Ok(match_pyarray!(
+                pyarr;
+                (PureNumeric | Bool | Object)(arr) => { Ok(Expr::new_from_owned(arr.to_owned_array().wrap(), None).into()) },
+                Time(arr) => {
+                    let arrok: ArrOk<'_> = arr.to_owned_array().wrap().into();
+                    Ok(Expr::new_from_arr(arrok, None).into())
+                },
+            ).unwrap())
         } else {
-            match_pyarray!(
-                pyarr,
-                arr,
-                {
+            Ok(match_pyarray!(
+                pyarr;
+                (PureNumeric | Bool | Object | Time)(arr) => {
                     let arr_res = arr.try_readwrite();
                     if let Ok(mut arr) = arr_res {
                         let arr_write = arr.as_array_mut();
-                        let arb_arr = ArbArray::ViewMut(arr_write.wrap());
+                        let arrok: ArrOk<'_> = arr_write.wrap().into();
                         // safe when pyarray exists
                         Ok(
-                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new(
-                                arb_arr, None,
+                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new_from_arr(
+                                arrok, None,
                             ))
                             .to_py(Some(vec![obj.to_object(obj.py())])),
                         )
                     } else {
                         let arr_read = arr.as_array();
-                        let arb_arr = ArbArray::View(arr_read.wrap());
+                        let arrok: ArrOk<'_> = arr_read.wrap().into();
                         // safe when pyarray exists
                         Ok(
-                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new(
-                                arb_arr, None,
+                            std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new_from_arr(
+                                arrok, None,
                             ))
                             .to_py(Some(vec![obj.to_object(obj.py())])),
                         )
                     }
                 },
-                F64,
-                F32,
-                I64,
-                I32,
-                Bool
             )
+            .unwrap())
         }
     } else if let Ok(pylist) = obj.extract::<PyList>() {
         match_pylist!(pylist, l, {
@@ -276,7 +230,7 @@ pub unsafe fn parse_expr_list(obj: &PyAny, copy: bool) -> PyResult<Vec<PyExpr>> 
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
 pub fn concat_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
-    let mut e1 = exprs.first().unwrap().clone();
+    let mut e1 = exprs.titer().first().unwrap();
     let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
     e1.e.concat(
         exprs.into_iter().skip(1).map(|e| e.e).collect_trusted(),
@@ -302,7 +256,7 @@ pub unsafe fn concat_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> 
 #[pyo3(signature=(exprs, axis=0))]
 #[allow(unreachable_patterns)]
 pub fn stack_expr(exprs: Vec<PyExpr>, axis: i32) -> PyResult<PyExpr> {
-    let mut e1 = exprs.first().unwrap().clone();
+    let mut e1 = exprs.titer().first().unwrap();
     let obj_vec = exprs.iter().skip(1).map(|e| e.obj()).collect_trusted();
     e1.e.stack(
         exprs.into_iter().skip(1).map(|e| e.e).collect_trusted(),
@@ -325,10 +279,10 @@ pub unsafe fn stack_expr_py(exprs: Vec<&PyAny>, axis: i32) -> PyResult<PyExpr> {
 
 #[cfg(feature = "agg")]
 #[pyfunction]
-#[pyo3(name="corr", signature=(exprs, method=CorrMethod::Pearson, min_periods=1, stable=false))]
+#[pyo3(name="corr", signature=(exprs, method=Wrap(CorrMethod::Pearson), min_periods=1, stable=false))]
 pub fn corr_py(
     exprs: Vec<&PyAny>,
-    method: CorrMethod,
+    method: Wrap<CorrMethod>,
     min_periods: usize,
     stable: bool,
 ) -> PyResult<PyExpr> {
@@ -338,7 +292,7 @@ pub fn corr_py(
         .collect::<Vec<PyExpr>>();
     let obj_vec = exprs.iter().map(|e| e.obj()).collect_trusted();
     let exprs = exprs.into_iter().map(|e| e.e).collect_trusted();
-    let out: PyExpr = corr(exprs, method, min_periods, stable).into();
+    let out: PyExpr = corr(exprs, method.0, min_periods, stable).into();
     Ok(out.add_obj_vec_into(obj_vec))
 }
 
@@ -442,11 +396,21 @@ pub fn timedelta(rule: &str) -> PyExpr {
 }
 
 #[cfg(feature = "time")]
-#[pyfunction]
-pub fn datetime(s: &str, fmt: Option<&str>) -> PyResult<PyExpr> {
-    let e: Expr<'static> = DateTime::parse(s, fmt)
-        .map_err(|e| PyValueError::new_err(e.to_string()))?
-        .into();
+#[pyfunction(signature=(s, fmt=None, unit=None))]
+pub fn datetime(s: &str, fmt: Option<&str>, unit: Option<&str>) -> PyResult<PyExpr> {
+    let unit = unit.unwrap_or("ns");
+    let e: Expr<'static> = match unit {
+        "ns" => DateTime::<unit::Nanosecond>::parse(s, fmt)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?
+            .into(),
+        "us" => DateTime::<unit::Microsecond>::parse(s, fmt)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?
+            .into(),
+        "ms" => DateTime::<unit::Microsecond>::parse(s, fmt)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?
+            .into(),
+        _ => return Err(PyValueError::new_err("unit must be one of ns, us, ms")),
+    };
     Ok(e.into())
 }
 
@@ -500,7 +464,7 @@ pub fn context<'py>(s: Option<&'py PyAny>) -> PyResult<PyExpr> {
 pub fn scan_ipc(path: String, columns: PyColSelect) -> PyResult<Vec<PyExpr>> {
     use tea_io::scan_ipc_lazy;
     let out: Vec<PyExpr> = scan_ipc_lazy(path, columns.0)
-        .map_err(StrError::to_py)?
+        .map_err(|e| PyValueError::new_err(e.to_string()))?
         .into_iter()
         .map(|e| e.into())
         .collect();

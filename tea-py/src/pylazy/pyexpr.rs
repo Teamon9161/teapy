@@ -2,7 +2,6 @@ use crate::from_py::PyContext;
 use std::fmt::Debug;
 
 use super::export::*;
-use tea_core::prelude::*;
 use tea_lazy::{Expr, ExprElement};
 
 pub type RefObj = Option<Vec<PyObject>>;
@@ -154,18 +153,18 @@ impl PyExpr {
             "object" => expr.e.cast_object(),
             "str" => expr.e.cast_string(),
             #[cfg(feature = "time")]
-            "datetime" => expr.e.cast_datetime_default(),
+            "datetime" => expr.e.cast_datetime(None),
             #[cfg(feature = "time")]
-            "datetime(ns)" => expr.e.cast_datetime(Some(TimeUnit::Nanosecond)),
+            "datetime(ns)" => expr.e.cast_datetime_ns(),
             #[cfg(feature = "time")]
-            "datetime(us)" => expr.e.cast_datetime(Some(TimeUnit::Microsecond)),
+            "datetime(us)" => expr.e.cast_datetime_us(),
             #[cfg(feature = "time")]
-            "datetime(ms)" => expr.e.cast_datetime(Some(TimeUnit::Millisecond)),
+            "datetime(ms)" => expr.e.cast_datetime_ms(),
             #[cfg(feature = "time")]
-            "datetime(s)" => expr.e.cast_datetime(Some(TimeUnit::Second)),
+            "datetime(s)" => unimplemented!("datetime(s) is not implemented"),
             #[cfg(feature = "time")]
             "timedelta" => expr.e.cast_timedelta(),
-            "optusize" | "option<usize>" | "opt<usize>" => expr.e.cast_optusize(),
+            "optusize" | "opt<usize>" | "opt(usize)" => expr.e.cast_optusize(),
             _ => Err(PyValueError::new_err(format!(
                 "cast to type: {:?} is not implemented",
                 &ty_name

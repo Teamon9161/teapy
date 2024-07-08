@@ -4,6 +4,7 @@ mod export;
 mod impl_pyexpr;
 mod pyexpr;
 mod pyfunc;
+pub mod wrap;
 
 // pub use datadict::PyDataDict;
 pub use impl_pyexpr::expr_register;

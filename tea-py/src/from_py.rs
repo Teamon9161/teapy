@@ -50,6 +50,7 @@ pub enum PyArrayOk<'py> {
     F64(&'py PyArrayDyn<f64>),
     I32(&'py PyArrayDyn<i32>),
     I64(&'py PyArrayDyn<i64>),
+    U64(&'py PyArrayDyn<u64>),
     Usize(&'py PyArrayDyn<usize>),
     Object(&'py PyArrayDyn<Object>),
     DateTimeMs(&'py PyArrayDyn<Datetime<units::Milliseconds>>),
@@ -60,25 +61,27 @@ pub enum PyArrayOk<'py> {
 /// match the enum `PyArrayOk` to get the discrete dtype of `PyArray` so that we can
 /// call functions on a `PyArray` of which dtype is known;
 macro_rules! match_pyarray {
-
-    ($pyarr: expr, $e: ident, $body: tt $(,$arm: ident)*) => {
-        match $pyarr {
-            $(PyArrayOk::$arm($e) => $body,)*
-            _ => unimplemented!("match pyarray of this dtype is not implemented")
-        }
+    ($($tt: tt)*) => {
+        $crate::tea_core::prelude::match_enum!(PyArrayOk, $($tt)*)
     };
+    // ($pyarr: expr, $e: ident, $body: tt $(,$arm: ident)*) => {
+    //     match $pyarr {
+    //         $(PyArrayOk::$arm($e) => $body,)*
+    //         _ => unimplemented!("match pyarray of this dtype is not implemented")
+    //     }
+    // };
 
-    ($pyarr: expr, $e: ident, $body: tt) => {
-        match_pyarray!($pyarr, $e, $body, Bool, F32, F64, I32, I64, Usize, Object, DatetimeMs, DatetimeNs, DatetimeUs)
-    };
+    // ($pyarr: expr, $e: ident, $body: tt) => {
+    //     match_pyarray!($pyarr, $e, $body, Bool, F32, F64, I32, I64, Usize, Object, DatetimeMs, DatetimeNs, DatetimeUs)
+    // };
 
-    (numeric $pyarr: expr, $e: ident, $body: tt) => {
-        match_pyarray!($pyarr, $e, $body, F32, F64, I32, I64, Usize)
-    };
+    // (numeric $pyarr: expr, $e: ident, $body: tt) => {
+    //     match_pyarray!($pyarr, $e, $body, F32, F64, I32, I64, Usize)
+    // };
 
-    (datetime $pyarr: expr, $e: ident, $body: tt) => {
-        match_pyarray!($pyarr, $e, $body, DatetimeMs, DatetimeNs, DatetimeUs)
-    };
+    // (datetime $pyarr: expr, $e: ident, $body: tt) => {
+    //     match_pyarray!($pyarr, $e, $body, DatetimeMs, DatetimeNs, DatetimeUs)
+    // };
 }
 
 impl<'py> PyArrayOk<'py> {

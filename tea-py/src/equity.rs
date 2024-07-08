@@ -53,7 +53,7 @@ pub unsafe fn calc_ret_single(
     let mut out = pos.clone();
     out.e.cast_f64().chain_f_ctx(move |(data, ctx)| {
         let arr = data.view_arr(ctx.as_ref())?;
-        let pos_arr = match_arrok!(arr, a, { a.view().to_dim1()? }, F64); // 当期仓位的1d array
+        let pos_arr = match_arrok!(arr; F64(a) => { a.view().to_dim1() },)?; // 当期仓位的1d array
         let opening_cost = opening_cost.e.view_arr(ctx.as_ref())?.deref().cast_f64(); // 开仓成本的1d array
         let opening_cost_arr = opening_cost.view().to_dim1()?; // 开仓成本的1d array
         let closing_cost = closing_cost.e.view_arr(ctx.as_ref())?.deref().cast_f64(); // 平仓价格的1d array
@@ -226,7 +226,7 @@ pub unsafe fn calc_ret_single_with_spread(
     };
     out.e.cast_f64().chain_f_ctx(move |(data, ctx)| {
         let arr = data.view_arr(ctx.as_ref())?;
-        let pos_arr = match_arrok!(arr, a, { a.view().to_dim1()? }, F64); // 当期仓位的1d array
+        let pos_arr = match_arrok!(arr; F64(a) => { a.view().to_dim1() },)?; // 当期仓位的1d array
         let opening_cost = opening_cost.e.view_arr(ctx.as_ref())?.deref().cast_f64(); // 开仓成本的1d array
         let opening_cost_arr = opening_cost.view().to_dim1()?; // 开仓成本的1d array
         let closing_cost = closing_cost.e.view_arr(ctx.as_ref())?.deref().cast_f64(); // 平仓价格的1d array

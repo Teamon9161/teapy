@@ -20,4 +20,5 @@ pub use super::impls::{conjugate, replicate, LeastSquaresResult};
 #[cfg(feature = "method_1d")]
 pub use super::iterators::{Iter, IterMut};
 
+pub use tea_dyn::prelude::ArbArray as TdArbArray;
 pub use tea_dyn::prelude::*;
