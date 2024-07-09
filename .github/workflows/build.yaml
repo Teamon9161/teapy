@@ -19,7 +19,7 @@ defaults:
     shell: bash
 
 jobs:
-  test-rust:
+  test-rust-linux:
     name: teapy build
     strategy:
       matrix:
@@ -45,5 +45,56 @@ jobs:
         run : |
           export RUSTFLAGS="-C debuginfo=0"
           cargo clippy
+  test-rust-macos:
+    name: teapy build
+    strategy:
+      matrix:
+        python-version: [ "3.8" ]
+        os: [ "macos-latest" ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
 
+      - name: Set up Rust
+        run: rustup show
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tea-py
+          shared-key: shared-${{ matrix.os }}
+
+      - name: Run formatting checks
+        run: |
+          cargo fmt --all -- --check
+      - name: Run linting checks
+        run : |
+          export RUSTFLAGS="-C debuginfo=0"
+          cargo clippy
+  test-rust-windows:
+    name: teapy build
+    strategy:
+      matrix:
+        python-version: [ "3.8" ]
+        os: [ "windows-latest" ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        run: rustup show
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tea-py
+          shared-key: shared-${{ matrix.os }}
+
+      - name: Run formatting checks
+        run: |
+          cargo fmt --all -- --check
+      - name: Run linting checks
+        run : |
+          export RUSTFLAGS="-C debuginfo=0"
+          cargo clippy
       
