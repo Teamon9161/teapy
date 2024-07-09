@@ -1,7 +1,6 @@
 use super::export::*;
 use super::pyfunc::{parse_expr, parse_expr_list, parse_expr_nocopy};
 use crate::from_py::{NoDim0, PyContext};
-// use ahash::{HashMap, HashMapExt};
 use ndarray::SliceInfoElem;
 #[cfg(feature = "time")]
 use numpy::datetime::{units, Datetime as NPDatetime};
@@ -16,7 +15,6 @@ use pyo3::{
 };
 use tea_hash::TpHashMap;
 
-// use tea_core::prelude::PyExpr as _PyExpr;
 use tea_core::prelude::*;
 
 #[cfg(feature = "map")]
@@ -1298,6 +1296,13 @@ impl PyExpr {
         let mut out = self.clone();
         out.e.permuted_axes(axes.e);
         Ok(out.add_obj_into(obj))
+    }
+
+    #[cfg(feature = "agg")]
+    pub fn len(&self) -> Self {
+        let mut out = self.clone();
+        out.e.len();
+        out
     }
 
     #[cfg(feature = "agg")]
