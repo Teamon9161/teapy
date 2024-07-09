@@ -39,7 +39,7 @@ tea-macros = { path = "../tea-macros", default-features = false }
 tea-dyn = { workspace = true, features = [
     "ndarray",
     "py",
-    "ffi",
+    # "ffi",
 ], default-features = false }
 
 ndarray = { workspace = true }
