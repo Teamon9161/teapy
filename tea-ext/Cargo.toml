@@ -30,7 +30,7 @@ concat = ["tea-core/concat", "tea-hash"] # used in rolling_common
 [dependencies]
 pyo3 = { workspace = true }
 # tevec = { workspace = true, default-features = false, features = ["ndarray"] }
-tea-dyn = { workspace = true }
+tea-dyn = { workspace = true, default-features = false }
 tea-core = { path = "../tea-core", default-features = false, features = [
     "method_1d",
 ] }
