@@ -79,7 +79,8 @@ impl<'a> ExprInplaceExt for Expr<'a> {
             } else {
                 match_arrok!(&mut arr; Cast(a) => {
                     let f = fill.map(|f| match_arrok!(f; Cast(f) => {Ok(f.into_owned().into_scalar().unwrap().cast())},).unwrap());
-                    Ok(a.view_mut().shift(n, f, axis, par))
+                    a.view_mut().shift(n, f, axis, par);
+                    Ok(())
                 },).unwrap();
                 arr
             };

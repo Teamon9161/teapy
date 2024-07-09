@@ -37,36 +37,36 @@ impl<'a> GroupbyAggExt for Expr<'a> {
                 let mut start_vec = vec![];
                 match closed.to_lowercase().as_str() {
                     "left" => {
-                        let mut start = ts.first_1d().duration_trunc(duration.clone());
+                        let mut start = ts.first_1d().duration_trunc(duration);
                         label.push(start);
                         start_vec.push(0);
                         for i in 0..ts.len() {
                             let t = unsafe { *ts.uget(i) };
-                            if t < start + duration.clone() {
+                            if t < start + duration {
                                 continue;
                             } else {
                                 start_vec.push(i);
-                                start = t.duration_trunc(duration.clone());
+                                start = t.duration_trunc(duration);
                                 label.push(start);
                             }
                         }
                     }
                     "right" => {
-                        let mut start = ts.first_1d().duration_trunc(duration.clone());
+                        let mut start = ts.first_1d().duration_trunc(duration);
                         if start == *ts.get(0).unwrap() {
-                            start = start - duration.clone();
+                            start = start - duration;
                         }
                         label.push(start);
                         start_vec.push(0);
                         for i in 0..ts.len() {
                             let t = unsafe { *ts.uget(i) };
-                            if (t <= start + duration.clone()) | (t == start) {
+                            if (t <= start + duration) | (t == start) {
                                 continue;
                             } else {
                                 start_vec.push(i);
-                                start = t.duration_trunc(duration.clone());
+                                start = t.duration_trunc(duration);
                                 if start == t {
-                                    start = start - duration.clone();
+                                    start = start - duration;
                                 }
                                 label.push(start);
                             }

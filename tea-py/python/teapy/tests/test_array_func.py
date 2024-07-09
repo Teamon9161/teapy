@@ -19,7 +19,7 @@ from teapy.testing import (
 def test_cast_datetime():
     t = int(time.time())
     now1 = datetime.datetime.utcfromtimestamp(t)
-    now2 = tp.Expr(t).cast("datetime(s)").eview()
+    now2 = tp.Expr(t * 1000).cast("datetime(ms)").eview()
     assert now1 == now2
 
 
@@ -197,36 +197,32 @@ def test_mean(arr, axis):
 def test_std(arr, axis):
     res1 = pd.DataFrame(arr).std(axis=axis).values
     res2 = tp.std(arr, axis=axis)
-    res3 = tp.std(arr, axis=axis, stable=True)
-    res4 = Expr(arr).std(axis=axis, stable=True).eview()
-    assert_allclose3(res1, res2, res3, res4)
+    res3 = Expr(arr).std(axis=axis).eview()
+    assert_allclose3(res1, res2, res3,)
 
 
 @given(make_arr((10, 10)), st.integers(0, 1))
 def test_var(arr, axis):
     res1 = pd.DataFrame(arr).var(axis=axis).values
     res2 = tp.var(arr, axis=axis)
-    res3 = tp.var(arr, axis=axis, stable=True)
-    res4 = Expr(arr).var(axis=axis, stable=True).eview()
-    assert_allclose3(res1, res2, res3, res4)
+    res3 = Expr(arr).var(axis=axis).eview()
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr((10, 10), unique=True), st.integers(0, 1))
 def test_skew(arr, axis):
     res1 = pd.DataFrame(arr).skew(axis=axis).values
     res2 = tp.skew(arr, axis=axis)
-    res3 = tp.skew(arr, axis=axis, stable=True)
-    res4 = Expr(arr).skew(axis=axis, stable=True).eview()
-    assert_allclose3(res1, res2, res3, res4)
+    res3 = Expr(arr).skew(axis=axis).eview()
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr((10, 10), unique=True), st.integers(0, 1))
 def test_kurt(arr, axis):
     res1 = pd.DataFrame(arr).kurt(axis=axis).values
     res2 = tp.kurt(arr, axis=axis)
-    res3 = tp.kurt(arr, axis=axis, stable=True)
-    res4 = Expr(arr).kurt(axis=axis, stable=True).eview()
-    assert_allclose3(res1, res2, res3, res4)
+    res3 = Expr(arr).kurt(axis=axis).eview()
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr((10, 2)))

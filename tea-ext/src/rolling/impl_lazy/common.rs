@@ -181,13 +181,13 @@ impl<'a> RollingExt for Expr<'a> {
                             .enumerate()
                             .map(|(i, dt)| {
                                 let dt = *dt;
-                                if dt < start_time + duration.clone() {
+                                if dt < start_time + duration {
                                     start
                                 } else {
                                     for j in start + 1..=i {
                                         // safety: 0<=j<arr.len()
                                         start_time = unsafe { *view.uget(j) };
-                                        if dt < start_time + duration.clone() {
+                                        if dt < start_time + duration {
                                             start = j;
                                             break;
                                         }
@@ -200,15 +200,15 @@ impl<'a> RollingExt for Expr<'a> {
                     // rolling to the start of the duration
                     RollingTimeStartBy::DurationStart => {
                         let mut start = 0;
-                        let mut dt_truncate = view[0].duration_trunc(duration.clone());
+                        let mut dt_truncate = view[0].duration_trunc(duration);
                         view.iter()
                             .enumerate()
                             .map(|(i, dt)| {
                                 let dt = *dt;
-                                if dt < dt_truncate + duration.clone() {
+                                if dt < dt_truncate + duration {
                                     start
                                 } else {
-                                    dt_truncate = dt.duration_trunc(duration.clone());
+                                    dt_truncate = dt.duration_trunc(duration);
                                     start = i;
                                     start
                                 }
@@ -216,7 +216,7 @@ impl<'a> RollingExt for Expr<'a> {
                             .collect_trusted()
                     }
                 };
-                return Ok((Arr1::from_vec(out).into_dyn().into(), ctx))
+                Ok((Arr1::from_vec(out).into_dyn().into(), ctx))
             },)
         });
         self
@@ -240,13 +240,13 @@ impl<'a> RollingExt for Expr<'a> {
                 .enumerate()
                 .map(|(i, dt)| {
                     let dt = *dt;
-                    let start = if dt < start_time + duration.clone() {
+                    let start = if dt < start_time + duration {
                         start
                     } else {
                         for j in start + 1..=i {
                             // safety: 0<=j<arr.len()
                             start_time = unsafe { *view.uget(j) };
-                            if dt < start_time + duration.clone() {
+                            if dt < start_time + duration {
                                 start = j;
                                 break;
                             }
@@ -284,7 +284,7 @@ impl<'a> RollingExt for Expr<'a> {
                     return Ok((Arr1::from_vec(Vec::<usize>::new()).into_dyn().into(), ctx));
                 }
                 let mut out = vec![vec![]; arr.len()];
-                let max_n_offset = window.clone() / offset.clone();
+                let max_n_offset = window / offset;
                 if max_n_offset < 0 {
                     tbail!("window // offset < 0!");
                 }
@@ -295,22 +295,22 @@ impl<'a> RollingExt for Expr<'a> {
                     let mut last_dt = dt;
                     for j in i + 1..arr.len() {
                         let current_dt = unsafe { *arr.uget(j) };
-                        if current_n_offset == max_n_offset && current_dt > dt + window.clone() {
+                        if current_n_offset == max_n_offset && current_dt > dt + window {
                             break;
                         }
 
                         let td = current_dt - last_dt;
-                        if td < offset.clone() {
+                        if td < offset {
                             continue;
-                        } else if td == offset.clone() {
+                        } else if td == offset {
                             unsafe { out.get_unchecked_mut(j) }.push(i);
                             current_n_offset += 1;
-                            last_dt = dt + offset.clone() * current_n_offset
+                            last_dt = dt + offset * current_n_offset
                         } else {
                             // a large timedelta, need to find the offset
-                            if current_dt <= dt + window.clone() {
-                                current_n_offset += td / offset.clone();
-                                last_dt = dt + offset.clone() * current_n_offset;
+                            if current_dt <= dt + window {
+                                current_n_offset += td / offset;
+                                last_dt = dt + offset * current_n_offset;
                                 if current_dt == last_dt {
                                     unsafe { out.get_unchecked_mut(j) }.push(i);
                                 }

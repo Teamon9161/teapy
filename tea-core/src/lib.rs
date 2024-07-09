@@ -235,7 +235,7 @@ where
     }
 
     /// Change the array to dimD.
-    #[deprecated(since = "0.8", note = "Please use `into_dyn` instead")]
+    #[deprecated(since = "0.8.0", note = "Please use `into_dyn` instead")]
     #[inline(always)]
     pub fn to_dimd(self) -> ArrBase<S, IxDyn> {
         self.to_dim::<IxDyn>().unwrap() // this should never fail

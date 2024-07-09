@@ -5,7 +5,7 @@ extern crate test;
 use test::Bencher;
 
 use tea_core::prelude::*;
-use tea_groupby::{groupby, groupby1, groupby2};
+use tea_groupby::groupby;
 
 fn produce_data() -> (ArrOk<'static>, ArrOk<'static>) {
     let length = 1000;

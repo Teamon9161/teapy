@@ -95,7 +95,11 @@ impl<'a> ArrOk<'a> {
 
     #[allow(unreachable_patterns)]
     pub fn prepare(&mut self) {
-        match_arrok!(self; Dynamic(a) => { Ok(a.prepare()) },).unwrap()
+        match_arrok!(self; Dynamic(a) => {
+            a.prepare();
+            Ok(())
+        },)
+        .unwrap()
     }
 
     #[allow(unreachable_patterns)]
@@ -251,30 +255,30 @@ impl<'a> ArrOk<'a> {
                     if unit == TimeUnit::Millisecond {
                         return self;
                     } else {
-                        Ok(a.view().to_datetime(Some(unit)).into())
+                        Ok(a.view().to_datetime(Some(unit)))
                     }
                 },
                 DateTimeUs(a) => {
                     if unit == TimeUnit::Microsecond {
                         return self;
                     } else {
-                        Ok(a.view().to_datetime(Some(unit)).into())
+                        Ok(a.view().to_datetime(Some(unit)))
                     }
                 },
                 DateTimeNs(a) => {
                     if unit == TimeUnit::Nanosecond {
                         return self;
                     } else {
-                        Ok(a.view().to_datetime(Some(unit)).into())
+                        Ok(a.view().to_datetime(Some(unit)))
                     }
                 },
-                Numeric(a) => { Ok(a.view().to_datetime(Some(unit)).into()) },
+                Numeric(a) => { Ok(a.view().to_datetime(Some(unit))) },
             )
             .unwrap()
         } else {
             let dtype = self.dtype();
             if dtype.is_time() {
-                return self;
+                self
             } else {
                 match_arrok!(self; Numeric(a) => {Ok(a.cast_datetime_ns().into())},).unwrap()
             }
