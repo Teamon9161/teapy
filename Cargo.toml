@@ -48,17 +48,11 @@ arrow = { package = "arrow2", version = "0.18.0", default-features = false, feat
     "io_ipc_compression",
 ] }
 
-# [workspace.dependencies.tevec]
-# path = "../tevec/tevec"
-# # git = "https://github.com/Teamon9161/tevec.git"
-# # branch = "master"
-# default-features = false
-# features = ["ndarray"]
 
 [workspace.dependencies.tea-dyn]
-path = "../tea-dyn"
-# git = "https://github.com/Teamon9161/tea-dyn.git"
-# branch = "main"
+# path = "../tea-dyn"
+git = "https://github.com/Teamon9161/tea-dyn.git"
+branch = "main"
 default-features = false
 features = ["ndarray"]
 
