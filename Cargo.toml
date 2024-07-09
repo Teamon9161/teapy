@@ -54,7 +54,7 @@ arrow = { package = "arrow2", version = "0.18.0", default-features = false, feat
 git = "https://github.com/Teamon9161/tea-dyn.git"
 branch = "main"
 default-features = false
-features = ["ndarray"]
+features = ["ndarray", "py", "ffi"]
 
 [profile.dev]
 incremental = true

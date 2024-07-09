@@ -33,15 +33,9 @@ intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
 
 [dependencies]
 derive_more = { workspace = true }
-# tea-dtype = { path = "../tea-dtype", default-features = false }
 tea-utils = { path = "../tea-utils" }
-# tea-error = { path = "../tea-error", default-features = false }
 tea-macros = { path = "../tea-macros", default-features = false }
 
-# tevec = { workspace = true, default-features = false, features = [
-#     "agg",
-#     "ndarray",
-# ] }
 tea-dyn = { workspace = true, features = [
     "ndarray",
     "py",
@@ -59,5 +53,4 @@ intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }
 openblas-src = { version = "0.10.4", optional = true, default-features = false, features = [
     "cblas",
 ] }
-# statrs = { version = "0.16", optional=true }
 arrow = { workspace = true, default-features = false, optional = true }
