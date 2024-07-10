@@ -62,26 +62,8 @@ pub enum PyArrayOk<'py> {
 /// call functions on a `PyArray` of which dtype is known;
 macro_rules! match_pyarray {
     ($($tt: tt)*) => {
-        $crate::tea_core::prelude::match_enum!(PyArrayOk, $($tt)*)
+        $crate::tea_core::match_enum!(PyArrayOk, $($tt)*)
     };
-    // ($pyarr: expr, $e: ident, $body: tt $(,$arm: ident)*) => {
-    //     match $pyarr {
-    //         $(PyArrayOk::$arm($e) => $body,)*
-    //         _ => unimplemented!("match pyarray of this dtype is not implemented")
-    //     }
-    // };
-
-    // ($pyarr: expr, $e: ident, $body: tt) => {
-    //     match_pyarray!($pyarr, $e, $body, Bool, F32, F64, I32, I64, Usize, Object, DatetimeMs, DatetimeNs, DatetimeUs)
-    // };
-
-    // (numeric $pyarr: expr, $e: ident, $body: tt) => {
-    //     match_pyarray!($pyarr, $e, $body, F32, F64, I32, I64, Usize)
-    // };
-
-    // (datetime $pyarr: expr, $e: ident, $body: tt) => {
-    //     match_pyarray!($pyarr, $e, $body, DatetimeMs, DatetimeNs, DatetimeUs)
-    // };
 }
 
 impl<'py> PyArrayOk<'py> {

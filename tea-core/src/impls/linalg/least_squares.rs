@@ -5,8 +5,7 @@ use crate::{
 };
 use lapack_sys::dgelsd_;
 use ndarray::{s, Axis, Ix0, ShapeBuilder};
-use tea_dyn::prelude::{tbail, terr};
-// use std::mem::transmute;
+use tevec::prelude::{tbail, terr};
 
 #[derive(Debug, Clone)]
 pub struct LeastSquaresResult {

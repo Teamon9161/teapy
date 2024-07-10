@@ -2,7 +2,7 @@ use std::mem::MaybeUninit;
 
 use super::prelude::{ArrBase, WrapNdarray};
 use ndarray::{arr0 as nd_arr0, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, OwnedRepr, ShapeBuilder};
-use tea_dyn::prelude::TResult;
+use tevec::prelude::TResult;
 
 pub type Arr<T, D> = ArrBase<OwnedRepr<T>, D>;
 pub type ArrD<T> = Arr<T, IxDyn>;

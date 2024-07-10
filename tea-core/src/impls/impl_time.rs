@@ -2,7 +2,7 @@
 use crate::prelude::{ArbArray, Arr, ArrBase, ArrOk, WrapNdarray};
 use ndarray::{Data, Dimension, Zip};
 use numpy::datetime::{units, Datetime as NPDatetime};
-use tea_dyn::prelude::{unit, Cast, CrDateTime, DateTime, TimeDelta, TimeUnit, TimeUnitTrait, Utc};
+use tevec::prelude::{unit, Cast, CrDateTime, DateTime, TimeDelta, TimeUnit, TimeUnitTrait, Utc};
 
 impl<S, D, U: TimeUnitTrait> ArrBase<S, D>
 where

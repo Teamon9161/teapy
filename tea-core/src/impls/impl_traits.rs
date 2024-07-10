@@ -1,5 +1,3 @@
-use tea_dyn::prelude::Dtype;
-
 use crate::prelude::*;
 use ndarray::{arr0, ArrayBase, Data, DataOwned, Dimension, RawData};
 use std::fmt;
@@ -138,7 +136,7 @@ macro_rules! impl_from {
                     if let ArrOk::$arm(v) = self {
                         Ok(v)
                     } else {
-                        tbail!("ArrOk is not of type {:?}", <$ty>::type_())
+                        tbail!("ArrOk is not of type {:?}", <$ty>::dtype())
                     }
                 }
             )*

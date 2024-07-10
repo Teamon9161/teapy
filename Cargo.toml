@@ -12,7 +12,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Teamon"]
 edition = "2021"
 repository = "https://github.com/Teamon9161/teapy"
@@ -38,7 +38,7 @@ pyo3 = { version = "0.21", features = [
     "extension-module",
     "abi3-py38",
     "macros",
-    "serde",
+    "chrono",
     "gil-refs",
 ] }
 parking_lot = "0.12"
@@ -48,13 +48,12 @@ arrow = { package = "arrow2", version = "0.18.0", default-features = false, feat
     "io_ipc_compression",
 ] }
 
-
-[workspace.dependencies.tea-dyn]
-# path = "../tea-dyn"
-git = "https://github.com/Teamon9161/tea-dyn.git"
-branch = "main"
+[workspace.dependencies.tevec]
+# path = "../tevec"
+git = "https://github.com/Teamon9161/tevec.git"
+branch = "master"
 default-features = false
-features = ["ndarray", "py"]
+features = ["ndarray"]
 
 [profile.dev]
 incremental = true

@@ -7,7 +7,7 @@ use ndarray::{
     s, Array, Dimension, Ix0, Ix1, Ix2, IxDyn, NewAxis, RawArrayView, ShapeBuilder, StrideShape,
     ViewRepr,
 };
-use tea_dyn::prelude::TResult;
+use tevec::prelude::TResult;
 
 pub type ArrView<'a, T, D> = ArrBase<ViewRepr<&'a T>, D>;
 pub type ArrView1<'a, T> = ArrView<'a, T, Ix1>;

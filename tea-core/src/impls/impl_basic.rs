@@ -3,8 +3,8 @@ use crate::prelude::{Arr1, ArrBase, ArrD, WrapNdarray};
 // use datatype::{BoolType, IsNone, Number, TvNumber};
 use ndarray::{Data, Dimension, Ix1, Zip};
 use num::Zero;
-use tea_dyn::prelude::*;
 use tea_macros::arr_agg_ext;
+use tevec::prelude::*;
 
 impl<T: Clone, S: Data<Elem = T>> ArrBase<S, Ix1> {
     /// sum of the array on a given axis, return valid_num n and the sum of the array
