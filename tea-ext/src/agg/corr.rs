@@ -21,12 +21,7 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
         (Arr1::from_vec(out1), Arr1::from_vec(out2))
     }
 
-    pub fn weight_mean_1d<S2, T2>(
-        &self,
-        other: &ArrBase<S2, Ix1>,
-        min_periods: usize,
-        stable: bool,
-    ) -> f64
+    pub fn weight_mean_1d<S2, T2>(&self, other: &ArrBase<S2, Ix1>, min_periods: usize) -> f64
     where
         T: Number,
         T::Inner: Number,
@@ -34,7 +29,7 @@ impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {
         T2: Number,
         T2::Inner: Number,
     {
-        let weight_sum = other.sum_1d(stable);
+        let weight_sum = other.sum_1d();
         debug_assert_eq!(self.len(), other.len());
         let len = self.len();
         let mut sum = 0.;
@@ -88,10 +83,7 @@ impl<T: IsNone + Clone + Send + Sync, D: Dimension, S: Data<Elem = T>> Agg2Ext f
         } else {
             // Kahan summation, see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
             let (mut c_a, mut c_b, mut c_ab) = (0., 0., 0.);
-            let (mean_a, mean_b) = (
-                arr.mean_1d(min_periods, true),
-                other_arr.mean_1d(min_periods, true),
-            );
+            let (mean_a, mean_b) = (arr.mean_1d(min_periods), other_arr.mean_1d(min_periods));
             arr.n_apply_valid_with(&other_arr, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);
@@ -145,10 +137,7 @@ impl<T: IsNone + Clone + Send + Sync, D: Dimension, S: Data<Elem = T>> Agg2Ext f
         } else {
             // Kahan summation, see https://en.wikipedia.org/wiki/Kahan_summation_algorithm
             let (mut c_a, mut c_a2, mut c_b, mut c_b2, mut c_ab) = (0., 0., 0., 0., 0.);
-            let (mean_a, mean_b) = (
-                arr.mean_1d(min_periods, true),
-                other_arr.mean_1d(min_periods, true),
-            );
+            let (mean_a, mean_b) = (arr.mean_1d(min_periods), other_arr.mean_1d(min_periods));
             arr.n_apply_valid_with(&other_arr, |va, vb| {
                 let (va, vb) = (va.f64() - mean_a, vb.f64() - mean_b);
                 sum_a = kh_sum(sum_a, va, &mut c_a);

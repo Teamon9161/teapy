@@ -573,7 +573,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
                         vy.f64() - alpha - beta * vx.f64()
                     })
                     .collect_trusted();
-                let mean = Arr1::from_vec(resid).mean_1d(1, false);
+                let mean = Arr1::from_vec(resid).mean_1d(1);
                 unsafe { out.uget_mut(i).write(mean) };
             } else {
                 unsafe { out.uget_mut(i).write(f64::NAN) };
@@ -599,7 +599,7 @@ impl<T: Send + Sync, S: Data<Elem = T>, D: Dimension> Reg2Ts for ArrBase<S, D> {
                         vy.f64() - alpha - beta * vx.f64()
                     })
                     .collect_trusted();
-                let mean = Arr1::from_vec(resid).mean_1d(1, false);
+                let mean = Arr1::from_vec(resid).mean_1d(1);
                 unsafe { out.uget_mut(end).write(mean) };
             } else {
                 unsafe { out.uget_mut(end).write(f64::NAN) };

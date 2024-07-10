@@ -122,11 +122,10 @@ def test_min(arr, axis):
 
 @given(make_arr((10, 10)), st.integers(0, 1))
 def test_sum(arr, axis):
-    for stable in [True, False]:
-        res1 = tp.sum(arr, axis=axis, stable=stable)
-        res2 = Expr(arr).sum(axis=axis, stable=stable).eview()
-        res3 = np.nansum(arr, axis=axis)
-        assert_allclose3(res1, res2, res3)
+    res1 = tp.sum(arr, axis=axis)
+    res2 = Expr(arr).sum(axis=axis).eview()
+    res3 = np.nansum(arr, axis=axis)
+    assert_allclose3(res1, res2, res3)
 
 
 @given(st.integers(0, 1))
@@ -188,9 +187,8 @@ def test_count_nan(arr, axis):
 def test_mean(arr, axis):
     res1 = pd.DataFrame(arr).mean(axis=axis).values
     res2 = tp.mean(arr, axis=axis)
-    res3 = tp.mean(arr, axis=axis, stable=True)
-    res4 = Expr(arr).mean(axis=axis, stable=True).eview()
-    assert_allclose3(res1, res2, res3, res4)
+    res3 = Expr(arr).mean(axis=axis).eview()
+    assert_allclose3(res1, res2, res3)
 
 
 @given(make_arr((10, 10)), st.integers(0, 1))

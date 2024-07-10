@@ -292,38 +292,38 @@ class DataDict:
         dd._select_on_axis(idx, axis=0, inplace=True, check=False)
         return None if inplace else dd
 
-    def mean(self, axis=-1, stable=False, par=False, min_periods=1):
+    def mean(self, axis=-1, par=False, min_periods=1):
         if axis == -1:
             return stack(self.exprs, axis=axis).mean(
-                axis=-1, stable=stable, par=par, min_periods=min_periods
+                axis=-1, par=par, min_periods=min_periods
             )
         else:
             axis = axis + 1 if axis < 0 else axis
             return self.apply(
                 lambda e: e.mean(
-                    axis=axis, stable=stable, par=par, min_periods=min_periods
+                    axis=axis, par=par, min_periods=min_periods
                 )
             )
 
-    def std(self, axis=-1, stable=False, par=False, min_periods=3):
+    def std(self, axis=-1, par=False, min_periods=3):
         if axis == -1:
             return stack(self.exprs, axis=axis).std(
-                axis=-1, stable=stable, par=par, min_periods=min_periods
+                axis=-1, par=par, min_periods=min_periods
             )
         else:
             axis = axis + 1 if axis < 0 else axis
             return self.apply(
                 lambda e: e.std(
-                    axis=axis, stable=stable, par=par, min_periods=min_periods
+                    axis=axis, par=par, min_periods=min_periods
                 )
             )
 
-    def sum(self, axis=-1, stable=False, par=False):
+    def sum(self, axis=-1, par=False):
         if axis == -1:
-            return stack(self.exprs, axis=axis).sum(axis=-1, stable=stable, par=par)
+            return stack(self.exprs, axis=axis).sum(axis=-1, par=par)
         else:
             axis = axis + 1 if axis < 0 else axis
-            return self.apply(lambda e: e.sum(axis=axis, stable=stable, par=par))
+            return self.apply(lambda e: e.sum(axis=axis, par=par))
 
     def min(self, axis=-1, par=False):
         if axis == -1:

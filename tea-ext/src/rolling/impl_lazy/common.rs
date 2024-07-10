@@ -379,14 +379,14 @@ impl<'a> RollingExt for Expr<'a> {
     fn rolling_select_by_vecusize_valid_last(&mut self, idxs: Self) {}
 
     #[lazy_only(lazy = "rolling_by_startidx", type = "PureNumeric")]
-    fn rolling_select_sum(&mut self, roll_start: Self, stable: bool) {}
+    fn rolling_select_sum(&mut self, roll_start: Self) {}
     #[lazy_only(lazy = "rolling_by_vecusize", type = "PureNumeric")]
-    fn rolling_select_by_vecusize_sum(&mut self, idxs: Self, stable: bool) {}
+    fn rolling_select_by_vecusize_sum(&mut self, idxs: Self) {}
 
     #[lazy_only(lazy = "rolling_by_startidx", type = "PureNumeric")]
-    fn rolling_select_mean(&mut self, roll_start: Self, min_periods: usize, stable: bool) {}
+    fn rolling_select_mean(&mut self, roll_start: Self, min_periods: usize) {}
     #[lazy_only(lazy = "rolling_by_vecusize", type = "PureNumeric")]
-    fn rolling_select_by_vecusize_mean(&mut self, idxs: Self, min_periods: usize, stable: bool) {}
+    fn rolling_select_by_vecusize_mean(&mut self, idxs: Self, min_periods: usize) {}
 
     #[lazy_only(lazy = "rolling_by_startidx", type = "PureNumeric")]
     fn rolling_select_std(&mut self, roll_start: Self, min_periods: usize) {}
@@ -436,14 +436,7 @@ impl<'a> RollingExt for Expr<'a> {
         type = "PureNumeric",
         type2 = "PureNumeric"
     )]
-    fn rolling_select_weight_mean(
-        &mut self,
-        other: Self,
-        roll_start: Self,
-        min_periods: usize,
-        stable: bool,
-    ) {
-    }
+    fn rolling_select_weight_mean(&mut self, other: Self, roll_start: Self, min_periods: usize) {}
 
     #[lazy_only(lazy = "rolling_by_startidx2", type = "PureNumeric", type2 = "Bool")]
     fn rolling_select_cut_mean(&mut self, other: Self, roll_start: Self, min_periods: usize) {}

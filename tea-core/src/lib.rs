@@ -74,6 +74,15 @@ where
         }
     }
 
+    #[inline]
+    pub fn len_of(&self, axis: Axis) -> usize {
+        if self.ndim() == 0 {
+            1
+        } else {
+            self.0.len_of(axis)
+        }
+    }
+
     #[inline(always)]
     pub fn norm_axis(&self, axis: i32) -> Axis {
         Axis(self.ensure_axis(axis))

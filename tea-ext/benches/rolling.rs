@@ -25,7 +25,7 @@ fn bench_rolling_apply_with_start(b: &mut Bencher) {
     let start: Expr = start.into();
     let agg_expr: Data = ColumnSelector::Index(0).into();
     let mut agg_expr: Expr = agg_expr.into();
-    agg_expr.mean(1, false, 0, false);
+    agg_expr.mean(1, 0, false);
     // let mut v1 = v.clone();
     // v1.rolling_apply_with_start(agg_expr.clone(), start.clone(), vec![], false);
     // let _ = v1.eval_inplace(None).unwrap();
@@ -77,12 +77,12 @@ fn bench_rolling_apply_mean(b: &mut Bencher) {
     let start: ArrOk = Arr1::from_vec(start).into_dyn().into();
     let start: Expr = start.into();
     let mut v1 = v.clone();
-    v1.rolling_select_mean(start.clone(), 1, false);
+    v1.rolling_select_mean(start.clone(), 1);
     let _ = v1.eval_inplace(None).unwrap();
     dbg!("{:?}", v1.view_arr(None).unwrap());
     b.iter(|| {
         let mut v1 = v.clone();
-        v1.rolling_select_mean(start.clone(), 1, false);
+        v1.rolling_select_mean(start.clone(), 1);
         let _ = v1.eval_inplace(None).unwrap();
     })
 }

@@ -191,10 +191,10 @@ impl<'a> GroupbyAggExt for Expr<'a> {
     fn group_by_startidx_valid_last(&mut self, group_idx: Self) {}
 
     #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
-    fn group_by_startidx_sum(&mut self, group_idx: Self, stable: bool) {}
+    fn group_by_startidx_sum(&mut self, group_idx: Self) {}
 
     #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
-    fn group_by_startidx_mean(&mut self, group_idx: Self, min_periods: usize, stable: bool) {}
+    fn group_by_startidx_mean(&mut self, group_idx: Self, min_periods: usize) {}
 
     #[lazy_only(lazy = "group_by_startidx_agg", type = "PureNumeric")]
     fn group_by_startidx_var(&mut self, group_idx: Self, min_periods: usize) {}

@@ -18,7 +18,6 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     /// production of the array on a given axis, return valid_num n and the production of the array
     fn nprod_1d(&self) -> (usize, T::Inner)
     where
-        T: IsNone,
         T::Inner: Number,
     {
         if let Some(slc) = self.0.try_as_slice() {
@@ -33,7 +32,6 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     #[inline]
     pub fn meanvar_1d(&self, min_periods: usize) -> (f64, f64)
     where
-        T: IsNone,
         T::Inner: Number,
     {
         self.as_dim1().0.titer().vmean_var(min_periods)
@@ -65,7 +63,6 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     where
         T: Number,
         S2: Data<Elem = bool>,
-        // T2: Cast<bool>
     {
         let mut n = 0_usize;
         let sum = self.fold_with(mask.view(), T::zero(), |acc, v, valid| {
@@ -98,12 +95,7 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S,
     }
 
     #[inline]
-    pub fn cut_mean_1d<S2>(
-        &self,
-        mask: &ArrBase<S2, Ix1>,
-        min_periods: usize,
-        // stable: bool,
-    ) -> f64
+    pub fn cut_mean_1d<S2>(&self, mask: &ArrBase<S2, Ix1>, min_periods: usize) -> f64
     where
         T: Number,
         S2: Data<Elem = bool>,
@@ -280,4 +272,14 @@ where
     /// count not NaN number of an array on a given axis
     #[lazy_only]
     fn count_valid(&self) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use tea_core::prelude::*;
+    #[test]
+    fn test_arr0_agg() {
+        let arr = arr0(1.);
+        assert_eq!(arr.mean(1, 0, false).into_scalar().unwrap(), 1.)
+    }
 }

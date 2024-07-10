@@ -14,7 +14,7 @@ pub(crate) fn reduce_nd_method(
             if self.is_empty() || self.len_of(axis) == 0 {
                 return Arr1::from_vec(vec![]).into_dyn();
             }
-            if self.ndim() == 1 {
+            if self.ndim() <= 1 {
                 return ndarray::arr0(self.view().to_dim1().unwrap().#fn_1d_name(#(#params),*)).wrap().into_dyn();
             }
             if !par {
@@ -48,7 +48,7 @@ pub(crate) fn reduce2_nd_method(
             if lhs.is_empty() || lhs.len_of(axis) == 0 {
                 return Arr1::from_vec(vec![]).into_dyn();
             }
-            if lhs.ndim() == 1 {
+            if lhs.ndim() <= 1 {
                 let rhs = rhs.view().to_dim1().unwrap();
                 return ndarray::arr0(lhs.to_dim1().unwrap().#fn_1d_name(&rhs, #(#params),*)).wrap().into_dyn();
             }
@@ -72,7 +72,7 @@ pub(crate) fn inplace_nd_method(
         {
             let axis = self.norm_axis(axis);
             let ndim = self.ndim();
-            if ndim == 1 {
+            if ndim <= 1 {
                 return self.as_dim1_mut().#fn_1d_name(#(#params),*)
             }
             if !par {
@@ -102,7 +102,7 @@ pub(crate) fn map_nd_method(
             let mut out_wr = out_arr.view_mut();
             if self.is_empty() || self.len_of(axis) == 0 {
                 // we don't need to do anything
-            } else if self.ndim() == 1 {
+            } else if self.ndim() <= 1 {
                 // fast path for dim1, we don't need to clone params
                 let mut out_wr = out_wr.to_dim1().unwrap();
                 self.view().to_dim1().unwrap().#fn_1d_name(&mut out_wr, #(#params),*);
@@ -142,7 +142,7 @@ pub(crate) fn map2_nd_method(
             let mut out_wr = out.view_mut();
             if lhs.is_empty() || lhs.len_of(axis) == 0 {
                 // we don't need to do anything
-            } else if lhs.ndim() == 1 {
+            } else if lhs.ndim() <= 1 {
                 // fast path for dim1, we don't need to clone params
                 let mut out_wr = out_wr.to_dim1().unwrap();
                 let rhs_1d = rhs.view().to_dim1().unwrap();

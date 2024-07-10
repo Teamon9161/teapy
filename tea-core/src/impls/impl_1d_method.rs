@@ -438,7 +438,7 @@ where
             out.len() == len,
             "length of output array must equal to length of the array"
         );
-        let mean = self.mean_1d(0, true);
+        let mean = self.mean_1d(0);
         // within the first window
         for i in 0..window - 1 {
             let (v, vo) = unsafe { (self.uget(i), out.uget_mut(i)) };
@@ -481,7 +481,7 @@ where
             out.len() == len,
             "length of output array must equal to length of the array"
         );
-        let (mean1, mean2) = (self.mean_1d(0, true), other.mean_1d(0, true));
+        let (mean1, mean2) = (self.mean_1d(0), other.mean_1d(0));
         // within the first window
         for i in 0..window - 1 {
             let (v1, v2, vo) = unsafe { (self.uget(i), other.uget(i), out.uget_mut(i)) };

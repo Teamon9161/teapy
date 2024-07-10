@@ -13,10 +13,10 @@ impl<'a> AggExt for Expr<'a> {
     fn ndim(&self) {}
 
     #[teapy(type = "Numeric")]
-    fn sum(&self, stable: bool, axis: i32, par: bool) {}
+    fn sum(&self, axis: i32, par: bool) {}
 
     #[teapy(type = "Numeric")]
-    fn mean(&self, min_periods: usize, stable: bool, axis: i32, par: bool) {}
+    fn mean(&self, min_periods: usize, axis: i32, par: bool) {}
 
     #[teapy(type = "Numeric")]
     fn min(&self, axis: i32, par: bool) {}

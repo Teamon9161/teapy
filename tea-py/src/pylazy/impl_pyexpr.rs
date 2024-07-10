@@ -1339,10 +1339,10 @@ impl PyExpr {
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(stable=false, axis=0, par=false))]
-    pub fn sum(&self, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(axis=0, par=false))]
+    pub fn sum(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.sum(stable, axis, par);
+        e.e.sum(axis, par);
         e
     }
 
@@ -1371,10 +1371,10 @@ impl PyExpr {
     }
 
     #[cfg(feature = "agg")]
-    #[pyo3(signature=(min_periods=1, stable=false, axis=0, par=false))]
-    pub fn mean(&self, min_periods: usize, stable: bool, axis: i32, par: bool) -> Self {
+    #[pyo3(signature=(min_periods=1, axis=0, par=false))]
+    pub fn mean(&self, min_periods: usize, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
-        e.e.mean(min_periods, stable, axis, par);
+        e.e.mean(min_periods, axis, par);
         e
     }
 
@@ -2577,27 +2577,26 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
-    #[pyo3(signature=(idx, min_periods=1, stable=false))]
+    #[pyo3(signature=(idx, min_periods=1))]
     pub unsafe fn _group_by_startidx_mean(
         &self,
         idx: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
-        out.e.group_by_startidx_mean(idx.e, min_periods, stable);
+        out.e.group_by_startidx_mean(idx.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
-    #[pyo3(signature=(idx, stable=false))]
-    pub unsafe fn _group_by_startidx_sum(&self, idx: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(idx))]
+    pub unsafe fn _group_by_startidx_sum(&self, idx: &PyAny) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
-        out.e.group_by_startidx_sum(idx.e, stable);
+        out.e.group_by_startidx_sum(idx.e);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2736,27 +2735,26 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(roll_start, min_periods=1, stable=false))]
+    #[pyo3(signature=(roll_start, min_periods=1))]
     pub unsafe fn _rolling_select_mean(
         &self,
         roll_start: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_mean(roll_start.e, min_periods, stable);
+        out.e.rolling_select_mean(roll_start.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(roll_start, stable=false))]
-    pub unsafe fn _rolling_select_sum(&self, roll_start: &PyAny, stable: bool) -> PyResult<Self> {
+    #[pyo3(signature=(roll_start))]
+    pub unsafe fn _rolling_select_sum(&self, roll_start: &PyAny) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
-        out.e.rolling_select_sum(roll_start.e, stable);
+        out.e.rolling_select_sum(roll_start.e);
         Ok(out.add_obj_into(obj))
     }
 
@@ -2816,13 +2814,12 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(roll_start, other, min_periods=2, stable=false))]
+    #[pyo3(signature=(roll_start, other, min_periods=2))]
     pub unsafe fn _rolling_select_weight_mean(
         &self,
         roll_start: &PyAny,
         other: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let other = parse_expr_nocopy(other)?;
@@ -2830,7 +2827,7 @@ impl PyExpr {
         let obj2 = other.obj();
         let mut out = self.clone();
         out.e
-            .rolling_select_weight_mean(other.e, roll_start.e, min_periods, stable);
+            .rolling_select_weight_mean(other.e, roll_start.e, min_periods);
         out.add_obj(obj).add_obj(obj2);
         Ok(out)
     }
@@ -2964,32 +2961,26 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(idxs, stable=false))]
-    pub unsafe fn _rolling_select_by_vecusize_sum(
-        &self,
-        idxs: &PyAny,
-        stable: bool,
-    ) -> PyResult<Self> {
+    #[pyo3(signature=(idxs))]
+    pub unsafe fn _rolling_select_by_vecusize_sum(&self, idxs: &PyAny) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
-        out.e.rolling_select_by_vecusize_sum(idxs.e, stable);
+        out.e.rolling_select_by_vecusize_sum(idxs.e);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(idxs, min_periods=1, stable=false))]
+    #[pyo3(signature=(idxs, min_periods=1))]
     pub unsafe fn _rolling_select_by_vecusize_mean(
         &self,
         idxs: &PyAny,
         min_periods: usize,
-        stable: bool,
     ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
-        out.e
-            .rolling_select_by_vecusize_mean(idxs.e, min_periods, stable);
+        out.e.rolling_select_by_vecusize_mean(idxs.e, min_periods);
         Ok(out.add_obj_into(obj))
     }
 

@@ -8,7 +8,7 @@ use tea_macros::arr_agg_ext;
 
 impl<T: Clone, S: Data<Elem = T>> ArrBase<S, Ix1> {
     /// sum of the array on a given axis, return valid_num n and the sum of the array
-    pub fn nsum_1d(&self, _stable: bool) -> (usize, T::Inner)
+    pub fn nsum_1d(&self) -> (usize, T::Inner)
     where
         T: IsNone,
         T::Inner: Number,
@@ -56,20 +56,20 @@ impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>, D: Dimension> BasicAggE
 
     /// sum of the array on a given axis
     #[inline]
-    pub fn sum(&self, stable: bool) -> T
+    pub fn sum(&self) -> T
     where
         T::Inner: Number,
     {
-        T::from_inner(self.as_dim1().nsum_1d(stable).1)
+        T::from_inner(self.as_dim1().nsum_1d().1)
     }
 
     /// mean of the array on a given axis
     #[inline]
-    pub fn mean(&self, min_periods: usize, stable: bool) -> f64
+    pub fn mean(&self, min_periods: usize) -> f64
     where
         T::Inner: Number,
     {
-        let (n, sum) = self.as_dim1().nsum_1d(stable);
+        let (n, sum) = self.as_dim1().nsum_1d();
         if n >= min_periods {
             sum.f64() / n.f64()
         } else {
