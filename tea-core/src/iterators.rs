@@ -8,7 +8,6 @@ use tevec::prelude::Number;
 impl<T, S, D> IntoIterator for ArrBase<S, D>
 where
     S: Data<Elem = T>,
-    // T: Copy,
     D: Dim1,
 {
     type Item = T;

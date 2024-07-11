@@ -173,12 +173,7 @@ where
     where
         T: IsNone,
     {
-        for v in self.as_dim1().iter() {
-            if !v.is_none() {
-                return v.clone();
-            }
-        }
-        T::none()
+        self.as_dim1().titer().vfirst().unwrap_or(T::none())
     }
 
     /// last valid value
@@ -187,12 +182,7 @@ where
     where
         T: IsNone,
     {
-        for v in self.as_dim1().iter().rev() {
-            if !v.is_none() {
-                return v.clone();
-            }
-        }
-        T::none()
+        self.as_dim1().titer().vlast().unwrap_or(T::none())
     }
 
     /// Calculate the quantile of the array on a given axis

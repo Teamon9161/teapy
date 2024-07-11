@@ -1340,6 +1340,22 @@ impl PyExpr {
 
     #[cfg(feature = "agg")]
     #[pyo3(signature=(axis=0, par=false))]
+    pub fn argmin(&self, axis: i32, par: bool) -> Self {
+        let mut e = self.clone();
+        e.e.argmin(axis, par);
+        e
+    }
+
+    #[cfg(feature = "agg")]
+    #[pyo3(signature=(axis=0, par=false))]
+    pub fn argmax(&self, axis: i32, par: bool) -> Self {
+        let mut e = self.clone();
+        e.e.argmax(axis, par);
+        e
+    }
+
+    #[cfg(feature = "agg")]
+    #[pyo3(signature=(axis=0, par=false))]
     pub fn sum(&self, axis: i32, par: bool) -> Self {
         let mut e = self.clone();
         e.e.sum(axis, par);

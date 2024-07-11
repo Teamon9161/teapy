@@ -439,13 +439,6 @@ impl<'a, T> ArbArray<'a, T> {
         }
     }
 
-    // pub fn first(&self) -> T
-    // where
-    //     T: Clone + GetNone,
-    // {
-    //     if let Some() = self.view().first()
-    // }
-
     pub fn concat<'b>(self, other: Vec<Self>, axis: Axis) -> ArbArray<'b, T>
     where
         T: Clone,

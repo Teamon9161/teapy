@@ -251,12 +251,12 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         }
         new_dim.slice_mut()[axis.index()] = kth + 1;
         let shape = new_dim.into_shape().set_f(f_flag);
-        let mut out = Arr::<i32, D>::default(shape);
+        let mut out = Arr::<i32, D>::uninit(shape);
         let mut out_wr = out.view_mut();
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
             x_1d.arg_partition_1d(out_1d, kth, sort, rev)
         });
-        out.into_dyn()
+        unsafe { out.assume_init().into_dyn() }
     }
 
     #[cfg(feature = "agg")]

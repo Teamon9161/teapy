@@ -1,12 +1,8 @@
-// mod corr;
 #[cfg(feature = "lazy")]
 mod impl_lazy;
-// mod reg;
 
-// pub use corr::*;
 #[cfg(feature = "lazy")]
 pub use impl_lazy::*;
-// pub use reg::*;
 
 #[cfg(feature = "lazy")]
 use lazy::Expr;

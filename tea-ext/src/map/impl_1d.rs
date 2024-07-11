@@ -1,7 +1,7 @@
 use ndarray::{Data, DataMut, Ix1};
 use std::{fmt::Debug, iter::zip, mem::MaybeUninit};
 use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec;
+// use tea_core::utils::CollectTrustedToVec;
 
 #[ext_trait]
 impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
@@ -89,119 +89,30 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
     /// return -1 if there are not enough valid elements
     /// sort: whether to sort the result by the size of the element
     #[cfg(feature = "agg")]
+    #[inline]
     fn arg_partition_1d<SO>(&self, mut out: ArrBase<SO, Ix1>, kth: usize, sort: bool, rev: bool)
     where
         T: IsNone + Copy + Send + Sync,
         T::Inner: Number,
-        SO: DataMut<Elem = i32>,
+        SO: DataMut<Elem = MaybeUninit<i32>>,
     {
-        let n = self.count_valid_1d() as usize;
-        if n <= kth + 1 {
-            if !sort {
-                let mut out_pos = 0;
-                for (i, v) in self.iter().enumerate() {
-                    if v.not_none() {
-                        unsafe { *out.uget_mut(out_pos) = i as i32 }
-                        out_pos += 1;
-                    }
-                }
-                for i in n..kth + 1 {
-                    unsafe { *out.uget_mut(i) = -1 }
-                }
-            } else {
-                let mut idx_sorted = Vec::from_iter(0..self.len() as i32);
-                // let mut arr = self.0.to_owned().wrap();  // clone the array
-                if !rev {
-                    idx_sorted
-                        .sort_unstable_by(|a: &i32, b: &i32| {
-                            let (va, vb) =
-                                unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                            va.sort_cmp(&vb)
-                        })
-                        .unwrap();
-                } else {
-                    idx_sorted
-                        .sort_unstable_by(|a: &i32, b: &i32| {
-                            let (va, vb) =
-                                unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                            va.sort_cmp_rev(&vb)
-                        })
-                        .unwrap();
-                }
-                for (i, v) in idx_sorted.iter().take(n).enumerate() {
-                    unsafe { *out.uget_mut(i) = *v }
-                }
-                for i in n..kth + 1 {
-                    unsafe { *out.uget_mut(i) = -1 }
-                }
-            }
-            return;
-        }
-        let mut out_c = self.0.to_owned(); // clone the array
-        let slc = out_c.as_slice_mut().unwrap();
-        let mut idx_sorted = Vec::from_iter(0..slc.len() as i32);
-        if !rev {
-            let sort_func = |a: &i32, b: &i32| {
-                let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                va.sort_cmp(&vb)
-            };
-            idx_sorted.select_nth_unstable_by(kth, sort_func);
-            idx_sorted.truncate(kth + 1);
-            if sort {
-                idx_sorted.sort_unstable_by(sort_func).unwrap();
-            }
-            out.apply_mut_with(&Arr1::from_vec(idx_sorted), |vo, v| *vo = *v);
-        } else {
-            let sort_func = |a: &i32, b: &i32| {
-                let (va, vb) = unsafe { (*self.uget((*a) as usize), *self.uget((*b) as usize)) }; // safety: out不超过self的长度
-                va.sort_cmp_rev(&vb)
-            };
-            idx_sorted.select_nth_unstable_by(kth, sort_func);
-            idx_sorted.truncate(kth + 1);
-            if sort {
-                idx_sorted.sort_unstable_by(sort_func).unwrap();
-            }
-            out.apply_mut_with(&Arr1::from_vec(idx_sorted), |vo, v| *vo = *v);
-        }
+        let arr = self.as_dim1().0;
+        let out_iter = arr.varg_partition(kth, sort, rev);
+        out.0.view_mut().write_trust_iter(out_iter).unwrap();
     }
 
     /// sort: whether to sort the result by the size of the element
     #[cfg(feature = "agg")]
+    #[inline]
     fn partition_1d<SO>(&self, mut out: ArrBase<SO, Ix1>, kth: usize, sort: bool, rev: bool)
     where
         T: IsNone + Send + Sync,
         T::Inner: Number,
         SO: DataMut<Elem = MaybeUninit<T>>,
     {
-        let n = self.count_valid_1d() as usize;
-        if n <= kth + 1 {
-            if !sort {
-                out.apply_mut_with(self, |vo, v| {
-                    vo.write(v.clone());
-                });
-            } else {
-                let mut arr = self.to_owned(); // clone the array
-                if !rev {
-                    arr.sort_unstable_by(|a, b| a.sort_cmp(b));
-                } else {
-                    arr.sort_unstable_by(|a, b| a.sort_cmp_rev(b));
-                }
-                out.apply_mut_with(&arr, |vo, v| {
-                    vo.write(v.clone());
-                });
-            }
-            return;
-        }
-        let mut out_c = self.0.to_owned().into_raw_vec(); // clone the array
-        let sort_func = if !rev { T::sort_cmp } else { T::sort_cmp_rev };
-        out_c.select_nth_unstable_by(kth, sort_func);
-        out_c.truncate(kth + 1);
-        if sort {
-            out_c.sort_unstable_by(sort_func).unwrap();
-        }
-        out.apply_mut_with(&Arr1::from_vec(out_c), |vo, v| {
-            vo.write(v.clone());
-        });
+        let arr = self.as_dim1().0;
+        let out_iter = arr.vpartition(kth, sort, rev);
+        out.0.view_mut().write_trust_iter(out_iter).unwrap();
     }
 
     /// Take value on a given axis and clone to a new array, just work on 1d array
@@ -223,9 +134,9 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         S3: Data<Elem = usize> + Send + Sync,
     {
         let value = slc
-            .iter()
-            .map(|idx| self.uget(*idx).clone())
-            .collect_trusted();
+            .titer()
+            .map(|idx| self.uget(idx).clone())
+            .collect_trusted_to_vec();
         let value_view = ArrView1::<_>::from_ref_vec(out.raw_dim(), &value);
         out.apply_mut_with(&value_view, |vo, v| *vo = v.clone());
     }
@@ -245,15 +156,15 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         S3: Data<Elem = Option<usize>> + Send + Sync,
     {
         let value = slc
-            .iter()
+            .titer()
             .map(|idx| {
                 if let Some(idx) = idx {
-                    self.uget(*idx).clone()
+                    self.uget(idx).clone()
                 } else {
                     T::none()
                 }
             })
-            .collect_trusted();
+            .collect_trusted_to_vec();
 
         let value_view = ArrView1::<_>::from_ref_vec(out.raw_dim(), &value);
         out.apply_mut_with(&value_view, |vo, v| {

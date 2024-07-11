@@ -4,8 +4,6 @@ extern crate intel_mkl_src as _src;
 #[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
 extern crate openblas_src as _src;
 
-// use tea_dyn::prelude::Object;
-
 pub extern crate tevec;
 
 pub extern crate tea_utils as utils;
@@ -454,52 +452,14 @@ where
         }
     }
 
-    // /// Try to cast to bool
-    // pub fn to_bool(&self) -> Arr<bool, D>
-    // where
-    //     T: Debug + Cast<bool>,
-    // {
-    //     self.map(|v| {v.cast()})
-    // }
-
-    // /// Try to cast to pyobject
+    // /// Try to cast to string
     // #[inline(always)]
-    // pub fn to_object(&self, py: Python) -> Arr<Object, D>
+    // pub fn to_string(&self) -> Arr<String, D>
     // where
-    //     T: Debug + Clone + ToPyObject,
+    //     T: ToString,
     // {
-    //     self.map(|v| Object(v.to_object(py)))
+    //     self.map(|v| v.to_string())
     // }
-
-    // /// Try to cast to datetime
-    // #[cfg(feature = "time")]
-    // pub fn to_datetime(&self, unit: TimeUnit) -> TResult<Arr<DateTime, D>>
-    // where
-    //     T: Cast<i64> + GetDataType + Clone,
-    // {
-    //     match unit {
-    //         TimeUnit::Nanosecond => {
-    //             Ok(self.map(|v| DateTime::from_timestamp_ns(v.clone().cast()).unwrap_or_default()))
-    //         }
-    //         TimeUnit::Microsecond => {
-    //             Ok(self.map(|v| DateTime::from_timestamp_us(v.clone().cast()).unwrap_or_default()))
-    //         }
-    //         TimeUnit::Millisecond => {
-    //             Ok(self.map(|v| DateTime::from_timestamp_ms(v.clone().cast()).unwrap_or_default()))
-    //         }
-    //         TimeUnit::Second => Ok(self.map(|v| DateTime::from_timestamp_opt(v.clone().cast(), 0))),
-    //         _ => Err("not support datetime unit".into()),
-    //     }
-    // }
-
-    /// Try to cast to string
-    #[inline(always)]
-    pub fn to_string(&self) -> Arr<String, D>
-    where
-        T: ToString,
-    {
-        self.map(|v| v.to_string())
-    }
 
     #[cfg(feature = "method_1d")]
     #[inline(always)]
