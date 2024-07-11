@@ -1,10 +1,9 @@
 use super::prelude::{ArrBase, Dim1};
-// use datatype::Number;
 use ndarray::{Axis, Data, DataMut};
 use std::iter::{ExactSizeIterator, FusedIterator, IntoIterator, Iterator};
 use std::marker::PhantomData;
 use std::ops::Add;
-use tea_dyn::prelude::Number;
+use tevec::prelude::Number;
 
 impl<T, S, D> IntoIterator for ArrBase<S, D>
 where

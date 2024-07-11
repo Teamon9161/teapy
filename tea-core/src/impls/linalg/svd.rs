@@ -6,7 +6,7 @@ use crate::{
 };
 use lapack_sys::dgesvd_;
 use libc::c_char;
-use tea_dyn::prelude::{tbail, terr};
+use tevec::prelude::{tbail, terr};
 
 impl ArrD<f64> {
     pub fn svd_into(

@@ -13,7 +13,7 @@ default = ["time", "method_1d"]
 # default = []
 
 method_1d = []
-time = ["tea-dyn/time", "numpy"]
+time = ["tevec/time", "numpy"]
 ops = []
 srd = ["ndarray/serde"]
 # srd = ["tea-dtype/srd", "ndarray/serde"]
@@ -35,19 +35,13 @@ intel-mkl-system = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
 derive_more = { workspace = true }
 tea-utils = { path = "../tea-utils" }
 tea-macros = { path = "../tea-macros", default-features = false }
-
-tea-dyn = { workspace = true, features = [
-    "ndarray",
-    "py",
-    # "ffi",
-], default-features = false }
-
+tevec = { workspace = true, features = ["ndarray"], default-features = false }
 ndarray = { workspace = true }
 num = { workspace = true }
 rayon = { workspace = true }
 libc = { workspace = true }
 
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = ["chrono"] }
 numpy = { workspace = true, optional = true }
 lapack-sys = { version = "0.14.0", optional = true }
 intel-mkl-src = { version = "0.8.1", default-features = false, optional = true }

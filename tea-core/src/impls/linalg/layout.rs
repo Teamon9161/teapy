@@ -4,7 +4,7 @@ use crate::{
 };
 use ndarray::{ArrayBase, Data, Dimension};
 use std::mem::MaybeUninit;
-use tea_dyn::prelude::{tbail, terr};
+use tevec::prelude::{tbail, terr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MatrixLayout {

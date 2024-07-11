@@ -1726,88 +1726,80 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_cov(
         &self,
         other: &PyAny,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut out = self.clone();
-        out.e
-            .ts_cov(other.e, window, min_periods, stable, axis, par);
+        out.e.ts_cov(other.e, window, min_periods, axis, par);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_corr(
         &self,
         other: &PyAny,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut out = self.clone();
-        out.e
-            .ts_corr(other.e, window, min_periods, stable, axis, par);
+        out.e.ts_corr(other.e, window, min_periods, axis, par);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_alpha(
         &self,
         other: &PyAny,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut out = self.clone();
-        out.e
-            .ts_regx_alpha(other.e, window, min_periods, stable, axis, par);
+        out.e.ts_regx_alpha(other.e, window, min_periods, axis, par);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(other, window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_beta(
         &self,
         other: &PyAny,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut out = self.clone();
-        out.e
-            .ts_regx_beta(other.e, window, min_periods, stable, axis, par);
+        out.e.ts_regx_beta(other.e, window, min_periods, axis, par);
         Ok(out.add_obj_into(obj))
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(other, window, min_periods=1, axis=0, par=false))]
+    #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_resid_mean(
         &self,
         other: &PyAny,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
@@ -1820,12 +1812,12 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(other, window, min_periods=1, axis=0, par=false))]
+    #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_resid_std(
         &self,
         other: &PyAny,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
@@ -1838,12 +1830,12 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    #[pyo3(signature=(other, window, min_periods=1, axis=0, par=false))]
+    #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_resid_skew(
         &self,
         other: &PyAny,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
@@ -2006,56 +1998,41 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=None, stable=false, axis=0, par=false))]
-    pub fn ts_reg(
-        &self,
-        window: usize,
-        min_periods: Option<usize>,
-        stable: bool,
-        axis: i32,
-        par: bool,
-    ) -> Self {
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
+    pub fn ts_reg(&self, window: usize, min_periods: Option<usize>, axis: i32, par: bool) -> Self {
         let mut out = self.clone();
-        out.e.ts_reg(window, min_periods, stable, axis, par);
+        out.e.ts_reg(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
-    pub fn ts_tsf(
-        &self,
-        window: usize,
-        min_periods: usize,
-        stable: bool,
-        axis: i32,
-        par: bool,
-    ) -> Self {
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
+    pub fn ts_tsf(&self, window: usize, min_periods: Option<usize>, axis: i32, par: bool) -> Self {
         let mut out = self.clone();
-        out.e.ts_tsf(window, min_periods, stable, axis, par);
+        out.e.ts_tsf(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_reg_slope(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e.ts_reg_slope(window, min_periods, stable, axis, par);
+        out.e.ts_reg_slope(window, min_periods, axis, par);
         out
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_reg_resid_mean(
         &self,
         window: usize,
-        min_periods: usize,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> Self {
@@ -2065,18 +2042,16 @@ impl PyExpr {
     }
 
     #[cfg(feature = "rolling")]
-    #[pyo3(signature=(window, min_periods=1, stable=false, axis=0, par=false))]
+    #[pyo3(signature=(window, min_periods=None, axis=0, par=false))]
     pub fn ts_reg_intercept(
         &self,
         window: usize,
-        min_periods: usize,
-        stable: bool,
+        min_periods: Option<usize>,
         axis: i32,
         par: bool,
     ) -> Self {
         let mut out = self.clone();
-        out.e
-            .ts_reg_intercept(window, min_periods, stable, axis, par);
+        out.e.ts_reg_intercept(window, min_periods, axis, par);
         out
     }
 

@@ -4,9 +4,9 @@ extern crate intel_mkl_src as _src;
 #[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
 extern crate openblas_src as _src;
 
-use tea_dyn::prelude::Object;
+// use tea_dyn::prelude::Object;
 
-pub extern crate tea_dyn;
+pub extern crate tevec;
 
 pub extern crate tea_utils as utils;
 
@@ -18,18 +18,16 @@ mod impls;
 #[cfg(feature = "method_1d")]
 mod iterators;
 mod own;
+mod py_dtype;
 mod traits;
 mod view;
 mod viewmut;
 
 pub mod prelude;
 
-// #[cfg(feature = "time")]
-// use tevec::{DateTime, TimeUnit};
-// use datatype::{DateTime, TimeUnit};
 #[cfg(feature = "method_1d")]
 use iterators::{Iter, IterMut};
-use tea_dyn::prelude::*;
+use tevec::prelude::*;
 pub use traits::WrapNdarray;
 
 use ndarray::{
@@ -39,7 +37,6 @@ use ndarray::{
 
 use num::Zero;
 use prelude::{Arr, Arr1, ArrView, ArrView1, ArrViewMut, ArrViewMut1};
-use pyo3::Python;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::{iter::zip, mem::MaybeUninit, sync::Arc};
 
@@ -523,18 +520,4 @@ where
     {
         IterMut::new(self)
     }
-}
-
-impl<S: Data<Elem = Object>, D: Dimension> ArrBase<S, D> {
-    /// Try to cast to string
-    #[inline(always)]
-    pub fn object_to_string(self, py: Python) -> Arr<String, D> {
-        self.map(|v| v.0.extract::<String>(py).unwrap())
-    }
-
-    // /// Try to cast to str
-    // pub fn object_to_str(self, py: Python) -> Arr<&str, D>
-    // {
-    //     self.map(|v| v.0.extract::<&str>(py).unwrap())
-    // }
 }

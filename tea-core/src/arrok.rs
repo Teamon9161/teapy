@@ -1,4 +1,5 @@
 use super::arbarray::ArbArray;
+use super::py_dtype::Object;
 #[cfg(feature = "arw")]
 use super::view::ArrViewD;
 #[cfg(any(feature = "concat", feature = "arw"))]
@@ -6,7 +7,7 @@ use crate::{own::Arr1, utils::CollectTrustedToVec};
 use derive_more::From;
 use ndarray::{Axis, IxDyn, SliceArg};
 use std::fmt::Debug;
-use tea_dyn::prelude::*;
+use tevec::prelude::*;
 
 #[cfg(feature = "arw")]
 use crate::ArrView1;
@@ -45,7 +46,7 @@ pub enum ArrOk<'a> {
 #[macro_export]
 macro_rules! match_arrok {
     ($($tt: tt)*) => {
-        $crate::tea_dyn::match_enum!(ArrOk, $($tt)*)
+        $crate::match_enum!(ArrOk, $($tt)*)
     }
 }
 

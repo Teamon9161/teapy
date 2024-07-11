@@ -1,4 +1,4 @@
-use tea_dyn::prelude::*;
+use tevec::prelude::*;
 
 // use once_cell::sync::Lazy;
 // use std::hash::{Hash, Hasher};

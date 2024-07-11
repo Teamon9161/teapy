@@ -19,10 +19,11 @@ venv/
 .DS_Store
 .ruff_cache/
 **/__pycache__
+*.lock
 
 # Rust/Cargo generated files
 target/
-Cargo.lock
+**/target
 
 # data
 data/

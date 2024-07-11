@@ -6,7 +6,7 @@ use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::marker::PhantomPinned;
 use std::ops::Deref;
 use std::pin::Pin;
-use tea_dyn::prelude::*;
+use tevec::prelude::*;
 
 #[derive(From)]
 pub enum ArbArray<'a, T> {
@@ -130,9 +130,9 @@ impl<'a, T> ArbArray<'a, T> {
     #[inline(always)]
     pub fn dtype(&self) -> DataType
     where
-        T: Dtype,
+        T: GetDataType,
     {
-        T::type_()
+        T::dtype()
     }
 
     #[cfg(not(feature = "arw"))]
@@ -214,7 +214,7 @@ impl<'a, T> ArbArray<'a, T> {
     #[inline]
     pub fn is_float(&self) -> bool
     where
-        T: Dtype,
+        T: GetDataType,
     {
         self.dtype().is_float()
     }
@@ -222,7 +222,7 @@ impl<'a, T> ArbArray<'a, T> {
     #[inline]
     pub fn is_int(&self) -> bool
     where
-        T: Dtype,
+        T: GetDataType,
     {
         self.dtype().is_int()
     }

@@ -66,7 +66,7 @@ where
     where
         S2: Data<Elem = T>,
     {
-        use tea_dyn::prelude::tbail;
+        use tevec::prelude::tbail;
 
         match (self.ndim(), other.ndim()) {
             (1, 1) => Ok(self

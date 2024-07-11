@@ -8,13 +8,13 @@ license.workspace = true
 
 [features]
 default = ["time", "ahasher"]
-time = ["tea-dyn/time"]
+time = ["tevec/time"]
 
 ahasher = ["ahash"]
 gxhasher = ["gxhash"] # not implemented yet
 
 [dependencies]
 # tea-dtype = {path = "../tea-dtype"}
-tea-dyn = { workspace = true, optional = true }
+tevec = { workspace = true, optional = true }
 ahash = { workspace = true, optional = true }
 gxhash = { version = "3.4.1", optional = true }

@@ -1,6 +1,6 @@
 use crate::prelude::{Arr, ArrBase, ArrView, TResult, WrapNdarray};
 use ndarray::{Data, DimMax, Dimension, IntoDimension, RawData, Zip};
-use tea_dyn::prelude::tbail;
+use tevec::prelude::tbail;
 
 type DimMaxOf<A, B> = <A as DimMax<B>>::Output;
 
