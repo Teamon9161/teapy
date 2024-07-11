@@ -2302,8 +2302,8 @@ impl PyExpr {
         py: Python,
     ) -> PyResult<PyObject> {
         let mut out = self.clone();
+        out.e.pinv(r_cond, return_s);
         if split {
-            out.e.pinv(r_cond, return_s);
             let mut out = out
                 .e
                 .split_vec_base(1 + return_s as usize)
@@ -2316,7 +2316,6 @@ impl PyExpr {
                 Ok(out.into_py(py))
             }
         } else {
-            out.e.pinv(r_cond, return_s);
             Ok(out.into_py(py))
         }
     }

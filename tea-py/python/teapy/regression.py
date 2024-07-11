@@ -95,12 +95,12 @@ class Ols:
             else:
                 # Calculate Newey West t
                 if lag is None:
-                    lag = (4 * (self.n_ori / 100) ** (2 / 9)).ceil().cast(int)
+                    lag = (4 * (self.n_ori / 100) ** (2 / 9)).ceil().cast('i32')
                 X = pinv_x @ pinv_x.t()
                 # 计算Q矩阵的渐进估计S矩阵
                 # 详细算法说明可参考 多因子回归检验中的 Newey-West调整
                 # (https://zhuanlan.zhihu.com/p/54913149)
-                S = get_newey_west_adjust_s(self.x, resid, Expr(lag)) / self.n
+                S = get_newey_west_adjust_s(self.x, resid, lag) / self.n
                 # 计算t统计量和p统计量
                 self.tvalues = self.params / (self.n * (X @ S @ X).diag()).sqrt()
                 self.pvalues = (1 - self.tvalues.abs().norm_cdf()) * 2

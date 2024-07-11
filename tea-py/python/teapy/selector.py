@@ -163,7 +163,16 @@ class Selector:
     def __call__(self, *args, **kwargs):
         if self.current_func is not None:
             lazy_funcs = [*self.lazy_funcs, self.current_func(*args, **kwargs)]
-            return self._new_with_func(None, lazy_funcs=lazy_funcs)
+            out = self._new_with_func(None, lazy_funcs=lazy_funcs)
+            if self.current_func.name == 'pinv':
+                split = args[2] if len(args) == 3 else kwargs.get("split", True)
+                return_s = args[0] if len(args) >= 1 else kwargs.get("return_s", False)
+                if not split or not return_s:
+                    return out
+                else:
+                    # should return two selector
+                    return out[0], out[1]
+            return out
         else:
             raise RuntimeError("No function to call")
 
@@ -184,6 +193,8 @@ for magic_func_name in [
     "rmul",
     "truediv",
     "rtruediv",
+    "matmul",
+    "rmatmul",
     "pow",
     "rpow",
     "and",
