@@ -34,6 +34,7 @@ serde = { version = "1.0", features = ["derive", "rc"] }
 # serde_with = {version = "3.0", features = ["chrono"]}
 ndarray = { features = ['rayon', 'serde'], version = "0.15" }
 numpy = "0.21"
+tevec = { version = "0.2.1", features = ["ndarray"], default-features = false }
 pyo3 = { version = "0.21", features = [
     "extension-module",
     "abi3-py38",
@@ -47,13 +48,6 @@ arrow = { package = "arrow2", version = "0.18.0", default-features = false, feat
     "io_ipc",
     "io_ipc_compression",
 ] }
-
-[workspace.dependencies.tevec]
-# path = "../tevec"
-git = "https://github.com/Teamon9161/tevec.git"
-branch = "master"
-default-features = false
-features = ["ndarray"]
 
 [profile.dev]
 incremental = true
