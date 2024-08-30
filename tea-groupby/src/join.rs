@@ -85,12 +85,14 @@ impl<'a> ExprJoinExt for Expr<'a> {
                     .into_dyn()
                     .select_unchecked(Axis(0), &sort_idx)
                     .0
-                    .into_raw_vec();
+                    .into_raw_vec_and_offset()
+                    .0;
                 let right_idx = Arr1::from_vec(right_idx)
                     .into_dyn()
                     .select_unchecked(Axis(0), &sort_idx)
                     .0
-                    .into_raw_vec();
+                    .into_raw_vec_and_offset()
+                    .0;
                 let slc: ArrOk = Arr1::from_vec(sort_idx).into_dyn().into();
                 for key in outer_keys {
                     output.push(key.select(&slc, 0, false)?)

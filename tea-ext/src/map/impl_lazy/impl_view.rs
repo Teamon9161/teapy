@@ -41,7 +41,7 @@ impl<'a> ExprViewExt for Expr<'a> {
                         transmute(
                             arr.view()
                                 .0
-                                .into_shape(shape)
+                                .into_shape_with_order(shape)
                                 .map_err(|e| terr!("{e:?}"))?
                                 .wrap()
                                 .into_dyn(),
@@ -54,7 +54,7 @@ impl<'a> ExprViewExt for Expr<'a> {
                         transmute(
                             arr.view()
                                 .0
-                                .into_shape(shape.to_slice().unwrap())
+                                .into_shape_with_order(shape.to_slice().unwrap())
                                 .map_err(|e| terr!("{e:?}"))?
                                 .wrap()
                                 .into_dyn(),

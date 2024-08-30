@@ -58,7 +58,7 @@ impl<T, D: Dimension> Arr<T, D> {
 
     #[inline(always)]
     pub fn into_raw_vec(self) -> Vec<T> {
-        self.0.into_raw_vec()
+        self.0.into_raw_vec_and_offset().0
     }
 
     // pub unsafe fn assume_init(&mut self: Arr<MaybeUninit<T>, D>) -> Arr<T, D>

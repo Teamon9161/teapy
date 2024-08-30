@@ -1,6 +1,7 @@
 use super::super::from_py::{PyArrayOk, PyList};
 use super::export::*;
 use pyo3::types::{PyList as PyList3, PyTuple};
+use tea_core::prelude::WrapNdarray;
 use tea_core::prelude::*;
 use tea_lazy::{ColumnSelector, Data, Expr};
 
@@ -143,7 +144,8 @@ pub unsafe fn parse_expr(obj: &PyAny, copy: bool) -> PyResult<PyExpr> {
                     let arr_res = arr.try_readwrite();
                     if let Ok(mut arr) = arr_res {
                         let arr_write = arr.as_array_mut();
-                        let arrok: ArrOk<'_> = arr_write.wrap().into();
+                        let arrok: ArrOk<'_> = WrapNdarray::wrap(arr_write).into();
+                        // let arrok: ArrOk<'_> = arr_write.wrap().into();
                         // safe when pyarray exists
                         Ok(
                             std::mem::transmute::<Expr<'_>, Expr<'static>>(Expr::new_from_arr(

@@ -97,7 +97,7 @@ pub(crate) fn map_nd_method(
         {
             let axis = self.norm_axis(axis);
             let f_flag = !self.is_standard_layout();
-            let shape = self.raw_dim().into_shape().set_f(f_flag);
+            let shape = self.raw_dim().into_shape_with_order().set_f(f_flag);
             let mut out_arr = Arr::<#ty, D>::uninit(shape);
             let mut out_wr = out_arr.view_mut();
             if self.is_empty() || self.len_of(axis) == 0 {
@@ -137,7 +137,7 @@ pub(crate) fn map2_nd_method(
                 self.broadcast_with(&(#other)).unwrap()
             };
             let axis = lhs.norm_axis(axis);
-            let shape = lhs.raw_dim().into_shape().set_f(f_flag);
+            let shape = lhs.raw_dim().into_shape_with_order().set_f(f_flag);
             let mut out = Arr::<#ty, <D as DimMax<D2>>::Output>::uninit(shape);
             let mut out_wr = out.view_mut();
             if lhs.is_empty() || lhs.len_of(axis) == 0 {

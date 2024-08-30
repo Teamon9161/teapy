@@ -258,7 +258,8 @@ impl<'a> RollingExt for Expr<'a> {
                         .wrap()
                         .get_sorted_unique_idx_1d("first".into())
                         .0
-                        .into_raw_vec()
+                        .into_raw_vec_and_offset()
+                        .0
                 })
                 .collect_trusted();
                 Ok((Arr1::from_vec(out).into_dyn().into(), ctx))

@@ -21,5 +21,9 @@ impl ExprElement for Option<usize> {}
 impl ExprElement for Vec<usize> {}
 impl ExprElement for Object {}
 #[cfg(feature = "time")]
-impl<U: TimeUnitTrait> ExprElement for DateTime<U> where DateTime<U>: GetDataType {}
+impl<U: TimeUnitTrait> ExprElement for DateTime<U> 
+where 
+    Self: GetDataType + TryInto<CrDateTime<Utc>>,
+    <Self as TryInto<CrDateTime<Utc>>>::Error: std::fmt::Debug,
+{}
 impl ExprElement for TimeDelta {}

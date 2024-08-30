@@ -72,7 +72,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
             "Number of elements on the axis must equal to the length of mask array"
         );
         new_dim.slice_mut()[axis.index()] = mask.count_v_1d(true) as usize;
-        let shape = new_dim.into_shape().set_f(f_flag);
+        let shape = new_dim.into_shape_with_order().set_f(f_flag);
         let mut out = Arr::<T, D>::default(shape);
         let mut out_wr = out.view_mut();
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
@@ -105,7 +105,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         let axis = self.norm_axis(axis);
         let mut new_dim = self.raw_dim();
         new_dim.slice_mut()[axis.index()] = slc.len();
-        let shape = new_dim.into_shape().set_f(f_flag);
+        let shape = new_dim.into_shape_with_order().set_f(f_flag);
         let mut out = Arr::<T, D>::default(shape);
         let mut out_wr = out.view_mut();
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
@@ -135,7 +135,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
         let axis = self.norm_axis(axis);
         let mut new_dim = self.raw_dim();
         new_dim.slice_mut()[axis.index()] = slc.len();
-        let shape = new_dim.into_shape().set_f(f_flag);
+        let shape = new_dim.into_shape_with_order().set_f(f_flag);
         let mut out = Arr::<T, D>::uninit(shape);
         let f = |x_1d: ArrView1<T>, out_1d: ArrViewMut1<MaybeUninit<T>>| {
             x_1d.wrap()
@@ -250,7 +250,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
             kth = new_dim.slice_mut()[axis.index()] - 1
         }
         new_dim.slice_mut()[axis.index()] = kth + 1;
-        let shape = new_dim.into_shape().set_f(f_flag);
+        let shape = new_dim.into_shape_with_order().set_f(f_flag);
         let mut out = Arr::<i32, D>::uninit(shape);
         let mut out_wr = out.view_mut();
         self.apply_along_axis(&mut out_wr, axis, par, |x_1d, out_1d| {
@@ -274,7 +274,7 @@ impl<T, S: Data<Elem = T>, D: Dimension> MapExt for ArrBase<S, D> {
             kth = new_dim.slice_mut()[axis.index()] - 1
         }
         new_dim.slice_mut()[axis.index()] = kth + 1;
-        let shape = new_dim.into_shape().set_f(f_flag);
+        let shape = new_dim.into_shape_with_order().set_f(f_flag);
         // let mut out = Arr::<T, D>::default(shape);
         let mut out = Arr::<T, D>::uninit(shape);
         let mut out_wr = out.view_mut();

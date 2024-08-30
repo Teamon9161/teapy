@@ -311,7 +311,7 @@ macro_rules! impl_same_dtype_concat_1d {
                             } else {
                                 let out = arr_vec.into_iter().map(|a| {
                                     let a = if let $arm(a) = a {a.into_owned()} else {unreachable!()};
-                                    a.to_dim1().unwrap().0.into_raw_vec().into_iter()
+                                    a.to_dim1().unwrap().0.into_raw_vec_and_offset().0.into_iter()
                                 }).flatten().collect();
                                 Arr1::from_vec(out).into_dyn().into()
                             }

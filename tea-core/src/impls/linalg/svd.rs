@@ -119,11 +119,11 @@ impl ArrD<f64> {
                 if m == k {
                     (
                         u.map(|x| unsafe { x.assume_init() }),
-                        Some(arr.0.into_raw_vec()),
+                        Some(arr.0.into_raw_vec_and_offset().0),
                     )
                 } else {
                     (
-                        Some(arr.0.into_raw_vec()),
+                        Some(arr.0.into_raw_vec_and_offset().0),
                         vt.map(|x| unsafe { x.assume_init() }),
                     )
                 }
