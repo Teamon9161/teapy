@@ -6,8 +6,8 @@ pub use utils::adjust_slice;
 mod impl_ops;
 
 use super::super::Expr;
-use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec;
+use teapy_core::prelude::*;
+use teapy_core::utils::CollectTrustedToVec;
 
 impl<'a> Expr<'a> {
     #[allow(unreachable_patterns)]

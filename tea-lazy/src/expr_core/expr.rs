@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 // use serde::Serialize;
 
 #[derive(Default)]

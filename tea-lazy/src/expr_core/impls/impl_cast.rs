@@ -1,5 +1,5 @@
 use crate::Expr;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 macro_rules! impl_cast {
     ($($(#[$meta: meta])? $func: ident: $dtype: ident $(($inner: path))?),* $(,)?) => {

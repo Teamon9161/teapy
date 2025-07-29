@@ -1,7 +1,7 @@
 use ndarray::{Data, DataMut, Ix1};
 use std::{fmt::Debug, iter::zip, mem::MaybeUninit};
-use tea_core::prelude::*;
-// use tea_core::utils::CollectTrustedToVec;
+use teapy_core::prelude::*;
+// use teapy_core::utils::CollectTrustedToVec;
 
 #[ext_trait]
 impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {

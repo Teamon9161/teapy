@@ -1,7 +1,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::ops::Deref;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[repr(transparent)]
 pub struct Wrap<T>(pub T);

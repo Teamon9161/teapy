@@ -6,7 +6,7 @@ use arrow::{error::Error, io::ipc::read};
 use memmap::Mmap;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use std::{fs::File, path::Path, sync::Arc};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[inline]
 pub fn read_ipc_schema<P: AsRef<Path>>(path: P) -> TResult<Schema> {

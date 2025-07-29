@@ -8,7 +8,7 @@ pub use impl_lazy::*;
 use lazy::Expr;
 use ndarray::{Array1, Data, DataMut, DimMax, Dimension, Ix1, ShapeBuilder};
 use std::mem::MaybeUninit;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 macro_rules! auto_define_rolling_funcs {
     ($feature: ident:

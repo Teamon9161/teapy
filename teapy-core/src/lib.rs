@@ -4,9 +4,8 @@ extern crate intel_mkl_src as _src;
 #[cfg(any(feature = "openblas-system", feature = "openblas-static"))]
 extern crate openblas_src as _src;
 
-pub extern crate tevec;
-
 pub extern crate tea_utils as utils;
+// pub use tevec;
 
 #[macro_use]
 mod macros;

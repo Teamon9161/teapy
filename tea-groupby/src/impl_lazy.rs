@@ -2,10 +2,10 @@ use crate::groupby;
 use ndarray::Axis;
 use rayon::prelude::*;
 use std::sync::Arc;
-use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec;
 use tea_hash::TpHashMap;
 use tea_lazy::{DataDict, Expr};
+use teapy_core::prelude::*;
+use teapy_core::utils::CollectTrustedToVec;
 
 #[ext_trait]
 impl<'a> ExprGroupByExt for Expr<'a> {

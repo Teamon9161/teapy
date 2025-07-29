@@ -1,5 +1,5 @@
-use tea_core::prelude::TResult;
-use tea_core::utils::CollectTrustedToVec;
+use teapy_core::prelude::TResult;
+use teapy_core::utils::CollectTrustedToVec;
 // use tea_lazy::SingleCol;
 #[cfg(feature = "arw")]
 use arrow::datatypes::Schema;

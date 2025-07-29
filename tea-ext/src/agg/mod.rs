@@ -10,8 +10,8 @@ pub use impl_lazy::{corr, AutoExprAggExt, DataDictCorrExt, ExprAggExt};
 #[cfg(feature = "lazy")]
 use lazy::Expr;
 use ndarray::{Data, Dimension, Ix1, Zip};
-use tea_core::prelude::*;
-// use tea_core::utils::{kh_sum, vec_fold, vec_nfold};
+use teapy_core::prelude::*;
+// use teapy_core::utils::{kh_sum, vec_fold, vec_nfold};
 
 #[ext_trait]
 impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
@@ -266,7 +266,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use tea_core::prelude::*;
+    use teapy_core::prelude::*;
     #[test]
     fn test_arr0_agg() {
         let arr = arr0(1.);

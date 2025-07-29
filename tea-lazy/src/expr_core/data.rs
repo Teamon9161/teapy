@@ -7,7 +7,7 @@ use crate::OlsResult;
 use crate::{ColumnSelector, Context};
 use derive_more::From;
 use std::{fmt::Debug, sync::Arc};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[derive(From, Clone)]
 pub enum Data<'a> {

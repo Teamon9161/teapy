@@ -1,9 +1,9 @@
 use super::super::from_py::{PyArrayOk, PyList};
 use super::export::*;
 use pyo3::types::{PyList as PyList3, PyTuple};
-use tea_core::prelude::WrapNdarray;
-use tea_core::prelude::*;
 use tea_lazy::{ColumnSelector, Data, Expr};
+use teapy_core::prelude::WrapNdarray;
+use teapy_core::prelude::*;
 
 #[cfg(feature = "agg")]
 use tea_ext::agg::corr;

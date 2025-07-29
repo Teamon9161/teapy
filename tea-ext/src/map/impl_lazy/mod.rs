@@ -16,8 +16,8 @@ use super::super::*;
 use lazy::{adjust_slice, Expr};
 use ndarray::{Axis, SliceInfoElem};
 use rayon::prelude::*;
-use tea_core::prelude::*;
-// use tea_core::utils::CollectTrustedToVec; // use map trait of ArrBase
+use teapy_core::prelude::*;
+// use teapy_core::utils::CollectTrustedToVec; // use map trait of ArrBase
 
 #[ext_trait]
 impl<'a> ExprInplaceExt for Expr<'a> {

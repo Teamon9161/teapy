@@ -4,7 +4,7 @@
 
 // use test::Bencher;
 
-// use tea_core::prelude::*;
+// use teapy_core::prelude::*;
 // use tea_ext::InplaceExt;
 
 // // #[bench]

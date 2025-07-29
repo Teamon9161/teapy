@@ -4,9 +4,9 @@ extern crate test;
 
 use test::Bencher;
 
-use tea_core::prelude::*;
 use tea_ext::{AutoExprAggExt, AutoExprRollingExt, RollingExt};
 use tea_lazy::{ColumnSelector, Data, Expr};
+use teapy_core::prelude::*;
 
 #[bench]
 fn bench_rolling_apply_with_start(b: &mut Bencher) {

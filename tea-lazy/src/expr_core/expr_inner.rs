@@ -3,7 +3,7 @@ use super::Data;
 use crate::OlsResult;
 use crate::{Context, ExprElement};
 use std::{fmt::Debug, sync::Arc};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[derive(Default)]
 pub struct ExprInner<'a> {

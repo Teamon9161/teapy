@@ -17,15 +17,15 @@ extend = ["hash", "time"]
 
 hash = []
 arw = []  # todo! impl read_ipc in tea-io
-# option_dtype = ["tea-core/option_dtype"]
-ops = ["tea-core/ops"]
-time = ["tea-core/time"]
-blas = ["tea-core/blas", "tea-core/method_1d"]
+# option_dtype = ["teapy-core/option_dtype"]
+ops = ["teapy-core/ops"]
+time = ["teapy-core/time"]
+blas = ["teapy-core/blas", "teapy-core/method_1d"]
 
 
 [dependencies]
 derive_more = { workspace = true, features = ["from"] }
-tea-core = { path = "../tea-core" }
+teapy-core = { path = "../teapy-core" }
 tea-hash = { path = "../tea-hash" }
 pyo3 = { workspace = true }
 rayon = { workspace = true }

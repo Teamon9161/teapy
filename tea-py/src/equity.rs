@@ -1,7 +1,7 @@
 use crate::pylazy::{parse_expr_nocopy, PyExpr};
 use ndarray::Zip;
 use pyo3::{pyfunction, FromPyObject, PyAny, PyResult};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 pub enum CommisionType {
     Percent,

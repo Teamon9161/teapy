@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use pyo3::prelude::*;
+use pyo3::{prelude::*, IntoPyObjectExt};
 
 impl<U: TimeUnitTrait> Cast<Object> for DateTime<U>
 where
@@ -7,7 +7,7 @@ where
 {
     #[inline]
     fn cast(self) -> Object {
-        Python::with_gil(|py| Object(self.to_cr().unwrap().to_object(py)))
+        Python::with_gil(|py| Object(self.as_cr().unwrap().into_py_any(py).unwrap()))
     }
 }
 
@@ -35,7 +35,7 @@ impl Cast<Object> for TimeDelta {
         if self.months != 0 {
             panic!("TimeDelta with months can not be cast to Object")
         }
-        Python::with_gil(|py| Object(self.inner.to_object(py)))
+        Python::with_gil(|py| Object(self.inner.into_py_any(py).unwrap()))
     }
 }
 

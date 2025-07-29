@@ -12,11 +12,11 @@ use pyo3::{
     PyResult, Python, ToPyObject,
 };
 
-use tea_core::prelude::*;
 #[cfg(feature = "arw")]
 use tea_io::ColSelect;
 #[cfg(feature = "lazy")]
 use tea_lazy::Context;
+use teapy_core::prelude::*;
 
 #[derive(FromPyObject)]
 pub enum Scalar {
@@ -62,7 +62,7 @@ pub enum PyArrayOk<'py> {
 /// call functions on a `PyArray` of which dtype is known;
 macro_rules! match_pyarray {
     ($($tt: tt)*) => {
-        $crate::tea_core::match_enum!(PyArrayOk, $($tt)*)
+        $crate::teapy_core::match_enum!(PyArrayOk, $($tt)*)
     };
 }
 

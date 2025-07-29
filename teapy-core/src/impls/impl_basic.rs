@@ -1,23 +1,27 @@
 // use crate::impl_reduce_nd;
 use crate::prelude::{Arr1, ArrBase, ArrD, WrapNdarray};
 // use datatype::{BoolType, IsNone, Number, TvNumber};
-use ndarray::{Data, Dimension, Ix1, Zip};
+use ndarray::{ArrayBase, Data, Dimension, Ix1, Zip};
 use num::Zero;
 use tea_macros::arr_agg_ext;
 use tevec::prelude::*;
 
-impl<T: Clone, S: Data<Elem = T>> ArrBase<S, Ix1> {
+impl<T: Clone, S: Data<Elem = T>> ArrBase<S, Ix1>
+where
+    ArrayBase<S, Ix1>: TIter<T>,
+{
     /// sum of the array on a given axis, return valid_num n and the sum of the array
     pub fn nsum_1d(&self) -> (usize, T::Inner)
     where
         T: IsNone,
         T::Inner: Number,
     {
-        if let Some(slc) = self.0.try_as_slice() {
+        if let Some(slc) = self.0.as_slice() {
             slc.titer().vfold_n(T::Inner::zero(), |acc, x| acc + x)
         } else {
             // fall back to normal calculation
-            self.0.titer().vfold_n(T::Inner::zero(), |acc, x| acc + x)
+            // self.0.titer().vfold_n(T::Inner::zero(), |acc, x| acc + x)
+            TIter::titer(&self.0).vfold_n(T::Inner::zero(), |acc, x| acc + x)
         }
     }
 }

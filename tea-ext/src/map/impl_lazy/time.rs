@@ -1,6 +1,6 @@
 use super::super::{StringExt, TimeExt};
 use lazy::Expr;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[ext_trait]
 impl<'a> ExprTimeExt for Expr<'a> {

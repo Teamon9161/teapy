@@ -1,5 +1,5 @@
-use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec;
+use teapy_core::prelude::*;
+use teapy_core::utils::CollectTrustedToVec;
 
 use tea_ext::map::*;
 use tea_hash::{TpHashMap, BUILD_HASHER};

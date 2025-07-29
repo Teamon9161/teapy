@@ -1,5 +1,5 @@
 use ndarray::{Data, Dimension};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[ext_trait]
 impl<S, D, U: TimeUnitTrait> TimeExt for ArrBase<S, D>

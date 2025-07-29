@@ -1,6 +1,6 @@
 use lazy::Expr;
 use ndarray::Array1;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[ext_trait]
 impl<'a> CreateExt for Expr<'a> {

@@ -2,8 +2,8 @@ use std::iter::zip;
 
 use crate::agg::*;
 use lazy::Expr;
-use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec;
+use teapy_core::prelude::*;
+use teapy_core::utils::CollectTrustedToVec;
 
 use ndarray::{s, Axis};
 

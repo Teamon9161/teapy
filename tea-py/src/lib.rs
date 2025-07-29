@@ -3,12 +3,12 @@
 #[macro_use]
 pub mod from_py;
 
-pub use tea_core;
 pub use tea_ext;
 #[cfg(feature = "groupby")]
 pub use tea_groupby;
 #[cfg(feature = "lazy")]
 pub use tea_lazy;
+pub use teapy_core;
 
 #[cfg(feature = "lazy")]
 pub mod pylazy;

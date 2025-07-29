@@ -1,7 +1,7 @@
 use super::*;
 use lazy::ColumnSelector;
 use rayon::prelude::*;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[cfg(feature = "lazy")]
 use lazy::{DataDict, Expr};

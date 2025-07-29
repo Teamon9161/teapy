@@ -1,5 +1,3 @@
-#![feature(hash_raw_entry)]
-
 #[macro_use]
 extern crate tea_macros;
 
@@ -27,9 +25,9 @@ use ndarray::{Data, Ix1};
 
 use std::collections::hash_map::Entry;
 use std::hash::{BuildHasher, Hash, Hasher};
-use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec;
 use tea_hash::{TpHash, TpHashMap, BUILD_HASHER};
+use teapy_core::prelude::*;
+use teapy_core::utils::CollectTrustedToVec;
 
 // /// Get the partition size for parallel
 // pub fn get_partition_size() -> usize {

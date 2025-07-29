@@ -1,5 +1,5 @@
 use arrow::datatypes::Schema;
-use tea_core::prelude::{tbail, TResult};
+use teapy_core::prelude::{tbail, TResult};
 
 pub(crate) fn columns_to_projection(columns: &[&str], schema: &Schema) -> TResult<Vec<usize>> {
     use tea_hash::TpHashMap;

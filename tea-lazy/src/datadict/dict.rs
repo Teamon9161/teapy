@@ -3,11 +3,11 @@ use regex::Regex;
 use std::fmt::Debug;
 use std::iter::zip;
 use std::sync::Arc;
-use tea_core::prelude::{tbail, terr};
+use teapy_core::prelude::{tbail, terr};
 // use serde::Serialize;
 
 use crate::{Context, Expr};
-use tea_core::{prelude::TResult, utils::CollectTrustedToVec};
+use teapy_core::{prelude::TResult, utils::CollectTrustedToVec};
 
 // #[cfg(feature = "agg")]
 // use crate::CorrMethod;

@@ -20,7 +20,7 @@ pub use impl_time::TimeExt;
 
 use ndarray::{Data, DataMut, Dimension, Ix1, ShapeBuilder, Zip};
 use std::{fmt::Debug, mem::MaybeUninit};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[cfg(feature = "lazy")]
 use lazy::Expr;

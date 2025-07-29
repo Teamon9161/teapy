@@ -11,7 +11,7 @@ default = ["lazy_time"]
 lazy_time = ["lazy", "time", "tea-lazy/time"]
 
 lazy = ["tea-lazy"]
-time = ["tea-core/time", "tea-hash/time"]
+time = ["teapy-core/time", "tea-hash/time"]
 
 [dependencies]
 pyo3 = { workspace = true, features = [
@@ -20,7 +20,7 @@ pyo3 = { workspace = true, features = [
     "macros",
     "serde",
 ] }
-tea-core = { path = "../tea-core", default-features = false, features = [
+teapy-core = { path = "../teapy-core", default-features = false, features = [
     "method_1d",
     "concat",
 ] }

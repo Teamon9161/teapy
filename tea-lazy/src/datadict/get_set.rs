@@ -1,5 +1,5 @@
 use crate::Expr;
-use tea_core::prelude::{tbail, TResult};
+use teapy_core::prelude::{tbail, TResult};
 
 pub enum GetOutput<'a, 'b> {
     Expr(&'b Expr<'a>),

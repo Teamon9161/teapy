@@ -1,5 +1,5 @@
 use ndarray::{Data, Dimension, Zip};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[ext_trait]
 impl<S, D> StringExt for ArrBase<S, D>
