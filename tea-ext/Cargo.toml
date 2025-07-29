@@ -28,7 +28,7 @@ stat = ["statrs"]
 concat = ["teapy-core/concat", "tea-hash"] # used in rolling_common
 
 [dependencies]
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = ["abi3-py310"] }
 tevec = { workspace = true, default-features = false, features = ["ndarray"] }
 # tea-dyn = { workspace = true, default-features = false }
 teapy-core = { path = "../teapy-core", default-features = false, features = [
@@ -44,6 +44,9 @@ paste = { workspace = true }
 rayon = { workspace = true }
 num = { workspace = true, optional = true }
 statrs = { version = "0.17", optional = true }
+
+[build-dependencies]
+pyo3-build-config = { version = "0.25", features = ["resolve-config"] }
 
 # [dependencies.tevec]
 # git = "https://github.com/Teamon9161/tevec.git"

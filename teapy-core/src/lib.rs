@@ -198,7 +198,7 @@ where
     }
 
     #[inline(always)]
-    pub fn try_as_dim1(&self) -> TResult<ArrView1<T>>
+    pub fn try_as_dim1(&self) -> TResult<ArrView1<'_, T>>
     where
         S: Data,
     {
@@ -206,7 +206,7 @@ where
     }
 
     #[inline(always)]
-    pub fn as_dim1(&self) -> ArrView1<T>
+    pub fn as_dim1(&self) -> ArrView1<'_, T>
     where
         S: Data,
     {
@@ -214,7 +214,7 @@ where
     }
 
     #[inline(always)]
-    pub fn try_as_dim1_mut(&mut self) -> TResult<ArrViewMut1<T>>
+    pub fn try_as_dim1_mut(&mut self) -> TResult<ArrViewMut1<'_, T>>
     where
         S: DataMut,
     {
@@ -222,7 +222,7 @@ where
     }
 
     #[inline(always)]
-    pub fn as_dim1_mut(&mut self) -> ArrViewMut1<T>
+    pub fn as_dim1_mut(&mut self) -> ArrViewMut1<'_, T>
     where
         S: DataMut,
     {

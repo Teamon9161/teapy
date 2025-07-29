@@ -9,22 +9,26 @@ pub use corr::{Agg2Ext, CorrToolExt1d};
 pub use impl_lazy::{corr, AutoExprAggExt, DataDictCorrExt, ExprAggExt};
 #[cfg(feature = "lazy")]
 use lazy::Expr;
-use ndarray::{Data, Dimension, Ix1, Zip};
+use ndarray::{ArrayBase, Data, Dimension, Ix1, Zip};
 use teapy_core::prelude::*;
 // use teapy_core::utils::{kh_sum, vec_fold, vec_nfold};
 
 #[ext_trait]
-impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1> {
+impl<T: IsNone + Clone + Send + Sync, S: Data<Elem = T>> AggExt1d for ArrBase<S, Ix1>
+where
+    ArrayBase<S, Ix1>: TIter<T>,
+{
     /// production of the array on a given axis, return valid_num n and the production of the array
     fn nprod_1d(&self) -> (usize, T::Inner)
     where
         T::Inner: Number,
     {
-        if let Some(slc) = self.0.try_as_slice() {
+        if let Some(slc) = self.0.as_slice() {
             slc.titer().vfold_n(T::Inner::one(), |acc, x| acc * x)
         } else {
             // fall back to normal calculation
-            self.0.titer().vfold_n(T::Inner::one(), |acc, x| acc * x)
+            // self.0.titer().vfold_n(T::Inner::one(), |acc, x| acc * x)
+            TIter::titer(&self.0).vfold_n(T::Inner::one(), |acc, x| acc * x)
         }
     }
 

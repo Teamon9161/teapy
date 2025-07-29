@@ -16,7 +16,7 @@ pub mod pylazy;
 #[cfg(feature = "lazy")]
 mod equity;
 
-use pyo3::{pyfunction, pymodule, types::PyModule, wrap_pyfunction, PyResult, Python};
+use pyo3::prelude::*;
 
 #[cfg(feature = "lazy")]
 use crate::pylazy::add_lazy;
@@ -34,7 +34,7 @@ pub fn get_version() -> &'static str {
 }
 
 #[pymodule]
-pub fn tears(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+pub fn tears(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     add_lazy(m)?;
     m.add("nan", f64::NAN)?;
     m.add_function(wrap_pyfunction!(get_version, m)?)?;

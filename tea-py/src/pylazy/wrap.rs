@@ -13,11 +13,20 @@ impl<T> Deref for Wrap<T> {
     }
 }
 
+#[inline]
+fn extract_str<'py>(ob: &'py Bound<'_, PyAny>) -> PyResult<Option<std::borrow::Cow<'py, str>>> {
+    if ob.is_none() {
+        Ok(None)
+    } else {
+        Ok(Some(ob.extract()?))
+    }
+}
+
 #[cfg(feature = "agg")]
 impl<'source> FromPyObject<'source> for Wrap<CorrMethod> {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let s: Option<&str> = ob.extract()?;
-        let s = s.unwrap_or("pearson").to_lowercase();
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
+        let s = extract_str(ob)?;
+        let s = s.unwrap_or("pearson".into()).to_lowercase();
         let out = match s.as_str() {
             "pearson" => Wrap(CorrMethod::Pearson),
             #[cfg(feature = "map")]
@@ -45,9 +54,9 @@ impl<'source> FromPyObject<'source> for Wrap<CorrMethod> {
 
 #[cfg(all(feature = "agg", feature = "map"))]
 impl<'source> FromPyObject<'source> for Wrap<WinsorizeMethod> {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let s: Option<&str> = ob.extract()?;
-        let s = s.unwrap_or("quantile").to_lowercase();
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
+        let s = extract_str(ob)?;
+        let s = s.unwrap_or("quantile".into()).to_lowercase();
         let out = match s.as_str() {
             "quantile" => Wrap(WinsorizeMethod::Quantile),
             "median" => Wrap(WinsorizeMethod::Median),
@@ -60,9 +69,9 @@ impl<'source> FromPyObject<'source> for Wrap<WinsorizeMethod> {
 
 #[cfg(feature = "agg")]
 impl<'source> FromPyObject<'source> for Wrap<QuantileMethod> {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let s: Option<&str> = ob.extract()?;
-        let s = s.unwrap_or("linear").to_lowercase();
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
+        let s = extract_str(ob)?;
+        let s = s.unwrap_or("linear".into()).to_lowercase();
         let out = match s.as_str() {
             "linear" => Wrap(QuantileMethod::Linear),
             "lower" => Wrap(QuantileMethod::Lower),

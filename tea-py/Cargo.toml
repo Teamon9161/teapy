@@ -43,9 +43,7 @@ io = ["arw"]
 npy = []
 arw = ["tea-io/arw"]
 
-
 srd = ["teapy-core/srd"]
-
 
 [dependencies]
 teapy-core = { path = "../teapy-core", default-features = false, features = [
@@ -58,7 +56,12 @@ tea-groupby = { path = "../tea-groupby", features = ["lazy"], optional = true }
 tea-io = { path = "../tea-io", default-features = false, features = [
     "lazy",
 ], optional = true }
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = [
+    "extension-module",
+    "abi3-py310",
+    "macros",
+    "chrono",
+] }
 numpy = { workspace = true }
 parking_lot = { workspace = true }
 ahash = { workspace = true }

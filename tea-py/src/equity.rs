@@ -1,6 +1,6 @@
 use crate::pylazy::{parse_expr_nocopy, PyExpr};
 use ndarray::Zip;
-use pyo3::{pyfunction, FromPyObject, PyAny, PyResult};
+use pyo3::prelude::*;
 use teapy_core::prelude::*;
 
 pub enum CommisionType {
@@ -9,9 +9,13 @@ pub enum CommisionType {
 }
 
 impl<'source> FromPyObject<'source> for CommisionType {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let s: Option<&str> = ob.extract()?;
-        let s = s.unwrap_or("percent").to_lowercase();
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
+        let s: Option<std::borrow::Cow<str>> = if ob.is_none() {
+            None
+        } else {
+            Some(ob.extract()?)
+        };
+        let s = s.unwrap_or("percent".into()).to_lowercase();
         let out = match s.as_str() {
             "percent" => CommisionType::Percent,
             "absolute" => CommisionType::Absolute,
@@ -25,9 +29,9 @@ impl<'source> FromPyObject<'source> for CommisionType {
 #[allow(clippy::too_many_arguments, clippy::redundant_clone)]
 #[pyo3(signature=(pos, opening_cost, closing_cost, init_cash=1_000_000, multiplier=1, leverage=1., slippage=0., ticksize=0., c_rate=3e-4, blowup=false, commision_type=CommisionType::Percent, contract_change_signal=None))]
 pub unsafe fn calc_ret_single(
-    pos: &PyAny,
-    opening_cost: &PyAny,
-    closing_cost: &PyAny,
+    pos: &Bound<'_, PyAny>,
+    opening_cost: &Bound<'_, PyAny>,
+    closing_cost: &Bound<'_, PyAny>,
     init_cash: i64,
     multiplier: i32,
     leverage: f64,
@@ -36,7 +40,7 @@ pub unsafe fn calc_ret_single(
     c_rate: f64,
     blowup: bool,
     commision_type: CommisionType,
-    contract_change_signal: Option<&PyAny>,
+    contract_change_signal: Option<&Bound<'_, PyAny>>,
 ) -> PyResult<PyExpr> {
     let pos = parse_expr_nocopy(pos)?;
     let opening_cost = parse_expr_nocopy(opening_cost)?;
@@ -197,17 +201,17 @@ pub unsafe fn calc_ret_single(
 #[allow(clippy::too_many_arguments, clippy::redundant_clone)]
 #[pyo3(signature=(pos, opening_cost, closing_cost, spread, init_cash=1_000_000, multiplier=1, leverage=1., c_rate=3e-4, blowup=false, commision_type=CommisionType::Percent, contract_change_signal=None))]
 pub unsafe fn calc_ret_single_with_spread(
-    pos: &PyAny,
-    opening_cost: &PyAny,
-    closing_cost: &PyAny,
-    spread: &PyAny,
+    pos: &Bound<'_, PyAny>,
+    opening_cost: &Bound<'_, PyAny>,
+    closing_cost: &Bound<'_, PyAny>,
+    spread: &Bound<'_, PyAny>,
     init_cash: i64,
     multiplier: i32,
     leverage: f64,
     c_rate: f64,
     blowup: bool,
     commision_type: CommisionType,
-    contract_change_signal: Option<&PyAny>,
+    contract_change_signal: Option<&Bound<'_, PyAny>>,
 ) -> PyResult<PyExpr> {
     let pos = parse_expr_nocopy(pos)?;
     let opening_cost = parse_expr_nocopy(opening_cost)?;
