@@ -1,8 +1,8 @@
 use crate::{ColSelect, SingleCol};
 use std::path::Path;
-use tea_core::prelude::TResult;
-use tea_core::utils::CollectTrustedToVec;
 use tea_lazy::{DataDict, Expr};
+use teapy_core::prelude::TResult;
+use teapy_core::utils::CollectTrustedToVec;
 
 #[ext_trait]
 impl<'a> ExprIPCExt for Expr<'a> {

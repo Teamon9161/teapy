@@ -4,8 +4,8 @@ extern crate test;
 
 use test::Bencher;
 
-use tea_core::prelude::*;
 use tea_groupby::groupby;
+use teapy_core::prelude::*;
 
 fn produce_data() -> (ArrOk<'static>, ArrOk<'static>) {
     let length = 1000;

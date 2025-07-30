@@ -1,6 +1,6 @@
 use crate::Expr;
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Not, Sub};
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 macro_rules! impl_cmp {
     ($func: ident $(, $(#[$meta: meta])? $dtype: ident)*) => {

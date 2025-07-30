@@ -17,21 +17,21 @@ methods = ["agg", "map", "rolling", "create", "concat"]
 lazy = ["tea-lazy"]
 lazy_time = ["lazy", "time", "tea-lazy/time"]
 
-time = ["tea-core/time", "tevec/time"]
-# option_dtype = ["tea-core/option_dtype"]
+time = ["teapy-core/time", "tevec/time"]
+# option_dtype = ["teapy-core/option_dtype"]
 
-agg = ["tevec/agg"]                      # aggregate functions
-map = ["tea-core/ops", "tevec/map"]      # map functions
-rolling = ["num", "tevec/rolling"]       # rolling functions
+agg = ["tevec/agg"]                        # aggregate functions
+map = ["teapy-core/ops", "tevec/map"]      # map functions
+rolling = ["num", "tevec/rolling"]         # rolling functions
 create = ["lazy"]
 stat = ["statrs"]
-concat = ["tea-core/concat", "tea-hash"] # used in rolling_common
+concat = ["teapy-core/concat", "tea-hash"] # used in rolling_common
 
 [dependencies]
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = ["abi3-py310"] }
 tevec = { workspace = true, default-features = false, features = ["ndarray"] }
 # tea-dyn = { workspace = true, default-features = false }
-tea-core = { path = "../tea-core", default-features = false, features = [
+teapy-core = { path = "../teapy-core", default-features = false, features = [
     "method_1d",
 ] }
 tea-hash = { path = "../tea-hash", optional = true, default-features = false }
@@ -44,6 +44,9 @@ paste = { workspace = true }
 rayon = { workspace = true }
 num = { workspace = true, optional = true }
 statrs = { version = "0.17", optional = true }
+
+[build-dependencies]
+pyo3-build-config = { version = "0.25", features = ["resolve-config"] }
 
 # [dependencies.tevec]
 # git = "https://github.com/Teamon9161/tevec.git"

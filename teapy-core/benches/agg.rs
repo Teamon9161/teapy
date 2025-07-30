@@ -3,7 +3,7 @@
 extern crate test;
 use test::Bencher;
 
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 const LENGTH: i32 = 10_000_000;
 

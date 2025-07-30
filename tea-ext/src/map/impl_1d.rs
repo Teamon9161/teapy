@@ -1,10 +1,13 @@
-use ndarray::{Data, DataMut, Ix1};
+use ndarray::{ArrayBase, Data, DataMut, Ix1};
 use std::{fmt::Debug, iter::zip, mem::MaybeUninit};
-use tea_core::prelude::*;
-// use tea_core::utils::CollectTrustedToVec;
+use teapy_core::prelude::*;
+// use teapy_core::utils::CollectTrustedToVec;
 
 #[ext_trait]
-impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
+impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1>
+where
+    ArrayBase<S, Ix1>: TIter<T>,
+{
     /// Remove NaN values in 1d array.
     #[inline]
     fn dropna_1d(self) -> Arr1<T>
@@ -132,6 +135,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         T: Clone + Debug,
         SO: DataMut<Elem = T>,
         S3: Data<Elem = usize> + Send + Sync,
+        ArrayBase<S3, Ix1>: TIter<usize>,
     {
         let value = slc
             .titer()
@@ -154,6 +158,7 @@ impl<T, S: Data<Elem = T>> MapExt1d for ArrBase<S, Ix1> {
         T: Clone + IsNone,
         SO: DataMut<Elem = MaybeUninit<T>>,
         S3: Data<Elem = Option<usize>> + Send + Sync,
+        ArrayBase<S3, Ix1>: TIter<Option<usize>>,
     {
         let value = slc
             .titer()

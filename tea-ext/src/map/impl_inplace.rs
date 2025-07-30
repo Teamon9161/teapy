@@ -2,7 +2,7 @@
 use lazy::Expr;
 use ndarray::{DataMut, Dimension, Zip};
 use std::ptr::read;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 /// the method to use when fillna
 /// Ffill: use forward value to fill nan.

@@ -1,4 +1,4 @@
-use pyo3::PyAny;
+use pyo3::prelude::*;
 use regex::Regex;
 use std::fmt::Debug;
 
@@ -93,9 +93,9 @@ impl From<String> for ColumnSelector<'_> {
     }
 }
 
-impl<'py> From<&'py PyAny> for ColumnSelector<'py> {
+impl<'py> From<&Bound<'py, PyAny>> for ColumnSelector<'py> {
     #[inline]
-    fn from(select: &'py PyAny) -> Self {
+    fn from(select: &Bound<'py, PyAny>) -> Self {
         if let Ok(select) = select.extract::<String>() {
             select.into()
         } else if let Ok(select) = select.extract::<i32>() {
@@ -110,8 +110,8 @@ impl<'py> From<&'py PyAny> for ColumnSelector<'py> {
     }
 }
 
-impl<'py> From<Option<&'py PyAny>> for ColumnSelector<'py> {
-    fn from(select: Option<&'py PyAny>) -> Self {
+impl<'py> From<Option<&Bound<'py, PyAny>>> for ColumnSelector<'py> {
+    fn from(select: Option<&Bound<'py, PyAny>>) -> Self {
         if let Some(select) = select {
             if select.is_none() {
                 ColumnSelector::All

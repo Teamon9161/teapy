@@ -80,7 +80,8 @@ macro_rules! impl_tphash {
             impl TpHash for $ty {
                 #[inline]
                 fn tphash(&self) -> u64 {
-                    unsafe {std::mem::transmute::<i64, u64>(self.clone().cast())}
+                    // unsafe {std::mem::transmute::<i64, u64>(self.clone().cast())}
+                    i64::cast_unsigned(self.clone().cast())
                 }
             }
         )*
@@ -106,17 +107,16 @@ impl_tphash!(int DateTime<unit::Millisecond>, DateTime<unit::Microsecond>, DateT
 
 impl TpHash for f64 {
     #[inline]
-    #[allow(clippy::transmute_float_to_int)]
     fn tphash(&self) -> u64 {
-        unsafe { std::mem::transmute::<f64, u64>(*self) }
+        // unsafe { std::mem::transmute::<f64, u64>(*self) }
+        self.to_bits()
     }
 }
 
 impl TpHash for f32 {
     #[inline]
-    #[allow(clippy::transmute_float_to_int)]
     fn tphash(&self) -> u64 {
-        unsafe { std::mem::transmute::<f32, u32>(*self) as u64 }
+        self.to_bits() as u64
     }
 }
 

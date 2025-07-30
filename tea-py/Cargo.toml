@@ -13,7 +13,7 @@ default = ["lazy", "ops", "map", "blas", "methods", "time", "io", "groupby"]
 # default = ["lazy"]
 
 blas = [
-    "tea-core/blas",
+    "teapy-core/blas",
     "tea-lazy/blas",
     "tea-ext/map",
     "stat",
@@ -25,11 +25,11 @@ methods = ["agg", "map", "rolling", "concat", "create"] # extend methods
 # dtypes extension
 lazy = []
 ops = ["tea-lazy/ops"]
-time = ["tea-core/time", "tea-ext/time", "tea-hash/time", "tea-lazy/time"]
+time = ["teapy-core/time", "tea-ext/time", "tea-hash/time", "tea-lazy/time"]
 
 # methods
 create = ["tea-ext/create"]
-concat = ["tea-core/concat", "tea-ext/concat"]
+concat = ["teapy-core/concat", "tea-ext/concat"]
 map = ["tea-ext/map"]
 agg = ["tea-ext/agg"]
 rolling = ["tea-ext/rolling"]
@@ -43,12 +43,10 @@ io = ["arw"]
 npy = []
 arw = ["tea-io/arw"]
 
-
-srd = ["tea-core/srd"]
-
+srd = ["teapy-core/srd"]
 
 [dependencies]
-tea-core = { path = "../tea-core", default-features = false, features = [
+teapy-core = { path = "../teapy-core", default-features = false, features = [
     "method_1d",
 ] }
 tea-hash = { path = "../tea-hash" }
@@ -58,7 +56,12 @@ tea-groupby = { path = "../tea-groupby", features = ["lazy"], optional = true }
 tea-io = { path = "../tea-io", default-features = false, features = [
     "lazy",
 ], optional = true }
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = [
+    "extension-module",
+    "abi3-py310",
+    "macros",
+    "chrono",
+] }
 numpy = { workspace = true }
 parking_lot = { workspace = true }
 ahash = { workspace = true }

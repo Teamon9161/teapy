@@ -5,4 +5,4 @@ pub(super) use pyo3::exceptions::PyValueError;
 pub(super) use pyo3::{prelude::*, types::PyDict};
 pub(super) use rayon::prelude::*;
 pub(super) use std::iter::zip;
-pub(super) use tea_core::utils::CollectTrustedToVec;
+pub(super) use teapy_core::utils::CollectTrustedToVec;

@@ -11,11 +11,12 @@ use pyo3::pyclass::CompareOp;
 use pyo3::types::PyDict;
 use pyo3::{
     exceptions::{PyAttributeError, PyTypeError},
-    PyTraverseError, PyVisit,
+    IntoPyObjectExt, PyTraverseError, PyVisit,
 };
+use std::borrow::Cow;
 use tea_hash::TpHashMap;
 
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[cfg(feature = "map")]
 use super::pyfunc::where_;
@@ -37,7 +38,7 @@ use tea_ext::ExprTimeExt;
 use tea_ext::RollingTimeStartBy;
 
 // #[cfg(feature = "time")]
-// use tea_core::datatype::DateTimeToPy;
+// use teapy_core::datatype::DateTimeToPy;
 
 #[cfg(feature = "groupby")]
 use tea_groupby::*;
@@ -58,7 +59,11 @@ pub fn expr_register(name: String, f: PyObject) -> PyResult<()> {
 impl PyExpr {
     #[new]
     #[pyo3(signature=(expr=None, name=None, copy=false))]
-    pub unsafe fn new(expr: Option<&PyAny>, name: Option<String>, copy: bool) -> PyResult<Self> {
+    pub unsafe fn new(
+        expr: Option<&Bound<'_, PyAny>>,
+        name: Option<String>,
+        copy: bool,
+    ) -> PyResult<Self> {
         let mut out = if let Some(expr) = expr {
             parse_expr(expr, copy)?
         } else {
@@ -112,7 +117,7 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "map", feature = "agg", feature = "ops"))]
-    pub unsafe fn __getitem__(&self, obj: &PyAny, py: Python) -> PyResult<Self> {
+    pub unsafe fn __getitem__(&self, obj: Bound<'_, PyAny>, py: Python) -> PyResult<Self> {
         use pyo3::types::{PyList, PySlice, PyTuple};
         if let Ok(length) = obj.len() {
             let mut slc_vec = Vec::with_capacity(10);
@@ -128,9 +133,9 @@ impl PyExpr {
                     step: 1,
                 });
             } else if obj.is_instance_of::<PyTuple>() {
-                let obj_vec = obj.extract::<Vec<&PyAny>>().unwrap();
-                for (idx, obj) in obj_vec.into_iter().enumerate() {
-                    if let Ok(slc) = obj.extract::<&PySlice>() {
+                // let obj_vec = obj.extract::<Bound<'_, Vec<PyAny>>>().unwrap();
+                for (idx, obj) in obj.downcast::<PyTuple>().unwrap().into_iter().enumerate() {
+                    if let Ok(slc) = obj.extract::<Bound<'_, PySlice>>() {
                         let start = slc
                             .getattr("start")?
                             .extract::<Option<isize>>()?
@@ -161,7 +166,7 @@ impl PyExpr {
             let ori_dim = out.ndim();
             out.e.view_by_slice(slc_vec);
             for (idx, slc_obj) in zip(no_slice_idx_vec, no_slice_slc_obj_vec) {
-                let slc = parse_expr_nocopy(slc_obj)?;
+                let slc = parse_expr_nocopy(&slc_obj)?;
                 let obj = slc.obj();
                 let idx: Expr<'static> = (idx as i32).into();
                 let idx = idx - (ori_dim.e.clone() - out.ndim().e);
@@ -170,21 +175,23 @@ impl PyExpr {
             }
             Ok(out)
         } else {
-            let obj = PyTuple::new(py, [obj]);
-            self.__getitem__(obj.into(), py)
+            use pyo3::IntoPyObjectExt;
+
+            let obj = PyTuple::new(py, [obj])?;
+            self.__getitem__(obj.into_bound_py_any(py)?, py)
         }
     }
 
     #[cfg(feature = "map")]
-    pub fn __setitem__(&mut self, item: &PyAny, value: &PyAny) -> PyResult<()> {
+    pub fn __setitem__(&mut self, item: Bound<'_, PyAny>, value: Bound<'_, PyAny>) -> PyResult<()> {
         use pyo3::types::{PySlice, PyTuple};
         if let Ok(length) = item.len() {
-            let value = parse_expr_nocopy(value)?;
+            let value = parse_expr_nocopy(&value)?;
             let value_ref = value.obj();
             let mut slc_vec = Vec::with_capacity(length);
-            let obj_vec = item.extract::<Vec<&PyAny>>().unwrap();
+            let obj_vec = item.extract::<Vec<Bound<'_, PyAny>>>().unwrap();
             for obj in obj_vec {
-                if let Ok(slc) = obj.extract::<&PySlice>() {
+                if let Ok(slc) = obj.extract::<Bound<'_, PySlice>>() {
                     let start = slc
                         .getattr("start")?
                         .extract::<Option<isize>>()?
@@ -209,8 +216,8 @@ impl PyExpr {
             self.e.set_item_by_slice(slc_vec, value.e);
             self.add_obj(value_ref);
         } else {
-            let item = PyTuple::new(value.py(), [item]);
-            self.__setitem__(item.into(), value)?;
+            let item = PyTuple::new(value.py(), [item])?.into_bound_py_any(value.py())?;
+            self.__setitem__(item, value)?;
         }
         Ok(())
     }
@@ -220,7 +227,7 @@ impl PyExpr {
     pub fn eval_py(
         &mut self,
         inplace: bool,
-        context: Option<&PyAny>,
+        context: Option<Bound<PyAny>>,
         freeze: bool,
     ) -> PyResult<Option<Self>> {
         if !inplace {
@@ -236,7 +243,7 @@ impl PyExpr {
     #[pyo3(signature=(context=None))]
     pub fn view_in(
         slf: Bound<'_, PyExpr>,
-        context: Option<&Bound<'_, PyAny>>,
+        context: Option<Bound<'_, PyAny>>,
         py: Python,
     ) -> PyResult<PyObject> {
         let ct: PyContext<'static> = if let Some(context) = context {
@@ -263,7 +270,7 @@ impl PyExpr {
                         match_arrok!(arr;
                             (PureNumeric | Bool | U8 | U64 | Object)(a) => {
                                 Ok(unsafe{
-                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    PyArray::borrow_from_array(&a.view().0, container.clone())
                                     .no_dim0(py)
                                     .unwrap()
                                 })
@@ -273,7 +280,7 @@ impl PyExpr {
                                 // safety: Numpy Datetime has the same memory layout with tevec DateTime
                                 let a: &ArbArray<'_, NPDatetime<units::Milliseconds>> = unsafe{std::mem::transmute(arr)};
                                 Ok(unsafe{
-                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    PyArray::borrow_from_array(&a.view().0, container.clone())
                                     .no_dim0(py)
                                     .unwrap()
                                 })
@@ -283,7 +290,7 @@ impl PyExpr {
                                 // safety: Numpy Datetime has the same memory layout with tevec DateTime
                                 let a: &ArbArray<'_, NPDatetime<units::Microseconds>> = unsafe{std::mem::transmute(arr)};
                                 Ok(unsafe{
-                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    PyArray::borrow_from_array(&a.view().0, container.clone())
                                     .no_dim0(py)
                                     .unwrap()
                                 })
@@ -293,7 +300,7 @@ impl PyExpr {
                                 // safety: Numpy Datetime has the same memory layout with tevec DateTime
                                 let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(arr)};
                                 Ok(unsafe{
-                                    PyArray::borrow_from_array_bound(&a.view().0, container.clone())
+                                    PyArray::borrow_from_array(&a.view().0, container.clone())
                                     .no_dim0(py)
                                     .unwrap()
                                 })
@@ -303,7 +310,7 @@ impl PyExpr {
                         .unwrap()
                     })
                     .collect_trusted();
-                return Ok(out.into_py(py));
+                return out.into_py_any(py);
             }
         }
         let arr = data
@@ -313,27 +320,30 @@ impl PyExpr {
             match_arrok!(
                 arr;
                 (PureNumeric | Bool | U8 | U64 | Object)(a) => {
-                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container)
+                    Ok(PyArray::borrow_from_array(&a.view().0, container)
                     .no_dim0(py)?)
                 },
                 #[cfg(feature = "time")]
                 DateTimeMs(a) => {
                     let a: &ArbArray<'_, NPDatetime<units::Milliseconds>> = std::mem::transmute(a);
-                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container).no_dim0(py)?)
+                    Ok(PyArray::borrow_from_array(&a.view().0, container)
+                    .no_dim0(py)?)
                 },
                 #[cfg(feature = "time")]
                 DateTimeUs(a) => {
                     let a: &ArbArray<'_, NPDatetime<units::Microseconds>> = std::mem::transmute(a);
-                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container).no_dim0(py)?)
+                    Ok(PyArray::borrow_from_array(&a.view().0, container)
+                    .no_dim0(py)?)
                 },
                 #[cfg(feature = "time")]
                 DateTimeNs(a) => {
                     let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = std::mem::transmute(a);
-                    Ok(PyArray::borrow_from_array_bound(&a.view().0, container).no_dim0(py)?)
+                    Ok(PyArray::borrow_from_array(&a.view().0, container)
+                    .no_dim0(py)?)
                 },
                 // can not view string and timedelta dtype for technical reasons
                 String(a) => {
-                    return PyArray::from_owned_array_bound(
+                    return PyArray::from_owned_array(
                         py,
                         a.view().cast::<Object>().0,
                     )
@@ -341,7 +351,7 @@ impl PyExpr {
                 },
                 #[cfg(feature = "time")]
                 TimeDelta(a) => {
-                    return PyArray::from_owned_array_bound(
+                    return PyArray::from_owned_array(
                         py,
                         a.view().cast::<Object>().0,
                     )
@@ -362,7 +372,7 @@ impl PyExpr {
     // /// eval and view, used for fast test
     // pub fn eview(
     //     mut self: PyRefMut<Self>,
-    //     context: Option<&PyAny>,
+    //     context: Option<&Bound<'_, PyAny>>,
     //     py: Python,
     // ) -> PyResult<PyObject> {
     //     self.eval_inplace(context.clone())?;
@@ -404,28 +414,28 @@ impl PyExpr {
                         match_arrok!(
                             arr;
                             (PureNumeric | Bool | U8 | U64 | Object)(a) => {
-                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                Ok(PyArray::from_owned_array(py, a.view().to_owned().0)
                                 .no_dim0(py)
                                 .unwrap())
                             },
                             #[cfg(feature = "time")]
                             DateTimeMs(a) => {
                                 let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
-                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                Ok(PyArray::from_owned_array(py, a.view().to_owned().0)
                                 .no_dim0(py)
                                 .unwrap())
                             },
                             #[cfg(feature = "time")]
                             DateTimeUs(a) => {
                                 let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
-                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                Ok(PyArray::from_owned_array(py, a.view().to_owned().0)
                                 .no_dim0(py)
                                 .unwrap())
                             },
                             #[cfg(feature = "time")]
                             DateTimeNs(a) => {
                                 let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
-                                Ok(PyArray::from_owned_array_bound(py, a.view().to_owned().0)
+                                Ok(PyArray::from_owned_array(py, a.view().to_owned().0)
                                 .no_dim0(py)
                                 .unwrap())
                             },
@@ -433,7 +443,7 @@ impl PyExpr {
                         ).unwrap()
                     })
                     .collect_trusted();
-                return Ok(out.into_py(py));
+                return out.into_py_any(py);
             }
         }
         let arr = data
@@ -442,7 +452,7 @@ impl PyExpr {
         Ok(match_arrok!(
             arr;
             (PureNumeric | Bool | U8 | U64 | Object)(a) => {
-                Ok(PyArray::from_owned_array_bound(
+                Ok(PyArray::from_owned_array(
                     py,
                     a.view().to_owned().0
                 )
@@ -451,7 +461,7 @@ impl PyExpr {
             #[cfg(feature = "time")]
             DateTimeMs(a) => {
                 let a: &ArbArray<'_, NPDatetime<units::Milliseconds>> = unsafe{std::mem::transmute(a)};
-                Ok(PyArray::from_owned_array_bound(
+                Ok(PyArray::from_owned_array(
                     py,
                     a.view().to_owned().0
                 )
@@ -460,7 +470,7 @@ impl PyExpr {
             #[cfg(feature = "time")]
             DateTimeUs(a) => {
                 let a: &ArbArray<'_, NPDatetime<units::Microseconds>> = unsafe{std::mem::transmute(a)};
-                Ok(PyArray::from_owned_array_bound(
+                Ok(PyArray::from_owned_array(
                     py,
                     a.view().to_owned().0
                 )
@@ -469,7 +479,7 @@ impl PyExpr {
             #[cfg(feature = "time")]
             DateTimeNs(a) => {
                 let a: &ArbArray<'_, NPDatetime<units::Nanoseconds>> = unsafe{std::mem::transmute(a)};
-                Ok(PyArray::from_owned_array_bound(
+                Ok(PyArray::from_owned_array(
                     py,
                     a.view().to_owned().0
                 )
@@ -477,7 +487,7 @@ impl PyExpr {
             },
             // can not view string and timedelta dtype for technical reasons
             String(a) => {
-                return PyArray::from_owned_array_bound(
+                return PyArray::from_owned_array(
                     py,
                     a.view().cast::<Object>().0,
                 )
@@ -485,7 +495,7 @@ impl PyExpr {
             },
             #[cfg(feature = "time")]
             TimeDelta(a) => {
-                return PyArray::from_owned_array_bound(
+                return PyArray::from_owned_array(
                     py,
                     a.view().cast::<Object>().0,
                 )
@@ -522,7 +532,7 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    pub unsafe fn reshape(&self, shape: &PyAny) -> PyResult<Self> {
+    pub unsafe fn reshape(&self, shape: &Bound<'_, PyAny>) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
         let mut out = self.clone();
@@ -534,14 +544,13 @@ impl PyExpr {
         slf: PyRef<'py, Self>,
         attr: &'py str,
         py: Python<'py>,
-    ) -> PyResult<&'py PyAny> {
+    ) -> PyResult<Bound<'py, PyAny>> {
         let attr_dict = PYEXPR_ATTRIBUTE.lock();
         let res = attr_dict.get(attr);
         if let Some(res) = res {
-            let func = res.clone();
             let functools = py.import("functools")?;
             let partial = functools.getattr("partial")?;
-            partial.call1((func, slf))
+            partial.call1((res, slf))
         } else {
             Err(PyAttributeError::new_err(format!(
                 "'PyExpr' object has no attribute {attr}"
@@ -550,115 +559,120 @@ impl PyExpr {
     }
 
     #[cfg(feature = "ops")]
-    fn __add__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __add__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((self.clone().e + other.e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    fn __radd__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __radd__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((other.e + self.clone().e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __iadd__(&mut self, other: &PyAny) {
+    unsafe fn __iadd__(&mut self, other: &Bound<'_, PyAny>) {
         *self = self.__add__(other).unwrap()
     }
 
     #[cfg(feature = "ops")]
-    fn __sub__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __sub__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((self.clone().e - other.e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    fn __rsub__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __rsub__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((other.e - self.clone().e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __isub__(&mut self, other: &PyAny) {
+    unsafe fn __isub__(&mut self, other: &Bound<'_, PyAny>) {
         *self = self.__sub__(other).unwrap()
     }
 
     #[cfg(feature = "ops")]
-    fn __mul__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __mul__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((self.clone().e * other.e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __rmul__(&self, other: &PyAny) -> PyResult<Self> {
+    unsafe fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         self.__mul__(other)
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __imul__(&mut self, other: &PyAny) {
+    unsafe fn __imul__(&mut self, other: &Bound<'_, PyAny>) {
         *self = self.__mul__(other).unwrap()
     }
 
     #[cfg(feature = "ops")]
-    fn __truediv__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((self.clone().e / other.e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    fn __rtruediv__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __rtruediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((other.e / self.clone().e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __itruediv__(&mut self, other: &PyAny) {
+    unsafe fn __itruediv__(&mut self, other: &Bound<'_, PyAny>) {
         *self = self.__truediv__(other).unwrap()
     }
 
     #[cfg(feature = "ops")]
-    fn __and__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __and__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((self.clone().e & other.e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    fn __or__(&self, other: &PyAny) -> PyResult<Self> {
+    fn __or__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         Ok((self.clone().e | other.e).to_py(obj).add_obj_into(obj2))
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __rand__(&self, other: &PyAny) -> PyResult<Self> {
+    unsafe fn __rand__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         self.__and__(other)
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __iand__(&mut self, other: &PyAny) {
+    unsafe fn __iand__(&mut self, other: &Bound<'_, PyAny>) {
         *self = self.__and__(other).unwrap()
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __ror__(&self, other: &PyAny) -> PyResult<Self> {
+    unsafe fn __ror__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         self.__or__(other)
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __ior__(&mut self, other: &PyAny) {
+    unsafe fn __ior__(&mut self, other: &Bound<'_, PyAny>) {
         *self = self.__or__(other).unwrap()
     }
 
     #[cfg(feature = "ops")]
-    unsafe fn __richcmp__(&self, other: &PyAny, op: CompareOp, _py: Python) -> PyResult<PyExpr> {
+    unsafe fn __richcmp__(
+        &self,
+        other: &Bound<'_, PyAny>,
+        op: CompareOp,
+        _py: Python,
+    ) -> PyResult<PyExpr> {
         let other = parse_expr_nocopy(other)?;
         let (obj, obj2) = (self.obj(), other.obj());
         let mut lhs = self.e.clone();
@@ -675,7 +689,7 @@ impl PyExpr {
     }
 
     #[cfg(feature = "map")]
-    unsafe fn __pow__(&self, other: &PyAny, _mod: &PyAny) -> PyResult<Self> {
+    unsafe fn __pow__(&self, other: &Bound<'_, PyAny>, _mod: &Bound<'_, PyAny>) -> PyResult<Self> {
         self.pow_py(other, false)
     }
 
@@ -686,7 +700,7 @@ impl PyExpr {
 
     #[cfg(feature = "map")]
     #[pyo3(name="pow", signature=(other, par=false))]
-    unsafe fn pow_py(&self, other: &PyAny, par: bool) -> PyResult<Self> {
+    unsafe fn pow_py(&self, other: &Bound<'_, PyAny>, par: bool) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut out = self.clone();
@@ -706,7 +720,7 @@ impl PyExpr {
         self.abs()
     }
 
-    // unsafe fn __rshift__(&self, other: &PyAny) -> PyResult<Self> {
+    // unsafe fn __rshift__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
     //     let other = parse_expr_nocopy(other)?;
     //     let obj = other.obj();
     //     match_exprs!((&self.inner, e1, F64, I32), (other.inner, e2, I32), {
@@ -734,7 +748,7 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    unsafe fn __matmul__(&self, other: &PyAny) -> PyResult<Self> {
+    unsafe fn __matmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut out = self.clone();
@@ -744,7 +758,7 @@ impl PyExpr {
 
     #[cfg(feature = "blas")]
     #[allow(clippy::redundant_clone)]
-    unsafe fn __rmatmul__(&self, other: &PyAny) -> PyResult<Self> {
+    unsafe fn __rmatmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = self.obj();
         let mut out = other.clone();
@@ -791,7 +805,7 @@ impl PyExpr {
     }
 
     // #[classmethod]
-    pub fn __setstate__(&mut self, state: &PyAny) -> PyResult<()> {
+    pub fn __setstate__(&mut self, state: &Bound<'_, PyAny>) -> PyResult<()> {
         if let Ok(state) = state.downcast::<PyDict>() {
             let name = state
                 .get_item("name")?
@@ -801,7 +815,7 @@ impl PyExpr {
             if let Some(name) = name {
                 self.set_name(name);
             }
-            let new_e = parse_expr_nocopy(arr)?;
+            let new_e = parse_expr_nocopy(&arr)?;
             let obj = new_e.obj();
             self.e = new_e.e;
             self.add_obj(obj);
@@ -820,18 +834,18 @@ impl PyExpr {
     }
 
     #[pyo3(signature=())]
-    pub fn __getstate__(&mut self, py: Python) -> PyResult<PyObject> {
+    pub fn __getstate__<'py>(&'py mut self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let name = self.e.name();
         let arr = self.value(None, py)?;
         let state = PyDict::new(py);
         state.set_item("name", name)?;
         state.set_item("arr", arr)?;
-        Ok(state.to_object(py))
+        state.into_bound_py_any(py)
         // Ok(PyBytes::new(py, &bincode::serialize(&self.e).unwrap()).to_object(py))
     }
 
     #[cfg(feature = "map")]
-    pub fn is_in(&self, other: &PyAny) -> PyResult<Self> {
+    pub fn is_in(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let obj = other.obj();
         let mut out = self.clone();
@@ -1068,7 +1082,7 @@ impl PyExpr {
     pub fn shift(
         &self,
         n: i32,
-        fill: Option<&PyAny>,
+        fill: Option<&Bound<'_, PyAny>>,
         axis: i32,
         par: bool,
         _py: Python,
@@ -1094,7 +1108,13 @@ impl PyExpr {
 
     #[cfg(feature = "map")]
     #[pyo3(signature=(n=1, fill=None, axis=0, par=false))]
-    pub fn diff(&self, n: i32, fill: Option<&PyAny>, axis: i32, par: bool) -> PyResult<Self> {
+    pub fn diff(
+        &self,
+        n: i32,
+        fill: Option<&Bound<'_, PyAny>>,
+        axis: i32,
+        par: bool,
+    ) -> PyResult<Self> {
         let fill = if let Some(fill) = fill {
             if fill.is_none() {
                 None
@@ -1156,7 +1176,7 @@ impl PyExpr {
 
     #[cfg(feature = "agg")]
     #[pyo3(signature=(value, axis=0, par=false))]
-    pub fn count_value(&self, value: &PyAny, axis: i32, par: bool) -> PyResult<Self> {
+    pub fn count_value(&self, value: &Bound<'_, PyAny>, axis: i32, par: bool) -> PyResult<Self> {
         let value = parse_expr_nocopy(value)?;
         let obj = value.obj();
         let mut e = self.clone();
@@ -1166,7 +1186,12 @@ impl PyExpr {
 
     #[cfg(all(feature = "map", feature = "agg"))]
     #[pyo3(signature=(mask, axis=None, par=false))]
-    pub unsafe fn filter(&self, mask: &PyAny, axis: Option<&PyAny>, par: bool) -> PyResult<Self> {
+    pub unsafe fn filter(
+        &self,
+        mask: &Bound<'_, PyAny>,
+        axis: Option<&Bound<'_, PyAny>>,
+        par: bool,
+    ) -> PyResult<Self> {
         let mask = parse_expr_nocopy(mask)?;
         let axis = if let Some(axis) = axis {
             parse_expr_nocopy(axis)?
@@ -1184,7 +1209,7 @@ impl PyExpr {
     #[pyo3(signature=(axis=None, how=DropNaMethod::Any, par=false))]
     pub unsafe fn dropna(
         &self,
-        axis: Option<&PyAny>,
+        axis: Option<&Bound<'_, PyAny>>,
         how: DropNaMethod,
         par: bool,
     ) -> PyResult<Self> {
@@ -1290,7 +1315,7 @@ impl PyExpr {
     /// This does not move any data, it just adjusts the array’s dimensions and strides.
     ///
     ///i in the j-th place in the axes sequence means self's i-th axis becomes self.permuted_axes()'s j-th axis
-    pub unsafe fn permuted_axes(&self, axes: &PyAny) -> PyResult<Self> {
+    pub unsafe fn permuted_axes(&self, axes: &Bound<'_, PyAny>) -> PyResult<Self> {
         let axes = parse_expr_nocopy(axes)?;
         let obj = axes.obj();
         let mut out = self.clone();
@@ -1518,7 +1543,7 @@ impl PyExpr {
     #[pyo3(signature=(other, min_periods=3, stable=false, axis=0, par=false))]
     pub unsafe fn cov(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         min_periods: usize,
         stable: bool,
         axis: i32,
@@ -1535,7 +1560,7 @@ impl PyExpr {
     #[pyo3(signature=(other, method=Wrap(CorrMethod::Pearson), min_periods=3, stable=false, axis=0, par=false))]
     pub unsafe fn corr(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         method: Wrap<CorrMethod>,
         min_periods: usize,
         stable: bool,
@@ -1569,7 +1594,11 @@ impl PyExpr {
 
     #[cfg(feature = "groupby")]
     #[pyo3(signature=(others=None, keep="first".to_string()))]
-    pub fn _get_unique_idx(&self, others: Option<&PyAny>, keep: String) -> PyResult<Self> {
+    pub fn _get_unique_idx(
+        &self,
+        others: Option<&Bound<'_, PyAny>>,
+        keep: String,
+    ) -> PyResult<Self> {
         let (obj_vec, others) = if let Some(others) = others {
             let others = unsafe { parse_expr_list(others, false)? };
             let obj_vec = others.iter().map(|e| e.obj()).collect_trusted();
@@ -1584,7 +1613,11 @@ impl PyExpr {
     }
 
     #[cfg(feature = "groupby")]
-    pub unsafe fn _get_left_join_idx(&self, left_other: &PyAny, right: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _get_left_join_idx(
+        &self,
+        left_other: &Bound<'_, PyAny>,
+        right: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let left_other = if left_other.is_none() {
             None
         } else {
@@ -1610,8 +1643,8 @@ impl PyExpr {
     #[pyo3(signature=(left_other, right, sort=true, rev=false, split=true))]
     pub unsafe fn _get_outer_join_idx(
         &self,
-        left_other: &PyAny,
-        right: &PyAny,
+        left_other: &Bound<'_, PyAny>,
+        right: &Bound<'_, PyAny>,
         sort: bool,
         rev: bool,
         split: bool,
@@ -1643,11 +1676,16 @@ impl PyExpr {
                 .e
                 .split_vec_base(len)
                 .into_iter()
-                .map(|e| e.to_py(obj.clone()))
+                .map(|e| {
+                    e.to_py(
+                        obj.as_ref()
+                            .map(|o| o.iter().map(|x| x.clone_ref(py)).collect::<Vec<_>>()),
+                    )
+                })
                 .collect_trusted();
-            Ok(out.into_py(py))
+            out.into_py_any(py)
         } else {
-            Ok(out.into_py(py))
+            out.into_py_any(py)
         }
     }
 
@@ -1745,7 +1783,7 @@ impl PyExpr {
     #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_cov(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         window: usize,
         min_periods: Option<usize>,
         axis: i32,
@@ -1762,7 +1800,7 @@ impl PyExpr {
     #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_corr(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         window: usize,
         min_periods: Option<usize>,
         axis: i32,
@@ -1779,7 +1817,7 @@ impl PyExpr {
     #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_alpha(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         window: usize,
         min_periods: Option<usize>,
         axis: i32,
@@ -1796,7 +1834,7 @@ impl PyExpr {
     #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_beta(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         window: usize,
         min_periods: Option<usize>,
         axis: i32,
@@ -1813,7 +1851,7 @@ impl PyExpr {
     #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_resid_mean(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         window: usize,
         min_periods: Option<usize>,
         axis: i32,
@@ -1831,7 +1869,7 @@ impl PyExpr {
     #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_resid_std(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         window: usize,
         min_periods: Option<usize>,
         axis: i32,
@@ -1849,7 +1887,7 @@ impl PyExpr {
     #[pyo3(signature=(other, window, min_periods=None, axis=0, par=false))]
     pub unsafe fn ts_regx_resid_skew(
         &self,
-        other: &PyAny,
+        other: &Bound<'_, PyAny>,
         window: usize,
         min_periods: Option<usize>,
         axis: i32,
@@ -2076,7 +2114,7 @@ impl PyExpr {
     pub fn fillna(
         &self,
         method: FillMethod,
-        value: Option<&PyAny>,
+        value: Option<&Bound<'_, PyAny>>,
         axis: i32,
         par: bool,
     ) -> PyResult<Self> {
@@ -2102,7 +2140,12 @@ impl PyExpr {
 
     #[cfg(all(feature = "map", feature = "agg"))]
     #[pyo3(signature=(slc, axis=None, check=true))]
-    pub unsafe fn select(&self, slc: &PyAny, axis: Option<&PyAny>, check: bool) -> PyResult<Self> {
+    pub unsafe fn select(
+        &self,
+        slc: &Bound<'_, PyAny>,
+        axis: Option<&Bound<'_, PyAny>>,
+        check: bool,
+    ) -> PyResult<Self> {
         let axis = if let Some(axis) = axis {
             parse_expr_nocopy(axis)?
         } else {
@@ -2117,7 +2160,12 @@ impl PyExpr {
 
     #[cfg(feature = "blas")]
     #[pyo3(signature=(df, loc=None, scale=None))]
-    pub unsafe fn t_cdf(&self, df: &PyAny, loc: Option<f64>, scale: Option<f64>) -> PyResult<Self> {
+    pub unsafe fn t_cdf(
+        &self,
+        df: &Bound<'_, PyAny>,
+        loc: Option<f64>,
+        scale: Option<f64>,
+    ) -> PyResult<Self> {
         let df = parse_expr_nocopy(df)?;
         let obj = df.obj();
         let mut out = self.clone();
@@ -2135,7 +2183,7 @@ impl PyExpr {
 
     #[cfg(feature = "blas")]
     #[pyo3(signature=(df1, df2))]
-    pub unsafe fn f_cdf(&self, df1: &PyAny, df2: &PyAny) -> PyResult<Self> {
+    pub unsafe fn f_cdf(&self, df1: &Bound<'_, PyAny>, df2: &Bound<'_, PyAny>) -> PyResult<Self> {
         let df1 = parse_expr_nocopy(df1)?;
         let df2 = parse_expr_nocopy(df2)?;
         let (obj1, obj2) = (df1.obj(), df2.obj());
@@ -2146,7 +2194,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "map", feature = "agg"))]
     #[pyo3(signature=(by, rev=false, return_idx=false))]
-    pub fn sort(&self, by: &PyAny, rev: bool, return_idx: bool) -> PyResult<Self> {
+    pub fn sort(&self, by: &Bound<'_, PyAny>, rev: bool, return_idx: bool) -> PyResult<Self> {
         let by = unsafe { parse_expr_list(by, false) }?;
         let obj_vec = by.iter().map(|e| e.obj()).collect_trusted();
         let by = by.into_iter().map(|e| e.e).collect_trusted();
@@ -2160,11 +2208,11 @@ impl PyExpr {
         }
     }
 
-    pub fn cast(&self, ty: &PyAny) -> PyResult<Self> {
-        if let Ok(ty_name) = ty.extract::<&str>() {
-            self.cast_by_str(ty_name)
-        } else if let Ok(py_type) = ty.extract::<&pyo3::types::PyType>() {
-            self.cast_by_str(&py_type.name().unwrap())
+    pub fn cast(&self, ty: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if let Ok(ty_name) = ty.extract::<Cow<str>>() {
+            self.cast_by_str(ty_name.as_ref())
+        } else if let Ok(py_type) = ty.extract::<Bound<pyo3::types::PyType>>() {
+            self.cast_by_str(py_type.name().unwrap().to_cow().unwrap().as_ref())
         } else {
             unimplemented!("Incorrect type for casting")
         }
@@ -2174,8 +2222,8 @@ impl PyExpr {
     #[pyo3(signature=(mask, value, axis=0, par=false, inplace=false))]
     pub unsafe fn put_mask(
         &mut self,
-        mask: &PyAny,
-        value: &PyAny,
+        mask: &Bound<'_, PyAny>,
+        value: &Bound<'_, PyAny>,
         axis: i32,
         par: bool,
         inplace: bool,
@@ -2197,7 +2245,12 @@ impl PyExpr {
 
     #[cfg(feature = "map")]
     #[pyo3(signature=(mask, value, par=false))]
-    pub unsafe fn where_(&self, mask: &PyAny, value: &PyAny, par: bool) -> PyResult<PyExpr> {
+    pub unsafe fn where_(
+        &self,
+        mask: &Bound<'_, PyAny>,
+        value: &Bound<'_, PyAny>,
+        par: bool,
+    ) -> PyResult<PyExpr> {
         let mask = parse_expr_nocopy(mask)?;
         let value = parse_expr_nocopy(value)?;
         where_(self.clone(), mask, value, par)
@@ -2205,7 +2258,11 @@ impl PyExpr {
 
     #[cfg(feature = "map")]
     #[pyo3(signature=(con, then))]
-    pub unsafe fn if_then(&self, con: &PyAny, then: &PyAny) -> PyResult<PyExpr> {
+    pub unsafe fn if_then(
+        &self,
+        con: &Bound<'_, PyAny>,
+        then: &Bound<'_, PyAny>,
+    ) -> PyResult<PyExpr> {
         let con = parse_expr_nocopy(con)?;
         let then = parse_expr_nocopy(then)?;
         let con_obj = con.obj();
@@ -2216,7 +2273,7 @@ impl PyExpr {
     }
 
     #[cfg(feature = "blas")]
-    pub unsafe fn lstsq(&self, y: &PyAny) -> PyResult<Self> {
+    pub unsafe fn lstsq(&self, y: &Bound<'_, PyAny>) -> PyResult<Self> {
         let y = parse_expr_nocopy(y)?;
         let obj = y.obj();
         let mut out = self.clone();
@@ -2273,13 +2330,13 @@ impl PyExpr {
                 .map(|e| e.to_py(self.obj()))
                 .collect_trusted();
             if out.len() == 1 {
-                Ok(out.pop().unwrap().into_py(py))
+                out.pop().unwrap().into_py_any(py)
             } else {
-                Ok(out.into_py(py))
+                out.into_py_any(py)
             }
         } else {
             out.e.svd(full, calc_uvt);
-            Ok(out.into_py(py))
+            out.into_py_any(py)
         }
     }
 
@@ -2302,17 +2359,17 @@ impl PyExpr {
                 .map(|e| e.to_py(self.obj()))
                 .collect_trusted();
             if out.len() == 1 {
-                Ok(out.pop().unwrap().into_py(py))
+                out.pop().unwrap().into_py_any(py)
             } else {
-                Ok(out.into_py(py))
+                out.into_py_any(py)
             }
         } else {
-            Ok(out.into_py(py))
+            out.into_py_any(py)
         }
     }
 
     #[cfg(feature = "map")]
-    pub unsafe fn broadcast(&self, shape: &PyAny) -> PyResult<Self> {
+    pub unsafe fn broadcast(&self, shape: &Bound<'_, PyAny>) -> PyResult<Self> {
         let shape = parse_expr_nocopy(shape)?;
         let obj = shape.obj();
         let mut out = self.clone();
@@ -2321,7 +2378,7 @@ impl PyExpr {
     }
 
     #[cfg(all(feature = "map", feature = "agg"))]
-    pub unsafe fn broadcast_with(&self, other: &PyAny) -> PyResult<Self> {
+    pub unsafe fn broadcast_with(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
         let other = parse_expr_nocopy(other)?;
         let shape = other.shape();
         let obj = shape.obj();
@@ -2333,7 +2390,7 @@ impl PyExpr {
     #[cfg(feature = "concat")]
     #[pyo3(name = "concat")]
     #[pyo3(signature=(other, axis=0))]
-    pub unsafe fn concat_py(&self, other: &PyAny, axis: i32) -> PyResult<Self> {
+    pub unsafe fn concat_py(&self, other: &Bound<'_, PyAny>, axis: i32) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
         if other.is_empty() {
             return Ok(self.clone());
@@ -2348,7 +2405,7 @@ impl PyExpr {
     #[cfg(feature = "concat")]
     #[pyo3(name = "stack")]
     #[pyo3(signature=(other, axis=0))]
-    pub unsafe fn stack_py(&self, other: &PyAny, axis: i32) -> PyResult<Self> {
+    pub unsafe fn stack_py(&self, other: &Bound<'_, PyAny>, axis: i32) -> PyResult<Self> {
         let other = parse_expr_list(other, false)?;
         if other.is_empty() {
             return Ok(self.clone());
@@ -2401,7 +2458,7 @@ impl PyExpr {
     // }
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
-    pub unsafe fn _get_fix_window_rolling_idx(&self, window: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _get_fix_window_rolling_idx(&self, window: &Bound<'_, PyAny>) -> PyResult<Self> {
         let mut length = self.clone();
         length.e.len();
         let mut window = parse_expr(window, true)?;
@@ -2425,7 +2482,7 @@ impl PyExpr {
     #[pyo3(signature=(others=None, sort=true, par=false))]
     pub unsafe fn _get_group_by_idx(
         &self,
-        others: Option<&PyAny>,
+        others: Option<&Bound<'_, PyAny>>,
         sort: bool,
         par: bool,
     ) -> PyResult<Self> {
@@ -2445,9 +2502,9 @@ impl PyExpr {
     #[pyo3(signature=(agg_expr, idxs, others=None))]
     pub unsafe fn apply_with_vecusize(
         &self,
-        agg_expr: &PyAny,
-        idxs: &PyAny,
-        others: Option<&PyAny>,
+        agg_expr: &Bound<'_, PyAny>,
+        idxs: &Bound<'_, PyAny>,
+        others: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
         let agg_expr = parse_expr_nocopy(agg_expr)?;
         let idxs = parse_expr_nocopy(idxs)?;
@@ -2473,9 +2530,9 @@ impl PyExpr {
     #[cfg(all(feature = "rolling", feature = "concat"))]
     pub unsafe fn rolling_apply_with_start(
         &self,
-        agg_expr: &PyAny,
-        roll_start: &PyAny,
-        others: Option<&PyAny>,
+        agg_expr: &Bound<'_, PyAny>,
+        roll_start: &Bound<'_, PyAny>,
+        others: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
         let agg_expr = parse_expr_nocopy(agg_expr)?;
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2524,9 +2581,9 @@ impl PyExpr {
                 .into_iter()
                 .map(|e| e.to_py(self.obj()))
                 .collect_trusted();
-            Ok(out.into_py(py))
+            out.into_py_any(py)
         } else {
-            Ok(out.into_py(py))
+            out.into_py_any(py)
         }
     }
 
@@ -2534,9 +2591,9 @@ impl PyExpr {
     #[pyo3(signature=(agg_expr, idx, others=None))]
     pub unsafe fn group_by_startidx(
         &self,
-        agg_expr: &PyAny,
-        idx: &PyAny,
-        others: Option<&PyAny>,
+        agg_expr: &Bound<'_, PyAny>,
+        idx: &Bound<'_, PyAny>,
+        others: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
         let agg_expr = parse_expr_nocopy(agg_expr)?;
         let idx = parse_expr_nocopy(idx)?;
@@ -2570,7 +2627,7 @@ impl PyExpr {
     #[pyo3(signature=(idx, min_periods=1))]
     pub unsafe fn _group_by_startidx_mean(
         &self,
-        idx: &PyAny,
+        idx: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
@@ -2582,7 +2639,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx))]
-    pub unsafe fn _group_by_startidx_sum(&self, idx: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_sum(&self, idx: &Bound<'_, PyAny>) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2592,7 +2649,11 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx, min_periods=2))]
-    pub unsafe fn _group_by_startidx_std(&self, idx: &PyAny, min_periods: usize) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_std(
+        &self,
+        idx: &Bound<'_, PyAny>,
+        min_periods: usize,
+    ) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2602,7 +2663,11 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx, min_periods=2))]
-    pub unsafe fn _group_by_startidx_var(&self, idx: &PyAny, min_periods: usize) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_var(
+        &self,
+        idx: &Bound<'_, PyAny>,
+        min_periods: usize,
+    ) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2612,7 +2677,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx))]
-    pub unsafe fn _group_by_startidx_min(&self, idx: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_min(&self, idx: &Bound<'_, PyAny>) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2622,7 +2687,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx))]
-    pub unsafe fn _group_by_startidx_max(&self, idx: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_max(&self, idx: &Bound<'_, PyAny>) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2632,7 +2697,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx))]
-    pub unsafe fn _group_by_startidx_first(&self, idx: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_first(&self, idx: &Bound<'_, PyAny>) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2642,7 +2707,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx))]
-    pub unsafe fn _group_by_startidx_last(&self, idx: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_last(&self, idx: &Bound<'_, PyAny>) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2652,7 +2717,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx))]
-    pub unsafe fn _group_by_startidx_valid_first(&self, idx: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_valid_first(&self, idx: &Bound<'_, PyAny>) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2662,7 +2727,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "groupby", feature = "agg"))]
     #[pyo3(signature=(idx))]
-    pub unsafe fn _group_by_startidx_valid_last(&self, idx: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _group_by_startidx_valid_last(&self, idx: &Bound<'_, PyAny>) -> PyResult<Self> {
         let idx = parse_expr_nocopy(idx)?;
         let obj = idx.obj();
         let mut out = self.clone();
@@ -2674,8 +2739,8 @@ impl PyExpr {
     #[pyo3(signature=(idx, other, min_periods=3, stable=false))]
     pub unsafe fn _group_by_startidx_cov(
         &self,
-        idx: &PyAny,
-        other: &PyAny,
+        idx: &Bound<'_, PyAny>,
+        other: &Bound<'_, PyAny>,
         min_periods: usize,
         stable: bool,
     ) -> PyResult<Self> {
@@ -2694,8 +2759,8 @@ impl PyExpr {
     #[pyo3(signature=(idx, other, method=Wrap(CorrMethod::Pearson), min_periods=3, stable=false))]
     pub unsafe fn _group_by_startidx_corr(
         &self,
-        idx: &PyAny,
-        other: &PyAny,
+        idx: &Bound<'_, PyAny>,
+        other: &Bound<'_, PyAny>,
         method: Wrap<CorrMethod>,
         min_periods: usize,
         stable: bool,
@@ -2728,7 +2793,7 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, min_periods=1))]
     pub unsafe fn _rolling_select_mean(
         &self,
-        roll_start: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2740,7 +2805,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_sum(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_sum(&self, roll_start: &Bound<'_, PyAny>) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2752,7 +2817,7 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, min_periods=2))]
     pub unsafe fn _rolling_select_std(
         &self,
-        roll_start: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2766,8 +2831,8 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, other, min_periods=2, stable=false))]
     pub unsafe fn _rolling_select_cov(
         &self,
-        roll_start: &PyAny,
-        other: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
+        other: &Bound<'_, PyAny>,
         min_periods: usize,
         stable: bool,
     ) -> PyResult<Self> {
@@ -2786,8 +2851,8 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, other, method=Wrap(CorrMethod::Pearson), min_periods=2, stable=false))]
     pub unsafe fn _rolling_select_corr(
         &self,
-        roll_start: &PyAny,
-        other: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
+        other: &Bound<'_, PyAny>,
         method: Wrap<CorrMethod>,
         min_periods: usize,
         stable: bool,
@@ -2807,8 +2872,8 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, other, min_periods=2))]
     pub unsafe fn _rolling_select_weight_mean(
         &self,
-        roll_start: &PyAny,
-        other: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
+        other: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2826,8 +2891,8 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, mask, min_periods=1))]
     pub unsafe fn _rolling_select_cut_mean(
         &self,
-        roll_start: &PyAny,
-        mask: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
+        mask: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2845,7 +2910,7 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, min_periods=2))]
     pub unsafe fn _rolling_select_var(
         &self,
-        roll_start: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
@@ -2857,7 +2922,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_first(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_first(&self, roll_start: &Bound<'_, PyAny>) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2867,7 +2932,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_last(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_last(&self, roll_start: &Bound<'_, PyAny>) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2877,7 +2942,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_valid_first(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_valid_first(
+        &self,
+        roll_start: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2887,7 +2955,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_valid_last(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_valid_last(
+        &self,
+        roll_start: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2897,7 +2968,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_min(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_min(&self, roll_start: &Bound<'_, PyAny>) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2907,7 +2978,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_max(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_max(&self, roll_start: &Bound<'_, PyAny>) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2917,7 +2988,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_umin(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_umin(&self, roll_start: &Bound<'_, PyAny>) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2927,7 +2998,7 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
     #[pyo3(signature=(roll_start))]
-    pub unsafe fn _rolling_select_umax(&self, roll_start: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_umax(&self, roll_start: &Bound<'_, PyAny>) -> PyResult<Self> {
         let roll_start = parse_expr_nocopy(roll_start)?;
         let obj = roll_start.obj();
         let mut out = self.clone();
@@ -2939,7 +3010,7 @@ impl PyExpr {
     #[pyo3(signature=(roll_start, q, method=Wrap(QuantileMethod::Linear)))]
     pub unsafe fn _rolling_select_quantile(
         &self,
-        roll_start: &PyAny,
+        roll_start: &Bound<'_, PyAny>,
         q: f64,
         method: Wrap<QuantileMethod>,
     ) -> PyResult<Self> {
@@ -2952,7 +3023,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_sum(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_sum(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -2964,7 +3038,7 @@ impl PyExpr {
     #[pyo3(signature=(idxs, min_periods=1))]
     pub unsafe fn _rolling_select_by_vecusize_mean(
         &self,
-        idxs: &PyAny,
+        idxs: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
@@ -2978,7 +3052,7 @@ impl PyExpr {
     #[pyo3(signature=(idxs, min_periods=1))]
     pub unsafe fn _rolling_select_by_vecusize_var(
         &self,
-        idxs: &PyAny,
+        idxs: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
@@ -2992,7 +3066,7 @@ impl PyExpr {
     #[pyo3(signature=(idxs, min_periods=1))]
     pub unsafe fn _rolling_select_by_vecusize_std(
         &self,
-        idxs: &PyAny,
+        idxs: &Bound<'_, PyAny>,
         min_periods: usize,
     ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
@@ -3004,7 +3078,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_first(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_first(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3014,7 +3091,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_last(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_last(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3024,7 +3104,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_valid_first(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_valid_first(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3034,7 +3117,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_valid_last(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_valid_last(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3044,7 +3130,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_max(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_max(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3054,7 +3143,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_umax(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_umax(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3064,7 +3156,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_min(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_min(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3074,7 +3169,10 @@ impl PyExpr {
 
     #[cfg(all(feature = "rolling", feature = "agg", feature = "map"))]
     #[pyo3(signature=(idxs))]
-    pub unsafe fn _rolling_select_by_vecusize_umin(&self, idxs: &PyAny) -> PyResult<Self> {
+    pub unsafe fn _rolling_select_by_vecusize_umin(
+        &self,
+        idxs: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
         let idxs = parse_expr_nocopy(idxs)?;
         let obj = idxs.obj();
         let mut out = self.clone();
@@ -3086,7 +3184,7 @@ impl PyExpr {
     #[pyo3(signature=(idxs, q, method=Wrap(QuantileMethod::Linear)))]
     pub unsafe fn _rolling_select_by_vecusize_quantile(
         &self,
-        idxs: &PyAny,
+        idxs: &Bound<'_, PyAny>,
         q: f64,
         method: Wrap<QuantileMethod>,
     ) -> PyResult<Self> {

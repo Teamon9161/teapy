@@ -6,9 +6,9 @@ use std::ops::{Deref, DerefMut};
 
 use super::export::*;
 use super::pyexpr::RefObj;
-use tea_core::prelude::StrError;
-use tea_core::utils::CollectTrustedToVec;
 use tea_lazy::{ColumnSelector, DataDict, Expr, GetOutput};
+use teapy_core::prelude::StrError;
+use teapy_core::utils::CollectTrustedToVec;
 
 #[cfg(feature = "agg")]
 use tea_ext::agg::*;

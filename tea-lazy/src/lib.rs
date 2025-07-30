@@ -1,4 +1,4 @@
-// extern crate tea_core as core;
+// extern crate teapy_core as core;
 
 mod datadict;
 pub mod expr_core;

@@ -4,13 +4,26 @@ use std::fmt::Debug;
 use super::export::*;
 use tea_lazy::{Expr, ExprElement};
 
-pub type RefObj = Option<Vec<PyObject>>;
+pub type RefObj = Option<Vec<Py<PyAny>>>;
 
 #[pyclass(subclass, module = "teapy", name = "Expr")]
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct PyExpr {
     pub e: Expr<'static>,
     pub obj: RefObj,
+}
+
+impl Clone for PyExpr {
+    fn clone(&self) -> Self {
+        PyExpr {
+            e: self.e.clone(),
+            obj: Python::with_gil(|py| {
+                self.obj
+                    .as_ref()
+                    .map(|v| v.iter().map(|x| x.clone_ref(py)).collect::<Vec<_>>())
+            }),
+        }
+    }
 }
 
 impl From<Expr<'static>> for PyExpr {
@@ -53,7 +66,12 @@ impl ExprToPy for Expr<'static> {
 impl PyExpr {
     #[inline]
     pub fn obj(&self) -> RefObj {
-        self.obj.clone()
+        // self.obj.clone()
+        Python::with_gil(|py| {
+            self.obj
+                .as_ref()
+                .map(|v| v.iter().map(|x| x.clone_ref(py)).collect::<Vec<_>>())
+        })
     }
 
     #[inline]
@@ -112,7 +130,11 @@ impl PyExpr {
     // }
 
     #[allow(unreachable_patterns)]
-    pub fn eval_inplace(&mut self, context: Option<&PyAny>, freeze: bool) -> PyResult<()> {
+    pub fn eval_inplace(
+        &mut self,
+        context: Option<Bound<'_, PyAny>>,
+        freeze: bool,
+    ) -> PyResult<()> {
         let ct: PyContext<'static> = if let Some(context) = context {
             unsafe {
                 std::mem::transmute::<PyContext<'_>, PyContext<'static>>(

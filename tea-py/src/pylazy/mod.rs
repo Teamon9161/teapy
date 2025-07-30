@@ -12,9 +12,9 @@ pub use pyexpr::{ExprToPy, IntoPyExpr};
 pub use pyexpr::{PyExpr, RefObj};
 pub use pyfunc::*;
 
-use pyo3::prelude::{wrap_pyfunction, PyModule, PyResult};
+use pyo3::prelude::*;
 
-pub(crate) fn add_lazy(m: &PyModule) -> PyResult<()> {
+pub(crate) fn add_lazy(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyExpr>()?;
     // m.add_class::<PyDataDict>()?;
     // m.add_class::<PyGroupBy>()?;

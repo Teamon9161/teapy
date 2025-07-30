@@ -2,21 +2,21 @@
 // use crate::pylazy::PyDataDict;
 #[cfg(feature = "lazy")]
 use crate::pylazy::RefObj;
-use ahash::HashMap;
+use ahash::{HashMap, HashMapExt};
 use numpy::{
     datetime::{units, Datetime},
+    prelude::*,
     PyArray, PyArrayDyn, PyUntypedArrayMethods,
 };
-use pyo3::{
-    exceptions::PyValueError, prelude::PyAnyMethods, Bound, FromPyObject, PyAny, PyObject,
-    PyResult, Python, ToPyObject,
-};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::IntoPyObjectExt;
 
-use tea_core::prelude::*;
 #[cfg(feature = "arw")]
 use tea_io::ColSelect;
 #[cfg(feature = "lazy")]
 use tea_lazy::Context;
+use teapy_core::prelude::*;
 
 #[derive(FromPyObject)]
 pub enum Scalar {
@@ -30,13 +30,14 @@ pub enum Scalar {
 
 macro_rules! impl_scalar {
     ($($arm: ident),*) => {
-        impl ToPyObject for Scalar {
-            fn to_object(&self, py: Python<'_>) -> PyObject {
-                match self {
-                    $(Scalar::$arm(e) => e.to_object(py)),*
-                }
-            }
-        }
+        // impl ToPyObject for Scalar {
+        //     fn to_object(&self, py: Python<'_>) -> PyObject {
+        //         match self {
+        //             $(Scalar::$arm(e) => e.to_object(py)),*
+        //         }
+        //     }
+        // }
+        // impl IntoPyAny
     };
 }
 
@@ -45,24 +46,24 @@ impl_scalar!(Bool, F64, I32, Usize, String, Object);
 // 所有可接受的python array类型
 #[derive(FromPyObject)]
 pub enum PyArrayOk<'py> {
-    Bool(&'py PyArrayDyn<bool>),
-    F32(&'py PyArrayDyn<f32>),
-    F64(&'py PyArrayDyn<f64>),
-    I32(&'py PyArrayDyn<i32>),
-    I64(&'py PyArrayDyn<i64>),
-    U64(&'py PyArrayDyn<u64>),
-    Usize(&'py PyArrayDyn<usize>),
-    Object(&'py PyArrayDyn<Object>),
-    DateTimeMs(&'py PyArrayDyn<Datetime<units::Milliseconds>>),
-    DateTimeUs(&'py PyArrayDyn<Datetime<units::Microseconds>>),
-    DateTimeNs(&'py PyArrayDyn<Datetime<units::Nanoseconds>>),
+    Bool(Bound<'py, PyArrayDyn<bool>>),
+    F32(Bound<'py, PyArrayDyn<f32>>),
+    F64(Bound<'py, PyArrayDyn<f64>>),
+    I32(Bound<'py, PyArrayDyn<i32>>),
+    I64(Bound<'py, PyArrayDyn<i64>>),
+    U64(Bound<'py, PyArrayDyn<u64>>),
+    Usize(Bound<'py, PyArrayDyn<usize>>),
+    Object(Bound<'py, PyArrayDyn<Object>>),
+    DateTimeMs(Bound<'py, PyArrayDyn<Datetime<units::Milliseconds>>>),
+    DateTimeUs(Bound<'py, PyArrayDyn<Datetime<units::Microseconds>>>),
+    DateTimeNs(Bound<'py, PyArrayDyn<Datetime<units::Nanoseconds>>>),
 }
 
 /// match the enum `PyArrayOk` to get the discrete dtype of `PyArray` so that we can
 /// call functions on a `PyArray` of which dtype is known;
 macro_rules! match_pyarray {
     ($($tt: tt)*) => {
-        $crate::tea_core::match_enum!(PyArrayOk, $($tt)*)
+        $crate::teapy_core::match_enum!(PyArrayOk, $($tt)*)
     };
 }
 
@@ -79,7 +80,7 @@ impl<'py> PyArrayOk<'py> {
     }
 
     #[inline]
-    pub fn into_object(self) -> PyResult<&'py PyArrayDyn<Object>> {
+    pub fn into_object(self) -> PyResult<Bound<'py, PyArrayDyn<Object>>> {
         if let PyArrayOk::Object(obj_arr) = self {
             Ok(obj_arr)
         } else {
@@ -122,34 +123,54 @@ macro_rules! match_pylist {
 }
 
 pub trait NoDim0 {
-    fn no_dim0(self, py: Python) -> PyResult<PyObject>;
+    fn no_dim0(self, py: Python) -> PyResult<Py<PyAny>>;
 }
 
-impl<T, D> NoDim0 for &PyArray<T, D> {
-    fn no_dim0(self, py: Python) -> PyResult<PyObject> {
+impl<T, D> NoDim0 for &Bound<'_, PyArray<T, D>> {
+    fn no_dim0(self, py: Python) -> PyResult<Py<PyAny>> {
         if self.ndim() == 0 {
-            Ok(self.call_method0("item")?.to_object(py))
+            self.call_method0("item")?.into_py_any(py)
         } else {
-            Ok(self.to_object(py))
+            self.into_py_any(py)
         }
     }
 }
 
 impl<T, D> NoDim0 for Bound<'_, PyArray<T, D>> {
-    fn no_dim0(self, py: Python) -> PyResult<PyObject> {
+    fn no_dim0(self, py: Python) -> PyResult<Py<PyAny>> {
         if self.ndim() == 0 {
-            Ok(self.call_method0("item")?.to_object(py))
+            self.call_method0("item")?.into_py_any(py)
         } else {
-            Ok(self.to_object(py))
+            self.into_py_any(py)
         }
     }
 }
 
 #[cfg(feature = "lazy")]
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct PyContext<'py> {
     pub ct: Option<Context<'py>>,
     pub obj_map: HashMap<String, RefObj>,
+}
+
+impl Clone for PyContext<'_> {
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| Self {
+            ct: self.ct.clone(),
+            obj_map: {
+                let mut map = HashMap::with_capacity(self.obj_map.len());
+                for (key, value) in self.obj_map.iter() {
+                    map.insert(
+                        key.clone(),
+                        value
+                            .as_ref()
+                            .map(|v| v.into_iter().map(|o| o.clone_ref(py)).collect()),
+                    );
+                }
+                map
+            },
+        })
+    }
 }
 
 #[cfg(feature = "lazy")]
@@ -164,7 +185,7 @@ impl<'py> From<Context<'py>> for PyContext<'py> {
 
 #[cfg(feature = "lazy")]
 impl<'py> FromPyObject<'py> for PyContext<'py> {
-    fn extract(ob: &'py PyAny) -> PyResult<PyContext<'py>> {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<PyContext<'py>> {
         if ob.is_none() {
             Ok(Self {
                 ct: None,
@@ -183,7 +204,7 @@ pub struct PyColSelect<'py>(pub ColSelect<'py>);
 
 #[cfg(feature = "arw")]
 impl<'py> FromPyObject<'py> for PyColSelect<'py> {
-    fn extract(ob: &'py PyAny) -> PyResult<PyColSelect<'py>> {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<PyColSelect<'py>> {
         if ob.is_none() {
             Ok(Self(ColSelect::Null))
         } else if let Ok(idx) = ob.extract::<i32>() {

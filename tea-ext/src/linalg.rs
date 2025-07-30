@@ -1,7 +1,7 @@
-use tea_core::prelude::*;
-use lazy::{Expr, Data};
+use lazy::{Data, Expr};
 use ndarray::{Array1, Axis, Ix2, Slice};
 use std::sync::Arc;
+use teapy_core::prelude::*;
 
 // we created a new struct for linear square result as we need a result
 // with only one generic

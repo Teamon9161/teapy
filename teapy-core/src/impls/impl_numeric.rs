@@ -2,6 +2,8 @@ use crate::prelude::ArrBase;
 use ndarray::{Data, IxDyn, LinalgScalar};
 #[cfg(feature = "ops")]
 use num::traits::{abs, real::Real, Signed};
+#[cfg(feature = "ops")]
+use tevec::prelude::IsNone;
 // use std::cmp::PartialOrd;
 
 #[cfg(feature = "ops")]
@@ -11,14 +13,13 @@ use ndarray::{DataMut, DimMax, Dimension, Ix2, Zip};
 
 #[cfg(feature = "ops")]
 macro_rules! impl_cmp {
-    ($func: ident, $func_impl: expr $(,T: $trait1: path)? $(, T2: $trait2: path)?) => {
-        pub fn $func<S2, D2, T2>(&self, rhs: &ArrBase<S2, D2>, par: bool) -> Arr<bool, <D as DimMax<D2>>::Output>
+    ($func: ident, $func_impl: expr $(,T: $trait1: path)?) => {
+        pub fn $func<S2, D2>(&self, rhs: &ArrBase<S2, D2>, par: bool) -> Arr<bool, <D as DimMax<D2>>::Output>
         where
             D2: Dimension,
             D: DimMax<D2>,
-            T: Send + Sync $(+ $trait1)?,
-            T2: Send + Sync $(+ $trait2)?,
-            S2: Data<Elem = T2>,
+            T: IsNone + Send + Sync $(+ $trait1)?,
+            S2: Data<Elem = T>,
         {
             let (lhs, rhs) = if self.ndim() == rhs.ndim() && self.shape() == rhs.shape() {
                 let lhs = self.view().to_dim::<<D as DimMax<D2>>::Output>().unwrap();
@@ -35,8 +36,8 @@ macro_rules! impl_cmp {
         }
     };
 
-    (opf $func: ident, $operator: tt $(, T: $trait1: path)? $(, T2: $trait2: path)? ) => {
-        impl_cmp!($func, |a, b| a $operator b $(,T: $trait1)? $(, T2: $trait2)?);
+    (opf $func: ident, $operator: tt $(, T: $trait1: path)?) => {
+        impl_cmp!($func, |a, b| a $operator b $(,T: $trait1)?);
     }
 
 }
@@ -46,13 +47,14 @@ impl<T, S, D> ArrBase<S, D>
 where
     S: Data<Elem = T>,
     D: Dimension,
+    T: IsNone,
 {
-    impl_cmp!(opf gt, >, T: PartialOrd<T2>);
-    impl_cmp!(opf ge, >=, T: PartialOrd<T2>);
-    impl_cmp!(opf lt, <, T: PartialOrd<T2>);
-    impl_cmp!(opf le, <=, T: PartialOrd<T2>);
-    impl_cmp!(opf eq, ==, T: PartialEq<T2>);
-    impl_cmp!(opf ne, !=, T: PartialEq<T2>);
+    impl_cmp!(opf gt, >, T: PartialOrd);
+    impl_cmp!(opf ge, >=, T: PartialOrd);
+    impl_cmp!(opf lt, <, T: PartialOrd);
+    impl_cmp!(opf le, <=, T: PartialOrd);
+    impl_cmp!(opf eq, ==, T: PartialEq);
+    impl_cmp!(opf ne, !=, T: PartialEq);
 }
 
 impl<T, S> ArrBase<S, IxDyn>
@@ -61,7 +63,6 @@ where
     T: LinalgScalar,
 {
     #[cfg(feature = "ops")]
-    // #[allow(clippy::useless_conversion)]
     pub fn dot<S2>(&self, other: &ArrBase<S2, IxDyn>) -> TResult<ArrD<T>>
     where
         S2: Data<Elem = T>,

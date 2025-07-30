@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 pub trait ExprElement: GetDataType + Default + Sync + Send + Debug {}
 impl ExprElement for u8 {}

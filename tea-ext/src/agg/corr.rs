@@ -2,8 +2,8 @@
 use lazy::Expr;
 use ndarray::{Data, DimMax, Dimension, Ix1, Zip};
 use std::iter::zip;
-use tea_core::prelude::*;
-use tea_core::utils::kh_sum;
+use teapy_core::prelude::*;
+use teapy_core::utils::kh_sum;
 
 #[ext_trait]
 impl<T, S: Data<Elem = T>> CorrToolExt1d for ArrBase<S, Ix1> {

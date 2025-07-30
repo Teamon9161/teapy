@@ -1,6 +1,6 @@
 use super::*;
 use std::cmp::Ordering;
-use tea_core::prelude::*;
+use teapy_core::prelude::*;
 
 #[ext_trait]
 impl<'a> ArrOkExt for ArrOk<'a> {

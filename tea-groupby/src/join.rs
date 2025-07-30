@@ -3,9 +3,9 @@ use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
 // use once_cell::sync::Lazy;
 use crate::{collect_hashmap_keys, prepare_groupby, GROUP_VEC_INIT_SIZE};
-use tea_core::prelude::*;
-use tea_core::utils::CollectTrustedToVec;
 use tea_hash::{TpHash, TpHashMap, BUILD_HASHER};
+use teapy_core::prelude::*;
+use teapy_core::utils::CollectTrustedToVec;
 
 use std::collections::hash_map::Entry;
 
@@ -383,7 +383,7 @@ pub fn join_outer<'a>(
 // #[cfg(test)]
 // mod test {
 //     use super::*;
-//     use tea_core::prelude::*;
+//     use teapy_core::prelude::*;
 //     #[test]
 //     fn test_join_left() {
 //         let left: ArrOk = Arr1::from_vec(vec!["a", "b", "a", "d"]).to_dimd().into();

@@ -1,12 +1,19 @@
 use crate::prelude::*;
 use derive_more::{Deref, Display};
 use numpy::{Element, PyArrayDescr};
-use pyo3::prelude::*;
+use pyo3::{prelude::*, IntoPyObjectExt};
 use std::fmt::Debug;
 
-#[derive(Clone, Debug, Display, Deref)]
+#[derive(Debug, Display, Deref)]
 #[repr(transparent)]
-pub struct Object(pub PyObject);
+pub struct Object(pub Py<PyAny>);
+
+impl Clone for Object {
+    #[inline]
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| Object(self.0.clone_ref(py)))
+    }
+}
 
 impl IsNone for Object {
     type Inner = Object;
@@ -61,12 +68,19 @@ impl PartialEq for Object {
     }
 }
 
-impl ToPyObject for Object {
-    #[inline(always)]
-    fn to_object(&self, py: Python<'_>) -> PyObject {
-        self.0.to_object(py)
-    }
-}
+// impl ToPyObject for Object {
+//     #[inline(always)]
+//     fn to_object(&self, py: Python<'_>) -> PyObject {
+//         self.0.to_object(py)
+//     }
+// }
+
+// impl<'py> FromPyObject<'py> for Object {
+//     #[inline(always)]
+//     fn extract_bound(ob: &PyAny) -> PyResult<Self> {
+//         Ok(Object(ob.to_object(ob.py())))
+//     }
+// }
 
 impl Default for Object {
     #[inline(always)]
@@ -85,22 +99,29 @@ impl GetDataType for Object {
 unsafe impl Element for Object {
     const IS_COPY: bool = false;
     #[inline(always)]
-    fn get_dtype_bound(py: Python<'_>) -> Bound<'_, PyArrayDescr> {
-        PyArrayDescr::object_bound(py)
+    fn get_dtype(py: Python<'_>) -> Bound<'_, PyArrayDescr> {
+        PyArrayDescr::object(py)
+    }
+
+    #[inline]
+    fn clone_ref(&self, py: Python<'_>) -> Self {
+        Self(Py::clone_ref(self, py))
     }
 }
 
 impl<'source> FromPyObject<'source> for Object {
     #[inline(always)]
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        Ok(Object(ob.to_object(ob.py())))
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
+        // Ok(Object(ob.to_object(ob.py())))
+        let obj: Bound<'source, PyAny> = ob.extract()?;
+        Ok(Object(obj.unbind()))
     }
 }
 
 impl<'a> Cast<Object> for &'a str {
     #[inline]
     fn cast(self) -> Object {
-        Python::with_gil(|py| Object(self.to_object(py)))
+        Python::with_gil(|py| Object(self.into_py_any(py).unwrap()))
     }
 }
 
@@ -120,7 +141,7 @@ macro_rules! impl_object_cast {
             {
                 #[inline]
                 fn cast(self) -> Object {
-                    Python::with_gil(|py| Object(self.to_object(py)))
+                    Python::with_gil(|py| Object(self.into_py_any(py).unwrap()))
                 }
             }
 
