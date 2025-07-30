@@ -164,7 +164,7 @@ impl Clone for PyContext<'_> {
                         key.clone(),
                         value
                             .as_ref()
-                            .map(|v| v.into_iter().map(|o| o.clone_ref(py)).collect()),
+                            .map(|v| v.iter().map(|o| o.clone_ref(py)).collect()),
                     );
                 }
                 map

@@ -150,7 +150,7 @@ where
     where
         T: Clone,
     {
-        if self.len() == 0 {
+        if self.is_empty() {
             unreachable!("first_1d should not be called on an empty array")
         } else {
             unsafe { self.as_dim1().uget(0) }.clone()

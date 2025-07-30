@@ -178,7 +178,7 @@ impl<'a> DataDict<'a> {
             ColumnSelector::Name(col_name) => {
                 if col_name.starts_with('^') & col_name.ends_with('$') {
                     let re = Regex::new(col_name).unwrap();
-                    return self.get_selector_out_name(ColumnSelector::Regex(re));
+                    self.get_selector_out_name(ColumnSelector::Regex(re))
                 } else {
                     vec![col_name.to_string()]
                 }

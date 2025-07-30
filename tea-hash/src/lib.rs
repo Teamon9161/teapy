@@ -122,7 +122,7 @@ impl TpHash for f32 {
 
 impl TpHash for bool {
     #[inline]
-    #[allow(clippy::transmute_float_to_int)]
+    // #[allow(clippy::transmute_float_to_int)]
     fn tphash(&self) -> u64 {
         *self as u64
     }

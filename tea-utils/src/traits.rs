@@ -62,5 +62,6 @@ unsafe impl<'a, T1: Sized, T2: Sized> TrustedLen for std::collections::hash_map:
 
 unsafe impl<T: TrustedLen> TrustedLen for std::iter::Cloned<T> {}
 unsafe impl<T> TrustedLen for std::iter::Take<std::iter::Repeat<T>> {}
+unsafe impl<T> TrustedLen for std::iter::RepeatN<T> {}
 unsafe impl<T> TrustedLen for std::ops::Range<T> {}
 unsafe impl<T1: TrustedLen, T2: TrustedLen> TrustedLen for std::iter::Chain<T1, T2> {}

@@ -86,7 +86,7 @@ impl<'a, T: std::fmt::Debug> std::fmt::Debug for ArbArray<'a, T> {
             ArbArray::Owned(a) => write!(f, "ArrayOwned({a:#?})"),
             ArbArray::ViewOnBase(a) => write!(f, "ViewonBase({:#?})", a.view()),
             #[cfg(feature = "arw")]
-            ArbArray::ArrowChunk(ac) => write!(f, "ArrowChunk({:#?})", ac),
+            ArbArray::ArrowChunk(ac) => write!(f, "ArrowChunk({ac:#?})"),
         }
     }
 }

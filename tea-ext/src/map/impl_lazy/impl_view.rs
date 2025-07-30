@@ -153,7 +153,6 @@ impl<'a> ExprViewExt for Expr<'a> {
     }
 
     /// Insert new array axis at axis and return the result.
-
     #[allow(unreachable_patterns)]
     fn insert_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -169,7 +168,6 @@ impl<'a> ExprViewExt for Expr<'a> {
     }
 
     /// Remove new array axis at axis and return the result.
-
     #[allow(unreachable_patterns)]
     fn remove_axis(&mut self, axis: i32) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {
@@ -185,7 +183,6 @@ impl<'a> ExprViewExt for Expr<'a> {
     }
 
     /// broadcast to a given shape
-
     #[allow(unreachable_patterns)]
     fn broadcast(&mut self, shape: Expr<'a>) -> &mut Self {
         self.chain_f_ctx(move |(data, ctx)| {

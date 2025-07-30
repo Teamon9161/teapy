@@ -156,9 +156,7 @@ pub fn least_squares_impl(
     let k = m.min(n);
     assert!(
         m_ >= m,
-        "the size of pred_y: {:?} should be greater than the size of x: {:?}",
-        m_,
-        m
+        "the size of pred_y: {m_:?} should be greater than the size of x: {m:?}",
     );
     let rcond = -1.;
     let mut singular_values = vec_uninit::<f64>(k as usize);

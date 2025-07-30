@@ -146,10 +146,9 @@ impl<'a> RollingExt for Expr<'a> {
                 .into_owned()
                 .into_scalar()?;
             let out = if len <= window {
-                std::iter::repeat(0).take(len).collect_trusted()
+                std::iter::repeat_n(0, len).collect_trusted()
             } else {
-                std::iter::repeat(0)
-                    .take(window)
+                std::iter::repeat_n(0, window)
                     .chain(1..len - window + 1)
                     .collect_trusted()
             };
@@ -169,7 +168,7 @@ impl<'a> RollingExt for Expr<'a> {
             let arr = arr.view_arr(ctx.as_ref())?.deref().cast_datetime(None);
             match_arrok!(arr; Time(arr) => {
                 let view = arr.view().to_dim1()?;
-                if view.len() == 0 {
+                if view.is_empty() {
                     return Ok((Arr1::from_vec(Vec::<usize>::new()).into_dyn().into(), ctx));
                 }
                 let out = match start_by {
@@ -230,7 +229,7 @@ impl<'a> RollingExt for Expr<'a> {
             let arr = arr.view_arr(ctx.as_ref())?.deref().cast_datetime(None);
             match_arrok!(arr; Time(arr) => {
                 let view = arr.view().to_dim1()?;
-            if view.len() == 0 {
+            if view.is_empty() {
                 return Ok((Arr1::from_vec(Vec::<usize>::new()).into_dyn().into(), ctx));
             }
             let mut start_time = view[0];
@@ -281,7 +280,7 @@ impl<'a> RollingExt for Expr<'a> {
             let data = data.view_arr(ctx.as_ref())?.deref().cast_datetime(None);
             match_arrok!(data; Time(data) => {
                 let arr = data.view().to_dim1()?;
-                if arr.len() == 0 {
+                if arr.is_empty() {
                     return Ok((Arr1::from_vec(Vec::<usize>::new()).into_dyn().into(), ctx));
                 }
                 let mut out = vec![vec![]; arr.len()];

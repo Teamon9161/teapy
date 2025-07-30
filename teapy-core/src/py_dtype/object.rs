@@ -118,7 +118,7 @@ impl<'source> FromPyObject<'source> for Object {
     }
 }
 
-impl<'a> Cast<Object> for &'a str {
+impl Cast<Object> for &str {
     #[inline]
     fn cast(self) -> Object {
         Python::with_gil(|py| Object(self.into_py_any(py).unwrap()))

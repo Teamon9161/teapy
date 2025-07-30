@@ -42,8 +42,7 @@ impl<'py> FromPyObject<'py> for FillMethod {
             "bfill" => FillMethod::Bfill,
             "vfill" => FillMethod::Vfill,
             _ => Err(PyValueError::new_err(format!(
-                "Not supported fillna method: {}",
-                s
+                "Not supported fillna method: {s}"
             )))?,
         };
         Ok(out)
@@ -59,8 +58,7 @@ impl<'py> FromPyObject<'py> for DropNaMethod {
             "all" => DropNaMethod::All,
             "any" => DropNaMethod::Any,
             _ => Err(PyValueError::new_err(format!(
-                "Not supported dropna method: {}",
-                s
+                "Not supported dropna method: {s}"
             )))?,
         };
         Ok(out)
@@ -81,8 +79,7 @@ impl<'py> FromPyObject<'py> for RollingTimeStartBy {
             "full" => Ok(RollingTimeStartBy::Full),
             "duration_start" | "durationstart" | "ds" => Ok(RollingTimeStartBy::DurationStart),
             _ => Err(PyValueError::new_err(format!(
-                "Not supported rolling by time start_by method: {}",
-                s
+                "Not supported rolling by time start_by method: {s}"
             ))),
         }
     }

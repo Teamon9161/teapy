@@ -131,7 +131,7 @@ pub(crate) fn impl_rolling_by_startidx_agg(
     let fn_str = fn_name
         .strip_prefix("rolling_select_")
         .unwrap_or(fn_name.as_str());
-    let fn_name = format!("{}_1d", fn_str);
+    let fn_name = format!("{fn_str}_1d");
     let fn_name: syn::Ident = syn::parse_str(&fn_name).unwrap();
     let mut params = parse_params(lazy_sig);
     let roll_start = params.remove(0);
@@ -187,7 +187,7 @@ pub(crate) fn impl_rolling_by_startidx_agg2(
     let fn_str = fn_name
         .strip_prefix("rolling_select_")
         .unwrap_or(fn_name.as_str());
-    let fn_name = format!("{}_1d", fn_str);
+    let fn_name = format!("{fn_str}_1d");
     let fn_name: syn::Ident = syn::parse_str(&fn_name).unwrap();
     let mut params = parse_params(lazy_sig);
     let other = params.remove(0);
@@ -254,7 +254,7 @@ pub(crate) fn impl_rolling_by_vecusize_agg(
     let fn_str = fn_name
         .strip_prefix("rolling_select_by_vecusize_")
         .unwrap_or(fn_name.as_str());
-    let fn_name = format!("{}_1d", fn_str);
+    let fn_name = format!("{fn_str}_1d");
     let fn_name: syn::Ident = syn::parse_str(&fn_name).unwrap();
     let mut params = parse_params(lazy_sig);
     let idxs = params.remove(0);
@@ -299,7 +299,7 @@ pub(crate) fn impl_group_by_startidx_agg(
     let fn_str = fn_name
         .strip_prefix("group_by_startidx_")
         .unwrap_or(fn_name.as_str());
-    let fn_name = format!("{}_1d", fn_str);
+    let fn_name = format!("{fn_str}_1d");
     let fn_name: syn::Ident = syn::parse_str(&fn_name).unwrap();
     let mut params = parse_params(lazy_sig);
     let start_idx = params.remove(0);
@@ -350,7 +350,7 @@ pub(crate) fn impl_group_by_startidx_agg2(
     let fn_str = fn_name
         .strip_prefix("group_by_startidx_")
         .unwrap_or(fn_name.as_str());
-    let fn_name = format!("{}_1d", fn_str);
+    let fn_name = format!("{fn_str}_1d");
     let fn_name: syn::Ident = syn::parse_str(&fn_name).unwrap();
     let mut params = parse_params(lazy_sig);
     let other = params.remove(0);

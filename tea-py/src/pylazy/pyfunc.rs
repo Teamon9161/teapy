@@ -25,6 +25,7 @@ pub fn parse_expr_nocopy(obj: &Bound<'_, PyAny>) -> PyResult<PyExpr> {
 }
 
 #[pyfunction]
+#[allow(clippy::needless_return)]
 #[pyo3(signature=(obj, copy=false))]
 /// A util function to convert python object to PyExpr
 ///
@@ -193,7 +194,7 @@ pub unsafe fn parse_expr(obj: &Bound<'_, PyAny>, copy: bool) -> PyResult<PyExpr>
 }
 
 #[pyfunction]
-#[allow(clippy::missing_safety_doc)]
+#[allow(clippy::missing_safety_doc, clippy::needless_return)]
 #[pyo3(signature=(obj, copy=false))]
 pub unsafe fn parse_expr_list(obj: &Bound<'_, PyAny>, copy: bool) -> PyResult<Vec<PyExpr>> {
     if obj.is_instance_of::<PyList3>() || obj.is_instance_of::<PyTuple>() {
